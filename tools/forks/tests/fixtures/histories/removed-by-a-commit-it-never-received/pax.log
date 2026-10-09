@@ -1,0 +1,5 @@
+2026-10-09T07:11:14.107082Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="e09a3faa"
+2026-10-09T07:11:14.110260Z  INFO libchat::groupv2trace: run installation=e09a3f52 account=0d7a66f3
+2026-10-09T07:12:06.110575Z  INFO core.handle_frame{user_id=pax}:inboxV2.handle_frame{user_id=pax}: libchat::inbox_v2: Process WelcomeMessage
+2026-10-09T07:12:06.122027Z  INFO core.handle_frame{user_id=pax}:inboxV2.handle_frame{user_id=pax}:groupv2.new_from_welcome{user_id=pax}: de_mls::conversation::inbound: joined conversation conversation=9c15e2f0b7
+2026-10-09T07:12:06.125616Z  INFO core.handle_frame{user_id=pax}: libchat::groupv2trace: epoch installation=e09a3f52 convo=9c15e2f0b7 epoch=1 state=2c025d630150efe0 members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3

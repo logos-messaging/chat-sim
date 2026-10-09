@@ -1,0 +1,9 @@
+2026-10-09T07:46:40.158389Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="4d7c21aa"
+2026-10-09T07:46:40.161567Z  INFO libchat::groupv2trace: run installation=4d7c21be account=8a02f6c9
+2026-10-09T07:47:32.161882Z  INFO core.handle_frame{user_id=tomo}:inboxV2.handle_frame{user_id=tomo}: libchat::inbox_v2: Process WelcomeMessage
+2026-10-09T07:47:32.173334Z  INFO core.handle_frame{user_id=tomo}:inboxV2.handle_frame{user_id=tomo}:groupv2.new_from_welcome{user_id=tomo}: de_mls::conversation::inbound: joined conversation conversation=c7d2a91f03
+2026-10-09T07:47:32.176923Z  INFO core.handle_frame{user_id=tomo}: libchat::groupv2trace: epoch installation=4d7c21be convo=c7d2a91f03 epoch=5 state=b8e627d0e8af9dc6 members=5 roster=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3,4d7c21be:8a02f6c9,b54a9d10:3ac7e51b,19f6b0e3:d2184c8e
+2026-10-09T07:48:36.177649Z  INFO core.handle_frame{user_id=tomo}:groupv2.handle_frame{user_id=tomo}: de_mls::conversation::handle: state transition state="Working"
+2026-10-09T07:48:36.181512Z  INFO core.handle_frame{user_id=tomo}:groupv2.handle_frame{user_id=tomo}: libchat::groupv2trace: epoch installation=4d7c21be convo=c7d2a91f03 epoch=6 state=70c59e8f1e2e557c members=5 roster=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3,4d7c21be:8a02f6c9,b54a9d10:3ac7e51b,19f6b0e3:d2184c8e
+2026-10-09T07:49:34.181515Z  WARN groupv2.wakeup{user_id=tomo}: libchat::conversation::group_v2: conversation requested teardown convo=c7d2a91f03
+2026-10-09T07:49:34.184655Z  INFO groupv2.wakeup{user_id=tomo}: libchat::groupv2trace: left installation=4d7c21be convo=c7d2a91f03 epoch=7

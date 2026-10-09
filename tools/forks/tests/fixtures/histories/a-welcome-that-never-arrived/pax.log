@@ -1,0 +1,12 @@
+2026-10-08T13:32:19.227+02:00 INFO: chat_module: init: state installed, joining delivery preset logos.test
+2026-10-08T13:32:19.230+02:00 INFO: libchat::groupv2trace: run installation=e09a3f52 account=0d7a66f3
+2026-10-08T13:32:19.233+02:00 INFO: chat_module::report: delivery state=initialising
+2026-10-08T13:32:20.290+02:00 INFO: chat_module::actions: delivery is online
+2026-10-08T13:32:20.293+02:00 INFO: chat_module::report: delivery state=online
+2026-10-08T13:32:29.293+02:00 ERROR: chat_module::actions: delivery failed: connection closed
+2026-10-08T13:32:29.296+02:00 INFO: chat_module::report: delivery state=error
+2026-10-08T13:32:30.397+02:00 INFO: chat_module::actions: delivery is online
+2026-10-08T13:32:30.400+02:00 INFO: chat_module::report: delivery state=online
+thread 'tokio-runtime-worker' panicked at src/delivery.rs:212:9:
+connection reset by peer
+2026-10-08T13:32:34.400+02:00 INFO: chat_module::actions: delivery is online

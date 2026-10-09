@@ -1,0 +1,16 @@
+2026-10-08T14:31:42.011+01:00 INFO: chat_module: init: state installed, joining delivery preset logos.test
+2026-10-08T14:31:42.014+01:00 INFO: libchat::groupv2trace: run installation=7b1e44d9 account=91c0e3a7
+2026-10-08T14:31:42.017+01:00 INFO: chat_module::report: delivery state=initialising
+2026-10-08T14:31:43.074+01:00 INFO: chat_module::actions: delivery is online
+2026-10-08T14:31:43.077+01:00 INFO: chat_module::report: delivery state=online
+2026-10-08T14:32:35.077+01:00 INFO: libchat::inbox_v2: Process WelcomeMessage
+2026-10-08T14:32:35.080+01:00 INFO: libchat::groupv2trace: epoch installation=7b1e44d9 convo=b05d4417e9 epoch=1 state=77797f82b14f233d members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T14:34:53.083+01:00 INFO: libchat::groupv2trace: epoch installation=7b1e44d9 convo=b05d4417e9 epoch=2 state=763449d6cdefb10f members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T14:35:16.486+01:00 INFO: libchat::groupv2trace: received installation=7b1e44d9 convo=b05d4417e9 frame=8f21c07a from=a3f91c07 epoch=2
+2026-10-08T14:35:16.488+01:00 INFO: chat_module::actions: received 48 bytes in b05d4417e9 from 5be2
+2026-10-08T14:36:20.491+01:00 INFO: libchat::groupv2trace: epoch installation=7b1e44d9 convo=b05d4417e9 epoch=3 state=897d8438305ac6d2 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T14:37:00.601+01:00 INFO: libchat::groupv2trace: sent installation=7b1e44d9 convo=b05d4417e9 frame=e3b94d10 epoch=3
+2026-10-08T14:37:00.603+01:00 INFO: chat_module::actions: sent 48 bytes to b05d4417e9
+2026-10-08T14:37:24.805+01:00 INFO: libchat::groupv2trace: unreadable installation=7b1e44d9 convo=b05d4417e9 frame=41d6a9e0 epoch=3 why=decrypt
+2026-10-08T14:37:24.806+01:00 WARNING: chat_module::actions: inbound error: could not decrypt a group frame
+2026-10-08T14:38:28.809+01:00 INFO: libchat::groupv2trace: epoch installation=7b1e44d9 convo=b05d4417e9 epoch=4 state=5a850890461cab7f members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e

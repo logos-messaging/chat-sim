@@ -1,0 +1,6 @@
+2026-10-09T06:54:17.902082Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="a3f91caa"
+2026-10-09T06:54:17.905260Z  INFO libchat::groupv2trace: run installation=a3f91c07 account=5be2c0d1
+2026-10-09T06:54:48.905575Z  INFO components::delivery::local_broadcaster: DS:Publish envelope.delivery_address="c1b3d610aa94" len=7038
+2026-10-09T06:54:48.909027Z  INFO libchat::groupv2trace: epoch installation=a3f91c07 convo=a5bb59cd29 epoch=1 state=4c5b85f9ce0109dc members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
+2026-10-09T06:55:59.909616Z  INFO groupv2.wakeup{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
+2026-10-09T06:55:59.913342Z  INFO groupv2.wakeup{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=a5bb59cd29 epoch=2 state=a3a6b6e80b71eadc members=2 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7

@@ -1,0 +1,14 @@
+2026-10-07T17:45:27.167+09:00 INFO: chat_module: init: state installed, joining delivery preset logos.test
+2026-10-07T17:45:27.170+09:00 INFO: libchat::groupv2trace: run installation=4d7c21be account=8a02f6c9
+2026-10-07T17:45:27.173+09:00 INFO: chat_module::report: delivery state=initialising
+2026-10-07T17:45:28.230+09:00 INFO: chat_module::actions: delivery is online
+2026-10-07T17:45:28.233+09:00 INFO: chat_module::report: delivery state=online
+2026-10-07T17:46:20.233+09:00 INFO: libchat::inbox_v2: Process WelcomeMessage
+2026-10-07T17:46:20.236+09:00 INFO: libchat::groupv2trace: epoch installation=4d7c21be convo=a17c3e905d epoch=1 state=095712004192ce9f members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,4d7c21be:8a02f6c9,e09a3f52:0d7a66f3
+2026-10-07T17:46:29.236+09:00 ERROR: chat_module::actions: delivery failed: connection closed
+2026-10-07T17:46:29.239+09:00 INFO: chat_module::report: delivery state=error
+2026-10-07T17:46:30.340+09:00 INFO: chat_module::actions: delivery is online
+2026-10-07T17:46:30.343+09:00 INFO: chat_module::report: delivery state=online
+2026-10-07T17:47:41.346+09:00 INFO: libchat::groupv2trace: epoch installation=4d7c21be convo=a17c3e905d epoch=2 state=23d15714bc47014f members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,4d7c21be:8a02f6c9,e09a3f52:0d7a66f3
+2026-10-07T17:48:39.346+09:00 WARNING: libchat::conversation::group_v2: conversation requested teardown convo=a17c3e905d
+2026-10-07T17:48:39.349+09:00 INFO: libchat::groupv2trace: left installation=4d7c21be convo=a17c3e905d epoch=3

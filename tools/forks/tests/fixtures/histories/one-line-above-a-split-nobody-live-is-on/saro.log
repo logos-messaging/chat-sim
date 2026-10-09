@@ -1,0 +1,9 @@
+2026-10-09T07:40:02.125082Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="a3f91caa"
+2026-10-09T07:40:02.128260Z  INFO libchat::groupv2trace: run installation=a3f91c07 account=5be2c0d1
+2026-10-09T07:40:54.128575Z  INFO core.handle_frame{user_id=saro}:inboxV2.handle_frame{user_id=saro}: libchat::inbox_v2: Process WelcomeMessage
+2026-10-09T07:40:54.140027Z  INFO core.handle_frame{user_id=saro}:inboxV2.handle_frame{user_id=saro}:groupv2.new_from_welcome{user_id=saro}: de_mls::conversation::inbound: joined conversation conversation=c7d2a91f03
+2026-10-09T07:40:54.143616Z  INFO core.handle_frame{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=c7d2a91f03 epoch=2 state=f606bf58b3890e32 members=5 roster=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3,4d7c21be:8a02f6c9,b54a9d10:3ac7e51b,19f6b0e3:d2184c8e
+2026-10-09T07:41:58.144342Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
+2026-10-09T07:41:58.148205Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=c7d2a91f03 epoch=3 state=383ef96ef171748e members=5 roster=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3,4d7c21be:8a02f6c9,b54a9d10:3ac7e51b,19f6b0e3:d2184c8e
+2026-10-09T07:42:56.148208Z  WARN groupv2.wakeup{user_id=saro}: libchat::conversation::group_v2: conversation requested teardown convo=c7d2a91f03
+2026-10-09T07:42:56.151348Z  INFO groupv2.wakeup{user_id=saro}: libchat::groupv2trace: left installation=a3f91c07 convo=c7d2a91f03 epoch=4

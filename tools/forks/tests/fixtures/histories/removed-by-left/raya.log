@@ -1,0 +1,7 @@
+2026-10-09T06:54:54.902082Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="7b1e44aa"
+2026-10-09T06:54:54.905260Z  INFO libchat::groupv2trace: run installation=7b1e44d9 account=91c0e3a7
+2026-10-09T06:55:46.905575Z  INFO core.handle_frame{user_id=raya}:inboxV2.handle_frame{user_id=raya}: libchat::inbox_v2: Process WelcomeMessage
+2026-10-09T06:55:46.917027Z  INFO core.handle_frame{user_id=raya}:inboxV2.handle_frame{user_id=raya}:groupv2.new_from_welcome{user_id=raya}: de_mls::conversation::inbound: joined conversation conversation=a5bb59cd29
+2026-10-09T06:55:46.920616Z  INFO core.handle_frame{user_id=raya}: libchat::groupv2trace: epoch installation=7b1e44d9 convo=a5bb59cd29 epoch=1 state=4c5b85f9ce0109dc members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
+2026-10-09T06:56:57.921342Z  INFO groupv2.wakeup{user_id=raya}: de_mls::conversation::handle: state transition state="Working"
+2026-10-09T06:56:57.925205Z  INFO groupv2.wakeup{user_id=raya}: libchat::groupv2trace: epoch installation=7b1e44d9 convo=a5bb59cd29 epoch=2 state=a3a6b6e80b71eadc members=2 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7

@@ -1,0 +1,5 @@
+2026-10-09T09:31:40.219041Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="b54a9daa"
+2026-10-09T09:31:40.222219Z  INFO libchat::groupv2trace: run installation=b54a9d10 account=3ac7e51b
+2026-10-09T09:32:32.222534Z  INFO core.handle_frame{user_id=kes}:inboxV2.handle_frame{user_id=kes}: libchat::inbox_v2: Process WelcomeMessage
+2026-10-09T09:32:32.233986Z  INFO core.handle_frame{user_id=kes}:inboxV2.handle_frame{user_id=kes}:groupv2.new_from_welcome{user_id=kes}: de_mls::conversation::inbound: joined conversation conversation=0c4be2d1a7
+2026-10-09T09:32:32.237575Z  INFO core.handle_frame{user_id=kes}: libchat::groupv2trace: epoch installation=b54a9d10 convo=0c4be2d1a7 epoch=2 state=d8e38748ba03caf5 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,b54a9d10:3ac7e51b

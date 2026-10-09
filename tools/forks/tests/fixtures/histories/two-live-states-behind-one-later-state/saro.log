@@ -1,0 +1,11 @@
+2026-10-09T11:02:15.307082Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="a3f91caa"
+2026-10-09T11:02:15.310260Z  INFO libchat::groupv2trace: run installation=a3f91c07 account=5be2c0d1
+2026-10-09T11:03:07.310575Z  INFO core.handle_frame{user_id=saro}:inboxV2.handle_frame{user_id=saro}: libchat::inbox_v2: Process WelcomeMessage
+2026-10-09T11:03:07.322027Z  INFO core.handle_frame{user_id=saro}:inboxV2.handle_frame{user_id=saro}:groupv2.new_from_welcome{user_id=saro}: de_mls::conversation::inbound: joined conversation conversation=5a2d90e7b3
+2026-10-09T11:03:07.325616Z  INFO core.handle_frame{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=5a2d90e7b3 epoch=2 state=1a0c424c63278014 members=5 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
+2026-10-09T11:05:25.326342Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
+2026-10-09T11:05:25.330205Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=5a2d90e7b3 epoch=3 state=b6104feca41d5642 members=5 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
+2026-10-09T11:11:26.369145Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
+2026-10-09T11:11:26.372285Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=5a2d90e7b3 epoch=5 state=703493eb66678f87 members=5 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
+2026-10-09T11:12:24.372562Z  WARN groupv2.wakeup{user_id=saro}: libchat::conversation::group_v2: conversation requested teardown convo=5a2d90e7b3
+2026-10-09T11:12:24.375976Z  INFO groupv2.wakeup{user_id=saro}: libchat::groupv2trace: left installation=a3f91c07 convo=5a2d90e7b3 epoch=6

@@ -1,0 +1,10 @@
+2026-10-08T10:13:54.317+01:00 INFO: chat_module: init: state installed, joining delivery preset logos.test
+2026-10-08T10:13:54.320+01:00 INFO: libchat::groupv2trace: run installation=e09a3f52 account=0d7a66f3
+2026-10-08T10:13:54.323+01:00 INFO: chat_module::report: delivery state=initialising
+2026-10-08T10:13:55.380+01:00 INFO: chat_module::actions: delivery is online
+2026-10-08T10:13:55.383+01:00 INFO: chat_module::report: delivery state=online
+2026-10-08T10:14:47.383+01:00 INFO: libchat::inbox_v2: Process WelcomeMessage
+2026-10-08T10:14:47.386+01:00 INFO: libchat::groupv2trace: epoch installation=e09a3f52 convo=4b8e0c62d9 epoch=1 state=af49c0e8b1a2ebac members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T10:16:35.389+01:00 INFO: libchat::groupv2trace: epoch installation=e09a3f52 convo=4b8e0c62d9 epoch=2 state=5c9c782afc76b224 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T10:17:33.389+01:00 WARNING: libchat::conversation::group_v2: conversation requested teardown convo=4b8e0c62d9
+2026-10-08T10:17:33.392+01:00 INFO: libchat::groupv2trace: left installation=e09a3f52 convo=4b8e0c62d9 epoch=3

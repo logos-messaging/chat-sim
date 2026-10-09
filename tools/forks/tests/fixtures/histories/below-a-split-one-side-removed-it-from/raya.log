@@ -1,0 +1,7 @@
+2026-10-09T08:16:07.507082Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="7b1e44aa"
+2026-10-09T08:16:07.510260Z  INFO libchat::groupv2trace: run installation=7b1e44d9 account=91c0e3a7
+2026-10-09T08:16:59.510575Z  INFO core.handle_frame{user_id=raya}:inboxV2.handle_frame{user_id=raya}: libchat::inbox_v2: Process WelcomeMessage
+2026-10-09T08:16:59.522027Z  INFO core.handle_frame{user_id=raya}:inboxV2.handle_frame{user_id=raya}:groupv2.new_from_welcome{user_id=raya}: de_mls::conversation::inbound: joined conversation conversation=f3a65c19e2
+2026-10-09T08:16:59.525616Z  INFO core.handle_frame{user_id=raya}: libchat::groupv2trace: epoch installation=7b1e44d9 convo=f3a65c19e2 epoch=1 state=c8f962b3a78ea1fc members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-09T08:18:03.526342Z  INFO core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya}: de_mls::conversation::handle: state transition state="Working"
+2026-10-09T08:18:03.530205Z  INFO core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya}: libchat::groupv2trace: epoch installation=7b1e44d9 convo=f3a65c19e2 epoch=2 state=8338869d7d84e46e members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
