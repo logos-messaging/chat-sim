@@ -9,8 +9,8 @@ as it goes, and `forks` reads the logs the members share and says what they add 
 or several, who is on which branch, who is behind, who was removed, and how much of the group the
 logs cover.
 
-The tool reads logs and nothing else. It needs Python 3.9 or newer and no package beyond the
-standard library.
+The tool reads logs and nothing else: `report` reads the files it is given, and `serve` the logs
+members send it. It needs Python 3.9 or newer and no package beyond the standard library.
 
 ## Getting a log with records in it
 
@@ -177,7 +177,9 @@ is read as UTC when stamps are compared.
 
 The same run may be among the logs twice, at two lengths: a copy taken while it grew, and the
 file as it is now. For one installation, a run whose records, with their stamps, are the first
-records of another run is that run at an earlier length, and only the longer is read.
+records of another run is that run at an earlier length, and only the longer is read. A final
+mark on either, which the collector gives, counts for the one that is read: it is one run, and
+its writer is gone.
 
 ## How the verdict is decided
 
@@ -206,9 +208,10 @@ never passed: it is on a side of a split the logs show, and only links say what 
 Any other state is passed once an installation that reported it wrote a state at a higher epoch
 afterwards, as it does in a later run or after a leave.
 
-The **seats** of a conversation are the installations that wrote a record in it and the
-installations its rosters list. An installation that wrote only a `run` record and is on no
-roster is not part of the conversation.
+The **seats** of a conversation are the installations that wrote a record in it, the
+installations its rosters list, and the installations a [line is kept](#positions) of in it. An
+installation that wrote only a `run` record, is on no roster and has no line kept of it is not
+part of the conversation.
 
 ### Positions
 
@@ -216,9 +219,11 @@ Every seat has one position. The checks run in this order, and the first that ho
 
 | Position | When |
 |---|---|
-| `removed` | The seat wrote no `epoch` and no `left` record, there is a newest roster, and no newest roster lists the seat. |
-| `never joined` | It wrote no `epoch` and no `left` record, and a shared log holds a record of its own, of any kind. Its log is here, and it never held the group. |
-| `no data` | It wrote no `epoch` and no `left` record, and no shared log holds a record of its own. Nobody shared its log. |
+| `removed` | The seat wrote no `epoch` and no `left` record, and a line is kept of it. The line says its last record was a leave, or there is a newest roster at or above the line's epoch and none of those lists the seat. |
+| `ended` | It wrote no `epoch` and no `left` record, and a line is kept of it: the log of its final run was shared, and is gone. |
+| `removed` | It wrote no `epoch` and no `left` record, no line is kept of it, there is a newest roster, and no newest roster lists it. |
+| `never joined` | It wrote no `epoch` and no `left` record, no line is kept of it, and a shared log holds a record of its own, of any kind. Its log is here, and it never held the group. |
+| `no data` | It wrote no `epoch` and no `left` record, no line is kept of it, and no shared log holds a record of its own. Nobody shared its log. |
 | `removed` | Its last record is a leave. Or links lead on from its newest state, and no roster at the end of them lists it: it was removed by a commit it never received. |
 | `ended` | Every run it wrote in is final: the writer is gone and the run will not grow. |
 | `behind` | Links lead from its newest state to a later one. |
@@ -230,7 +235,20 @@ as any other. A state on a side of a split the logs show still counts wherever i
 joined again, on the other side or back on its own: such a state is never passed.
 
 A file does not say whether its writer is gone, so `report` marks no run final and never says
-`ended`. The rule takes the final runs as an input, for a caller that watches the logs grow.
+`ended`. The rule takes the final runs as an input, and the collector, which is told when a run
+is final, hands them to it: see [Collecting logs](#collecting-logs).
+
+A **kept line** is what the collector keeps of an installation in a conversation once the log of
+its final run is gone: the installation, its account, the epoch of its last record there, and
+whether that record was a leave. The line says that the installation was here and how it ended,
+and nothing of what it held. A seat that goes by its line has that epoch and no state, is on no
+branch, and brings the report no state, no roster and no link. It is `removed` when its last
+record was a leave, or when there is a newest roster at or above the line's epoch and none of
+those lists it, and `ended` otherwise: a roster older than the line cannot show the seat removed.
+A line yields only to an `epoch` or a `left` record: an installation that wrote one in the
+conversation, in a shared log, goes by its records there, and one whose shared logs hold only
+other records of its own, such as its `run` record or the records of another conversation, goes
+by its line.
 
 An installation is **live** when it is at the `tip`, `behind`, or of `lineage unknown`.
 
@@ -400,7 +418,9 @@ The lists above are cut to one entry each.
   or, without one, from a roster, and is `""` for an account of no bytes. `epoch` is the epoch of
   its last record, and `state` and `branch` are `null` when that record is a leave or the seat
   has no record. `history` holds its records in the order written, each of kind `epoch` or
-  `left`, and a leave has no state.
+  `left`, and a leave has no state. A seat that goes by a kept line has the line's `account`
+  and `epoch`, no `state`, `branch` or history, and in `runs` only the runs that hold other
+  records of its own.
 - `at` is where a record was written: the run, the line in it, and the stamp as written.
   `has_offset` says whether the stamp carries its offset from UTC.
 - `messages` has an entry for each frame a `sent` record names, in the order sent. `state` is the
@@ -421,6 +441,148 @@ The lists above are cut to one entry each.
   log holds a `sent` record.
 - `runs` are the runs the seats wrote in, by name, each with the changes of its delivery state.
 
+## Collecting logs
+
+`report` reads the logs someone gathered. `serve` gathers them: it takes the logs members send
+it as they run, keeps them, and answers each conversation's report as JSON, drawn by the same
+rule from what it holds when it is asked.
+
+From the repository root:
+
+```sh
+python3 tools/forks serve --data forks-data --token-file forks-token
+```
+
+`forks-data` is the directory the logs are kept in, and is made when it is missing.
+`forks-token` is a file that holds the token: 16 to 128 characters of `A-Z`, `a-z`, `0-9`, `_`
+and `-`, with nothing but white space around them. The token is read from that file and from
+nowhere else, so it is in no command line and no environment. The collector listens on
+`127.0.0.1`, port 8750, unless `--bind ADDRESS` or `--port N` says otherwise, and runs until it
+is interrupted. `--max-bytes N` is the most bytes of logs it holds at a time, and without it
+there is no such limit.
+
+It writes a log of its own to standard error, one line for each write:
+
+```text
+2026-10-09T17:28:42Z serving forks-data on http://127.0.0.1:8750/
+2026-10-09T17:28:51Z run 18fae263f6ea83ec26079157cea3f019 opened
+2026-10-09T17:28:51Z run 18fae263f6ea83ec26079157cea3f019 took 10066 bytes, holds 10066
+```
+
+A line also names each directory a start leaves alone, each run that goes at thirty days, and
+what failed when the disk or a call did. That log never holds the token, a receipt, a run's name
+or anything a member's log says, and when it cannot be written no call fails for it.
+
+### The calls
+
+On the collector a **run** is one stream of log bytes under an id the collector made. Its name is
+a label its sender gave it, and two runs may carry one name.
+
+| Call | Body | Answer |
+|---|---|---|
+| `POST /runs` | `{"name": NAME, "app": APP}`, each 1 to 64 characters | 201 `{"id": ID, "receipt": R}`: an empty run is open. |
+| `PUT /runs/ID/log?offset=N` | The run's bytes from `N` on, at most 4 MiB, or none. | 200 `{"size": S, "final": F}` when `N` was the size held: the bytes are appended. 409 with the same object when it was not: nothing is appended. |
+| `PUT /runs/ID/log?offset=N&final=1` | The last bytes, or none. | The same, and the run is final: its writer is gone. A final run answers 409 to more bytes, and 200 to its mark sent again. |
+| `DELETE /runs/ID` | | 204: the run's log and its records are gone. |
+| `GET /conversations` | | 200: every conversation the logs held name, the worst first. |
+| `GET /conversations/CID` | | 200: the report of one conversation. |
+| `GET /runs/ID/log?line=N` | | 200 `{"lines": [{"line": N, "text": "..."}]}`: line `N` of the run's log, the two before it and the three after. |
+
+| Status | When |
+|---|---|
+| 400 | A body, an offset or a line is not what the call takes, or a body gives its length twice or beside a transfer coding. |
+| 401 | The call does not carry the token. The answer says nothing else, whatever was asked for. |
+| 403 | A write to a run does not carry that run's receipt. |
+| 404 | The collector has no such run, no such conversation or no such call. |
+| 411 | A `POST` or a `PUT` does not say the length of its body. |
+| 413 | A body is longer than 4 MiB. |
+| 507 | With `--max-bytes`, the bytes would take the logs held past it. Nothing is appended and nothing is marked, and the run still counts as heard from. Its sender loses nothing, and asks again later. |
+
+Every answer with a body is JSON, and an error is `{"error": "..."}`. A `PUT` without bytes at
+the size held changes no log, and it is how the collector knows it still hears from a run.
+Records are read from whole lines: what follows the last line break of the bytes held waits for
+the bytes that end it.
+
+### The token and the receipt
+
+**The token** goes on every call, in the header `Authorization: Bearer TOKEN`. Whoever holds it
+may send logs, and read every report and every line of every log held. It does not hide what
+crosses the network: the collector speaks plain HTTP, so off the loopback address the token and
+the logs travel in the clear unless something in front of it adds TLS.
+
+**The receipt** of a run is answered once, when the run is opened, and goes on every write to
+that run, in the header `Forks-Receipt: R`: an append, the final mark and the delete. So a holder
+of the token cannot add to, end or remove a run somebody else opened. It does not hide the run,
+which the token alone reads. The collector keeps only a hash of a receipt, and cannot give a lost
+one again.
+
+### What the directory holds
+
+Each run has a directory under `forks-data`, named after its id:
+
+| File | What it holds |
+|---|---|
+| `ID/ID.log` | The run's log as it was received, byte for byte. |
+| `ID/run.json` | The run's name and app, the hash of its receipt, whether it is final, and when the collector last heard from it. Once the log is gone, the lines kept of it. |
+
+The records are held in memory, and a start reads them again from the logs: each log whole,
+whatever its `run.json` says, so bytes appended just before a stop are not lost. `run.json` is
+replaced in one step. A directory that does not hold a run as the collector writes one is left as
+it is, and a line of the collector's log names it. The logs are files like any other, and
+`report` reads them, naming each run by its id and marking none final:
+
+```sh
+python3 tools/forks report forks-data/*/*.log
+```
+
+### Thirty days
+
+The collector hears from a run when it opens it and at every `PUT` it accepts, one without bytes
+included. It hears from it at a `PUT` it answers 507 as well: the sender is there, and it is the
+collector that cannot take the bytes. A run it has not heard from for thirty days goes: its log
+and its records, and a call for it then answers 404.
+
+Of a run that was not final nothing is left. Of a final run a line is kept for each installation and
+conversation in its log, the [kept line](#positions), so the report goes on naming those
+installations: one that goes by its line reads `removed` where its last record was a leave, or where
+there is a newest roster at or above the line's epoch and none of those lists it, and `ended`
+otherwise. `PUT` answers 404 for such a run, and `DELETE` with its receipt still answers 204 and
+removes the lines. The lines of a conversation also go when the last log that names it goes.
+
+A run the disk does not let go of stays as it is, log and records, and is tried again an hour
+later, with a line in the collector's log each time.
+
+### The collector's JSON
+
+`GET /conversations/CID` answers the object that `--json` holds for a conversation, with two
+differences. Wherever it names a run, it gives the run's id. And each entry of `runs` says more:
+
+```json
+{
+  "id": "18fae263f6ea83ec26079157cea3f019",
+  "name": "saro",
+  "app": "logos-chat-ui 0.3.0",
+  "final": false,
+  "size": 10066,
+  "heard": "2026-10-09T17:28:51Z",
+  "delivery": []
+}
+```
+
+`size` is how many bytes of the run's log are held, and `heard` is when the collector last heard
+from it, in UTC. A conversation's id is text its creator chose, so in an address its `%` is
+written `%25`.
+
+`GET /conversations` answers `lines`, the count over every log held, and `conversations`, each
+with its `id`, `verdict`, `split_epoch` and `coverage`, the `label` and newest `epoch` of each of
+its `branches`, and `heard`, the latest of the runs its report lists. They come the worst first:
+a split with two or more sides live, with one, with none, then `whole as far as seen`,
+`whole, members behind`, `not enough data`, `no live member` and `whole`. Of two that read alike,
+the one heard from last comes first.
+
+A report is drawn when it is asked for and kept until a write changes it: a record of one of its
+seats, a final mark on a run one of them wrote in, or a log that goes.
+
 ## Limits
 
 - In the line shape of `tracing`, a span without fields and a one-word target look alike: each is
@@ -429,8 +591,9 @@ The lists above are cut to one entry each.
 - An installation's runs are put in order by the stamp of its first record in each, and a stamp
   without an offset is read as UTC. Two runs of one installation, one stamped with its offset and
   one without, can be read in the wrong order.
-- `never joined` is said before `ended`: an installation that wrote no `epoch` and no `left`
-  record never reads `ended`, even when every run it wrote in is final.
+- `never joined` is said before `ended`: an installation whose shared logs hold a record of its
+  own, and no `epoch` and no `left` record, reads `ended` only by a kept line, even when every
+  run it wrote in is final.
 - A directory is read one level deep, and a run is named after its file. Logs kept as one
   directory for each member, under one file name, are runs of one name and are refused.
 - `NAME.NNN.log` is always read as part NNN of the run `NAME`, also when it is a second copy of
@@ -441,6 +604,26 @@ The lists above are cut to one entry each.
   passed, though a later state that nothing links to lacks it.
 - The tail of a split verdict also counts a live installation whose state is on no branch: one a
   later split follows, or one whose later states are not one line.
+- The collector speaks plain HTTP, one request to a connection, and closes a connection that
+  falls silent for 30 seconds. It serves the calls above and no page.
+- A body the collector refuses for its length, or for saying none, is answered unread. A client
+  that reads an answer only once it has sent its body finds the connection closed instead.
+- The body of a call without the token is read and kept nowhere, for 30 seconds at most, and then
+  the call is answered 401. The head of a request is read before the collector can know whether
+  it carries the token: a peer without it holds a connection for as long as it sends one slowly
+  and is never silent for 30 seconds.
+- The collector syncs nothing to disk. After a power cut a log may be shorter than the size last
+  answered, which its sender mends at its next `PUT`, and a `run.json` may be unreadable, which
+  leaves its run out until the file is mended or the directory removed by hand.
+- While a directory the collector left alone at its start holds a log, no kept line goes for want
+  of a log that names its conversation: the log nobody read may be the one that does. The lines
+  stay in their `run.json` until a start that finds no such directory.
+- The collector holds every record in memory. Logs of 300 members, each 300 epochs of one
+  conversation, 500 MB in all, took 20 seconds to read at a start and a second to draw the
+  report of, in 160 MiB of memory.
+- A directory is for one collector. Nothing stops a second from starting on it, and the two
+  would each replace the other's `run.json`.
+- `--max-bytes` counts the bytes of the logs, and not what `run.json` takes.
 
 ## Tests
 
@@ -453,7 +636,8 @@ python3 -m unittest discover -s tools/forks
 `tests/fixtures/histories` holds thirty histories of a group, each a directory of logs as its
 members would share them, with the verdict and the positions the tool must give in `expect.json`.
 `tests/fixtures/real` holds two logs of a real group, cut to their records and the lines around
-them.
+them. The tests of the collector each start one on a loopback port the system picks, and call it
+over HTTP.
 
 ## Layout
 
@@ -463,4 +647,6 @@ them.
 | `forks/runs.py` | Turns files and directories into runs. |
 | `forks/rule.py` | Decides the report from records. It reads no file. |
 | `forks/text.py` | Writes the report as text. |
+| `forks/collector.py` | Keeps the runs members send, and draws each conversation's report. |
+| `forks/serve.py` | Serves a collector over HTTP. |
 | `forks/cli.py` | The command line. |

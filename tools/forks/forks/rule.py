@@ -10,10 +10,10 @@ and decides the rest.
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, fields
+from dataclasses import asdict, dataclass, fields
 from functools import cached_property
 from operator import attrgetter, itemgetter
-from typing import Collection, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
+from typing import Collection, Dict, FrozenSet, Iterable, List, Mapping, Optional, Set, Tuple
 
 from .records import Record, instant
 
@@ -44,6 +44,20 @@ class Mark:
     line: int
     time: str
     has_offset: bool
+
+
+@dataclass(frozen=True)
+class Kept:
+    """What is kept of an installation in a conversation once the log it wrote is gone.
+
+    `epoch` is that of its last record there, and `left` says whether that record was a leave.
+    """
+
+    convo: str
+    installation: str
+    account: Optional[str]
+    epoch: int
+    left: bool
 
 
 @dataclass(frozen=True)
@@ -157,13 +171,33 @@ class Conversation:
     runs: List[Run]
 
 
-def report(records: Iterable[Record], final: Collection[str] = ()) -> List[Conversation]:
+def report(
+    records: Iterable[Record],
+    final: Collection[str] = (),
+    kept: Iterable[Kept] = (),
+    only: Optional[Collection[str]] = None,
+) -> List[Conversation]:
     """The report of every conversation the records name, by its id.
 
-    `final` names the runs whose writer is gone.
+    `final` names the runs whose writer is gone. `kept` holds the lines of installations whose
+    log is gone. `only` names the conversations to report, when that is not every one.
     """
     logs = _Logs(records)
-    return [_conversation(convo, logs, frozenset(final)) for convo in sorted(logs.convos)]
+    lines: Dict[str, Dict[str, Kept]] = defaultdict(dict)
+    # Of two lines for one installation, the one that ended later.
+    for line in sorted(kept, key=attrgetter("epoch")):
+        lines[line.convo][line.installation] = line
+    gone = logs.final(final)
+    return [
+        _conversation(convo, logs, gone, lines.get(convo, {}))
+        for convo in sorted(logs.convos)
+        if only is None or convo in only
+    ]
+
+
+def as_json(conversation: Conversation) -> dict:
+    """A conversation's report as the object `--json` holds for it."""
+    return asdict(conversation)
 
 
 class _Logs:
@@ -174,12 +208,16 @@ class _Logs:
         self.accounts: Dict[str, str] = {}
         self.delivery: Dict[str, List[Record]] = defaultdict(list)
         self.convos: Dict[str, List[Record]] = defaultdict(list)
+        # For a run, the runs that are it at an earlier length.
+        self.earlier: Dict[str, Set[str]] = defaultdict(set)
         for record in sorted(records, key=_place):
             if record.kind == "delivery":
                 self.delivery[record.run].append(record)
             else:
                 written[record.installation].append(record)
-        self.written = {installation: _as_written(own) for installation, own in written.items()}
+        self.written = {
+            installation: _as_written(own, self.earlier) for installation, own in written.items()
+        }
         # A run that is among the logs at two lengths adds its records once.
         read = (record for own in self.written.values() for record in own)
         for record in sorted(read, key=_place):
@@ -192,26 +230,35 @@ class _Logs:
         """The runs an installation wrote in, in the order it wrote in them."""
         return list(dict.fromkeys(record.run for record in self.written.get(installation, ())))
 
+    def final(self, marked: Collection[str]) -> FrozenSet[str]:
+        """The runs whose writer is gone: the marked, and those a marked one is a length of."""
+        marked = frozenset(marked)
+        return marked | {run for run, earlier in self.earlier.items() if earlier & marked}
+
 
 def _place(record: Record) -> Tuple[str, int]:
     return record.run, record.line
 
 
-def _as_written(own: List[Record]) -> List[Record]:
+def _as_written(own: List[Record], earlier: Dict[str, Set[str]]) -> List[Record]:
     """One installation's records as it wrote them: its runs by first stamp, each run by line.
 
     A run whose records are the first records of another run is that run at an earlier length,
-    a copy taken while it grew, and only the longer is read. Runs that open at one stamp go by
-    what their records say and never by their names, which say nothing of when they were written.
+    a copy taken while it grew, and only the longer is read: `earlier` is told which runs a
+    longer one stands for. Runs that open at one stamp go by what their records say and never by
+    their names, which say nothing of when they were written.
     """
     runs: Dict[str, List[Record]] = defaultdict(list)
     for record in own:
         runs[record.run].append(record)
-    read = [
-        records
-        for records in runs.values()
-        if not any(_earlier_length(records, other) for other in runs.values())
-    ]
+    longer = {
+        run: [other for other, theirs in runs.items() if _earlier_length(records, theirs)]
+        for run, records in runs.items()
+    }
+    read = [records for run, records in runs.items() if not longer[run]]
+    for run, others in longer.items():
+        for other in others:
+            earlier[other].add(run)
     read.sort(key=lambda records: (instant(records[0].time), list(map(_sortable, records))))
     return [record for records in read for record in records]
 
@@ -304,9 +351,11 @@ class _Lineage:
             epoch for epoch, following in zip(epochs, epochs[1:]) if epoch == following
         )
 
-    def position(self, seat: str, shares_a_log: bool, ended: bool) -> str:
+    def position(self, seat: str, shares_a_log: bool, ended: bool, kept: Optional[Kept]) -> str:
         """Where a seat stands. The order of the checks is the rule."""
         if seat not in self.left:
+            if kept is not None:
+                return self._by_its_line(seat, kept)
             if self._off_every_roster(seat, self._newest_rosters):
                 return REMOVED
             return NEVER_JOINED if shares_a_log else NO_DATA
@@ -323,6 +372,12 @@ class _Lineage:
         if any(other[0] > node[0] and not self._apart(node, other) for other in self.reported):
             return LINEAGE_UNKNOWN
         return TIP
+
+    def _by_its_line(self, seat: str, line: Kept) -> str:
+        """Where a seat that goes by its kept line stands."""
+        # A roster older than the line cannot show the seat removed.
+        ahead = [node for node in self._newest_rosters if node[0] >= line.epoch]
+        return REMOVED if line.left or self._off_every_roster(seat, ahead) else ENDED
 
     @cached_property
     def _newest_rosters(self) -> List[Node]:
@@ -472,17 +527,23 @@ def _reach(start: Node, edges: Dict[Node, Set[Node]]) -> Set[Node]:
     return seen
 
 
-def _conversation(convo: str, logs: _Logs, final: FrozenSet[str]) -> Conversation:
+def _conversation(
+    convo: str, logs: _Logs, final: FrozenSet[str], kept: Mapping[str, Kept]
+) -> Conversation:
     lineage = _Lineage(convo, logs)
+    # A line yields only to an `epoch` or a `left` record its installation wrote here.
+    kept = {seat: line for seat, line in kept.items() if seat not in lineage.left}
     seats = sorted(
         {record.installation for record in logs.convos[convo]}
         | {member for node in lineage.reported for member in lineage.roster(node)}
+        | set(kept)
     )
     positions = {
         seat: lineage.position(
             seat,
             shares_a_log=seat in logs.written,
             ended=all(run in final for run in logs.runs_of(seat)),
+            kept=kept.get(seat),
         )
         for seat in seats
     }
@@ -498,7 +559,8 @@ def _conversation(convo: str, logs: _Logs, final: FrozenSet[str]) -> Conversatio
         branches=[_branch(_label(index), branch, lineage) for index, branch in enumerate(branches)],
         states=[_state(node, lineage, label) for node in sorted(lineage.reported)],
         installations=[
-            _installation(seat, positions[seat], lineage, logs, label) for seat in seats
+            _installation(seat, positions[seat], lineage, logs, label, kept.get(seat))
+            for seat in seats
         ],
         messages=messages,
         unmatched_unreadable=unmatched,
@@ -548,17 +610,25 @@ def _state(node: Node, lineage: _Lineage, label: Dict[Node, str]) -> State:
 
 
 def _installation(
-    seat: str, position: str, lineage: _Lineage, logs: _Logs, label: Dict[Node, str]
+    seat: str,
+    position: str,
+    lineage: _Lineage,
+    logs: _Logs,
+    label: Dict[Node, str],
+    kept: Optional[Kept],
 ) -> Installation:
     node = lineage.newest.get(seat)
     history = lineage.steps.get(seat, [])
+    account = logs.accounts.get(seat, lineage.accounts.get(seat))
+    if kept and kept.account is not None:
+        account = kept.account
     return Installation(
         id=seat,
-        account=logs.accounts.get(seat, lineage.accounts.get(seat)),
+        account=account,
         runs=logs.runs_of(seat),
         position=position,
         branch=label.get(node) if node else None,
-        epoch=history[-1].epoch if history else None,
+        epoch=history[-1].epoch if history else kept.epoch if kept else None,
         state=node[1] if node else None,
         history=history,
     )

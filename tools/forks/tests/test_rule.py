@@ -4,7 +4,7 @@ from dataclasses import replace
 from typing import Dict, List, Set, Tuple
 
 from forks.records import Record
-from forks.rule import Conversation, Installation, report
+from forks.rule import Conversation, Installation, Kept, report
 
 CONVO = "2a30d6a2c1"
 
@@ -63,9 +63,9 @@ def started(*names: str) -> Dict[str, Log]:
     return logs
 
 
-def one(logs, final=()) -> Conversation:
+def one(logs, final=(), kept=()) -> Conversation:
     logs = logs.values() if isinstance(logs, dict) else logs
-    (conversation,) = report([record for log in logs for record in log.records], final)
+    (conversation,) = report([record for log in logs for record in log.records], final, kept)
     return conversation
 
 
@@ -79,7 +79,9 @@ def seat_of(conversation: Conversation, name: str) -> Installation:
 
 
 # The histories the rule must read: an installation is {name: [run, ...]}, a run is
-# (final, [record, ...]), a record is ("epoch", n, state, roster) or ("left", n).
+# (final, [record, ...]), a record is ("epoch", n, state, roster) or ("left", n). KEPT holds, for
+# a history, the kept lines: for an installation, the epoch of its last record and whether that
+# record was a leave.
 
 
 def ep(n, state, roster):
@@ -275,7 +277,38 @@ HISTORIES = [
       "kes": [run(ep(4, "A4", ALL5))],
       "pax": [run(ep(2, "X2", ALL5), ep(3, "B3", ALL5), ("left", 4))]},
      "split at epoch 3, one side live", dict(mira="behind", kes="behind")),
+    ("a final run's log is gone and its line is kept: the seat stays ended",
+     {"raya": [run(ep(3, "X3", ALL3))], "pax": [run(ep(3, "X3", ALL3))]},
+     "whole", dict(saro="ended", raya="tip", pax="tip")),
+    ("a kept line of a seat the newest roster has dropped since",
+     {"raya": [run(ep(3, "X3", ALL3), ep(4, "X4", "raya pax"))],
+      "pax": [run(ep(4, "X4", "raya pax"))]},
+     "whole", dict(saro="removed", raya="tip", pax="tip")),
+    ("a kept line of a run that ended in a leave, where the one log left never saw the removal",
+     {"raya": [run(ep(1, "X1", "saro raya"))]},
+     "not enough data", dict(saro="removed", raya="tip")),
+    ("a kept line above the one roster left, which is older and lacks the seat",
+     {"raya": [run(ep(1, "X1", "raya pax"))]},
+     "not enough data", dict(saro="ended", raya="tip", pax="no data")),
+    ("a kept line of an installation whose later run holds no record of the group",
+     {"saro": [run()], "raya": [run(ep(2, "X2", ALL3))], "pax": [run(ep(2, "X2", ALL3))]},
+     "whole", dict(saro="ended", raya="tip", pax="tip")),
+    ("a kept line of an installation that holds the group again in a held log",
+     {"saro": [run(ep(4, "X4", ALL3))], "raya": [run(ep(4, "X4", ALL3))]},
+     "whole", dict(saro="tip", raya="tip", pax="no data")),
 ]
+KEPT = {
+    "a final run's log is gone and its line is kept: the seat stays ended": {"saro": (3, False)},
+    "a kept line of a seat the newest roster has dropped since": {"saro": (3, False)},
+    "a kept line of a run that ended in a leave, where the one log left never saw the removal":
+        {"saro": (2, True)},
+    "a kept line above the one roster left, which is older and lacks the seat":
+        {"saro": (3, False)},
+    "a kept line of an installation whose later run holds no record of the group":
+        {"saro": (2, False)},
+    "a kept line of an installation that holds the group again in a held log":
+        {"saro": (2, False)},
+}
 
 
 def as_logs(history) -> Tuple[List[Log], Set[str]]:
@@ -296,14 +329,20 @@ def as_logs(history) -> Tuple[List[Log], Set[str]]:
     return logs, final
 
 
+def kept_line(name: str, epoch: int = 2, left: bool = False) -> Kept:
+    return Kept(CONVO, name, f"account-of-{name}", epoch, left)
+
+
 class Histories(unittest.TestCase):
     def test_all_of_them_are_here(self):
-        self.assertEqual(len(HISTORIES), 37)
+        self.assertEqual(len(HISTORIES), 43)
+        self.assertLessEqual(set(KEPT), {name for name, *_ in HISTORIES})
 
     def test_each_reads_as_the_table_says(self):
         for name, history, verdict, expected in HISTORIES:
             with self.subTest(history=name):
-                conversation = one(*as_logs(history))
+                kept = [kept_line(who, *line) for who, line in KEPT.get(name, {}).items()]
+                conversation = one(*as_logs(history), kept)
                 self.assertEqual(conversation.verdict, verdict)
                 found = positions(conversation)
                 self.assertEqual({who: found[who] for who in expected}, expected)
@@ -489,6 +528,116 @@ class Seats(unittest.TestCase):
         self.assertEqual((conversation.coverage.sharing, conversation.coverage.seats), (2, 3))
 
 
+class KeptLines(unittest.TestCase):
+    def group(self) -> Dict[str, Log]:
+        """Raya and Pax at one state, whose roster lists Saro and Mira as well."""
+        logs = started("raya", "pax")
+        for name in ("raya", "pax"):
+            logs[name].epoch(name, 3, "X3", ALL4)
+        return logs
+
+    def test_an_installation_known_only_by_its_line_is_ended_at_its_epoch_in_no_state(self):
+        conversation = one(self.group(), kept=[kept_line("saro", epoch=2)])
+        self.assertEqual(
+            positions(conversation), dict(saro="ended", raya="tip", pax="tip", mira="no data")
+        )
+        saro = seat_of(conversation, "saro")
+        self.assertEqual((saro.epoch, saro.state, saro.branch), (2, None, None))
+        self.assertEqual((saro.runs, saro.history), ([], []))
+        self.assertEqual((conversation.coverage.sharing, conversation.coverage.seats), (2, 3))
+
+    def test_a_line_brings_no_state_no_roster_and_no_link(self):
+        logs = self.group()
+        without, kept = one(logs), one(logs, kept=[kept_line("kes", epoch=2)])
+        self.assertEqual(positions(kept), dict(positions(without), kes="removed"))
+        self.assertEqual(
+            (kept.verdict, kept.states, kept.branches, kept.runs),
+            (without.verdict, without.states, without.branches, without.runs),
+        )
+
+    def test_it_is_ended_when_no_roster_is_the_newest(self):
+        logs = started("raya")
+        logs["raya"].left("raya", 4)
+        conversation = one(logs, kept=[kept_line("saro")])
+        self.assertEqual(positions(conversation), dict(saro="ended", raya="removed"))
+
+    def test_a_line_whose_last_record_was_a_leave_is_removed_whatever_a_roster_lists(self):
+        conversation = one(self.group(), kept=[kept_line("saro", epoch=2, left=True)])
+        saro = seat_of(conversation, "saro")
+        self.assertEqual((saro.position, saro.epoch, saro.state), ("removed", 2, None))
+        self.assertEqual((conversation.coverage.sharing, conversation.coverage.seats), (2, 3))
+        logs = started("raya")
+        logs["raya"].left("raya", 4)
+        conversation = one(logs, kept=[kept_line("saro", left=True)])
+        self.assertEqual(positions(conversation), dict(saro="removed", raya="removed"))
+
+    def test_only_a_newest_roster_at_or_above_the_line_can_show_its_seat_removed(self):
+        logs = started("raya", "pax")
+        logs["raya"].epoch("raya", 1, "X1", "saro raya")
+        logs["pax"].epoch("pax", 3, "Y3", "pax")
+        read = {
+            epoch: positions(one(logs, kept=[kept_line("saro", epoch)]))["saro"]
+            for epoch in (1, 2, 3, 4)
+        }
+        # At 1 a roster that lists it is among them, and at 4 there is none.
+        self.assertEqual(read, {1: "ended", 2: "removed", 3: "removed", 4: "ended"})
+
+    def test_an_installation_with_an_epoch_or_a_left_record_there_goes_by_its_records(self):
+        logs = self.group()
+        logs["pax"].left("pax", 4)
+        lines = [Kept(CONVO, "raya", "another", 9, True), Kept(CONVO, "pax", "another", 9, False)]
+        conversation = one(logs, kept=lines)
+        raya, pax = seat_of(conversation, "raya"), seat_of(conversation, "pax")
+        self.assertEqual((raya.position, raya.epoch, raya.state), ("tip", 3, "X3"))
+        self.assertEqual((pax.position, pax.epoch, len(pax.history)), ("removed", 4, 2))
+        self.assertEqual((raya.account, pax.account), ("account-of-raya", "account-of-pax"))
+
+    def test_an_installation_with_only_other_records_goes_by_its_line(self):
+        again = Log("saro")
+        again.start("saro")
+        again.epoch("saro", 1, "Y1", "saro", convo="77c1e09b3d")
+        again.sent("saro", "77b4", 2)
+        records = [*one_log(self.group()), *again.records]
+        here, there = report(records, kept=[kept_line("saro", epoch=2)])
+        saro = seat_of(here, "saro")
+        self.assertEqual((saro.position, saro.epoch, saro.state), ("ended", 2, None))
+        self.assertEqual((saro.runs, saro.history), (["saro"], []))
+        self.assertEqual(positions(here), dict(saro="ended", raya="tip", pax="tip", mira="no data"))
+        self.assertEqual((here.coverage.sharing, here.coverage.seats), (2, 3))
+        saro = seat_of(there, "saro")
+        self.assertEqual((saro.position, saro.epoch, saro.state), ("tip", 1, "Y1"))
+
+    def test_an_installation_no_roster_lists_is_a_seat_by_its_line(self):
+        again = Log("kes")
+        again.start("kes")
+        for epoch, position in ((3, "removed"), (4, "ended")):
+            conversation = one([*self.group().values(), again], kept=[kept_line("kes", epoch)])
+            self.assertEqual(positions(conversation)["kes"], position)
+
+    def test_the_account_is_the_lines_own_and_a_rosters_when_the_line_has_none(self):
+        logs = self.group()
+        own = Kept(CONVO, "saro", "an-account-of-its-own", 2, False)
+        self.assertEqual(seat_of(one(logs, kept=[own]), "saro").account, "an-account-of-its-own")
+        none = Kept(CONVO, "saro", None, 2, False)
+        self.assertEqual(seat_of(one(logs, kept=[none]), "saro").account, "account-of-saro")
+
+    def test_of_two_lines_for_one_installation_the_one_that_ended_later_is_read(self):
+        later, earlier = kept_line("saro", 5), kept_line("saro", 2)
+        for lines in ([later, earlier], [earlier, later]):
+            self.assertEqual(seat_of(one(self.group(), kept=lines), "saro").epoch, 5)
+
+    def test_a_line_of_another_conversation_is_not_read(self):
+        other = Kept("77c1e09b3d", "kes", "account-of-kes", 2, False)
+        self.assertNotIn("kes", positions(one(self.group(), kept=[other])))
+
+    def test_a_conversation_no_record_names_is_not_reported(self):
+        self.assertEqual(report([], kept=[kept_line("saro")]), [])
+
+
+def one_log(logs: Dict[str, Log]) -> List[Record]:
+    return [record for log in logs.values() for record in log.records]
+
+
 class Chains(unittest.TestCase):
     def behind_or_not(self, restart: bool) -> Conversation:
         logs = started("saro", "raya", "pax")
@@ -606,6 +755,38 @@ class RunsSeenTwice(unittest.TestCase):
         self.assertEqual(conversation.verdict, "whole")
         self.assertEqual(seat_of(conversation, "saro").runs, ["monday"])
         self.assertEqual(conversation.unmatched_unreadable, 1)
+
+    def test_a_mark_on_either_copy_of_a_run_says_its_writer_is_gone(self):
+        for marked in ("monday", "tuesday"):
+            with self.subTest(marked=marked):
+                copies = [self.group("monday", 2), self.group("tuesday", 2)]
+                conversation = one(copies, final=[marked])
+                self.assertEqual(positions(conversation), {"saro": "ended", "raya": "ended"})
+                self.assertEqual(
+                    [(run.name, run.final) for run in conversation.runs], [("monday", True)]
+                )
+
+    def test_a_mark_on_a_run_at_an_earlier_length_counts_for_the_longer(self):
+        for earlier, whole in (("group.snapshot", "group"), ("earlier", "group")):
+            with self.subTest(earlier=earlier):
+                logs = [self.group(earlier, 1), self.group(whole, 2)]
+                conversation = one(logs, final=[earlier])
+                self.assertEqual(positions(conversation), {"saro": "ended", "raya": "ended"})
+                self.assertEqual(
+                    [(run.name, run.final) for run in conversation.runs], [(whole, True)]
+                )
+                self.assertEqual(positions(one(logs)), {"saro": "tip", "raya": "tip"})
+
+    def test_a_mark_on_a_run_counts_for_no_run_that_only_starts_as_it_does(self):
+        first, second = self.group("monday", 1), self.group("tuesday", 0)
+        second.epoch("saro", 2, "X2", "saro raya")
+        second.epoch("raya", 2, "X2", "saro raya")
+        conversation = one([first, second], final=["monday"])
+        self.assertEqual(positions(conversation), {"saro": "tip", "raya": "tip"})
+        self.assertEqual(
+            [(run.name, run.final) for run in conversation.runs],
+            [("monday", True), ("tuesday", False)],
+        )
 
     def test_a_run_that_only_starts_at_the_same_time_as_another_is_read(self):
         first, second = self.group("monday", 1), self.group("tuesday", 0)
@@ -911,6 +1092,13 @@ class Reports(unittest.TestCase):
 
     def test_no_records_no_conversations(self):
         self.assertEqual(report([]), [])
+
+    def test_only_the_conversations_asked_for_are_reported(self):
+        records = self.records()
+        first, second = report(records)
+        self.assertEqual(report(records, only=["77c1e09b3d"]), [second])
+        self.assertEqual(report(records, only=["2a30d6a2c1", "77c1e09b3d"]), [first, second])
+        self.assertEqual(report(records, only=[]), [])
 
 
 if __name__ == "__main__":

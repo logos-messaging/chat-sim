@@ -67,10 +67,11 @@ class Counts:
 
 @dataclass(frozen=True)
 class Reading:
-    """The records in some log bytes and a count of their lines."""
+    """The records in some log bytes, a count of their lines, and how many bytes were read."""
 
     records: List[Record]
     counts: Counts
+    consumed: int
 
 
 class _UnknownRecord(Exception):
@@ -151,12 +152,20 @@ def read_lines(data: bytes, run: str) -> Reading:
 
     A last line without one is still being written, or the copy was cut there: it is not read.
     """
+    return read_complete_lines(data, run)
+
+
+def read_complete_lines(data: bytes, run: str, first_line: int = 1) -> Reading:
+    """Reads the lines of a chunk that end in a line break; what follows them waits for more bytes.
+
+    `first_line` is the number the chunk's first line has in its run.
+    """
     lines = data.split(b"\n")
     # What follows the last line break is no line.
-    lines.pop()
+    consumed = len(data) - len(lines.pop())
     counts, records = Counts(lines=len(lines)), []
-    for number, raw in enumerate(lines, 1):
-        text = _ANSI.sub(b"", raw).decode("utf-8", "replace").rstrip("\r")
+    for number, raw in enumerate(lines, first_line):
+        text = line_text(raw)
         stamp = _stamp(text)
         if stamp is None:
             counts.unstamped += 1
@@ -174,7 +183,12 @@ def read_lines(data: bytes, run: str) -> Reading:
             counts.records += 1
             has_offset = stamp["offset"] is not None
             records.append(Record(run, number, stamp.group(), has_offset, kind, **fields))
-    return Reading(records, counts)
+    return Reading(records, counts, consumed)
+
+
+def line_text(raw: bytes) -> str:
+    """A line's bytes as the text it is read as: no colour codes, and no carriage return."""
+    return _ANSI.sub(b"", raw).decode("utf-8", "replace").rstrip("\r")
 
 
 def _stamp(text: str) -> Optional[re.Match]:
