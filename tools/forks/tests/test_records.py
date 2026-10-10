@@ -236,6 +236,7 @@ class NotARecord(unittest.TestCase):
             "one too long by a byte written %xx": LEFT.replace("2a30d6a2c1", "a" * 1597 + "%e6"),
             "a cause the tool does not know": f"unreadable {PLACED} frame=e3b9 why=late",
             "a frame that is no hash": f"sent {PLACED} frame=xyz",
+            "a frame longer than a hash": f"sent {PLACED} frame={'41d6a9e0' * 2}c",
         }
         for what, message in malformed.items():
             with self.subTest(what=what):
@@ -250,6 +251,17 @@ class NotARecord(unittest.TestCase):
         for convo in ("a" * MAX_CONVO, "%e6" * MAX_CONVO):
             with self.subTest(convo=convo[:6]):
                 self.assertEqual(only(tracing(LEFT.replace("2a30d6a2c1", convo))).convo, convo)
+
+    def test_an_unreadable_frame_is_of_whatever_epoch_its_header_named(self):
+        said = f"unreadable {PLACED} frame=e3b9 why=epoch"
+        for epoch in (MAX_NUMBER + 1, 2**64 - 1):
+            with self.subTest(epoch=epoch):
+                self.assertEqual(only(module(said.replace("epoch=7", f"epoch={epoch}"))).epoch, epoch)
+        self.assertNoRecord(module(said.replace("epoch=7", f"epoch={2**64}")), malformed=1)
+        for other in (f"sent {PLACED} frame=41d6", f"received {PLACED} frame=41d6 from=e09a3f52"):
+            with self.subTest(other=other[:8]):
+                over = other.replace("epoch=7", f"epoch={MAX_NUMBER + 1}")
+                self.assertNoRecord(module(over), malformed=1)
 
     def test_invalid_utf8_is_counted_and_skipped(self):
         stamp = b"2026-10-09T06:54:50.313738Z  INFO "

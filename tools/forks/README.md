@@ -115,9 +115,9 @@ and other lines print it.
 | `libchat::groupv2trace` | `run` | `installation` `account` | An installation started, acting for an account. |
 | `libchat::groupv2trace` | `epoch` | `installation` `convo` `epoch` `state` `members` `roster` | The installation holds the conversation at this epoch, in this state, with these members. |
 | `libchat::groupv2trace` | `left` | `installation` `convo` `epoch` | The commit that made this epoch removed the installation. |
-| `libchat::groupv2trace` | `sent` | `installation` `convo` `frame` `epoch` | The installation sent a frame. |
-| `libchat::groupv2trace` | `received` | `installation` `convo` `frame` `from` `epoch` | The installation read a frame another one sent. |
-| `libchat::groupv2trace` | `unreadable` | `installation` `convo` `frame` `epoch` `why` | A frame arrived and could not be read. |
+| `libchat::groupv2trace` | `sent` | `installation` `convo` `frame` `epoch` | The installation published a post of its own. |
+| `libchat::groupv2trace` | `received` | `installation` `convo` `frame` `from` `epoch` | The installation read a post another one sent. |
+| `libchat::groupv2trace` | `unreadable` | `installation` `convo` `frame` `epoch` `why` | A frame of the group arrived and could not be read: a post, a vote or any other encrypted frame. |
 | `chat_module::report` | `delivery` | `state` | The delivery service of this run changed state. |
 
 | Field | Written as |
@@ -125,10 +125,10 @@ and other lines print it.
 | `installation`, `from` | The first four bytes of the installation's key: 8 hex characters. |
 | `account` | The first four bytes of the account id, in hex. An id shorter than four bytes is written whole, and an empty one as nothing. |
 | `convo` | The conversation id as one word. A byte outside `[0-9A-Za-z_-]` is written `%xx`, and the tool keeps the id as written. An id holds at most 1597 bytes, which is what fits the 8000 bytes of address the page asks for a conversation by. |
-| `epoch`, `members` | A number, at most 9007199254740991, the largest a browser reads from JSON exactly. `members` is the length of the roster. |
+| `epoch`, `members` | A number, at most 9007199254740991, the largest a browser reads from JSON exactly. `members` is the length of the roster. The `epoch` of an `unreadable` record is the one the frame's header names, which nothing has checked: any number below 2^64. |
 | `state` | 16 hex characters: a fingerprint of the group state. Installations that hold the same state write the same fingerprint. |
 | `roster` | The members, comma-separated, each `installation:account`. |
-| `frame` | The id of a frame, in hex. |
+| `frame` | The id of a frame: 16 hex characters, eight bytes of a hash of the frame as it travels. The tool reads a shorter one and no longer one. |
 | `why` | `epoch`, `decrypt` or `sender`. |
 | `state` of `delivery` | `initialising`, `online`, `error` or `stopped`. |
 
@@ -404,15 +404,26 @@ are given.
             "has_offset": true,
             "seconds": 1791466620.601
           },
+          "utc": "2026-10-08T13:37:00Z",
           "cells": {
             "19f6b0e3": "read",
             "7b1e44d9": "sent",
             "a3f91c07": "read",
             "e09a3f52": "unreadable"
           },
-          "why": {"e09a3f52": "decrypt"}
+          "why": {"e09a3f52": "decrypt"},
+          "marks": {
+            "e09a3f52": {
+              "run": "pax",
+              "line": 16,
+              "time": "2026-10-08T15:37:01.201+02:00",
+              "has_offset": true,
+              "seconds": 1791466621.201
+            }
+          }
         }
       ],
+      "shown_messages": 3,
       "unmatched_unreadable": 1,
       "runs": [
         {
@@ -437,7 +448,7 @@ are given.
 }
 ```
 
-The lists above are cut to one entry each.
+The lists above, and `marks`, are cut to one entry each.
 
 - `lines` is the count the text report ends with.
 - `conversations` are in the order of their ids.
@@ -501,10 +512,13 @@ The lists above are cut to one entry each.
 - `at` is where a record was written: the run, the line in it, and the stamp as written.
   `has_offset` says whether the stamp carries its offset from UTC, and `seconds` is the stamp as
   seconds since 1970 in UTC, a stamp without an offset read as UTC.
-- `messages` has an entry for each frame a `sent` record names, in the order sent. `state` is the
-  state its sender held at that epoch, or `null` when the sender wrote no `epoch` record for it.
-  `cells` says what became of the post on each seat, and `why` gives the cause for each
-  `unreadable`.
+- `messages` has an entry for each frame a `sent` record names, in the order sent, whether or not
+  anyone read it. `utc` is the stamp of its `sent` record in UTC, cut to its second and never rounded. `state` is
+  the state its sender held at that epoch, or `null` when the sender wrote no `epoch` record for
+  it. `cells` says what became of the post on each seat, by the first row of the table below
+  that holds for the seat, and `why` gives the cause for each `unreadable`. `marks` says where
+  the record a cell stands for was written, as `at` says it of the post, for each seat whose
+  cell is `sent`, `read` or `unreadable`, and holds no other seat: the sender's is `at`.
 
   | Cell | When |
   |---|---|
@@ -513,10 +527,24 @@ The lists above are cut to one entry each.
   | `unreadable` | It wrote an `unreadable` record for the frame. |
   | `not a member` | The roster of the state the post was sent in does not list it. |
   | `no log` | No shared log holds a record of it. |
-  | `never got` | Its log is here and holds no record of the frame. |
+  | `no record` | Its log is shared and holds no record of the frame. |
 
+  A seat that wrote a `received` and an `unreadable` record for one frame read it. Of two
+  records of one kind that it wrote for one frame, the one it wrote first counts, its runs read
+  by their first stamps, as for `history`, and never by their names: the cause and the mark are
+  that record's, and of two `sent` records the epoch and the stamp of the post are. A frame two
+  installations wrote a `sent` record for is the post of the one whose stamp is earlier, and at
+  one stamp of the one whose id sorts first: the other's `sent` record is left out, and its cell
+  goes by what else it wrote of the frame.
+- `shown_messages` is how many of the last entries of `messages` a page draws before it is asked
+  for the rest: every post while their cells are 2000 or fewer, and else the rows that hold 2000
+  cells between them, rounded down to a whole row and never less than one. 2000 cells, each with
+  its mark on a timeline, are what a browser draws in about a tenth of a second.
 - `unmatched_unreadable` counts the `unreadable` records that name a frame for which no shared
-  log holds a `sent` record.
+  log holds a `sent` record: records and not frames, so a frame an installation reported twice,
+  or two installations reported, is counted twice. A vote or any other encrypted frame of the
+  group is counted here as much as a post whose sender shares no log, so an installation an
+  epoch behind adds one for every such frame the group sends.
 - `runs` are the runs the seats wrote in, by name, each with the changes of its delivery state.
 
 ## Collecting logs
@@ -703,9 +731,10 @@ the same address without the token, where the page stays. The page is the three 
 | The tiles | How many seats share a log, how many branches there are and the first epoch with two states when there is a split, and how many installations are in each position, with their ids when they are three or fewer. |
 | Lineage of states | Every reported state as a circle that holds how many installations reported it, in the column of its epoch and in its `row`, a line of states named for its newest: a branch, the states that only one branch's logs reach, the shared line, or the states of unknown lineage. A line is a link, a mark stands at the first epoch with two states, and each branch ends in its name, its newest epoch and how many installations are on it. |
 | Installations | A row for each installation, under the headings of `lanes`, with a line for each run it wrote in: the run's name, what sent it and when the collector last heard from it. A cell for each epoch of its `cells`: every record it wrote there in the order written, each a state with the letter of its branch or a leave, or an epoch it has not reached, or an epoch whose roster lists a seat nobody shared a log of. Then its position, with an end mark where it is `removed`, `ended` or `never joined` unless a leave ends the lane, and the words `its log is gone` for a seat that goes by a kept line. The lanes open at the newest epoch. |
-| Timeline | A row for each installation over the time from the first to the last record that names the conversation: a line for each of its runs, cut where the run reaches past that time, dotted where the run's `delivery` records say it was not online, with a mark where it reached each epoch. Times are UTC, and the date stands under the first stamp of each day. |
+| Timeline | A row for each installation over the time from the first to the last record that names the conversation: a line for each of its runs, cut where the run reaches past that time, dotted where the run's `delivery` records say it was not online, with a mark where it reached each epoch. For each post the messages draw, the row of an installation has a mark at the stamp of its own record of it: a filled circle where it sent the post, a ring where it read it, a cross where it arrived and could not be read. Times are UTC, and the date stands under the first stamp of each day. |
+| Messages | A row for each post in the order sent: its `utc`, with the stamp as written when the pointer is on it, its frame, its sender, and the state it was sent in as the lanes draw it, with the letter of its branch, or its epoch alone where its sender reported no state there. Then a cell for each installation, in the order and under the headings of `lanes`: `sent`, `read`, `unreadable` with the cause its installation gave, `no record`, a hatched cell for a seat nobody shared a log of, an empty box for one that was no member when the post was sent, each of the two with its word when the pointer is on it. Where `shown_messages` is less than the posts there are, the newest posts are drawn, as many as it says, here and on the timeline, and a button draws all of them, or the newest again. Under the table stands `unmatched_unreadable`, when it is not zero, as a count of reports, with what it counts. A conversation whose logs hold no post says so in a line where the table would be. |
 | The state each branch holds | The newest state of each branch: its epoch, its fingerprint, how many its roster lists, the installations on it and the seats its roster lists. |
-| Log | The line of a record in its run's log with the lines around it, when a cell of the installations or a mark of the timeline is clicked. The lines stay open while the page reads again, and close when their record is drawn no more. |
+| Log | The line of a record in its run's log with the lines around it, when a cell of the installations, a mark of the timeline or a cell of the messages that stands for a record is clicked. The lines stay open while the page reads again, and close when their record is drawn no more. |
 
 The page reads `GET conversations`, and `GET conversations/CID` for the conversation its address
 names after `#`, when it is opened and again every 30 seconds while its tab is visible. A read
@@ -715,22 +744,38 @@ collector up when 20 seconds pass without a byte of its answer. It reads
 it works under whatever path a proxy serves the collector at.
 
 The page decides nothing: every verdict, position, count, order and heading it shows is in the
-collector's JSON. What a run's name, an account or a log line says reaches the page as text and
+collector's JSON, and so are what became of a post on a seat and how many posts are drawn at
+first. What a run's name, an account, a frame or a log line says reaches the page as text and
 never as markup.
 
 When the collector answers 401, the page says that the share address must be opened again. When
 the collector holds no log that names the conversation shown, the page says so and links to the
 front page. When the collector does not answer, the page says when it last did, in UTC, and what
 it drew stays. It stays as well when the answer is not the collector's JSON, which the page says
-it cannot read. A reader is left at the part they were reading when a report grows.
+it cannot read. A reader is left at the part they were reading when a report grows. The
+installations, the timeline and the messages each scroll in a box of their own once they are
+higher than it, and such a box keeps its place: the first row in sight stays where it stood in
+the box while rows come and go above it, as far as the box scrolls, and the window does not
+move for them. While the newest posts alone are drawn, a post whose log lines are open, or
+whose cell or mark has the focus, stays drawn with every post after it through each read, and
+the page says that older posts are drawn for it. The button of the messages stays where it is
+when it is pressed, as far as the window scrolls. Pressed for the newest posts, it draws those
+alone, and the log lines of an older post close, or do not open if they were on their way.
+Every post, once asked for, stays drawn through each read, until the list or another
+conversation is drawn in its place.
 
-Every link, every cell that holds a record and every mark of the timeline can be reached and
-opened from the keyboard, with an outline around the one that has the focus: Tab moves from part
-to part, the arrow keys, Home and End move among the cells and among the marks, Enter or Space
-opens the log lines, and Escape closes them. A read that draws the page anew leaves each table
-the cell the Tab key stopped at in it. A conversation that is opened takes the focus at its
-title, and closing the log lines gives it back to the mark that opened them. A position has its
-icon and its word, and a branch its letter as well as its hue.
+Every link, every cell that holds a record, of the installations and of the messages, and every
+mark of the timeline can be reached and opened from the keyboard, with an outline around the one
+that has the focus: Tab moves from part to part, the arrow keys, Home and End move among the
+cells and among the marks, Enter or Space opens the log lines, and Escape closes them. Along a
+row of the timeline the arrow keys go by where the marks stand, epochs and posts alike. The
+button of the messages is a stop of its own. A read or a press that draws the page anew leaves
+each table the cell the Tab key stopped at in it while that cell is drawn, and its first cell
+once it is not. A conversation that is opened takes the focus at its title, and closing the log
+lines gives it back to the mark that opened them. A position has its icon and its word, and a
+branch its letter as well as its hue. What became of a post has
+its word in its cell and in the name a screen reader is given, on the timeline as well, and a
+cell that stands for no record has that name and is no stop.
 
 ## Sharing logs
 
@@ -880,8 +925,42 @@ that named its log.
   30 seconds behind the collector. Each read asks for the whole JSON of the conversation shown,
   25 MB for the conversation below, and over a link that does not carry it in 30 seconds one
   read follows another.
-- The page shows the states, the installations and the runs of a conversation, and none of its
-  messages.
+- A post is known by its frame, its sender and its stamp: the records hold nothing of what it
+  said, and the page shows nothing of it.
+- A `received` record that names a frame no shared log holds a `sent` record of gives no row and
+  is counted nowhere. An `unreadable` one is counted in `unmatched_unreadable`, has no mark on
+  the timeline and opens no log lines.
+- `no record` says that a seat's shared logs hold no record of the frame, and no more than
+  that: the frame may never have arrived, or the log that would hold it was not shared. It
+  stands as well for a seat whose every shared run began after the post was sent, or ended
+  before it. Where the sender wrote no `epoch` record for the epoch it sent in, no roster is
+  known for the post, and a seat that was no member then reads `no record`, or `no log`, and
+  never `not a member`.
+- An `unreadable` record takes no key to cause: anyone who can publish to a conversation can
+  make every member write one, with whatever epoch the frame's header names. So the records of
+  a post show what the logs hold of it and decide nothing: the verdict is drawn from the
+  `epoch` records alone.
+- A frame's id is of its bytes as they travel. Whoever relays a frame can encode it another
+  way, and it is then read under an id no `sent` record carries.
+- While the newest posts alone are drawn, the oldest rows leave as newer posts come. A reader
+  at the top of the messages, with no cell open or in focus, then reads on at the oldest row
+  that is left.
+- A mark of a post stands at the stamp of the record its installation wrote. Where two clocks
+  differ, a post can stand as read before it was sent.
+- Marks of posts that an installation recorded within a few pixels of time lie over one another,
+  and a click reaches the last drawn alone. The arrow keys reach each, and so do the cells of
+  the messages.
+- `marks` is most of the JSON of a conversation with posts. With 8 installations and 50 posts it
+  is 97 kB, with 30 and 500 it is 2.9 MB, and with 100 and 2000 it is 36.8 MB, 30.6 MB of it
+  `marks`. The collector answered them in 0.01, 0.13 and 1.9 seconds when it drew the report and
+  in 1, 3 and 80 milliseconds from the one it kept.
+- The messages start with the newest posts, as many as `shown_messages` says, and the timeline
+  marks the same posts. Firefox drew them, 50, 66 and 20 rows of the three conversations above,
+  in 0.03 to 0.44, 0.12 to 0.48 and 0.10 to 0.11 seconds, over three runs of each from a browser
+  just started. Every post of the second, 500 rows, took 0.4 to 0.5 seconds. Every post of the
+  third, 2000 rows of 100 cells, held the page for 5.8 seconds and its tab took 2.0 GiB, and
+  each read that brings a change draws them all again.
+- A read of the 36.8 MB that finds nothing changed holds the page for 0.15 to 0.2 seconds.
 - Every installation has a row among the installations and a row on the timeline, and none is
   folded away. The conversation of 300 members and 300 epochs below is 25 MB of JSON and 282,000
   elements: over four runs Firefox built and laid it out in 1.7 to 2.0 seconds once it held the
@@ -954,8 +1033,11 @@ members would share them, with the verdict and the positions the tool must give 
 them. The tests of the collector each start one on a loopback port the system picks, and call it
 over HTTP. The tests of `share` send to such a collector, and to a scripted stand-in for the
 answers a collector never gives. The tests of the page come in as a browser does, by the share
-address and the cookie, and read the page's files for what they must not hold: no test runs a
-browser.
+address and the cookie, and read the page's files for what they must not hold. Where `node` is
+on the machine they also run the page's script over what a collector answers, in `tests/dom.js`,
+a stand-in for a document that lays out no more than says where a reader is, the parts of a
+report one under another and the rows of a box that scrolls, and hold what it draws against the
+JSON; without `node` those tests are skipped. No test runs a browser.
 
 ## Layout
 

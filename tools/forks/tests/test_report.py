@@ -134,6 +134,28 @@ class Histories(unittest.TestCase):
         self.assertEqual(posts[1]["why"], {PAX: "decrypt"})
         self.assertEqual(conversation["unmatched_unreadable"], 1)
 
+    def test_a_cell_of_a_post_says_where_its_record_stands_in_the_logs(self):
+        conversation = run_report(HISTORIES / "split-at-an-epoch").conversation
+        before, on_a, on_b = [
+            {seat: (mark["run"], mark["line"]) for seat, mark in post["marks"].items()}
+            for post in conversation["messages"]
+        ]
+        self.assertEqual(
+            before, {SARO: ("saro", 9), RAYA: ("raya", 9), PAX: ("pax", 9), MIRA: ("mira", 9)}
+        )
+        self.assertEqual(
+            on_a, {SARO: ("saro", 12), RAYA: ("raya", 12), PAX: ("pax", 16), MIRA: ("mira", 12)}
+        )
+        self.assertEqual(
+            on_b, {SARO: ("saro", 14), RAYA: ("raya", 14), PAX: ("pax", 18), MIRA: ("mira", 14)}
+        )
+        unreadable = conversation["messages"][1]["marks"][PAX]
+        self.assertEqual(
+            (unreadable["time"], unreadable["has_offset"], unreadable["seconds"]),
+            ("2026-10-08T15:37:01.201+02:00", True, 1791466621.201),
+        )
+        self.assertEqual(conversation["shown_messages"], 3)
+
     def test_a_runs_delivery_changes(self):
         conversation = run_report(HISTORIES / "split-at-an-epoch").conversation
         runs = {run["name"]: run for run in conversation["runs"]}

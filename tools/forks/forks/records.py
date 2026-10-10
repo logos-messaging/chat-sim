@@ -104,6 +104,13 @@ def _number(value: str) -> int:
     return int(value)
 
 
+def _header_epoch(value: str) -> int:
+    """The epoch a frame's header names. Nothing has checked it, so it is any 64-bit number."""
+    if not re.fullmatch(r"[0-9]{1,20}", value) or int(value) >= 2**64:
+        raise ValueError(value)
+    return int(value)
+
+
 def _roster(value: str) -> Tuple[Tuple[str, str], ...]:
     return tuple(_member(pair) for pair in value.split(","))
 
@@ -121,7 +128,8 @@ _installation = _shaped(r"[0-9a-f]{8}")
 _account = _shaped(r"(?:[0-9a-f]{2}){0,4}")
 _convo = _shaped(r"(?:[0-9A-Za-z_-]|%%[0-9a-f]{2}){1,%d}" % MAX_CONVO)
 _fingerprint = _shaped(r"[0-9a-f]{16}")
-_frame = _shaped(r"[0-9a-f]+")
+# A frame is named by eight bytes of a hash.
+_frame = _shaped(r"[0-9a-f]{1,16}")
 _placed = {"installation": _installation, "convo": _convo, "epoch": _number}
 
 # Each target's records, and for each the fields it must carry.
@@ -132,7 +140,12 @@ _RECORDS: Dict[str, Dict[str, Dict[str, Callable]]] = {
         "left": _placed,
         "sent": {**_placed, "frame": _frame},
         "received": {**_placed, "frame": _frame, "from": _installation},
-        "unreadable": {**_placed, "frame": _frame, "why": _shaped("epoch|decrypt|sender")},
+        "unreadable": {
+            **_placed,
+            "epoch": _header_epoch,
+            "frame": _frame,
+            "why": _shaped("epoch|decrypt|sender"),
+        },
     },
     "chat_module::report": {
         "delivery": {"state": _shaped("initialising|online|error|stopped")},

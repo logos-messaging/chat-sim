@@ -323,6 +323,70 @@ svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: rou
 .tick.bn { stroke: var(--text); }
 .tick.unknown { stroke: var(--warning); }
 
+/* A post on the line of an installation that wrote a record of it: a disc where it was sent,
+   a ring where it was read, a cross where it could not be. */
+.post { cursor: pointer; fill: var(--text-tertiary); }
+.post.sent { fill: var(--text); stroke: var(--bg-tertiary); stroke-width: 1.5; }
+.post.read { fill: var(--bg-tertiary); stroke: var(--text-secondary); stroke-width: 1.5; }
+.post.unread { fill: var(--error); font-size: 0.75rem; font-weight: var(--fw-bold); }
+.legend .key { width: 14px; height: 14px; }
+.legend .post { cursor: auto; }
+
+/* ---- messages ------------------------------------------------------------ */
+
+/* The messages pad their own edges as the lanes do, and a cell the keyboard moves to is not
+   left under the headings or under the frame, which stay in place. */
+.postsbox { padding: 0; scroll-padding: 72px 8px 8px 14rem; }
+.posts { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+.posts th, .posts td { background: var(--bg-tertiary); }
+.posts thead { position: sticky; top: 0; z-index: 2; }
+.posts thead th {
+  text-align: left; vertical-align: bottom; font-size: 10px; font-weight: var(--fw-medium); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-tertiary); padding: var(--sp-large) var(--sp-small) var(--sp-small);
+  white-space: nowrap;
+}
+/* The lane its columns stand under, named where the columns in sight begin and underlined in
+   its branch's hue as far as they reach. */
+.posts thead th.under { padding: var(--sp-large) 2px 0; }
+.posts .under span { display: inline-block; position: sticky; left: 12.5rem; padding: 0 var(--sp-small); }
+.posts .under::after { content: ""; display: block; margin-top: 3px; border-bottom: 3px solid var(--trunk); }
+.posts .under.b0::after { border-bottom-color: var(--branch-a); }
+.posts .under.b1::after { border-bottom-color: var(--branch-b); }
+.posts .under.b2::after { border-bottom-color: var(--branch-c); }
+.posts .under.bn::after { border-bottom-color: var(--text-secondary); }
+.posts thead th.m {
+  text-align: center; padding: var(--sp-tiny) 2px var(--sp-small); letter-spacing: 0; text-transform: none;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
+}
+.posts td, .posts tbody th {
+  padding: 5px var(--sp-small); font-size: var(--fs-secondary); font-weight: 400; text-align: left;
+  border-top: 1px solid var(--border-hairline); white-space: nowrap;
+}
+.posts td.m { padding: 4px 2px; text-align: center; }
+.posts tr > :first-child { padding-left: var(--sp-large); }
+.posts tr > :last-child { padding-right: var(--sp-large); }
+.posts tbody tr:last-child > * { padding-bottom: var(--sp-large); }
+/* A frame is as long as its sender made it: one line of it, and the whole of it on hover. */
+.posts th.frame { position: sticky; left: 0; z-index: 1; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; }
+.posts tbody th.frame { color: var(--text); }
+.mk {
+  display: inline-block; min-width: 76px; padding: 0 6px; border: 1px solid transparent; border-radius: 4px;
+  font-size: 11px; line-height: 20px; text-align: center; color: var(--text-secondary); vertical-align: middle;
+}
+.mk[role="button"] { cursor: pointer; }
+.mk b { margin-right: 4px; }
+.mk small { display: block; margin-top: -4px; font-size: 10px; line-height: 14px; color: var(--text-secondary); }
+.mk.sent { color: var(--text); border-color: var(--border-strong); font-weight: var(--fw-medium); }
+.mk.read { background: var(--overlay-light); }
+.mk.unread { color: var(--text); background: var(--error-soft); border-color: var(--error-line); }
+.mk.unread b { color: var(--error); }
+.mk.none { color: var(--text-tertiary); }
+.mk.hatch { height: 22px; background: repeating-linear-gradient(135deg, var(--border-strong) 0 2px, transparent 2px 6px); opacity: 0.6; }
+.mk.out { height: 22px; border-color: var(--border-strong); }
+.legend .mk { min-width: 0; padding: 0; }
+.rest { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-small) var(--sp-medium); font-size: var(--fs-secondary); color: var(--text-secondary); }
+.sw.out { border: 1px solid var(--border-strong); }
+
 /* ---- the state a branch holds -------------------------------------------- */
 
 .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--sp-large); }

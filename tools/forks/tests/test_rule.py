@@ -2,9 +2,22 @@ import random
 import unittest
 from dataclasses import replace
 from typing import Dict, List, Set, Tuple
+from unittest import mock
 
 from forks.records import Record
-from forks.rule import POSITIONS, Conversation, Installation, Kept, Span, State, report
+from forks.rule import (
+    POSITIONS,
+    SHOWN_CELLS,
+    Conversation,
+    Installation,
+    Kept,
+    Mark,
+    Message,
+    Span,
+    State,
+    as_json,
+    report,
+)
 
 CONVO = "2a30d6a2c1"
 
@@ -1027,6 +1040,21 @@ class Branches(unittest.TestCase):
         self.assertEqual([branch.label for branch in conversation.branches][-3:], ["Z", "AA", "AB"])
 
 
+def written(message: Message) -> Dict[str, Tuple[str, int]]:
+    """The run and the line of each record a post's cells stand for."""
+    return {seat: (mark.run, mark.line) for seat, mark in message.marks.items()}
+
+
+def posted(seats: str, posts: int) -> Conversation:
+    """A group in which Saro sent some posts and nobody wrote that one arrived."""
+    logs = started(*seats.split())
+    for name in seats.split():
+        logs[name].epoch(name, 1, "X1", seats)
+    for post in range(posts):
+        logs["saro"].sent("saro", f"{post:04x}", 1)
+    return one(logs)
+
+
 class Messages(unittest.TestCase):
     def conversation(self) -> Conversation:
         four = "saro raya pax mira"
@@ -1063,16 +1091,55 @@ class Messages(unittest.TestCase):
         first, second = self.conversation().messages
         self.assertEqual(
             first.cells,
-            dict(saro="sent", raya="read", pax="never got", mira="no log", kes="not a member"),
+            dict(saro="sent", raya="read", pax="no record", mira="no log", kes="not a member"),
         )
         self.assertEqual(
             second.cells,
-            dict(saro="read", raya="sent", pax="unreadable", mira="no log", kes="never got"),
+            dict(saro="read", raya="sent", pax="unreadable", mira="no log", kes="no record"),
         )
         self.assertEqual((first.why, second.why), ({}, {"pax": "decrypt"}))
 
     def test_unreadable_frames_no_post_names_are_counted_apart(self):
         self.assertEqual(self.conversation().unmatched_unreadable, 2)
+
+    def test_an_unreadable_frame_no_post_names_is_counted_each_time_it_is_reported(self):
+        logs = started("saro", "raya", "pax")
+        for name in ALL3.split():
+            logs[name].epoch(name, 1, "X1", ALL3)
+        logs["saro"].sent("saro", "8f21", 1)
+        logs["raya"].unreadable("raya", "8f21", 1, "decrypt")
+        for _ in range(2):
+            logs["pax"].unreadable("pax", "77b4", 1, "decrypt")
+        logs["raya"].unreadable("raya", "77b4", 1, "epoch")
+        self.assertEqual(one(logs).unmatched_unreadable, 3)
+
+    def test_a_seat_off_the_roster_is_no_member_though_it_shares_no_log(self):
+        logs = started("saro", "raya")
+        for name in PAIR.split():
+            logs[name].epoch(name, 1, "X1", PAIR)
+        logs["saro"].sent("saro", "8f21", 1)
+        for name in PAIR.split():
+            logs[name].epoch(name, 2, "X2", PAIR + " mira")
+        logs["saro"].sent("saro", "e3b9", 2)
+        before, after = one(logs).messages
+        self.assertEqual(before.cells, dict(saro="sent", raya="no record", mira="not a member"))
+        self.assertEqual(after.cells, dict(saro="sent", raya="no record", mira="no log"))
+
+    def test_a_sender_that_wrote_another_record_of_its_own_post_sent_it(self):
+        for kind in ("received", "unreadable"):
+            with self.subTest(kind=kind):
+                logs = started("saro", "raya")
+                for name in PAIR.split():
+                    logs[name].epoch(name, 1, "X1", PAIR)
+                if kind == "received":
+                    logs["saro"].received("saro", "8f21", "saro", 1)
+                else:
+                    logs["saro"].unreadable("saro", "8f21", 1, "decrypt")
+                logs["saro"].sent("saro", "8f21", 1)
+                (post,) = one(logs).messages
+                self.assertEqual((post.cells["saro"], post.why), ("sent", {}))
+                self.assertEqual(post.marks["saro"], post.at)
+                self.assertEqual(written(post), {"saro": ("saro", 4)})
 
     def test_a_post_sent_at_an_epoch_its_sender_wrote_no_record_for(self):
         logs = started("saro")
@@ -1080,6 +1147,206 @@ class Messages(unittest.TestCase):
         logs["saro"].sent("saro", "8f21", 4)
         (message,) = one(logs).messages
         self.assertEqual((message.state, message.cells), (None, {"saro": "sent", "raya": "no log"}))
+
+    def test_a_cell_that_stands_for_a_record_says_where_it_was_written(self):
+        first, second = self.conversation().messages
+        self.assertEqual(written(first), {"saro": ("saro", 5), "raya": ("raya", 5)})
+        self.assertEqual(
+            written(second), {"saro": ("saro", 4), "raya": ("raya", 4), "pax": ("pax", 4)}
+        )
+        self.assertEqual(first.marks["saro"], first.at)
+        self.assertEqual(
+            first.marks["raya"], Mark("raya", 5, "2026-10-08T12:00:05.000Z", True, at(5, hour=12))
+        )
+
+    def test_a_cell_has_a_mark_when_it_is_sent_read_or_unreadable_and_only_then(self):
+        for post in self.conversation().messages:
+            with self.subTest(frame=post.frame):
+                of_a_record = ("sent", "read", "unreadable")
+                stand = {seat for seat, cell in post.cells.items() if cell in of_a_record}
+                self.assertEqual(set(post.marks), stand)
+
+    def test_an_unreadable_frame_no_post_names_has_no_row_and_no_mark(self):
+        conversation = self.conversation()
+        self.assertEqual([post.frame for post in conversation.messages], ["8f21", "e3b9"])
+        marked = {place for post in conversation.messages for place in written(post).values()}
+        self.assertFalse(marked & {("pax", 5), ("pax", 6), ("kes", 3)})
+
+    def test_a_frame_read_and_unreadable_on_one_installation_is_read_there(self):
+        first, _ = self.conversation().messages
+        self.assertEqual((first.cells["raya"], first.why), ("read", {}))
+        self.assertEqual(written(first)["raya"], ("raya", 5))
+        # Whichever of the two its installation wrote first.
+        logs = started("saro", "raya")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 1, "X1", PAIR)
+        logs["saro"].sent("saro", "2b1c", 1)
+        logs["raya"].unreadable("raya", "2b1c", 1, "decrypt")
+        logs["raya"].received("raya", "2b1c", "saro", 1)
+        (post,) = one(logs).messages
+        self.assertEqual((post.cells["raya"], post.why), ("read", {}))
+        self.assertEqual(written(post)["raya"], ("raya", 4))
+
+    def test_the_cause_and_the_mark_of_an_unreadable_cell_are_of_one_record(self):
+        for why in ("epoch", "decrypt", "sender"):
+            with self.subTest(why=why):
+                logs = started("saro", "raya", "pax")
+                for name in ALL3.split():
+                    logs[name].epoch(name, 3, "X3", ALL3)
+                logs["raya"].epoch("raya", 4, "X4", ALL3)
+                logs["saro"].sent("saro", "5ac1", 3)
+                logs["pax"].received("pax", "5ac1", "saro", 3)
+                logs["raya"].unreadable("raya", "5ac1", 4, why)
+                # The frame arrived again, and failed for another cause.
+                logs["raya"].unreadable("raya", "5ac1", 4, "decrypt" if why == "epoch" else "epoch")
+                (post,) = one(logs).messages
+                self.assertEqual(post.cells, dict(saro="sent", raya="unreadable", pax="read"))
+                self.assertEqual(post.why, {"raya": why})
+                self.assertEqual(
+                    written(post), {"saro": ("saro", 3), "raya": ("raya", 4), "pax": ("pax", 3)}
+                )
+
+    def test_of_two_records_of_one_kind_for_a_frame_the_one_written_first_counts(self):
+        logs = started("saro", "raya")
+        for name in PAIR.split():
+            logs[name].epoch(name, 1, "X1", PAIR)
+        logs["saro"].sent("saro", "5ac1", 1)
+        logs["saro"].sent("saro", "9d07", 1)
+        for _ in range(2):
+            logs["raya"].received("raya", "5ac1", "saro", 1)
+        logs["raya"].unreadable("raya", "9d07", 1, "decrypt")
+        # Raya started again two hours on, in a run whose name sorts before her first.
+        again = Log("a later run of raya", hour=12)
+        again.start("raya")
+        again.received("raya", "5ac1", "saro", 1)
+        again.unreadable("raya", "9d07", 1, "epoch")
+        for runs in ([*logs.values(), again], [again, *logs.values()]):
+            read, unreadable = one(runs).messages
+            self.assertEqual(written(read)["raya"], ("raya", 3))
+            self.assertEqual(unreadable.why, {"raya": "decrypt"})
+            self.assertEqual(written(unreadable)["raya"], ("raya", 5))
+
+    def test_a_frame_two_sent_records_name_is_one_post_the_one_written_first(self):
+        logs = started("saro", "raya")
+        for name in PAIR.split():
+            logs[name].epoch(name, 1, "X1", PAIR)
+        logs["saro"].sent("saro", "8f21", 1)
+        logs["saro"].epoch("saro", 2, "X2", PAIR)
+        logs["saro"].sent("saro", "8f21", 2)
+        again = Log("a later run of saro", hour=12)
+        again.start("saro")
+        again.sent("saro", "8f21", 2)
+        (post,) = one([*logs.values(), again]).messages
+        self.assertEqual((post.sender, post.epoch, post.state), ("saro", 1, "X1"))
+        self.assertEqual(written(post), {"saro": ("saro", 3)})
+
+    def test_a_frame_two_installations_say_they_sent_is_the_post_of_the_earlier_stamp(self):
+        logs = started("saro", "raya")
+        for name in PAIR.split():
+            logs[name].epoch(name, 1, "X1", PAIR)
+        logs["raya"].sent("raya", "8f21", 1)
+        logs["saro"].hour = 9
+        logs["saro"].sent("saro", "8f21", 1)
+        (post,) = one(logs).messages
+        self.assertEqual((post.sender, post.at.time), ("saro", "2026-10-08T09:00:03.000Z"))
+        self.assertEqual(written(post), {"saro": ("saro", 3)})
+        # At one stamp, the one whose id sorts first.
+        logs["saro"].hour = 10
+        logs["saro"].sent("saro", "e3b9", 1)
+        logs["raya"].sent("raya", "e3b9", 1)
+        _, post = one(logs).messages
+        self.assertEqual((post.sender, written(post)), ("raya", {"raya": ("raya", 4)}))
+
+    def test_a_seat_removed_before_a_post_is_no_member_and_has_no_mark(self):
+        logs = started("saro", "raya", "kes")
+        for name in ("saro", "raya", "kes"):
+            logs[name].epoch(name, 1, "X1", "saro raya kes")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 2, "X2", PAIR)
+        logs["kes"].left("kes", 2)
+        logs["saro"].sent("saro", "4e30", 2)
+        logs["raya"].received("raya", "4e30", "saro", 2)
+        (post,) = one(logs).messages
+        self.assertEqual(post.cells, dict(saro="sent", raya="read", kes="not a member"))
+        self.assertEqual(sorted(post.marks), ["raya", "saro"])
+
+    def test_a_post_no_one_read_has_its_row_and_its_senders_mark_alone(self):
+        (post,) = posted(ALL3, 1).messages
+        self.assertEqual(post.cells, dict(saro="sent", raya="no record", pax="no record"))
+        self.assertEqual(written(post), {"saro": ("saro", 3)})
+
+    def test_a_mark_names_a_run_its_installation_is_read_in(self):
+        def group(run: str, grown: bool) -> Log:
+            log = Log(run)
+            for name in ("saro", "raya"):
+                log.start(name)
+                log.epoch(name, 1, "X1", PAIR)
+            log.sent("saro", "8f21", 1)
+            log.received("raya", "8f21", "saro", 1)
+            if grown:
+                log.epoch("raya", 2, "X2", PAIR)
+            return log
+
+        # One log at two lengths: Raya's records are read in the longer, Saro's in the first.
+        conversation = one([group("monday", grown=False), group("tuesday", grown=True)])
+        (post,) = conversation.messages
+        self.assertEqual(written(post), {"saro": ("monday", 5), "raya": ("tuesday", 6)})
+        for seat, mark in post.marks.items():
+            self.assertIn(mark.run, seat_of(conversation, seat).runs)
+
+    def test_a_post_says_when_it_was_sent_in_utc_cut_to_its_second(self):
+        stamps = [
+            ("2026-10-08T10:00:02.000Z", True, "2026-10-08T10:00:02Z"),
+            ("2026-10-08T15:40:02.9996+02:00", True, "2026-10-08T13:40:02Z"),
+            ("2026-10-08T15:40:02.999999Z", True, "2026-10-08T15:40:02Z"),
+            ("2026-10-08T00:10:59-04:30", True, "2026-10-08T04:40:59Z"),
+            ("2026-10-08T10:00:02.5", False, "2026-10-08T10:00:02Z"),
+            ("0001-01-02T00:00:00Z", True, "0001-01-02T00:00:00Z"),
+        ]
+        for time, has_offset, utc in stamps:
+            with self.subTest(time=time):
+                said = dict(installation="saro", convo=CONVO, frame="8f21", epoch=1)
+                (conversation,) = report([Record("saro", 1, time, has_offset, "sent", **said)])
+                (post,) = conversation.messages
+                self.assertEqual((post.at.time, post.utc), (time, utc))
+
+    def test_the_json_holds_a_mark_as_it_holds_where_a_post_was_sent(self):
+        _, second = as_json(self.conversation())["messages"]
+        self.assertEqual(
+            list(second), "frame sender epoch state at utc cells why marks".split()
+        )
+        self.assertEqual(second["utc"], "2026-10-08T12:00:04Z")
+        self.assertEqual(sorted(second["marks"]), ["pax", "raya", "saro"])
+        self.assertEqual(second["marks"]["raya"], second["at"])
+        self.assertEqual(
+            second["marks"]["pax"],
+            {
+                "run": "pax",
+                "line": 4,
+                "time": "2026-10-08T10:00:04.000Z",
+                "has_offset": True,
+                "seconds": at(4),
+            },
+        )
+
+    def test_a_page_starts_with_every_post_while_their_cells_are_few(self):
+        self.assertEqual(self.conversation().shown_messages, 2)
+        self.assertEqual(posted(PAIR, 0).shown_messages, 0)
+        self.assertEqual(as_json(self.conversation())["shown_messages"], 2)
+
+    def test_a_page_starts_with_the_rows_that_hold_the_most_cells_it_draws_at_first(self):
+        self.assertEqual(SHOWN_CELLS, 2000)
+        cases = ((PAIR, 30, 30), (ALL3, 700, 666), (ALL5, 400, 400), (ALL5, 401, 400))
+        for seats, posts, shown in cases:
+            with self.subTest(seats=seats, posts=posts):
+                conversation = posted(seats, posts)
+                self.assertEqual(len(conversation.messages), posts)
+                self.assertEqual(conversation.shown_messages, shown)
+
+    def test_a_page_starts_with_a_post_however_many_installations_there_are(self):
+        with mock.patch("forks.rule.SHOWN_CELLS", 4):
+            self.assertEqual(posted(ALL5, 3).shown_messages, 1)
+            self.assertEqual(posted(PAIR, 3).shown_messages, 2)
 
 
 class Runs(unittest.TestCase):

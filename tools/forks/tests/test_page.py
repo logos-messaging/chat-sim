@@ -6,9 +6,10 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import unittest
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 from unittest import mock
 
 from forks import serve
@@ -27,6 +28,7 @@ from .test_serve import (
     Answer,
     Collecting,
     Log,
+    hexed,
     logged,
     member,
     positions,
@@ -566,6 +568,30 @@ class Sources(unittest.TestCase):
                 self.assertNotRegex(name, r"^'(on[a-z]*|style|src|srcdoc|action|formaction)'$")
         self.assertIsNone(re.search(r"\.style\b|cssText|\.on[a-z]+\s*=", script))
 
+    def test_what_makes_an_element_is_called_with_names_the_script_holds(self):
+        script = self.read("report.js")
+        # `el` and `svg` alone make an element, each of the tag it is called with.
+        self.assertEqual(
+            re.findall(r"createElement(?:NS)?\(([^)]*)\)", script),
+            ["tag", "sprite.namespaceURI, tag"],
+        )
+        calls = re.findall(r"\b(el|svg)\(\s*([^,)]+)(?:,\s*(\S))?", script)
+        defined = [("el", "tag", "c"), ("svg", "tag", "a")]
+        self.assertEqual([call for call in calls if call[1] == "tag"], defined)
+        loads = r"^'(script|style|i?frame|object|embed|link|meta|base|form|input|img|image)'$"
+        for made, tag, then in sorted(set(calls) - set(defined)):
+            with self.subTest(call=f"{made}({tag}"):
+                self.assertRegex(tag, r"^'[a-z][a-z0-9]*'$")
+                self.assertNotRegex(tag, loads)
+                if made == "svg":
+                    # What `svg` sets is the keys of an object written where it is called.
+                    self.assertIn(then, ("", "{"))
+        # A key is written in the script: none is worked out, and no object is spread into one.
+        self.assertIsNone(re.search(r"[{,]\s*\[[^,\n]*\]\s*:", script))
+        self.assertIsNone(re.search(r"\{\s*\.\.\.|\.\.\.[\w.]+(?:\([^()]*\))?\s*\}", script))
+        runs = r"[{,]\s*'?(on[a-z]+|style|src|srcdoc|action|formaction)'?\s*:"
+        self.assertIsNone(re.search(runs, script))
+
     def test_data_enters_an_address_only_through_encodeuricomponent(self):
         script = self.read("report.js")
         # Every call the script makes, as it is written: an id goes in as one part of a path.
@@ -642,6 +668,36 @@ def split_logs() -> Dict[str, Log]:
     return logs
 
 
+MARKUP = '<img src=x onerror="window.pwned=1"><script>window.pwned=2</script>'
+# A frame as long as the tool reads one.
+LONG = "41d6" + "a9e0" * 3
+
+
+def post_logs() -> Dict[str, bytes]:
+    """The split group's logs once its members posted, as Saro, Raya and Pax share them.
+
+    Saro posts before the split and everyone reads it. Raya's post after it is read on her side
+    and is unreadable to Pax, and Pax's long one is unreadable on hers. A frame no post names
+    reaches Pax. Around Saro's post his log holds lines that are markup.
+    """
+    logs = split_logs()
+    logs["saro"].sent("saro", "8f21", 2)
+    for name in ("raya", "pax"):
+        logs[name].received(name, "8f21", "saro", 2)
+    logs["raya"].sent("raya", "e3b9", 3)
+    logs["saro"].received("saro", "e3b9", "raya", 3)
+    logs["pax"].unreadable("pax", "e3b9", 3, "decrypt")
+    logs["pax"].sent("pax", LONG, 3)
+    for name in ("saro", "raya"):
+        logs[name].unreadable(name, LONG, 3, "decrypt")
+    logs["pax"].unreadable("pax", "77b4", 3, "epoch")
+    sent = {name: logged(logs[name]) for name in ("saro", "raya", "pax")}
+    said = f"2026-10-08T10:00:04.500Z  INFO chat_module::actions: {MARKUP}\n".encode()
+    lines = sent["saro"].splitlines(keepends=True)
+    sent["saro"] = b"".join(lines[:4] + [said] + lines[4:5] + [said] + lines[5:])
+    return sent
+
+
 class EndToEnd(Collecting):
     """Logs sent as an uploader sends them, and the report read as a browser reads it."""
 
@@ -709,6 +765,548 @@ class EndToEnd(Collecting):
                     written = sent[names[at["run"]]].decode().split("\n")[at["line"] - 1]
                     self.assertEqual(line, written)
                     self.assertIn(f"epoch={step['epoch']} state={step['state']}", line)
+
+    def shared_posts(self) -> Tuple[Dict[str, bytes], dict]:
+        sent = post_logs()
+        for name, log in sent.items():
+            self.served.share(log, name)
+        return sent, self.browsed(f"/conversations/{CONVO}")
+
+    def test_a_post_has_a_row_and_a_cell_under_every_lane(self):
+        _, report = self.shared_posts()
+        saro, raya, pax, mira = map(hexed, ("saro", "raya", "pax", "mira"))
+        posts = report["messages"]
+        self.assertEqual(
+            [(post["frame"], post["sender"], post["epoch"]) for post in posts],
+            [("8f21", saro, 2), ("e3b9", raya, 3), (LONG, pax, 3)],
+        )
+        self.assertEqual(
+            [post["cells"] for post in posts],
+            [
+                {saro: "sent", raya: "read", pax: "read", mira: "no log"},
+                {saro: "read", raya: "sent", pax: "unreadable", mira: "no log"},
+                {saro: "unreadable", raya: "unreadable", pax: "sent", mira: "no log"},
+            ],
+        )
+        self.assertEqual(
+            [post["why"] for post in posts],
+            [{}, {pax: "decrypt"}, {saro: "decrypt", raya: "decrypt"}],
+        )
+        self.assertEqual((report["shown_messages"], report["unmatched_unreadable"]), (3, 1))
+        # The columns a page draws are the lanes, and each installation is under one of them.
+        columns = [seat for lane in report["lanes"] for seat in lane["installations"]]
+        for post in posts:
+            self.assertEqual(sorted(columns), sorted(post["cells"]))
+
+    def test_a_cell_of_a_post_leads_to_the_lines_around_its_record(self):
+        sent, report = self.shared_posts()
+        names = {run["id"]: run["name"] for run in report["runs"]}
+        wrote = {"sent": "sent", "read": "received", "unreadable": "unreadable"}
+        led = 0
+        for post in report["messages"]:
+            self.assertEqual(post["marks"][post["sender"]], post["at"])
+            for seat, cell in post["cells"].items():
+                with self.subTest(frame=post["frame"][:8], seat=seat):
+                    self.assertEqual(seat in post["marks"], cell in wrote)
+                    if cell not in wrote:
+                        continue
+                    at = post["marks"][seat]
+                    around = self.browsed(f"/runs/{at['run']}/log?line={at['line']}")["lines"]
+                    (line,) = [each["text"] for each in around if each["line"] == at["line"]]
+                    written = sent[names[at["run"]]].decode().split("\n")[at["line"] - 1]
+                    self.assertEqual(line, written)
+                    self.assertIn(f"libchat::groupv2trace: {wrote[cell]} installation={seat} ", line)
+                    self.assertIn(f" frame={post['frame']}", line)
+                    self.assertEqual(seat in post["why"], cell == "unreadable")
+                    if cell == "unreadable":
+                        self.assertTrue(line.endswith(f" why={post['why'][seat]}"))
+                    self.assertTrue(line.startswith(at["time"]))
+                    led += 1
+        self.assertEqual(led, 9)
+
+    def test_what_a_log_says_around_a_post_is_answered_as_text_in_json(self):
+        _, report = self.shared_posts()
+        at = report["messages"][0]["at"]
+        path = f"/runs/{at['run']}/log?line={at['line']}"
+        answer = self.served.call("GET", path, token=None, headers=[("Cookie", self.cookie)])
+        self.assertEqual(carried(answer, "Content-Type"), ["application/json; charset=utf-8"])
+        texts = [each["text"] for each in answer.said["lines"]]
+        # The two lines before the record, the record, and the three after it.
+        self.assertEqual(
+            [text.endswith(MARKUP) for text in texts], [False, True, False, True, False, False]
+        )
+
+    def test_the_script_reads_every_field_the_json_holds_of_a_post(self):
+        _, report = self.shared_posts()
+        script = self.served.call(
+            "GET", "/page/report.js", token=None, headers=[("Cookie", self.cookie)]
+        ).body.decode()
+        for field in report["messages"][0]:
+            with self.subTest(field=field):
+                self.assertRegex(script, rf"\bmessage\.{field}\b")
+        for field in ("messages", "shown_messages", "unmatched_unreadable"):
+            with self.subTest(field=field):
+                self.assertIn(field, report)
+                self.assertRegex(script, rf"\bconvo\.{field}\b")
+
+
+NODE = shutil.which("node")
+DOM = Path(__file__).with_name("dom.js")
+REST = {"press": "[data-rest]"}
+# How a cell is drawn for what became of a post: its class, and the sign and the word in it.
+DRAWN = {
+    "sent": ("mk sent", "sent"),
+    "read": ("mk read", "\u2713read"),
+    "unreadable": ("mk unread", "\u2715unreadable"),
+    "no record": ("mk none", "no record"),
+    "no log": ("mk hatch", ""),
+    "not a member": ("mk out", ""),
+}
+
+
+def within(made: dict) -> Iterator[dict]:
+    """An element as `tests/dom.js` writes one, and every element in it."""
+    yield made
+    for kid in made["kids"]:
+        if isinstance(kid, dict):
+            yield from within(kid)
+
+
+def words(made: dict) -> str:
+    return "".join(kid if isinstance(kid, str) else words(kid) for kid in made["kids"])
+
+
+def classed(made: dict, cls: str) -> List[dict]:
+    return [each for each in within(made) if cls in each["attrs"].get("class", "").split()]
+
+
+def rows(state: dict) -> List[dict]:
+    """The rows of the messages a document holds, a post each."""
+    (table,) = classed(state["report"], "posts")
+    return [row for row in within(table) if "data-key" in row["attrs"]]
+
+
+def keys(state: dict) -> List[str]:
+    return [row["attrs"]["data-key"] for row in rows(state)]
+
+
+def fold(state: dict) -> List[str]:
+    """What a document says of the posts it draws, and the button beside it."""
+    (rest,) = classed(state["report"], "rest")
+    return [words(made) for made in rest["kids"]]
+
+
+@unittest.skipUnless(NODE, "node runs the page's script, and is not on this machine")
+class Drawn(Collecting):
+    """What the script draws of what a collector answers, in the document of `tests/dom.js`."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.runs = {name: self.served.share(log, name) for name, log in post_logs().items()}
+
+    def post(self, hour: int, frame: str) -> None:
+        """Saro posts in a later hour, and nobody reads it."""
+        log = Log("saro", hour)
+        log.sent("saro", frame, 3)
+        self.served.put(*self.runs["saro"], logged(log))
+
+    def answers(self) -> Dict[str, dict]:
+        """What the collector answers each address the page asks of the conversation."""
+        marks = [at for post in self.served.report()["messages"] for at in post["marks"].values()]
+        paths = ["conversations", f"conversations/{CONVO}"]
+        paths += [f"runs/{at['run']}/log?line={at['line']}" for at in marks]
+        said = {}
+        for path in paths:
+            answer = self.served.get(f"/{path}")
+            said[path] = {"status": answer.status, "text": answer.body.decode()}
+        return said
+
+    def draw(self, answers: Dict[str, dict], *steps: dict) -> List[dict]:
+        """What the document holds once the page has read, and after each step a reader takes."""
+        script = (PAGE / "report.js").read_text(encoding="utf-8")
+        given = {"script": script, "hash": f"#{CONVO}", "answers": answers, "steps": steps}
+        ran = subprocess.run(
+            [NODE, str(DOM)], input=json.dumps(given), capture_output=True, text=True, timeout=60
+        )
+        self.assertEqual((ran.stderr, ran.returncode), ("", 0))
+        return json.loads(ran.stdout)
+
+    def test_a_post_is_a_row_and_each_cell_says_what_the_json_says_became_of_it(self):
+        # Saro posts once Pax and Mira are off his roster, late in a second, and nobody reads it.
+        log = Log("saro", 11)
+        log.epoch("saro", 4, "A4", "saro raya")
+        log.sent("saro", "5ac1", 4)
+        self.served.put(*self.runs["saro"], logged(log).replace(b"02.000Z", b"02.9996Z"))
+        answers = self.answers()
+        report = json.loads(answers[f"conversations/{CONVO}"]["text"])
+        (state,) = self.draw(answers)
+        order = [seat for lane in report["lanes"] for seat in lane["installations"]]
+        self.assertEqual(len(rows(state)), 4)
+        seen = set()
+        for row, post in zip(rows(state), report["messages"]):
+            sent, frame, sender, _, *cells = row["kids"]
+            self.assertEqual(
+                (words(sent), sent["attrs"]["title"]), (post["utc"], post["at"]["time"])
+            )
+            self.assertEqual((words(frame), frame["attrs"]["title"]), (post["frame"],) * 2)
+            self.assertEqual(row["attrs"]["data-key"], f"post {post['frame']}")
+            self.assertEqual(words(sender), post["sender"])
+            self.assertEqual(len(cells), len(order))
+            for seat, cell in zip(order, cells):
+                with self.subTest(frame=post["frame"], seat=seat):
+                    ((made,), fate, why) = cell["kids"], post["cells"][seat], post["why"].get(seat)
+                    cls, said = DRAWN[fate]
+                    of = f"frame {post['frame']} from {post['sender']}"
+                    self.assertEqual(
+                        made["attrs"]["aria-label"], ", ".join(filter(None, [seat, of, fate, why]))
+                    )
+                    self.assertEqual(
+                        (made["attrs"]["class"], words(made)), (cls, said + (why or ""))
+                    )
+                    # A cell that holds no word says what it is to a pointer.
+                    self.assertEqual(made["attrs"].get("title"), None if said else fate)
+                    # A cell opens log lines where the JSON holds a record for it, and nowhere else.
+                    opens = seat in post["marks"]
+                    self.assertEqual(made["attrs"]["role"], "button" if opens else "img")
+                    self.assertEqual("data-m" in made["attrs"], opens)
+                    seen.add(fate)
+        self.assertEqual(seen, set(DRAWN))
+        self.assertEqual(report["messages"][-1]["utc"], "2026-10-08T11:00:02Z")
+        (table,) = classed(state["report"], "posts")
+        titles = [made for made in within(table["kids"][0]) if made["tag"] == "th"]
+        self.assertEqual({made["attrs"]["scope"] for made in titles}, {"col"})
+
+    def test_a_cell_and_a_mark_of_a_post_ask_for_the_lines_of_their_own_record(self):
+        answers = self.answers()
+        report = json.loads(answers[f"conversations/{CONVO}"]["text"])
+        posts = report["messages"]
+        order = [seat for lane in report["lanes"] for seat in lane["installations"]]
+        # The cells stand post by post, and the marks of the timeline installation by installation.
+        cells = [(post, seat) for post in posts for seat in order if seat in post["marks"]]
+        marks = [(post, seat) for seat in order for post in posts if seat in post["marks"]]
+        first, *pressed = self.draw(
+            answers,
+            *({"press": ".mk[data-m]", "nth": nth} for nth in range(len(cells))),
+            *({"press": ".post[data-m]", "nth": nth} for nth in range(len(marks))),
+        )
+        for cls, records in (("mk", cells), ("post", marks)):
+            made = [each for each in classed(first["report"], cls) if "data-m" in each["attrs"]]
+            self.assertEqual((cls, len(made)), (cls, 9))
+            self.assertEqual(
+                {each["attrs"]["aria-label"].split(",")[0] for each in made},
+                {seat for _, seat in records},
+            )
+        for state, (post, seat) in zip(pressed, cells + marks):
+            with self.subTest(frame=post["frame"], seat=seat):
+                at = post["marks"][seat]
+                self.assertEqual(state["asked"], [f"runs/{at['run']}/log?line={at['line']}"])
+                bar = f"line {at['line']}{seat}, frame {post['frame']} "
+                self.assertIn(bar, words(state["log"]))
+
+    def test_the_reports_of_frames_no_post_names_are_counted_as_the_json_counts_them(self):
+        log = Log("raya", 11)
+        log.unreadable("raya", "77b4", 3, "decrypt")
+        self.served.put(*self.runs["raya"], logged(log))
+        (state,) = self.draw(self.answers())
+        said = [words(made) for made in classed(state["report"], "quiet")]
+        counted = [each for each in said if "no known post" in each]
+        self.assertEqual(
+            counted,
+            [
+                "Reports of an unreadable frame of no known post: 2. Each is of a frame that could "
+                "not be read and that no shared log says was a post, and a frame has one for each "
+                "time an installation reported it. A vote or any other encrypted frame of the "
+                "group counts as much as a post whose sender shares no log."
+            ],
+        )
+
+    def test_the_newest_posts_are_drawn_until_the_reader_asks_for_all(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 8))
+        answers = self.answers()
+        report = json.loads(answers[f"conversations/{CONVO}"]["text"])
+        self.assertEqual(report["shown_messages"], 2)
+        every = [f"post {post['frame']}" for post in report["messages"]]
+        newest = "The newest 2 of 3 posts are drawn, here and on the timeline."
+        states = self.draw(answers, REST, REST)
+        for state, whole in zip(states, (False, True, False)):
+            with self.subTest(whole=whole):
+                drawn = every if whole else every[1:]
+                self.assertEqual(keys(state), drawn)
+                self.assertEqual(
+                    fold(state),
+                    ["All 3 posts are drawn, here and on the timeline.", "Draw the newest 2 only"]
+                    if whole
+                    else [newest, "Draw all 3"],
+                )
+                # The timeline marks the posts that are drawn, and says so while they are not all.
+                marks = classed(state["report"], "post")
+                self.assertEqual(
+                    len([each for each in marks if "data-m" in each["attrs"]]),
+                    sum(len(post["marks"]) for post in report["messages"][0 if whole else 1 :]),
+                )
+                noted = [words(made) for made in classed(state["report"], "quiet")]
+                self.assertEqual(
+                    "The posts marked are those the messages below draw, of 3." in noted, not whole
+                )
+        # The button a reader pressed holds the focus in what is drawn of the press.
+        for state, button in zip(states[1:], ("Draw the newest 2 only", "Draw all 3")):
+            self.assertEqual(
+                [words(made) for made in within(state["report"]) if made.get("focused")], [button]
+            )
+
+    def test_a_press_for_the_newest_alone_closes_the_lines_of_an_older_post(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 8))
+        opened, folded = self.draw(self.answers(), REST, {"press": ".mk[data-m]"}, REST)[2:]
+        self.assertIn(", frame 8f21 from ", words(opened["log"]))
+        self.assertEqual((len(rows(opened)), len(rows(folded)), folded["log"]), (3, 2, None))
+        self.assertEqual(
+            fold(folded),
+            ["The newest 2 of 3 posts are drawn, here and on the timeline.", "Draw all 3"],
+        )
+
+    def test_a_read_by_the_clock_keeps_a_post_drawn_while_its_lines_are_open(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 8))
+        before = self.answers()
+        self.post(11, "5ac1")
+        self.post(12, "9d07")
+        _, opened, read, _, folded = self.draw(
+            before, {"press": ".mk[data-m]"}, {"answers": self.answers()}, REST, REST
+        )
+        self.assertIn(", frame e3b9 from ", words(opened["log"]))
+        self.assertEqual(keys(read), ["post e3b9", f"post {LONG}", "post 5ac1", "post 9d07"])
+        self.assertIn(", frame e3b9 from ", words(read["log"]))
+        self.assertEqual(
+            fold(read),
+            [
+                "The newest 2 of 5 posts are drawn, here and on the timeline, and the older ones "
+                "back to the one that is open or has the focus.",
+                "Draw all 5",
+            ],
+        )
+        # A press of the reader's own keeps none.
+        self.assertEqual((keys(folded), folded["log"]), (["post 5ac1", "post 9d07"], None))
+
+    def test_a_row_in_sight_stays_where_it_stood_in_its_box_while_rows_come_and_go(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 16))
+        for hour, frame in ((11, "5ac1"), (12, "9d07"), (13, "c4d2")):
+            self.post(hour, frame)
+        before = self.answers()
+        self.post(14, "b17e")
+        # The box shows two rows, and is scrolled to the newest two of the four that are drawn.
+        scroll = {"scroll": ".postsbox", "top": 20}
+        first, *states = self.draw(before, scroll, {"answers": self.answers()}, REST, REST)
+        self.assertEqual(keys(first), [f"post {LONG}", "post 5ac1", "post 9d07", "post c4d2"])
+        self.assertEqual([len(rows(state)) for state in states], [4, 4, 7, 4])
+        self.assertEqual(keys(states[1])[-1], "post b17e")
+        for state in states:
+            self.assertEqual(
+                state["sight"]["card scroll postsbox"], [["post 9d07", 0], ["post c4d2", 10]]
+            )
+
+    def test_the_window_stays_while_the_oldest_rows_leave_a_box_that_is_at_its_top(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 16))
+        for hour, frame in ((11, "5ac1"), (12, "9d07"), (13, "c4d2")):
+            self.post(hour, frame)
+        before = self.answers()
+        self.post(14, "b17e")
+        after = {"answers": self.answers()}
+        # The window is at the messages, where rows of the box stand above its middle.
+        reach = {"reach": '[data-key="Messages"]'}
+        for opened in (False, True):
+            with self.subTest(opened=opened):
+                # The lines of a post two rows down are open, or none are.
+                steps = [reach, {"press": ".mk[data-m]", "nth": 4}] if opened else [reach]
+                *_, reached, read = self.draw(before, *steps, after)
+                box = "card scroll postsbox"
+                self.assertEqual(reached["sight"][box][0], [f"post {LONG}", 0])
+                self.assertEqual(read["sight"][box], [["post 5ac1", 0], ["post 9d07", 10]])
+                self.assertEqual(opened, ", frame 9d07 from " in words(read["log"] or {"kids": []}))
+                self.assertGreater(reached["window"], 0)
+                self.assertEqual(read["window"], reached["window"])
+
+    def test_a_row_holds_the_window_where_its_box_does_not_scroll(self):
+        self.served = self.elsewhere()
+        saro, raya = member("saro", 1), member("raya", 1, hour=9)
+        saro.sent("saro", "9d07", 1)
+        raya.sent("raya", "5ac1", 1)
+        self.served.share(logged(saro), "saro")
+        before = self.answers()
+        # A post sent an hour earlier comes with a log shared later, and stands above.
+        self.served.share(logged(raya), "raya")
+        reach = {"reach": '[data-key="Messages"]'}
+        _, reached, read = self.draw(before, reach, {"answers": self.answers()})
+        self.assertEqual((keys(reached), keys(read)), (["post 9d07"], ["post 5ac1", "post 9d07"]))
+        self.assertEqual(read["window"], reached["window"] + 10)
+
+    def test_the_button_stays_where_it_is_when_its_press_makes_the_box_higher(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 4))
+        # The window is at the part under the messages, which a higher box pushes down.
+        reach = {"reach": '[data-key="The state each branch holds"]'}
+        _, reached, whole = self.draw(self.answers(), reach, REST)
+        self.assertEqual((len(rows(reached)), len(rows(whole))), (1, 3))
+        self.assertGreater(reached["window"], 0)
+        self.assertEqual(whole["window"], reached["window"])
+
+    def test_the_line_of_when_it_was_last_heard_from_keeps_its_words_through_a_press(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 8))
+        first, whole = self.draw(self.answers(), REST)
+        (was,), (line,) = (
+            [made for made in within(state["report"]) if "data-heard" in made["attrs"]]
+            for state in (first, whole)
+        )
+        self.assertRegex(words(was), r"^Last heard from \d+ s ago$")
+        self.assertRegex(was["attrs"]["title"], r"^2026-\S+Z$")
+        self.assertEqual((words(line), line["attrs"]["title"]), (words(was), was["attrs"]["title"]))
+
+    def test_every_post_stays_drawn_while_another_conversation_is_asked_for_and_not_drawn(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 8))
+        every = ["All 3 posts are drawn, here and on the timeline.", "Draw the newest 2 only"]
+        newest = ["The newest 2 of 3 posts are drawn, here and on the timeline.", "Draw all 3"]
+        # The reader is back before the other conversation is answered: nothing was drawn.
+        back = [{"hash": "#another"}, {"hash": f"#{CONVO}"}]
+        away, anew = {"hash": "#"}, {"hash": f"#{CONVO}"}
+        states = self.draw(self.answers(), REST, back, REST, REST, away, anew)
+        _, whole, returned, folded, again, _, anew = states
+        self.assertEqual(
+            [fold(state) for state in (whole, returned, folded, again)],
+            [every, every, newest, every],
+        )
+        # The list of conversations was drawn in between.
+        self.assertEqual(fold(anew), newest)
+
+    def cells(self, state: dict) -> List[Tuple[str, bool, bool]]:
+        """The cells of the messages that open log lines: its name, and whether each is the stop
+        of the Tab key and whether it has the focus."""
+        (table,) = classed(state["report"], "posts")
+        return [
+            (
+                made["attrs"]["aria-label"],
+                made["attrs"].get("tabindex") == "0",
+                bool(made.get("focused")),
+            )
+            for made in within(table)
+            if "data-m" in made["attrs"]
+        ]
+
+    def test_a_read_leaves_the_stop_where_the_arrow_keys_took_it_while_lines_are_open(self):
+        before = self.answers()
+        self.post(11, "5ac1")
+        steps = [{"press": ".mk[data-m]"}, {"focus": ".mk[data-m]"}, {"key": "ArrowRight"}]
+        first, *_, moved, read = self.draw(before, *steps, {"answers": self.answers()})
+        (opened, _, _), (beside, _, _) = self.cells(first)[:2]
+        self.assertEqual(len(rows(read)), len(rows(moved)) + 1)
+        for state in (moved, read):
+            self.assertEqual(self.cells(state)[:2], [(opened, False, False), (beside, True, True)])
+            self.assertEqual(sum(stop for _, stop, _ in self.cells(state)), 1)
+            self.assertIn(opened, words(state["log"]))
+
+    def test_closing_the_lines_gives_the_cell_that_opened_them_the_stop_and_the_focus(self):
+        steps = [{"press": ".mk[data-m]"}, {"focus": ".mk[data-m]"}, {"key": "ArrowRight"}]
+        first, *_, closed = self.draw(self.answers(), *steps, {"key": "Escape"})
+        (opened, _, _), (beside, _, _) = self.cells(first)[:2]
+        self.assertEqual(self.cells(closed)[:2], [(opened, True, True), (beside, False, False)])
+        self.assertEqual(sum(stop for _, stop, _ in self.cells(closed)), 1)
+        self.assertIsNone(closed["log"])
+
+    def test_a_press_elsewhere_leaves_the_stop_where_the_arrow_keys_took_it(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 8))
+        steps = [{"press": ".mk[data-m]"}, {"focus": ".mk[data-m]"}, {"key": "ArrowRight"}]
+        first, *_, moved, pressed = self.draw(self.answers(), *steps, REST)
+        (opened, _, _), (beside, _, _) = self.cells(first)[:2]
+        self.assertEqual(self.cells(moved)[:2], [(opened, False, False), (beside, True, True)])
+        # The lines of the first cell are open still, and the button has the focus.
+        self.assertIn(opened, words(pressed["log"]))
+        at = {name: (stop, focused) for name, stop, focused in self.cells(pressed)}
+        self.assertEqual((at[opened], at[beside]), ((False, False), (True, False)))
+        self.assertEqual(sum(stop for stop, _ in at.values()), 1)
+
+    def test_a_read_leaves_a_table_the_stop_it_had_while_the_focus_is_elsewhere(self):
+        before = self.answers()
+        self.post(11, "5ac1")
+        steps = [{"focus": ".mk[data-m]"}, {"key": "ArrowRight"}, {"focus": "a.sub"}]
+        first, *_, away, read = self.draw(before, *steps, {"answers": self.answers()})
+        (_, _, _), (beside, _, _) = self.cells(first)[:2]
+        self.assertEqual(len(rows(read)), len(rows(away)) + 1)
+        for state in (away, read):
+            self.assertEqual(
+                [name for name, stop, _ in self.cells(state) if stop], [beside], len(rows(state))
+            )
+            self.assertEqual(
+                [words(made) for made in within(state["report"]) if made.get("focused")],
+                ["All conversations"],
+            )
+
+    def test_lines_that_were_asked_for_do_not_open_once_they_were_called_off(self):
+        asks = [{"hold": "runs/"}, {"press": ".mk[data-m]"}]
+        (closed, late), (away, later) = (
+            self.draw(self.answers(), [*asks, off], {"come": True})[1:]
+            for off in ({"key": "Escape"}, {"hash": "#"})
+        )
+        for state in (closed, away):
+            self.assertEqual((state["asked"][0][:5], state["log"]), ("runs/", None))
+        # Their answer comes to a page that asks for them no more.
+        self.assertEqual((late["log"], later["log"]), (None, None))
+        self.assertEqual(rows(closed)[0]["kids"][4]["kids"][0].get("focused"), True)
+
+    def test_closing_the_lines_calls_off_the_lines_asked_of_another_mark(self):
+        first, other = {"press": ".mk[data-m]"}, {"press": ".mk[data-m]", "nth": 1}
+        steps = first, [{"hold": "runs/"}, other, {"key": "Escape"}], {"come": True}
+        opened, closed, late = self.draw(self.answers(), *steps)[1:]
+        self.assertIsNotNone(opened["log"])
+        self.assertEqual(
+            (closed["asked"][0][:5], closed["log"], late["log"]), ("runs/", None, None)
+        )
+
+    def test_lines_asked_of_a_post_do_not_open_once_the_newest_alone_are_drawn(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 8))
+        asks = [{"hold": "runs/"}, {"press": ".mk[data-m]"}]
+        whole, newest, late = self.draw(self.answers(), REST, [*asks, REST], {"come": True})[1:]
+        self.assertEqual((len(rows(whole)), len(rows(newest))), (3, 2))
+        self.assertEqual((newest["asked"][0][:5], late["log"]), ("runs/", None))
+
+    def test_closing_the_lines_gives_the_title_the_focus_when_their_mark_is_drawn_no_more(self):
+        before = self.answers()
+        path = f"conversations/{CONVO}"
+        report = json.loads(before[path]["text"])
+        later = dict(report, messages=report["messages"][1:])
+        after = {path: {"status": 200, "text": json.dumps(later)}}
+        opened, read = self.draw(before, {"press": ".mk[data-m]"}, {"answers": after})[1:]
+        self.assertIn(", frame 8f21 from ", words(opened["log"]))
+        self.assertEqual((len(rows(read)), read["log"]), (len(rows(opened)) - 1, None))
+        self.assertEqual(
+            [made["tag"] for made in within(read["report"]) if made.get("focused")], ["h1"]
+        )
+
+    def other(self, answers: Dict[str, dict], text: Optional[str] = None) -> Dict[str, dict]:
+        """The same answers with a conversation the list does not name: this one's report by
+        default, under the other's id."""
+        report = dict(json.loads(answers[f"conversations/{CONVO}"]["text"]), id="other")
+        said = {"status": 200, "text": json.dumps(report) if text is None else text}
+        return {**answers, "conversations/other": said}
+
+    def test_every_post_is_forgotten_once_another_conversation_was_drawn(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 8))
+        every = ["All 3 posts are drawn, here and on the timeline.", "Draw the newest 2 only"]
+        newest = ["The newest 2 of 3 posts are drawn, here and on the timeline.", "Draw all 3"]
+        there, back = {"hash": "#other"}, {"hash": f"#{CONVO}"}
+        whole, elsewhere, again = self.draw(self.other(self.answers()), REST, there, back)[1:]
+        drawn = [fold(state) for state in (whole, elsewhere, again)]
+        self.assertEqual(drawn, [every, newest, newest])
+        # A conversation the list does not name says nothing of when it was heard from.
+        for state, said in ((whole, True), (elsewhere, False), (again, True)):
+            (line,) = [made for made in within(state["report"]) if "data-heard" in made["attrs"]]
+            self.assertEqual((bool(words(line)), bool(line["attrs"]["title"])), (said, said))
+
+    def test_every_post_stays_asked_for_when_another_conversation_cannot_be_drawn(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 8))
+        every = ["All 3 posts are drawn, here and on the timeline.", "Draw the newest 2 only"]
+        newest = ["The newest 2 of 3 posts are drawn, here and on the timeline.", "Draw all 3"]
+        there, back = {"hash": "#other"}, {"hash": f"#{CONVO}"}
+        answers = self.other(self.answers(), "{}")
+        whole, elsewhere, again, pressed = self.draw(answers, REST, there, back, REST)[1:]
+        self.assertTrue(elsewhere["notice"].startswith("The answer at this address is not one"))
+        self.assertEqual([fold(state) for state in (whole, elsewhere, again)], [every] * 3)
+        self.assertEqual(fold(pressed), newest)
 
 
 class Gained(Collecting):

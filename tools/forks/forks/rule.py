@@ -47,6 +47,12 @@ WROTE = "wrote"
 UNREACHED = "unreached"
 LISTED = "listed"
 
+# What a record of a post says became of it on the installation that wrote it.
+_SAYS = {"sent": "sent", "received": "read", "unreadable": "unreadable"}
+# The cells of the messages a page draws before it is asked for the rest: what a browser draws,
+# each with its mark on the timeline, in about a tenth of a second.
+SHOWN_CELLS = 2000
+
 _1970 = datetime(1970, 1, 1)
 
 # A state: an epoch and its fingerprint.
@@ -230,15 +236,21 @@ class Timeline:
 
 @dataclass(frozen=True)
 class Message:
-    """A post, and what became of it on every installation."""
+    """A post, and what became of it on every installation.
+
+    `utc` is the stamp it was sent at, in UTC and cut to its second. `marks` holds, for each
+    installation whose cell stands for a record it wrote, where that record was written.
+    """
 
     frame: str
     sender: str
     epoch: int
     state: Optional[str]
     at: Mark
+    utc: str
     cells: Dict[str, str]
     why: Dict[str, str]
+    marks: Dict[str, Mark]
 
 
 @dataclass(frozen=True)
@@ -260,7 +272,11 @@ class Run:
 
 @dataclass(frozen=True)
 class Conversation:
-    """What the shared logs say about one conversation."""
+    """What the shared logs say about one conversation.
+
+    `shown_messages` is how many of the last `messages` a page draws before it is asked for the
+    rest.
+    """
 
     id: str
     verdict: str
@@ -274,6 +290,7 @@ class Conversation:
     installations: List[Installation]
     timeline: Timeline
     messages: List[Message]
+    shown_messages: int
     unmatched_unreadable: int
     runs: List[Run]
 
@@ -749,7 +766,7 @@ def _conversation(
         for record in logs.convos[convo]
         if record.kind not in ("epoch", "left")
     ]
-    messages, unmatched = _messages(logs.convos[convo], seats, lineage, logs)
+    messages, unmatched = _messages(convo, seats, lineage, logs)
     return Conversation(
         id=convo,
         verdict=lineage.verdict(positions),
@@ -774,6 +791,7 @@ def _conversation(
         installations=installations,
         timeline=Timeline(min(stamps), max(stamps)),
         messages=messages,
+        shown_messages=min(len(messages), max(1, SHOWN_CELLS // len(seats))),
         unmatched_unreadable=unmatched,
         runs=[
             _run(run, run in final, logs)
@@ -956,28 +974,36 @@ def _run(name: str, final: bool, logs: _Logs) -> Run:
 
 
 def _messages(
-    records: List[Record], seats: List[str], lineage: _Lineage, logs: _Logs
+    convo: str, seats: List[str], lineage: _Lineage, logs: _Logs
 ) -> Tuple[List[Message], int]:
-    """A row for each post, and how many `unreadable` records name a frame no `sent` does."""
-    posts: Dict[str, Record] = {}
-    read: Dict[str, Set[str]] = defaultdict(set)
-    unreadable: Dict[str, Dict[str, str]] = defaultdict(dict)
-    for record in records:
-        if record.kind == "sent":
-            posts.setdefault(record.frame, record)
-        elif record.kind == "received":
-            read[record.frame].add(record.installation)
-        elif record.kind == "unreadable":
-            unreadable[record.frame].setdefault(record.installation, record.why)
+    """A row for each post, and how many `unreadable` records name a frame no `sent` does.
+
+    Of two records of one kind that an installation wrote for a frame, the one it wrote first
+    counts. A frame two installations say they sent is the post of the earlier stamp.
+    """
+    records = logs.convos[convo]
+    # For each kind and frame, the first such record of each installation, by installation.
+    first: Dict[str, Dict[str, Dict[str, Record]]] = {kind: defaultdict(dict) for kind in _SAYS}
+    for installation in sorted({record.installation for record in records}):
+        for record in logs.written[installation]:
+            if record.convo == convo and record.kind in _SAYS:
+                first[record.kind][record.frame].setdefault(installation, record)
+    posts = {
+        frame: min(senders.values(), key=lambda record: instant(record.time))
+        for frame, senders in first["sent"].items()
+    }
     rows = []
     for post in sorted(posts.values(), key=lambda record: (instant(record.time), record.frame)):
         sent_in = lineage.held.get((post.installation, post.epoch))
         roster = lineage.roster(sent_in) if sent_in else None
-        cells = {
-            seat: _cell(seat, post, read[post.frame], unreadable[post.frame], roster, logs)
-            for seat in seats
+        # Each installation's record of the post: the sender's own, else one that read it, else
+        # one that could not.
+        wrote = {
+            **first["unreadable"][post.frame],
+            **first["received"][post.frame],
+            post.installation: post,
         }
-        why = {seat: unreadable[post.frame][seat] for seat in seats if cells[seat] == "unreadable"}
+        cells = {seat: _cell(seat, wrote.get(seat), roster, logs) for seat in seats}
         rows.append(
             Message(
                 frame=post.frame,
@@ -985,8 +1011,10 @@ def _messages(
                 epoch=post.epoch,
                 state=sent_in[1] if sent_in else None,
                 at=_mark(post),
+                utc=f"{instant(post.time)[0].isoformat(timespec='seconds')}Z",
                 cells=cells,
-                why=why,
+                why={seat: wrote[seat].why for seat in seats if cells[seat] == "unreadable"},
+                marks={seat: _mark(wrote[seat]) for seat in seats if seat in wrote},
             )
         )
     unmatched = sum(record.kind == "unreadable" and record.frame not in posts for record in records)
@@ -994,22 +1022,13 @@ def _messages(
 
 
 def _cell(
-    seat: str,
-    post: Record,
-    read: Set[str],
-    unreadable: Dict[str, str],
-    roster: Optional[FrozenSet[str]],
-    logs: _Logs,
+    seat: str, wrote: Optional[Record], roster: Optional[FrozenSet[str]], logs: _Logs
 ) -> str:
-    """What became of a post on one installation."""
-    if seat == post.installation:
-        return "sent"
-    if seat in read:
-        return "read"
-    if seat in unreadable:
-        return "unreadable"
+    """What became of a post on one installation, which wrote this record of it or none."""
+    if wrote is not None:
+        return _SAYS[wrote.kind]
     if roster is not None and seat not in roster:
         return "not a member"
     if seat not in logs.written:
         return "no log"
-    return "never got"
+    return "no record"

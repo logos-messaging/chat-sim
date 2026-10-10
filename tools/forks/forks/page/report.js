@@ -60,6 +60,16 @@
     ['unreached', { cls: 'never', word: 'not reached' }],
     ['listed', { cls: 'hatch', word: 'no log shared' }],
   ]);
+  /* How what became of a post on an installation is drawn: in a cell of the messages, and on
+     the timeline as a circle of a radius or as its sign. */
+  const FATES = new Map([
+    ['sent', { cls: 'sent', text: 'sent', r: 4.5 }],
+    ['read', { cls: 'read', sign: '\u2713', text: 'read', r: 3.5 }],
+    ['unreadable', { cls: 'unread', sign: '\u2715', text: 'unreadable' }],
+    ['no record', { cls: 'none', text: 'no record' }],
+    ['no log', { cls: 'hatch' }],
+    ['not a member', { cls: 'out' }],
+  ]);
 
   const sprite = document.getElementById('marks');
   const rail = document.getElementById('rail');
@@ -84,6 +94,8 @@
   let opener = null;
   /* The excerpt that is open: the record it shows, and where its bar says what the record is. */
   let excerpt = null;
+  /* The conversation whose every post the reader asked for. */
+  let whole = null;
 
   function el(tag, cls, text) {
     const made = document.createElement(tag);
@@ -195,6 +207,9 @@
     if (mine !== turn) return;
     /* Something that has no list of conversations is not the collector. */
     if (sayWhy(listing.gone ? { silent: true } : listing) || (convo && sayWhy(convo))) return;
+    /* Every post is asked of the conversation that is drawn, until another is drawn in its place. */
+    const asked = whole;
+    if (drawn.report.view !== id) whole = null;
     try {
       redraw(rail, 'rail', id, listing.text, () => railOf(listing.said, id));
       if (id === null) {
@@ -207,6 +222,7 @@
       }
     } catch (shaped) {
       /* JSON of another shape than the collector's: what is drawn stays as it was. */
+      if (drawn.report.view !== id) whole = asked;
       sayWhy({ unreadable: true });
       return;
     }
@@ -214,16 +230,18 @@
     say('');
   }
 
-  /* Draws a part of the page anew. A reader of the same view is left where they were in it. */
-  function redraw(container, name, view, text, build) {
+  /* Draws a part of the page anew. A reader of the same view is left where they were in it. A
+     control whose press asks for the drawing has it made whatever the answer, and stays where
+     it is. */
+  function redraw(container, name, view, text, build, pressed = null) {
     const was = drawn[name];
-    if (was.view === view && was.text === text) return;
+    if (!pressed && was.view === view && was.text === text) return;
     const started = performance.now();
     const stays = was.view === view;
     const held = stays && container.contains(document.activeElement) ? document.activeElement : null;
     const record = held && recordOf(held);
-    const place = stays ? placeIn(container) : null;
-    const scrolled = [...container.querySelectorAll('.scroll')].map((box) => [box.scrollLeft, box.scrollTop]);
+    const place = stays ? placeIn(container, pressed) : null;
+    const scrolled = [...container.querySelectorAll('.scroll')].map((box) => [box.scrollLeft, box.scrollTop, inSight(box)]);
     /* Each table keeps the stop it had, where that is drawn still. */
     const stood = stays
       ? [...container.querySelectorAll('[data-roving]')].map((group) => stops.get(group)).filter(Boolean).map((stop) => [stop, recordOf(stop)])
@@ -234,7 +252,7 @@
     container.replaceChildren(...made);
     drawn[name] = { view, text };
     container.querySelectorAll('.scroll').forEach((box, index) => {
-      if (stays && scrolled[index]) box.scrollTo(...scrolled[index]);
+      if (stays && scrolled[index]) settle(box, ...scrolled[index]);
       /* The newest epochs are what a lane is opened for. */
       else if (box.hasAttribute('data-newest')) box.scrollTo(box.scrollWidth, 0);
     });
@@ -257,16 +275,45 @@
     performance.measure(`draw ${name}`, { start: started, end: performance.now() });
   }
 
+  /* The rows in sight in a box that scrolls, by the names they keep from one drawing to the
+     next, each with how far down the box it starts. */
+  function inSight(box) {
+    const { top, bottom } = box.getBoundingClientRect();
+    return [...box.querySelectorAll('[data-key]')]
+      .map((row) => ({ key: row.getAttribute('data-key'), top: row.getBoundingClientRect().top - top }))
+      .filter((row) => row.top >= 0 && row.top < bottom - top);
+  }
+
+  /* Scrolls a box that was drawn anew to where it stood. The first row that was in sight and
+     is drawn still starts as far down the box as it did, whatever came or went above it, as
+     far as the box scrolls. */
+  function settle(box, left, top, sight) {
+    box.scrollTo(left, top);
+    const rows = new Map([...box.querySelectorAll('[data-key]')].map((row) => [row.getAttribute('data-key'), row]));
+    const kept = sight.find((row) => rows.has(row.key));
+    if (kept) box.scrollTop += rows.get(kept.key).getBoundingClientRect().top - box.getBoundingClientRect().top - kept.top;
+  }
+
+  /* Whether a box that scrolls down holds this: what is in one is the box's to keep in place. */
+  function boxed(made) {
+    const box = made.closest('.scroll');
+    return Boolean(box) && box.scrollHeight > box.clientHeight;
+  }
+
   /* The part at the middle of the window, by the name it keeps from one drawing to the next,
      and how far down the window it starts. */
-  function placeIn(container) {
+  function placeIn(container, pressed) {
+    /* Whoever presses a control is at the part it stands in. */
+    const part = pressed && pressed.closest('[data-key]');
+    if (part) return { key: part.getAttribute('data-key'), top: part.getBoundingClientRect().top };
     /* Whoever reads log lines is at the mark that opened them, while it is in the window. */
-    if (excerpt && opener && container.contains(opener)) {
+    if (excerpt && opener && container.contains(opener) && !boxed(opener)) {
       const { top, bottom } = opener.getBoundingClientRect();
       if (bottom > 0 && top < window.innerHeight) return { record: excerpt.record, top };
     }
     let found = null;
     for (const made of container.querySelectorAll('[data-key]')) {
+      if (boxed(made)) continue;
       const { top } = made.getBoundingClientRect();
       if (top <= window.innerHeight / 2) found = { key: made.getAttribute('data-key'), top };
     }
@@ -289,7 +336,7 @@
     let same;
     if (record) same = markOfRecord(container, record);
     else if (place !== null) same = [...container.querySelectorAll('a')].find((made) => made.getAttribute('href') === place);
-    else same = [...container.querySelectorAll('[tabindex]')].find((made) => made.tagName === held.tagName && made.getAttribute('aria-label') === name);
+    else same = [...container.querySelectorAll('[tabindex], button')].find((made) => made.tagName === held.tagName && made.getAttribute('aria-label') === name);
     if (same && record) hold(same);
     if (same && focus) same.focus({ preventScroll: true });
   }
@@ -440,8 +487,9 @@
 
   /* ---- a conversation ---- */
 
-  function conversation(convo) {
+  function conversation(convo, pressed = false) {
     const split = convo.split_epoch !== null;
+    const { posts, fold } = postsOf(convo, pressed);
     const at = {
       split,
       hues: new Map(convo.branches.map((branch, index) => [branch.label, HUES[index] || 'bn'])),
@@ -450,6 +498,8 @@
       columns: new Map(convo.epochs.map((epoch, index) => [epoch, index])),
       order: convo.lanes.flatMap((group) => group.installations),
       runs: new Map(convo.runs.map((run) => [run.id, run])),
+      posts,
+      fold,
       marks: [],
     };
     const back = el('a', 'sub', 'All conversations');
@@ -466,7 +516,8 @@
       tiles(convo, at),
       section('Lineage of states', 'a circle is a state and holds how many installations reported it, a line is a link a log proves', lineage(convo, at)),
       section('Installations', 'a row is an installation, a column an epoch, a cell the state it reported there', ...lanes(convo, at)),
-      section('Timeline', 'a line is a run, a mark where its installation reached an epoch with the letter of its branch, dots where its delivery was not online; times are UTC', timeline(convo, at)),
+      section('Timeline', 'a line is a run, a mark where its installation reached an epoch with the letter of its branch, dots where its delivery was not online; times are UTC', ...timeline(convo, at)),
+      section('Messages', 'a row is a post, a column an installation, a cell what became of the post there', ...messages(convo, at)),
       section(split ? 'The state each branch holds' : 'The state the group holds', 'the newest state of each branch, and whom its roster lists', holds(convo, at)),
       ...linesOf(convo.lines),
     ];
@@ -719,6 +770,11 @@
       if (step < DAY && day !== date) axis.append(svg('text', { class: 'axis', x: x(tick), y: '79%', 'text-anchor': 'middle' }, day));
       date = day;
     }
+    /* The posts each installation wrote a record of, in the order sent. */
+    const wrote = new Map(at.order.map((id) => [id, []]));
+    for (const message of at.posts) {
+      for (const id of Object.keys(message.marks)) wrote.get(id).push(message);
+    }
     const body = el('tbody');
     for (const id of at.order) {
       const seat = at.seats.get(id);
@@ -744,12 +800,149 @@
         /* Off the shared line a mark carries its letter, so that its colour is not all that says it. */
         if (letter && cls !== 'shared') strip.append(svg('text', { class: 'letter', x: x(made.at.seconds), y: '15%', 'text-anchor': 'middle', 'aria-hidden': 'true' }, letter));
       }
+      for (const message of wrote.get(id)) {
+        const mark = message.marks[id];
+        const { cls, sign, r } = FATES.get(message.cells[id]) || { cls: '', r: 3.5 };
+        const made = r
+          ? svg('circle', { class: `post ${cls}`, cx: x(mark.seconds), cy: '50%', r })
+          : svg('text', { class: `post ${cls}`, x: x(mark.seconds), y: '50%', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, sign);
+        strip.append(opens(made, { at: mark }, `${fate(message, id)}, at ${mark.time}`, 'timeline', at));
+      }
       row.append(into(el('td'), into(el('div', 'plotbox'), strip)));
     }
     const titles = into(el('tr'), heading('', 'Installation'), into(heading('', ''), into(el('div', 'plotbox'), axis)));
     const table = into(el('table', 'times'), into(el('thead'), titles), body);
     table.setAttribute('data-roving', '');
-    return scroller('timeline', 'The timeline', table);
+    const box = scroller('timeline', 'The timeline', table);
+    if (!at.posts.length) return [box];
+    const entry = (shape, text) => {
+      const key = svg('svg', { class: 'key', viewBox: '-7 -7 14 14', 'aria-hidden': 'true', focusable: 'false' });
+      return into(el('li'), into(key, shape), el('span', '', text));
+    };
+    const legend = into(
+      el('ul', 'legend'),
+      entry(svg('circle', { class: 'post sent', r: FATES.get('sent').r }), 'sent a post'),
+      entry(svg('circle', { class: 'post read', r: FATES.get('read').r }), 'read one'),
+      entry(svg('text', { class: 'post unread', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, FATES.get('unreadable').sign), 'one arrived, unreadable'),
+    );
+    if (at.fold === 'none' || at.fold === 'all') return [legend, box];
+    return [legend, el('p', 'quiet', `The posts marked are those the messages below draw, of ${convo.messages.length}.`), box];
+  }
+
+  /* ---- the messages ---- */
+
+  /* The posts that are drawn, and how they fold: `none` where they are no more than the
+     collector says a page starts with, `all` once the reader asked for every one, and until
+     then `newest`, as many as it says. While the page reads on, a post whose record the reader
+     has open or in focus stays drawn, and those after it: `kept` where that is more than the
+     newest. A press of the reader's own keeps none. */
+  function postsOf(convo, pressed) {
+    const newest = convo.messages.length - convo.shown_messages;
+    if (newest <= 0) return { posts: convo.messages, fold: 'none' };
+    if (whole === convo.id) return { posts: convo.messages, fold: 'all' };
+    let from = newest;
+    for (const record of pressed ? [] : [excerpt && excerpt.record, recordOf(document.activeElement)]) {
+      const held = record ? convo.messages.findIndex((message) => Object.values(message.marks).some((mark) => mark.run === record.run && mark.line === record.line)) : -1;
+      if (held >= 0) from = Math.min(from, held);
+    }
+    return { posts: convo.messages.slice(from), fold: from < newest ? 'kept' : 'newest' };
+  }
+
+  /* What became of a post on an installation, in words. */
+  function fate(message, id) {
+    const why = message.why[id];
+    return `${id}, frame ${message.frame} from ${message.sender}, ${message.cells[id]}${why ? `, ${why}` : ''}`;
+  }
+
+  /* The state a post was sent in, as the lanes draw it, or its epoch alone where its sender
+     reported no state there. */
+  function sentIn(message, at) {
+    const made = el('span', 'chip');
+    if (message.state === null) {
+      made.setAttribute('title', `epoch ${message.epoch}, its sender reported no state there`);
+      return into(made, `epoch ${message.epoch}`);
+    }
+    const { cls, letter, word } = look(at.states.get(`${message.epoch}:${message.state}`), at);
+    const swatch = el('span', `sw ${cls}`);
+    swatch.setAttribute('role', 'img');
+    swatch.setAttribute('aria-label', word);
+    made.setAttribute('title', `epoch ${message.epoch}, state ${message.state}, ${word}`);
+    return into(made, swatch, cls === 'shared' ? `epoch ${message.epoch}` : `${letter} \u00b7 epoch ${message.epoch}`);
+  }
+
+  /* A post's cell on an installation. One that stands for a record opens the lines around it. */
+  function post(message, id, at) {
+    const kind = message.cells[id];
+    const { cls, sign, text } = FATES.get(kind) || { cls: '', text: kind };
+    const made = el('span', `mk ${cls}`);
+    if (sign) made.append(el('b', '', sign));
+    if (text) made.append(text);
+    /* A cell that holds no word says what it is to a pointer as well. */
+    else made.setAttribute('title', kind);
+    if (message.why[id]) made.append(el('small', '', message.why[id]));
+    const mark = message.marks[id];
+    if (mark) return opens(made, { at: mark }, fate(message, id), 'messages', at);
+    made.setAttribute('role', 'img');
+    made.setAttribute('aria-label', fate(message, id));
+    return made;
+  }
+
+  function messages(convo, at) {
+    const unmatched = convo.unmatched_unreadable
+      ? [into(el('p', 'quiet'), el('b', '', `Reports of an unreadable frame of no known post: ${convo.unmatched_unreadable}.`), ' Each is of a frame that could not be read and that no shared log says was a post, and a frame has one for each time an installation reported it. A vote or any other encrypted frame of the group counts as much as a post whose sender shares no log.')]
+      : [];
+    if (!convo.messages.length) return [el('p', 'quiet', 'No log holds a post of this conversation.'), ...unmatched];
+    const titles = into(el('tr'), ...['Sent, UTC', 'Frame', 'From', 'Sent in'].map((title) => {
+      const made = heading(title === 'Frame' ? 'frame' : '', title);
+      made.setAttribute('rowspan', 2);
+      return made;
+    }));
+    for (const group of convo.lanes) {
+      const branch = group.under === 'branch';
+      const under = el('th', branch ? `under ${at.hues.get(group.branch)}` : 'under');
+      under.setAttribute('colspan', group.installations.length);
+      under.setAttribute('scope', 'col');
+      titles.append(into(under, el('span', '', branch ? `Branch ${group.branch}` : HEADINGS.get(group.under) || group.under)));
+    }
+    const body = el('tbody');
+    for (const message of at.posts) {
+      const sent = el('td', 'mono', message.utc);
+      sent.setAttribute('title', message.at.time);
+      const frame = el('th', 'frame mono', message.frame);
+      frame.setAttribute('scope', 'row');
+      frame.setAttribute('title', message.frame);
+      const row = into(el('tr'), sent, frame, el('td', 'mono', message.sender), into(el('td'), sentIn(message, at)));
+      row.setAttribute('data-row', '');
+      row.setAttribute('data-key', `post ${message.frame}`);
+      for (const id of at.order) row.append(into(el('td', 'm'), post(message, id, at)));
+      body.append(row);
+    }
+    const table = into(el('table', 'posts'), into(el('thead'), titles, into(el('tr'), ...at.order.map((id) => heading('m', id)))), body);
+    table.setAttribute('data-roving', '');
+    const entry = (swatch, text) => into(el('li'), swatch, el('span', '', text));
+    const legend = into(
+      el('ul', 'legend'),
+      entry(el('span', 'mk none', FATES.get('no record').text), 'its log is shared and holds no record of the frame'),
+      entry(el('span', 'sw hatch'), 'no log shared'),
+      entry(el('span', 'sw out'), 'not a member when the post was sent'),
+    );
+    const made = [
+      legend,
+      el('p', 'quiet', 'A cell that holds a record opens the log lines around it. Under unreadable stands the cause its installation gave. The arrow keys move between such cells, and Enter opens one.'),
+    ];
+    if (at.fold !== 'none') {
+      const newest = `The newest ${convo.shown_messages} of ${convo.messages.length} posts are drawn, here and on the timeline`;
+      const said = {
+        all: `All ${convo.messages.length} posts are drawn, here and on the timeline.`,
+        newest: `${newest}.`,
+        kept: `${newest}, and the older ones back to the one that is open or has the focus.`,
+      }[at.fold];
+      const rest = el('button', 'btn', at.fold === 'all' ? `Draw the newest ${convo.shown_messages} only` : `Draw all ${convo.messages.length}`);
+      rest.setAttribute('type', 'button');
+      rest.setAttribute('data-rest', '');
+      made.push(into(el('p', 'rest'), el('span', '', said), rest));
+    }
+    return [...made, scroller('postsbox', 'The messages, post by post', table), ...unmatched];
   }
 
   function holds(convo, at) {
@@ -820,9 +1013,11 @@
       }
       card.append(text);
     }
-    /* The report may have been drawn anew while the lines were asked for. */
-    opener = mark.isConnected ? mark : markOfRecord(report, record);
-    if (opener) hold(opener);
+    /* The report may have been drawn anew while the lines were asked for, and without their mark. */
+    const stands = mark.isConnected ? mark : markOfRecord(report, record);
+    if (!stands) return;
+    opener = stands;
+    hold(opener);
     excerpt = { record, word };
     log.replaceChildren(card);
     log.hidden = false;
@@ -855,7 +1050,10 @@
   /* The mark an arrow key leads to: along its row, or the nearest in the next row that has one. */
   function toward(mark, key) {
     const row = mark.closest('[data-row]');
-    const along = [...row.querySelectorAll('[data-m]')];
+    /* Along a row by where each mark stands: a timeline's are not drawn in the order of their times. */
+    const middle = (each) => each.getBoundingClientRect().left + each.getBoundingClientRect().right;
+    const stands = new Map([...row.querySelectorAll('[data-m]')].map((each) => [each, middle(each)]));
+    const along = [...stands.keys()].sort((one, other) => stands.get(one) - stands.get(other));
     const index = along.indexOf(mark);
     if (key === 'ArrowLeft') return along[index - 1];
     if (key === 'ArrowRight') return along[index + 1];
@@ -873,6 +1071,13 @@
   }
 
   report.addEventListener('click', (event) => {
+    const rest = event.target.closest('[data-rest]');
+    if (rest) {
+      const { view, text } = drawn.report;
+      whole = whole === view ? null : view;
+      redraw(report, 'report', view, text, () => conversation(JSON.parse(text), true), rest);
+      return;
+    }
     const mark = event.target.closest('[data-m]');
     if (!mark) return;
     hold(mark);

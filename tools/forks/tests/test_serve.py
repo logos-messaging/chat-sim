@@ -74,6 +74,7 @@ KEYS = [
     "installations",
     "timeline",
     "messages",
+    "shown_messages",
     "unmatched_unreadable",
     "runs",
     "lines",
@@ -105,6 +106,12 @@ def line_of(record: Record, group: str = "") -> str:
     if record.kind == "epoch":
         roster = ",".join(f"{hexed(group + name)}:{account(name)}" for name, _ in record.roster)
         said.update(state=hexed(record.state, 16), members=len(record.roster), roster=roster)
+    if record.frame is not None:
+        said["frame"] = record.frame
+    if record.sender is not None:
+        said["from"] = hexed(group + record.sender)
+    if record.why is not None:
+        said["why"] = record.why
     words = " ".join(f"{key}={value}" for key, value in said.items())
     return f"{record.time}  INFO libchat::groupv2trace: {record.kind} {words}\n"
 
