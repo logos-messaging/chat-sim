@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fork report</title>
+<link rel="stylesheet" href="page/report.css">
+<script src="page/report.js" defer></script>
+</head>
+<body>
+<!-- The marks the script draws by reference. -->
+<svg id="marks" class="marks" aria-hidden="true" focusable="false">
+  <symbol id="mark-split" viewBox="0 0 24 24"><path d="M12 21v-7"/><path d="M12 14 6 8V3"/><path d="M12 14l6-6V3"/></symbol>
+  <symbol id="mark-whole" viewBox="0 0 24 24"><path stroke-width="2.4" d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="mark-behind" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="mark-nodata" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3 3.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.6"/><path d="M12 16.6v.1"/></symbol>
+  <symbol id="mark-unknown" viewBox="0 0 24 24"><path d="M12 2.2 21.8 12 12 21.8 2.2 12z"/><path d="M10 10.2a2.1 2.1 0 1 1 2.9 1.9c-.6.3-.9.7-.9 1.3"/><path d="M12 16.4v.1"/></symbol>
+  <symbol id="mark-removed" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8 12h8"/></symbol>
+  <symbol id="mark-ended" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><rect fill="currentColor" stroke="none" x="9" y="9" width="6" height="6" rx="1"/></symbol>
+  <symbol id="mark-never" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5" stroke-dasharray="3.2 3.6"/></symbol>
+</svg>
+<div class="rp">
+  <nav id="rail" class="rail" aria-label="Conversations"></nav>
+  <main id="main" class="main">
+    <div id="notice" class="notice" role="status" hidden></div>
+    <div id="report" class="report"><p class="quiet">Reading the collector.</p></div>
+    <section id="log" class="sec log" aria-label="Log" hidden></section>
+  </main>
+</div>
+<noscript><p class="quiet">The report is drawn by the page's script, and this browser runs none.</p></noscript>
+</body>
+</html>

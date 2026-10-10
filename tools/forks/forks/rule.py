@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import asdict, dataclass, fields
+from datetime import datetime
 from functools import cached_property
 from operator import attrgetter, itemgetter
 from typing import Collection, Dict, FrozenSet, Iterable, List, Mapping, Optional, Set, Tuple
@@ -25,8 +26,28 @@ ENDED = "ended"
 NEVER_JOINED = "never joined"
 NO_DATA = "no data"
 _LIVE = (TIP, BEHIND, LINEAGE_UNKNOWN)
+# The order positions are listed in: the live ones first.
+POSITIONS = (TIP, BEHIND, LINEAGE_UNKNOWN, ENDED, REMOVED, NEVER_JOINED, NO_DATA)
 
 WHOLE = "whole"
+
+# How a state stands among the branches.
+ON_A_BRANCH = "branch"
+SHARED = "shared"
+ONE_SIDE = "side"
+UNKNOWN = "unknown"
+
+# The headings installations are listed under.
+ONE_LINE = "one line"
+NEITHER_BRANCH = "neither branch"
+NOT_PLACED = "not placed"
+
+# What a lane holds at an epoch.
+WROTE = "wrote"
+UNREACHED = "unreached"
+LISTED = "listed"
+
+_1970 = datetime(1970, 1, 1)
 
 # A state: an epoch and its fingerprint.
 Node = Tuple[int, str]
@@ -38,12 +59,16 @@ _SAID = attrgetter(*(field.name for field in fields(Record) if field.name not in
 
 @dataclass(frozen=True)
 class Mark:
-    """Where and when a record was written."""
+    """Where and when a record was written.
+
+    `seconds` is the stamp as it is compared: seconds since 1970 in UTC.
+    """
 
     run: str
     line: int
     time: str
     has_offset: bool
+    seconds: float
 
 
 @dataclass(frozen=True)
@@ -71,17 +96,52 @@ class Step:
 
 
 @dataclass(frozen=True)
+class Span:
+    """A stretch of a run, in seconds since 1970 in UTC, and whether its delivery was online."""
+
+    start: float
+    end: float
+    online: bool
+
+
+@dataclass(frozen=True)
+class Cell:
+    """What a lane holds at an epoch.
+
+    `steps` are the places in the installation's `history` of the records it wrote there, in
+    the order it wrote them: none where it wrote nothing.
+    """
+
+    epoch: int
+    kind: str
+    steps: List[int]
+
+
+@dataclass(frozen=True)
 class Installation:
-    """A seat of the conversation: where it stands, and the records it wrote to get there."""
+    """A seat of the conversation: where it stands, and the records it wrote to get there.
+
+    `kept` says whether it goes by a line kept of a log that is gone. `listed` holds, for a
+    seat that wrote nothing here, the epochs of the states whose roster lists it. `unreached`
+    holds, for a seat that is behind, the epochs of the states links lead on to from its own,
+    and `behind_by` how far the last of them is above it. `cells` are its lane, epoch by epoch.
+    `spans` are the runs it wrote in, as stretches of time.
+    """
 
     id: str
     account: Optional[str]
     runs: List[str]
+    kept: bool
     position: str
     branch: Optional[str]
     epoch: Optional[int]
     state: Optional[str]
+    listed: List[int]
+    unreached: List[int]
+    behind_by: Optional[int]
     history: List[Step]
+    cells: List[Cell]
+    spans: List[Span]
 
 
 @dataclass(frozen=True)
@@ -94,15 +154,24 @@ class StateId:
 
 @dataclass(frozen=True)
 class State:
-    """A reported state: its branch if it is on one, and the states it came from."""
+    """A reported state: its branch if it is on one, and the states it came from.
+
+    `lineage` says how it stands among the branches, and `toward` names the branch of a state
+    that is one side's. `holders` counts the installations that reported it. `row` is the row of
+    the lineage a page draws it in, counted from the top.
+    """
 
     epoch: int
     state: str
     branch: Optional[str]
+    lineage: str
+    toward: Optional[str]
+    holders: int
     members: int
     roster: List[str]
     held_by: List[str]
     after: List[StateId]
+    row: int
 
 
 @dataclass(frozen=True)
@@ -123,6 +192,40 @@ class Coverage:
 
     sharing: int
     seats: int
+
+
+@dataclass(frozen=True)
+class Position:
+    """A position some seat is in, and the seats in it."""
+
+    position: str
+    count: int
+    installations: List[str]
+
+
+@dataclass(frozen=True)
+class Lanes:
+    """A heading installations are listed under, and those under it in the order they are read.
+
+    `positions` are the positions of those installations, each once.
+    """
+
+    under: str
+    branch: Optional[str]
+    positions: List[str]
+    installations: List[str]
+
+
+@dataclass(frozen=True)
+class Timeline:
+    """The first and the last stamp of the records that name the conversation.
+
+    Both are seconds since 1970 in UTC. A run reaches past them where it wrote anything else
+    before or after: its `run` record, a `delivery` record or a record of another conversation.
+    """
+
+    start: float
+    end: float
 
 
 @dataclass(frozen=True)
@@ -163,9 +266,13 @@ class Conversation:
     verdict: str
     split_epoch: Optional[int]
     coverage: Coverage
+    positions: List[Position]
+    epochs: List[int]
     branches: List[Branch]
     states: List[State]
+    lanes: List[Lanes]
     installations: List[Installation]
+    timeline: Timeline
     messages: List[Message]
     unmatched_unreadable: int
     runs: List[Run]
@@ -515,6 +622,82 @@ class _Lineage:
         """The installations whose newest state is on a branch."""
         return sorted(seat for seat, node in self.newest.items() if node in branch)
 
+    def lineages(self, branches: List[Set[Node]]) -> Dict[Node, Tuple[str, Optional[str]]]:
+        """How each state stands among the branches, and the branch a state of one side leads to.
+
+        A state on a branch of a split is that branch's. Any other state is shared when links
+        lead on from it to the newest state of two or more branches, one side's when they lead
+        to that of one branch alone, and of unknown lineage when they lead to none. Without a
+        split there is one branch and no side: its newest state and the states links lead on
+        from to it are shared.
+        """
+        split = self.split_epoch() is not None
+        on_a_branch = set().union(*branches) if split else set()
+        tips = {_label(index): max(branch) for index, branch in enumerate(branches)}
+        leading = {name: _reach(tip, self.parents) | {tip} for name, tip in tips.items()}
+        found: Dict[Node, Tuple[str, Optional[str]]] = {}
+        for node in self.reported:
+            toward = [name for name, below in leading.items() if node in below]
+            if node in on_a_branch:
+                found[node] = ON_A_BRANCH, None
+            elif split and len(toward) == 1:
+                found[node] = ONE_SIDE, toward[0]
+            else:
+                found[node] = (SHARED if toward else UNKNOWN), None
+        return found
+
+    def rows(self, branches: List[Set[Node]]) -> Dict[Node, int]:
+        """The row of the lineage each state is drawn in, counted from the top.
+
+        A row is a line of states. Each branch has one, in the order of the branches: its newest
+        state and the states links lead to it from, each by the latest it came from, back to a
+        state an earlier row holds, which the row leaves. A state no such line reaches starts a
+        row the same way, the newest first. A row stands under the one it leaves, nearer to it
+        the later it leaves, so that a link to a row's first state crosses no row that leaves
+        earlier.
+        """
+        line: Dict[Node, int] = {}
+        # For each line, by when it was found: the state it leaves, or None for a first line.
+        leaves: List[Optional[Node]] = []
+        for node in [*map(max, branches), *sorted(self.reported, reverse=True)]:
+            if node in line:
+                continue
+            while True:
+                line[node] = len(leaves)
+                came = self.parents.get(node, set())
+                held = came & line.keys()
+                if held or not came:
+                    leaves.append(max(held, default=None))
+                    break
+                node = max(came)
+        under: Dict[Optional[int], List[int]] = defaultdict(list)
+        for index, left in enumerate(leaves):
+            under[None if left is None else line[left]].append(index)
+        order: List[int] = []
+        todo = under[None][::-1]
+        while todo:
+            index = todo.pop()
+            order.append(index)
+            # The later a line leaves, the sooner it is taken; of two that leave at one epoch,
+            # the one found first.
+            nearest = sorted(under[index], key=lambda found: (-leaves[found][0], found))
+            todo.extend(reversed(nearest))
+        row = {index: at for at, index in enumerate(order)}
+        return {node: row[index] for node, index in line.items()}
+
+    def listed(self) -> Dict[str, List[int]]:
+        """For each seat that wrote nothing here, the epochs of the states whose roster lists it."""
+        listed: Dict[str, Set[int]] = defaultdict(set)
+        for (epoch, _), record in self.reported.items():
+            for member in map(_MEMBER, record.roster):
+                if member not in self.left:
+                    listed[member].add(epoch)
+        return {seat: sorted(epochs) for seat, epochs in listed.items()}
+
+    def unreached(self, seat: str) -> List[int]:
+        """The epochs of the states links lead on to from a seat's newest state."""
+        return sorted({epoch for epoch, _ in _reach(self.newest[seat], self.links)})
+
 
 def _reach(start: Node, edges: Dict[Node, Set[Node]]) -> Set[Node]:
     seen: Set[Node] = set()
@@ -549,19 +732,47 @@ def _conversation(
     }
     branches = lineage.branches()
     label = {node: _label(index) for index, branch in enumerate(branches) for node in branch}
+    lineages = lineage.lineages(branches)
+    rows = lineage.rows(branches)
+    listed = lineage.listed()
     counted = [position for position in positions.values() if position not in (ENDED, REMOVED)]
+    installations = [
+        _installation(
+            seat, positions[seat], lineage, logs, label, kept.get(seat), listed.get(seat, [])
+        )
+        for seat in seats
+    ]
+    # Every `epoch` and `left` record is a step, stamped already.
+    stamps = [step.at.seconds for seat in installations for step in seat.history]
+    stamps += [
+        _seconds(record.time)
+        for record in logs.convos[convo]
+        if record.kind not in ("epoch", "left")
+    ]
     messages, unmatched = _messages(logs.convos[convo], seats, lineage, logs)
     return Conversation(
         id=convo,
         verdict=lineage.verdict(positions),
         split_epoch=lineage.split_epoch(),
         coverage=Coverage(sum(position != NO_DATA for position in counted), len(counted)),
-        branches=[_branch(_label(index), branch, lineage) for index, branch in enumerate(branches)],
-        states=[_state(node, lineage, label) for node in sorted(lineage.reported)],
-        installations=[
-            _installation(seat, positions[seat], lineage, logs, label, kept.get(seat))
-            for seat in seats
+        positions=[
+            Position(position, len(here), here)
+            for position in POSITIONS
+            for here in [[seat for seat in seats if positions[seat] == position]]
+            if here
         ],
+        epochs=sorted(
+            {epoch for epoch, _ in lineage.reported}
+            | {step.epoch for seat in installations for step in seat.history}
+        ),
+        branches=[_branch(_label(index), branch, lineage) for index, branch in enumerate(branches)],
+        states=[
+            _state(node, lineage, label, lineages[node], rows[node])
+            for node in sorted(lineage.reported)
+        ],
+        lanes=_lanes(positions, lineage, label, lineages),
+        installations=installations,
+        timeline=Timeline(min(stamps), max(stamps)),
         messages=messages,
         unmatched_unreadable=unmatched,
         runs=[
@@ -582,7 +793,13 @@ def _label(index: int) -> str:
 
 
 def _mark(record: Record) -> Mark:
-    return Mark(record.run, record.line, record.time, record.has_offset)
+    return Mark(record.run, record.line, record.time, record.has_offset, _seconds(record.time))
+
+
+def _seconds(time: str) -> float:
+    """A stamp as seconds since 1970 in UTC; without an offset it is read as UTC."""
+    written, fraction = instant(time)
+    return (written - _1970).total_seconds() + float(f"0.{fraction or 0}")
 
 
 def _branch(label: str, branch: Set[Node], lineage: _Lineage) -> Branch:
@@ -597,15 +814,25 @@ def _branch(label: str, branch: Set[Node], lineage: _Lineage) -> Branch:
     )
 
 
-def _state(node: Node, lineage: _Lineage, label: Dict[Node, str]) -> State:
+def _state(
+    node: Node,
+    lineage: _Lineage,
+    label: Dict[Node, str],
+    stands: Tuple[str, Optional[str]],
+    row: int,
+) -> State:
     return State(
         epoch=node[0],
         state=node[1],
         branch=label.get(node),
+        lineage=stands[0],
+        toward=stands[1],
+        holders=len(lineage.holders[node]),
         members=lineage.reported[node].members,
         roster=sorted(lineage.roster(node)),
         held_by=sorted(lineage.holders[node]),
         after=[StateId(*parent) for parent in sorted(lineage.parents.get(node, ()))],
+        row=row,
     )
 
 
@@ -616,22 +843,111 @@ def _installation(
     logs: _Logs,
     label: Dict[Node, str],
     kept: Optional[Kept],
+    listed: List[int],
 ) -> Installation:
     node = lineage.newest.get(seat)
     history = lineage.steps.get(seat, [])
     account = logs.accounts.get(seat, lineage.accounts.get(seat))
     if kept and kept.account is not None:
         account = kept.account
+    unreached = lineage.unreached(seat) if position == BEHIND else []
+    # A seat whose log is here, or was, is not one nobody shared a log of.
+    unshared = seat not in logs.written and kept is None
     return Installation(
         id=seat,
         account=account,
         runs=logs.runs_of(seat),
+        kept=kept is not None,
         position=position,
         branch=label.get(node) if node else None,
         epoch=history[-1].epoch if history else kept.epoch if kept else None,
         state=node[1] if node else None,
+        listed=listed,
+        unreached=unreached,
+        behind_by=unreached[-1] - node[0] if unreached else None,
         history=history,
+        cells=_cells(history, unreached, listed if unshared else []),
+        spans=_spans(seat, logs),
     )
+
+
+def _cells(history: List[Step], unreached: List[int], listed: List[int]) -> List[Cell]:
+    """A lane: what it holds at each epoch it holds something at, by epoch.
+
+    What the installation wrote at an epoch stands there, whatever else is said of the epoch.
+    An epoch links lead on to from its newest state is unreached, and an epoch whose roster
+    lists a seat nobody shared a log of is listed.
+    """
+    wrote: Dict[int, List[int]] = defaultdict(list)
+    for place, step in enumerate(history):
+        wrote[step.epoch].append(place)
+    held = {epoch: Cell(epoch, LISTED, []) for epoch in listed}
+    held.update({epoch: Cell(epoch, UNREACHED, []) for epoch in unreached})
+    held.update({epoch: Cell(epoch, WROTE, places) for epoch, places in wrote.items()})
+    return [held[epoch] for epoch in sorted(held)]
+
+
+def _lanes(
+    positions: Dict[str, str],
+    lineage: _Lineage,
+    label: Dict[Node, str],
+    lineages: Dict[Node, Tuple[str, Optional[str]]],
+) -> List[Lanes]:
+    """The installations under the headings they are read under, by position under each.
+
+    An installation goes by the last state it wrote, also when a leave follows it: under that
+    state's branch, under the shared states when it is one, and with those the logs place
+    nowhere otherwise, as when it wrote no state.
+    """
+    split = lineage.split_epoch() is not None
+    shared = (NEITHER_BRANCH if split else ONE_LINE), None
+    nowhere = NOT_PLACED, None
+    under: Dict[Tuple[str, Optional[str]], List[str]] = {
+        (ON_A_BRANCH, name): [] for name in dict.fromkeys(label.values()) if split
+    }
+    under.update({shared: [], nowhere: []})
+    for seat in sorted(positions, key=lambda seat: (POSITIONS.index(positions[seat]), seat)):
+        wrote = lineage.wrote.get(seat)
+        stands = lineages[wrote[-1]][0] if wrote else UNKNOWN
+        if stands == ON_A_BRANCH:
+            under[ON_A_BRANCH, label[wrote[-1]]].append(seat)
+        else:
+            under[shared if stands == SHARED else nowhere].append(seat)
+    return [
+        Lanes(heading, branch, list(dict.fromkeys(positions[seat] for seat in seats)), seats)
+        for (heading, branch), seats in under.items()
+        if seats
+    ]
+
+
+def _spans(seat: str, logs: _Logs) -> List[Span]:
+    """Each run an installation wrote in as stretches of time, cut where its delivery changed.
+
+    A run reaches from the first to the last of the installation's records and the run's
+    `delivery` records, in the order of their lines. Nothing says it was off before the first
+    `delivery` record, so it is read as online until then.
+    """
+    runs: Dict[str, List[Record]] = defaultdict(list)
+    for record in logs.written.get(seat, ()):
+        runs[record.run].append(record)
+    spans: List[Span] = []
+    for run, own in runs.items():
+        changes = logs.delivery.get(run, [])
+        lines = sorted([own[0], own[-1], *changes[:1], *changes[-1:]], key=attrgetter("line"))
+        at = _seconds(lines[0].time)
+        # A clock that went back ends no run before it began.
+        end = max(at, _seconds(lines[-1].time))
+        online, before = True, len(spans)
+        for change in changes:
+            if (change.state == "online") != online:
+                moment = min(max(at, _seconds(change.time)), end)
+                if moment > at:
+                    spans.append(Span(at, moment, online))
+                at, online = moment, not online
+        # A run of one stamp is still a run; a change at its last stamp begins no stretch.
+        if end > at or len(spans) == before:
+            spans.append(Span(at, end, online))
+    return spans
 
 
 def _run(name: str, final: bool, logs: _Logs) -> Run:

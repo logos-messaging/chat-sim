@@ -75,8 +75,9 @@ def _add_serve(commands: argparse._SubParsersAction) -> None:
     command = commands.add_parser(
         "serve",
         help="collect the logs members share, and report on them over HTTP",
-        description="Keeps the logs members send it under a directory and answers each "
-        "conversation's report as JSON. Every call must carry the token.",
+        description="Keeps the logs members send it under a directory, answers each "
+        "conversation's report as JSON, and serves a page that draws the reports at its own "
+        "address. Every call must carry the token.",
     )
     command.add_argument(
         "--data", metavar="DIR", type=Path, required=True, help="the directory to keep the runs in"

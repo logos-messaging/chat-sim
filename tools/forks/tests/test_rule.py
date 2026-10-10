@@ -4,7 +4,7 @@ from dataclasses import replace
 from typing import Dict, List, Set, Tuple
 
 from forks.records import Record
-from forks.rule import Conversation, Installation, Kept, report
+from forks.rule import POSITIONS, Conversation, Installation, Kept, Span, State, report
 
 CONVO = "2a30d6a2c1"
 
@@ -92,6 +92,7 @@ def run(*records, final=False):
     return (final, list(records))
 
 
+PAIR = "saro raya"
 ALL3 = "saro raya pax"
 ALL4 = ALL3 + " mira"
 ALL5 = ALL4 + " kes"
@@ -927,6 +928,43 @@ class Branches(unittest.TestCase):
         on_none = [state.state for state in conversation.states if state.branch is None]
         self.assertEqual(on_none, ["X2", "A3"])
 
+    def test_each_branch_is_a_row_under_the_one_it_leaves_and_the_later_it_leaves_the_nearer(self):
+        # Pax leaves Saro's and Raya's line at T2; Mira and Kes leave it at X1, and each other
+        # at L3.
+        logs = started("saro", "raya", "pax", "mira", "kes")
+        for name in ("saro", "raya", "pax", "mira", "kes"):
+            logs[name].epoch(name, 1, "X1", ALL5)
+        for name in ("saro", "raya", "pax"):
+            logs[name].epoch(name, 2, "T2", ALL5)
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 3, "T3", ALL5)
+            logs[name].epoch(name, 4, "T4", ALL5)
+        logs["pax"].epoch("pax", 3, "P3", ALL5)
+        for name in ("mira", "kes"):
+            logs[name].epoch(name, 2, "L2", ALL5)
+            logs[name].epoch(name, 3, "L3", ALL5)
+        logs["mira"].epoch("mira", 4, "M4", ALL5)
+        logs["kes"].epoch("kes", 4, "K4", ALL5)
+        conversation = one(logs)
+        self.assertEqual(
+            [(b.label, b.state) for b in conversation.branches],
+            [("A", "T4"), ("B", "K4"), ("C", "M4"), ("D", "P3")],
+        )
+        self.assertEqual(
+            [(*node(state), state.lineage, state.row) for state in conversation.states],
+            [
+                (1, "X1", "shared", 0),
+                (2, "L2", "shared", 2),
+                (2, "T2", "shared", 0),
+                (3, "L3", "shared", 2),
+                (3, "P3", "branch", 1),
+                (3, "T3", "branch", 0),
+                (4, "K4", "branch", 2),
+                (4, "M4", "branch", 3),
+                (4, "T4", "branch", 0),
+            ],
+        )
+
     def two_behind(self, saro: List[int], raya: List[int]) -> Conversation:
         """A split at epoch 3 where Mira stays at A3 and Kes at A4.
 
@@ -1063,6 +1101,536 @@ class Runs(unittest.TestCase):
                 ("initialising", 2, "2026-10-08T10:00:02.000Z"),
                 ("online", 4, "2026-10-08T10:00:04.000Z"),
             ],
+        )
+
+
+def read_histories() -> List[Tuple[str, Conversation]]:
+    """Every history of the table, as it is reported."""
+    read = []
+    for name, history, _, _ in HISTORIES:
+        kept = [kept_line(who, *line) for who, line in KEPT.get(name, {}).items()]
+        read.append((name, one(*as_logs(history), kept)))
+    return read
+
+
+def node(state) -> Tuple[int, str]:
+    return state.epoch, state.state
+
+
+def leading_to(conversation: Conversation, newest: Tuple[int, str]) -> Set[Tuple[int, str]]:
+    """A state and every state the report's links lead on from to it."""
+    after = {node(state): list(map(node, state.after)) for state in conversation.states}
+    found, todo = {newest}, [newest]
+    while todo:
+        for parent in after[todo.pop()]:
+            if parent not in found:
+                found.add(parent)
+                todo.append(parent)
+    return found
+
+
+def lanes(conversation: Conversation) -> List[tuple]:
+    return [
+        (lane.under, lane.branch, lane.positions, lane.installations)
+        for lane in conversation.lanes
+    ]
+
+
+class ForAPage(unittest.TestCase):
+    """What the report holds so that a page which draws it decides nothing."""
+
+    split = Branches.split
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.read = read_histories()
+
+    def test_the_positions_are_listed_live_ones_first_each_with_its_seats_and_their_count(self):
+        self.assertEqual(
+            POSITIONS,
+            ("tip", "behind", "lineage unknown", "ended", "removed", "never joined", "no data"),
+        )
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                found = positions(conversation)
+                self.assertEqual(
+                    [(at.position, at.count, at.installations) for at in conversation.positions],
+                    [
+                        (position, len(seats), seats)
+                        for position in POSITIONS
+                        for seats in [sorted(s for s, its in found.items() if its == position)]
+                        if seats
+                    ],
+                )
+
+    def test_the_epochs_are_those_a_state_or_a_record_stands_at(self):
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                stood_at = {state.epoch for state in conversation.states} | {
+                    step.epoch for seat in conversation.installations for step in seat.history
+                }
+                self.assertEqual(conversation.epochs, sorted(stood_at))
+
+    def test_a_state_is_a_branchs_shared_one_sides_or_of_unknown_lineage(self):
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                split = conversation.split_epoch is not None
+                below = {
+                    branch.label: leading_to(conversation, (branch.epoch, branch.state))
+                    for branch in conversation.branches
+                }
+                for state in conversation.states:
+                    toward = [label for label, states in below.items() if node(state) in states]
+                    if split and state.branch is not None:
+                        expected = ("branch", None)
+                    elif split and len(toward) == 1:
+                        expected = ("side", toward[0])
+                    else:
+                        expected = ("shared" if toward else "unknown", None)
+                    self.assertEqual((state.lineage, state.toward), expected, node(state))
+                    self.assertEqual(state.holders, len(state.held_by))
+
+    def test_a_row_is_a_line_of_states_under_the_row_it_leaves(self):
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                rows: Dict[int, List[State]] = {}
+                for state in conversation.states:
+                    rows.setdefault(state.row, []).append(state)
+                self.assertEqual(sorted(rows), list(range(len(rows))))
+                for row, line in rows.items():
+                    epochs = [state.epoch for state in line]
+                    self.assertEqual(len(set(epochs)), len(epochs), row)
+                    for before, state in zip(line, line[1:]):
+                        self.assertIn(node(before), map(node, state.after), row)
+                    above = {node(state) for state in conversation.states if state.row < row}
+                    self.assertTrue(
+                        not line[0].after or above & set(map(node, line[0].after)), row
+                    )
+                newest = {(branch.epoch, branch.state) for branch in conversation.branches}
+                self.assertEqual(len({node(rows[row][-1]) for row in rows} & newest), len(newest))
+
+    def test_the_states_of_a_split_stand_as_the_links_say(self):
+        logs = started("saro", "raya", "pax", "kes")
+        logs["kes"].epoch("kes", 0, "X0", ALL5)
+        logs["saro"].epoch("saro", 1, "X1", ALL5)
+        logs["saro"].epoch("saro", 2, "X2", ALL5)
+        logs["saro"].epoch("saro", 3, "A3", ALL5)
+        logs["pax"].epoch("pax", 3, "A3", ALL5)
+        logs["raya"].epoch("raya", 2, "X2", ALL5)
+        logs["raya"].epoch("raya", 3, "B3", ALL5)
+        conversation = one(logs)
+        self.assertEqual(conversation.verdict, "split at epoch 3")
+        self.assertEqual(
+            [(*node(state), state.lineage, state.toward) for state in conversation.states],
+            [
+                (0, "X0", "unknown", None),
+                (1, "X1", "shared", None),
+                (2, "X2", "shared", None),
+                (3, "A3", "branch", None),
+                (3, "B3", "branch", None),
+            ],
+        )
+        self.assertEqual(
+            lanes(conversation),
+            [
+                ("branch", "A", ["tip"], ["pax", "saro"]),
+                ("branch", "B", ["tip"], ["raya"]),
+                ("not placed", None, ["lineage unknown", "no data"], ["kes", "mira"]),
+            ],
+        )
+
+    def test_a_state_below_a_split_that_one_branch_alone_is_linked_to_is_that_sides(self):
+        logs = started("saro", "raya", "pax")
+        logs["saro"].epoch("saro", 1, "X1", ALL3)
+        logs["saro"].epoch("saro", 2, "A2", ALL3)
+        logs["raya"].epoch("raya", 2, "A2", ALL3)
+        logs["pax"].epoch("pax", 2, "B2", ALL3)
+        conversation = one(logs)
+        self.assertEqual(conversation.verdict, "split seen from epoch 2")
+        self.assertEqual(
+            [(*node(state), state.lineage, state.toward) for state in conversation.states],
+            [(1, "X1", "side", "A"), (2, "A2", "branch", None), (2, "B2", "branch", None)],
+        )
+
+    def test_a_seat_that_stopped_at_one_sides_state_is_not_placed(self):
+        logs = started("saro", "raya", "pax", "mira")
+        logs["saro"].epoch("saro", 1, "X1", ALL4)
+        logs["saro"].epoch("saro", 2, "A2", ALL4)
+        logs["raya"].epoch("raya", 2, "A2", ALL4)
+        logs["pax"].epoch("pax", 2, "B2", ALL4)
+        logs["mira"].epoch("mira", 1, "X1", ALL4)
+        conversation = one(logs)
+        self.assertEqual(
+            [(*node(state), state.lineage, state.toward) for state in conversation.states],
+            [(1, "X1", "side", "A"), (2, "A2", "branch", None), (2, "B2", "branch", None)],
+        )
+        self.assertEqual(
+            lanes(conversation),
+            [
+                ("branch", "A", ["tip"], ["raya", "saro"]),
+                ("branch", "B", ["tip"], ["pax"]),
+                ("not placed", None, ["behind"], ["mira"]),
+            ],
+        )
+
+    def test_without_a_split_a_state_no_link_ties_to_the_newest_is_of_unknown_lineage(self):
+        logs = started("saro", "raya", "pax")
+        logs["saro"].epoch("saro", 1, "X1", ALL3)
+        logs["raya"].epoch("raya", 2, "X2", ALL3)
+        logs["raya"].epoch("raya", 3, "X3", ALL3)
+        logs["pax"].epoch("pax", 3, "X3", ALL3)
+        conversation = one(logs)
+        self.assertEqual(conversation.verdict, "whole as far as seen")
+        self.assertEqual(
+            [(*node(state), state.branch, state.lineage) for state in conversation.states],
+            [(1, "X1", "A", "unknown"), (2, "X2", "A", "shared"), (3, "X3", "A", "shared")],
+        )
+        self.assertEqual(
+            lanes(conversation),
+            [
+                ("one line", None, ["tip"], ["pax", "raya"]),
+                ("not placed", None, ["lineage unknown"], ["saro"]),
+            ],
+        )
+
+    def test_every_installation_is_under_one_heading_by_the_last_state_it_wrote(self):
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                split = conversation.split_epoch is not None
+                states = {node(state): state for state in conversation.states}
+                order = [("branch", branch.label) for branch in conversation.branches if split]
+                order += [("neither branch" if split else "one line", None), ("not placed", None)]
+                under = {heading: [] for heading in order}
+                for seat in conversation.installations:
+                    wrote = [step for step in seat.history if step.kind == "epoch"]
+                    last = states[wrote[-1].epoch, wrote[-1].state] if wrote else None
+                    if last is not None and last.lineage == "branch":
+                        under["branch", last.branch].append(seat)
+                    elif last is not None and last.lineage == "shared":
+                        under[order[-2]].append(seat)
+                    else:
+                        under[order[-1]].append(seat)
+                expected = []
+                for (heading, branch), seats in under.items():
+                    seats.sort(key=lambda seat: (POSITIONS.index(seat.position), seat.id))
+                    said = list(dict.fromkeys(seat.position for seat in seats))
+                    if seats:
+                        expected.append((heading, branch, said, [seat.id for seat in seats]))
+                self.assertEqual(lanes(conversation), expected)
+                listed = [seat for lane in conversation.lanes for seat in lane.installations]
+                self.assertEqual(sorted(listed), [seat.id for seat in conversation.installations])
+
+    def test_the_lanes_of_a_split_are_its_branches_then_neither_then_the_seats_not_placed(self):
+        self.assertEqual(
+            lanes(self.split()),
+            [
+                ("branch", "A", ["tip", "behind"], ["pax", "raya"]),
+                ("branch", "B", ["tip"], ["saro"]),
+                ("neither branch", None, ["behind"], ["mira"]),
+                ("not placed", None, ["no data"], ["kes"]),
+            ],
+        )
+
+    def test_a_seat_that_left_is_under_the_heading_of_the_last_state_it_wrote(self):
+        logs = started("saro", "raya", "pax")
+        for name in ALL3.split():
+            logs[name].epoch(name, 1, "X1", ALL3)
+        logs["saro"].epoch("saro", 2, "A2", ALL3)
+        logs["raya"].epoch("raya", 2, "B2", ALL3)
+        logs["pax"].epoch("pax", 2, "B2", ALL3)
+        logs["pax"].left("pax", 2)
+        conversation = one(logs, final={"raya"})
+        self.assertEqual(
+            lanes(conversation),
+            [
+                ("branch", "A", ["tip"], ["saro"]),
+                ("branch", "B", ["ended", "removed"], ["raya", "pax"]),
+            ],
+        )
+
+    def test_a_seat_behind_says_the_epochs_links_lead_on_to_and_how_far_the_last_is(self):
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                on_from = {}
+                for state in conversation.states:
+                    for parent in state.after:
+                        on_from.setdefault(node(parent), []).append(node(state))
+                for seat in conversation.installations:
+                    found, todo = set(), [(seat.epoch, seat.state)]
+                    while todo:
+                        for later in on_from.get(todo.pop(), ()):
+                            if later not in found:
+                                found.add(later)
+                                todo.append(later)
+                    ahead = sorted({epoch for epoch, _ in found})
+                    if seat.position != "behind":
+                        ahead = []
+                    self.assertEqual(seat.unreached, ahead, seat.id)
+                    by = ahead[-1] - seat.epoch if ahead else None
+                    self.assertEqual(seat.behind_by, by, seat.id)
+
+    def test_a_seat_two_epochs_behind_names_both(self):
+        logs = started("saro", "raya", "pax")
+        for name in ALL3.split():
+            logs[name].epoch(name, 1, "X1", ALL3)
+        for name in PAIR.split():
+            logs[name].epoch(name, 2, "X2", ALL3)
+            logs[name].epoch(name, 4, "X4", ALL3)
+        seats = {seat.id: (seat.unreached, seat.behind_by) for seat in one(logs).installations}
+        self.assertEqual(seats, {"saro": ([], None), "raya": ([], None), "pax": ([2, 4], 3)})
+
+    def test_a_seat_that_wrote_nothing_says_the_epochs_whose_rosters_list_it(self):
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                for seat in conversation.installations:
+                    listed = sorted(
+                        {state.epoch for state in conversation.states if seat.id in state.roster}
+                    )
+                    self.assertEqual(seat.listed, [] if seat.history else listed, seat.id)
+        listed = {seat.id: seat.listed for seat in self.split().installations}
+        self.assertEqual(listed, {"saro": [], "raya": [], "pax": [], "mira": [], "kes": [2, 3]})
+
+    def test_a_lane_holds_each_record_of_its_installation_once_at_the_epoch_it_was_written_at(self):
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                for seat in conversation.installations:
+                    epochs = [cell.epoch for cell in seat.cells]
+                    self.assertEqual(epochs, sorted(set(epochs)), seat.id)
+                    wrote = [cell for cell in seat.cells if cell.kind == "wrote"]
+                    places = [place for cell in wrote for place in cell.steps]
+                    self.assertEqual(sorted(places), list(range(len(seat.history))), seat.id)
+                    for cell in wrote:
+                        self.assertEqual(cell.steps, sorted(cell.steps), seat.id)
+                        at_it = {seat.history[place].epoch for place in cell.steps}
+                        self.assertEqual(at_it, {cell.epoch}, seat.id)
+                    for cell in seat.cells:
+                        self.assertEqual(bool(cell.steps), cell.kind == "wrote", seat.id)
+
+    def test_two_records_at_one_epoch_stand_in_one_cell_in_the_order_written(self):
+        first, second = Log("tomo-0", hour=9), Log("tomo-1", hour=11)
+        first.start("tomo")
+        first.epoch("tomo", 1, "X1", "tomo kes")
+        first.epoch("tomo", 2, "B2", "tomo kes")
+        second.start("tomo")
+        second.epoch("tomo", 2, "A2", "tomo kes")
+        second.epoch("tomo", 3, "A3", "tomo kes")
+        second.left("tomo", 3)
+        seat = seat_of(one([second, first]), "tomo")
+        self.assertEqual(
+            [(cell.epoch, cell.kind, cell.steps) for cell in seat.cells],
+            [(1, "wrote", [0]), (2, "wrote", [1, 2]), (3, "wrote", [3, 4])],
+        )
+        self.assertEqual(
+            [(step.kind, step.epoch, step.state) for step in seat.history],
+            [
+                ("epoch", 1, "X1"),
+                ("epoch", 2, "B2"),
+                ("epoch", 2, "A2"),
+                ("epoch", 3, "A3"),
+                ("left", 3, None),
+            ],
+        )
+
+    def test_an_epoch_a_seat_behind_has_not_reached_is_unreached_in_its_lane(self):
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                for seat in conversation.installations:
+                    wrote = {step.epoch for step in seat.history}
+                    unreached = [cell.epoch for cell in seat.cells if cell.kind == "unreached"]
+                    self.assertEqual(unreached, sorted(set(seat.unreached) - wrote), seat.id)
+        logs = started("saro", "raya", "pax")
+        for name in ALL3.split():
+            logs[name].epoch(name, 1, "X1", ALL3)
+        for name in PAIR.split():
+            logs[name].epoch(name, 2, "X2", ALL3)
+            logs[name].epoch(name, 4, "X4", ALL3)
+        cells = [(cell.epoch, cell.kind, cell.steps) for cell in seat_of(one(logs), "pax").cells]
+        self.assertEqual(cells, [(1, "wrote", [0]), (2, "unreached", []), (4, "unreached", [])])
+
+    def test_what_a_seat_wrote_at_an_epoch_stands_there_though_it_has_not_reached_it_since(self):
+        logs = started("saro", "raya")
+        for name in PAIR.split():
+            logs[name].epoch(name, 1, "X1", ALL3)
+            logs[name].epoch(name, 2, "X2", ALL3)
+            logs[name].epoch(name, 3, "X3", ALL3)
+        first, second = Log("pax-0", hour=9), Log("pax-1", hour=11)
+        first.start("pax")
+        first.epoch("pax", 3, "Y3", ALL3)
+        second.start("pax")
+        second.epoch("pax", 2, "X2", ALL3)
+        seat = seat_of(one([*logs.values(), first, second]), "pax")
+        self.assertEqual((seat.position, seat.unreached), ("behind", [3]))
+        cells = [(cell.epoch, cell.kind, cell.steps) for cell in seat.cells]
+        self.assertEqual(cells, [(2, "wrote", [1]), (3, "wrote", [0])])
+
+    def test_only_a_seat_nobody_shared_a_log_of_is_listed_in_its_lane(self):
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                for seat in conversation.installations:
+                    listed = [cell.epoch for cell in seat.cells if cell.kind == "listed"]
+                    unshared = not seat.runs and not seat.kept
+                    self.assertEqual(listed, seat.listed if unshared else [], seat.id)
+        cells = [(cell.epoch, cell.kind, cell.steps) for cell in seat_of(self.split(), "kes").cells]
+        self.assertEqual(cells, [(2, "listed", []), (3, "listed", [])])
+
+    def test_a_seat_whose_log_holds_none_of_the_group_has_an_empty_lane(self):
+        logs = started("saro", "raya", "pax")
+        for name in PAIR.split():
+            logs[name].epoch(name, 1, "X1", ALL3)
+        seat = seat_of(one(logs), "pax")
+        self.assertEqual((seat.position, seat.listed, seat.cells), ("never joined", [1], []))
+
+    def test_a_seat_says_whether_it_goes_by_a_kept_line_and_has_an_empty_lane_when_it_does(self):
+        went = set()
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                for seat in conversation.installations:
+                    by_a_line = seat.id in KEPT.get(name, {}) and not seat.history
+                    self.assertEqual(seat.kept, by_a_line, seat.id)
+                    if seat.kept:
+                        went.add(name)
+                        self.assertEqual(seat.cells, [], seat.id)
+        self.assertEqual(len(went), len(KEPT) - 1)
+        logs = started("raya")
+        logs["raya"].epoch("raya", 1, "X1", PAIR)
+        logs["raya"].epoch("raya", 2, "X2", PAIR)
+        seat = seat_of(one(logs, kept=[kept_line("saro")]), "saro")
+        self.assertEqual((seat.kept, seat.position, seat.epoch), (True, "ended", 2))
+        self.assertEqual((seat.listed, seat.cells), ([1, 2], []))
+
+
+def at(second: int, hour: int = 10) -> float:
+    """A second of that hour on 2026-10-08, as seconds since 1970 in UTC."""
+    return 1791417600.0 + hour * 3600 + second
+
+
+def stamped(name: str, line: int, time: str, has_offset: bool = True) -> Record:
+    """An `epoch` record of the pair's first state, written at a stamp of the test's choice."""
+    roster = tuple((member, f"account-of-{member}") for member in PAIR.split())
+    said = dict(installation=name, convo=CONVO, epoch=1, state="X1", members=2, roster=roster)
+    return Record(name, line, time, has_offset, "epoch", **said)
+
+
+class Stretches(unittest.TestCase):
+    def test_a_mark_holds_its_stamp_as_seconds_since_1970_in_utc(self):
+        stamps = [
+            ("2026-10-08T10:00:02.000Z", True, at(2)),
+            ("2026-10-08T12:00:02.25+02:00", True, at(2) + 0.25),
+            ("2026-10-08T05:30:02-04:30", True, at(2)),
+            ("2026-10-08T10:00:02.5", False, at(2) + 0.5),
+            ("1970-01-01T00:00:00Z", True, 0.0),
+        ]
+        for time, has_offset, seconds in stamps:
+            with self.subTest(time=time):
+                (conversation,) = report([stamped("saro", 1, time, has_offset)])
+                (step,) = seat_of(conversation, "saro").history
+                self.assertEqual((step.at.time, step.at.seconds), (time, seconds))
+
+    def test_a_run_without_a_delivery_record_is_one_stretch_from_its_first_record_to_its_last(self):
+        logs = started("saro", "raya")
+        for name in PAIR.split():
+            logs[name].epoch(name, 1, "X1", PAIR)
+        logs["saro"].epoch("saro", 2, "X2", PAIR)
+        conversation = one(logs)
+        self.assertEqual(seat_of(conversation, "saro").spans, [Span(at(1), at(3), True)])
+        self.assertEqual(seat_of(conversation, "raya").spans, [Span(at(1), at(2), True)])
+        self.assertEqual((conversation.timeline.start, conversation.timeline.end), (at(2), at(3)))
+
+    def test_a_run_is_cut_where_its_delivery_goes_to_or_from_online(self):
+        logs = started("saro")
+        log = logs["saro"]
+        log.delivery("initialising")
+        log.epoch("saro", 1, "X1", "saro")
+        log.delivery("online")
+        log.delivery("online")
+        log.epoch("saro", 2, "X2", "saro")
+        log.delivery("error")
+        log.delivery("stopped")
+        log.delivery("online")
+        log.epoch("saro", 3, "X3", "saro")
+        self.assertEqual(
+            seat_of(one(logs), "saro").spans,
+            [
+                Span(at(1), at(2), True),
+                Span(at(2), at(4), False),
+                Span(at(4), at(7), True),
+                Span(at(7), at(9), False),
+                Span(at(9), at(10), True),
+            ],
+        )
+
+    def test_a_run_reaches_to_the_last_of_its_delivery_records_and_begins_no_stretch_there(self):
+        logs = started("saro")
+        logs["saro"].epoch("saro", 1, "X1", "saro")
+        logs["saro"].delivery("online")
+        logs["saro"].delivery("stopped")
+        conversation = one(logs)
+        self.assertEqual(seat_of(conversation, "saro").spans, [Span(at(1), at(4), True)])
+        self.assertEqual((conversation.timeline.start, conversation.timeline.end), (at(2), at(2)))
+
+    def test_each_run_an_installation_wrote_in_is_a_stretch_of_its_own(self):
+        first, second = Log("saro-0", hour=9), Log("saro-1", hour=11)
+        for log in (first, second):
+            log.start("saro")
+            log.epoch("saro", 1, "X1", "saro")
+        second.delivery("error")
+        second.epoch("saro", 2, "X2", "saro")
+        self.assertEqual(
+            seat_of(one([second, first]), "saro").spans,
+            [
+                Span(at(1, 9), at(2, 9), True),
+                Span(at(1, 11), at(3, 11), True),
+                Span(at(3, 11), at(4, 11), False),
+            ],
+        )
+
+    def test_a_run_of_one_stamp_is_a_stretch_and_a_clock_that_went_back_ends_none_early(self):
+        back = [
+            stamped("raya", 1, "2026-10-08T10:00:09.000Z"),
+            stamped("raya", 2, "2026-10-08T10:00:05.000Z"),
+        ]
+        (conversation,) = report([stamped("saro", 1, "2026-10-08T10:00:01.000Z"), *back])
+        self.assertEqual(seat_of(conversation, "saro").spans, [Span(at(1), at(1), True)])
+        self.assertEqual(seat_of(conversation, "raya").spans, [Span(at(9), at(9), True)])
+        self.assertEqual((conversation.timeline.start, conversation.timeline.end), (at(1), at(9)))
+
+    def test_the_timeline_is_of_the_records_that_name_the_conversation_and_a_run_reaches_past(self):
+        log = Log("saro")
+        log.start("saro")
+        log.epoch("saro", 7, "O7", "saro", convo="an-older-one")
+        log.delivery("online")
+        log.epoch("saro", 1, "X1", "saro")
+        log.epoch("saro", 2, "X2", "saro")
+        log.sent("saro", "f1", 2)
+        log.delivery("stopped")
+        (conversation, older) = report(log.records)
+        self.assertEqual((conversation.id, older.id), (CONVO, "an-older-one"))
+        self.assertEqual((conversation.timeline.start, conversation.timeline.end), (at(4), at(6)))
+        self.assertEqual((older.timeline.start, older.timeline.end), (at(2), at(2)))
+        for read in (older, conversation):
+            self.assertEqual(seat_of(read, "saro").spans, [Span(at(1), at(7), True)])
+
+    def test_a_seat_that_shares_no_log_has_no_stretch(self):
+        logs = started("saro")
+        logs["saro"].epoch("saro", 1, "X1", PAIR)
+        self.assertEqual(seat_of(one(logs), "raya").spans, [])
+
+    def test_one_log_of_many_installations_gives_each_its_own_stretch_and_the_runs_delivery(self):
+        log = Log("everyone")
+        log.start("saro")
+        log.epoch("saro", 1, "X1", PAIR)
+        log.start("raya")
+        log.delivery("error")
+        log.epoch("raya", 1, "X1", PAIR)
+        log.epoch("saro", 2, "X2", PAIR)
+        conversation = one([log])
+        self.assertEqual(
+            seat_of(conversation, "saro").spans,
+            [Span(at(1), at(4), True), Span(at(4), at(6), False)],
+        )
+        self.assertEqual(
+            seat_of(conversation, "raya").spans,
+            [Span(at(3), at(4), True), Span(at(4), at(5), False)],
         )
 
 

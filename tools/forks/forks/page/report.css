@@ -1,0 +1,392 @@
+/* The fork report's page. A status is a shape and a word, and a colour only
+   repeats them. A branch has a hue of its own for the first three, blue,
+   magenta and yellow, which stay apart on a dark surface under each
+   colour-vision deficiency; a fourth branch gets its letter on a neutral fill. */
+
+:root {
+  color-scheme: dark;
+
+  --bg: #171717;
+  --bg-tertiary: #1c1c1c;
+  --bg-inset: #141414;
+  --black: #000000;
+  --surface: #343434;
+  --surface-contrast: #595959;
+
+  --text: #ffffff;
+  --text-secondary: #a4a4a4;
+  --text-tertiary: #969696;
+  --text-muted: #5c5c5c;
+
+  --border: #434343;
+  --border-subtle: #333333;
+  --border-hairline: rgba(128, 128, 128, 0.2);
+  --border-dark: #2f2f2f;
+  --border-strong: #515151;
+
+  --primary: #ed7b58;
+  --success: #49f563;
+  --error: #fb3748;
+  --warning: #febc2e;
+  --focus: #ff8800;
+  --overlay-light: rgba(255, 255, 255, 0.06);
+
+  --branch-a: #3987e5;
+  --branch-b: #d55181;
+  --branch-c: #c98500;
+  --branch-a-soft: rgba(57, 135, 229, 0.16);
+  --trunk: var(--surface-contrast);
+  --trunk-soft: rgba(128, 128, 128, 0.16);
+  --error-soft: rgba(251, 55, 72, 0.12);
+  --error-line: rgba(251, 55, 72, 0.45);
+  --success-soft: rgba(73, 245, 99, 0.06);
+  --success-line: rgba(73, 245, 99, 0.3);
+  --warning-soft: rgba(254, 188, 46, 0.1);
+  --warning-line: rgba(254, 188, 46, 0.4);
+
+  --sp-tiny: 4px;
+  --sp-small: 8px;
+  --sp-medium: 12px;
+  --sp-large: 16px;
+  --sp-xlarge: 20px;
+
+  --r-small: 4px;
+  --r-medium: 6px;
+  --r-large: 8px;
+  --r-xlarge: 16px;
+  --r-pill: 999px;
+
+  --font: "Public Sans", system-ui, sans-serif;
+  --font-mono: ui-monospace, "DejaVu Sans Mono", monospace;
+  --fs-subtitle: 16px;
+  --fs-primary: 14px;
+  --fs-secondary: 12px;
+  --fw-medium: 500;
+  --fw-bold: 700;
+
+  --rail: 264px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* The text is sized in pixels, and a rem is sixteen of them at whatever zoom the text is
+   read: the lineage and the timeline are sized in rem, and so grow with the text. */
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.mono { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.dim { color: var(--text-tertiary); }
+.quiet { color: var(--text-secondary); font-size: var(--fs-secondary); line-height: 1.5; }
+
+.marks { position: absolute; width: 0; height: 0; overflow: hidden; }
+/* A mark is drawn by reference, in the colour of the text around it. */
+svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+
+.rp { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); min-height: 100vh; }
+
+/* ---- rail ---------------------------------------------------------------- */
+
+.rail {
+  background: var(--bg-tertiary);
+  border-right: 1px solid var(--border-subtle);
+  padding: var(--sp-large);
+  display: flex; flex-direction: column; gap: var(--sp-large);
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.brand { display: flex; flex-direction: column; gap: 2px; text-decoration: none; border-radius: var(--r-small); }
+.brand b { font-size: var(--fs-subtitle); font-weight: var(--fw-bold); }
+.brand span { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.railhead {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-tertiary); display: flex; justify-content: space-between;
+}
+.convs { display: flex; flex-direction: column; gap: var(--sp-tiny); list-style: none; }
+.conv {
+  border-radius: var(--r-medium); padding: var(--sp-small) var(--sp-medium);
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; column-gap: var(--sp-small); row-gap: 2px;
+  align-items: center; border: 1px solid transparent; text-decoration: none;
+}
+.conv:hover { background: var(--overlay-light); }
+.conv.on { background: var(--overlay-light); border-color: var(--border-dark); }
+.conv .id { font-family: var(--font-mono); font-size: var(--fs-secondary); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv .age { font-size: 10px; color: var(--text-tertiary); }
+.conv .say { grid-column: 2 / 4; font-size: 11px; color: var(--text-secondary); }
+.conv .cov { grid-column: 2 / 4; font-size: 10px; color: var(--text-tertiary); }
+.say::first-letter, .verdict h2::first-letter, .status .word::first-letter { text-transform: uppercase; }
+.railfoot { margin-top: auto; font-size: 11px; color: var(--text-tertiary); line-height: 1.5; }
+
+.st { width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.st svg { width: 14px; height: 14px; }
+.st.split { color: var(--error); }
+.st.whole { color: var(--success); }
+.st.behind, .st.unknown { color: var(--warning); }
+.st.nodata, .st.removed, .st.ended, .st.never { color: var(--text-tertiary); }
+
+/* ---- main ---------------------------------------------------------------- */
+
+.main { padding: var(--sp-xlarge) 28px 36px; display: flex; flex-direction: column; gap: var(--sp-xlarge); min-width: 0; }
+.report { display: flex; flex-direction: column; gap: var(--sp-xlarge); min-width: 0; }
+
+.notice {
+  border-radius: var(--r-large); border: 1px solid var(--warning-line); background: var(--warning-soft);
+  padding: var(--sp-medium) var(--sp-large); font-size: var(--fs-secondary); line-height: 1.5;
+}
+
+.head { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--sp-large); }
+.head > div { min-width: 0; }
+.head h1 { font-size: 22px; font-weight: var(--fw-medium); letter-spacing: -0.01em; overflow-wrap: anywhere; }
+/* An id is one line: whoever creates a group picks its id, and its length. */
+.head h1.mono { font-family: var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.head .sub { font-size: var(--fs-secondary); color: var(--text-secondary); margin-top: 4px; }
+.spacer { flex: 1; }
+.live { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+.live i { width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--success); }
+.live.idle i { background: none; border: 1px solid var(--text-tertiary); }
+
+.verdict {
+  border-radius: var(--r-large);
+  border: 1px solid var(--error-line);
+  background: var(--error-soft);
+  padding: var(--sp-large);
+  display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--sp-medium); align-items: start;
+}
+.verdict .st { width: 24px; height: 24px; margin-top: 2px; }
+.verdict .st svg { width: 24px; height: 24px; }
+.verdict h2 { font-size: 20px; font-weight: var(--fw-bold); }
+.verdict p { margin-top: 4px; font-size: var(--fs-secondary); color: var(--text-secondary); line-height: 1.5; max-width: 96ch; }
+.verdict p.skipped { color: var(--text); }
+.verdict.ok { border-color: var(--success-line); background: var(--success-soft); }
+.verdict.warn { border-color: var(--warning-line); background: var(--warning-soft); }
+.verdict.quiet { border-color: var(--border); background: var(--bg-tertiary); }
+.vhead { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--sp-large); row-gap: 4px; }
+.cover { display: inline-flex; align-items: center; gap: var(--sp-small); font-size: var(--fs-secondary); white-space: nowrap; }
+.cover em { font-style: normal; color: var(--text-secondary); }
+
+/* How many of the seats share a log: a bar as wide as its seats, filled as far as the sharing. */
+.meter { display: inline-flex; align-items: center; gap: var(--sp-small); }
+.meter svg { width: 96px; height: 6px; border-radius: 3px; background: var(--surface); flex: none; }
+.meter rect { fill: var(--text-secondary); }
+.cover .meter svg { background: var(--overlay-light); }
+.cover .meter rect { fill: var(--text); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-medium); }
+.tile {
+  background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--r-large);
+  padding: var(--sp-medium) var(--sp-large); min-width: 0;
+}
+.tile dt { font-size: 11px; color: var(--text-tertiary); }
+.tile dt::first-letter { text-transform: uppercase; }
+.tile .v { font-size: 26px; font-weight: var(--fw-bold); margin-top: 2px; }
+.tile .d { font-size: 11px; color: var(--text-secondary); margin-top: 2px; overflow-wrap: anywhere; }
+.tile .who { font-family: var(--font-mono); font-size: 11px; color: var(--text); margin-top: 4px; overflow-wrap: anywhere; }
+
+.sec { display: flex; flex-direction: column; gap: var(--sp-medium); min-width: 0; }
+.sechead { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-small) var(--sp-medium); }
+.sechead h2 { font-size: var(--fs-subtitle); font-weight: var(--fw-bold); }
+.sechead p { font-size: var(--fs-secondary); color: var(--text-tertiary); }
+.card { background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--r-large); padding: var(--sp-large); min-width: 0; }
+/* What is wider or longer than the page scrolls inside its card, its headings held in place. */
+.scroll { overflow: auto; max-height: 86vh; }
+.scroll, .logx pre { scrollbar-color: var(--surface-contrast) transparent; }
+/* The lanes pad their own edges: a column that stays in place must reach the card's.
+   A cell the keyboard moves to is not left under the headings that stay in place: the
+   installation at the left, and at the right where it is, a mark and some forty characters. */
+.lanesbox { padding: 0; scroll-padding: 56px 300px 8px 120px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--sp-small) var(--sp-large); font-size: 11px; color: var(--text-secondary); list-style: none; }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { flex: none; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.sw.shared { background: var(--trunk); }
+.sw.b0 { background: var(--branch-a); }
+.sw.b1 { background: var(--branch-b); }
+.sw.b2 { background: var(--branch-c); }
+.sw.bn { background: var(--trunk-soft); border: 1px solid var(--text-secondary); }
+.sw.side { border: 1.5px solid var(--text-secondary); }
+.sw.unknown { background: var(--warning-soft); border: 1px dashed var(--warning); }
+.sw.never { border: 1px dashed var(--border-strong); }
+.sw.hatch { background: repeating-linear-gradient(135deg, var(--border-strong) 0 2px, transparent 2px 6px); }
+
+/* ---- lineage ------------------------------------------------------------- */
+
+.lineage svg { display: block; }
+.lineage text { font-family: var(--font); fill: var(--text-secondary); font-size: 11px; }
+.lineage .fp { font-family: var(--font-mono); font-size: 10px; fill: var(--text-tertiary); }
+.lineage .ep { fill: var(--text-tertiary); font-size: 10px; letter-spacing: 0.06em; }
+.lineage .n { font-size: 11px; font-weight: 700; fill: var(--text); }
+.lineage .end { fill: var(--text); font-size: 12px; font-weight: 700; }
+.lineage .cut { stroke: var(--error); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.7; }
+.lineage circle { fill: var(--bg-tertiary); stroke: var(--trunk); stroke-width: 2.5; }
+.lineage .link { fill: none; stroke: var(--trunk); stroke-width: 2.5; }
+.lineage .b0 { stroke: var(--branch-a); }
+.lineage .b1 { stroke: var(--branch-b); }
+.lineage .b2 { stroke: var(--branch-c); }
+.lineage .bn { stroke: var(--text-secondary); }
+/* One side's states below a split are drawn thin: a line the other side's logs do not reach. */
+.lineage .side { stroke-width: 1.5; }
+.lineage .unknown { stroke: var(--warning); }
+.lineage circle.unknown { stroke-dasharray: 4 3; }
+
+/* ---- lanes --------------------------------------------------------------- */
+
+.lanes { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+.lanes th, .lanes td { background: var(--bg-tertiary); }
+.lanes thead th {
+  text-align: left; font-size: 10px; font-weight: var(--fw-medium); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-tertiary); padding: var(--sp-large) var(--sp-small) var(--sp-small);
+  position: sticky; top: 0; z-index: 2; white-space: nowrap;
+}
+.lanes thead th.e { text-align: center; padding: var(--sp-large) 0 var(--sp-small); min-width: 40px; letter-spacing: 0; font-family: var(--font-mono); }
+.lanes td, .lanes tbody th {
+  padding: 5px var(--sp-small); font-size: var(--fs-secondary); font-weight: 400; text-align: left;
+  border-top: 1px solid var(--border-hairline); white-space: nowrap;
+}
+.lanes td.e { padding: 5px 2px; text-align: center; }
+.lanes tr.grp th { border-top: none; padding-top: var(--sp-medium); font-size: 11px; color: var(--text-secondary); }
+.lanes tr.grp span { position: sticky; left: var(--sp-large); display: inline-block; }
+.lanes tr.grp b { color: var(--text); font-weight: var(--fw-bold); margin-right: var(--sp-small); }
+.lanes th.who { font-weight: var(--fw-medium); position: sticky; left: 0; z-index: 1; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.lanes th.who, .lanes tr.grp th { padding-left: var(--sp-large); }
+.lanes .heard { padding-right: var(--sp-large); }
+.lanes tbody tr:last-child > * { padding-bottom: var(--sp-large); }
+.lanes thead th.who { z-index: 3; }
+.cell {
+  width: 36px; height: 22px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: var(--fw-bold); color: var(--text); vertical-align: middle;
+}
+.cell[role="button"] { cursor: pointer; }
+.cell.shared { background: var(--trunk-soft); border: 1px solid var(--trunk); color: var(--text-tertiary); }
+.cell.b0 { background: var(--branch-a); }
+.cell.b1 { background: var(--branch-b); }
+.cell.b2 { background: var(--branch-c); }
+.cell.bn { background: var(--trunk-soft); border: 1px solid var(--text-secondary); }
+/* Below a split, a state the links tie to one side alone: hollow, in that side's colour. */
+.cell.side { background: none; border: 1.5px solid var(--text-secondary); }
+.cell.side.b0 { border-color: var(--branch-a); color: var(--branch-a); }
+.cell.side.b1 { border-color: var(--branch-b); color: var(--branch-b); }
+.cell.side.b2 { border-color: var(--branch-c); color: var(--branch-c); }
+.cell.unknown { background: var(--warning-soft); border: 1px dashed var(--warning); color: var(--warning); }
+.cell.never { border: 1px dashed var(--border-strong); }
+.cell.hatch { background: repeating-linear-gradient(135deg, var(--border-strong) 0 2px, transparent 2px 6px); opacity: 0.6; }
+.cell.left { color: var(--text-secondary); }
+.cell.left svg, .endmark svg { width: 14px; height: 14px; }
+/* A lane that is over ends in the mark of how, in the column after its last state. */
+.lanes td.e.over { text-align: left; padding-left: 5px; font-size: 11px; color: var(--text-tertiary); }
+.lanes td.e.word { text-align: left; padding-left: 14px; font-size: 11px; color: var(--text-tertiary); }
+.endmark { display: inline-flex; vertical-align: middle; margin-right: 6px; color: var(--text-secondary); }
+.pos { display: inline-flex; align-items: center; gap: 6px; }
+.lanes .more { display: block; padding-left: 20px; font-size: 11px; color: var(--text-secondary); }
+.lanes .run { display: block; }
+.lanes td.e .cell + .cell { margin-left: 4px; }
+
+/* ---- timeline ------------------------------------------------------------ */
+
+/* A row is an installation and its run across the time of the conversation. Each plot is as
+   wide as its column, so a word keeps its size whatever the window's width, and as high as
+   the size of the text makes it, so a word grows with the text. */
+.times { border-collapse: collapse; width: 100%; min-width: 45rem; }
+.times th { text-align: left; white-space: nowrap; padding: 0 var(--sp-medium) 0 0; font-weight: var(--fw-medium); color: var(--text); }
+.times thead th {
+  font-family: var(--font); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-tertiary); vertical-align: top;
+}
+.times td, .times thead th + th { width: 100%; padding: 0; }
+/* A mark and a stamp at either end of the time stand whole, and a run that reaches past is cut. */
+.plotbox { padding: 0.125rem 2rem 0; overflow: hidden; }
+.plot { display: block; width: 100%; height: 1.625rem; overflow: visible; }
+.times thead .plot { height: 1.75rem; }
+.plotbox.hatched {
+  display: flex; align-items: center; min-height: 1.75rem;
+  background: repeating-linear-gradient(135deg, var(--border-strong) 0 2px, transparent 2px 6px) center / 100% 12px no-repeat;
+}
+.timeline .said { background: var(--bg-tertiary); padding: 0 6px; font-size: 11px; color: var(--text-secondary); }
+.timeline text { font-family: var(--font); font-size: 0.6875rem; fill: var(--text-secondary); }
+.timeline .axis { fill: var(--text-tertiary); font-size: 0.625rem; font-family: var(--font-mono); letter-spacing: 0; text-transform: none; }
+.timeline .grid { stroke: var(--border-hairline); stroke-width: 1; }
+.timeline .on { stroke: var(--surface-contrast); stroke-width: 3; stroke-linecap: round; }
+.timeline .off { stroke: var(--text-tertiary); stroke-width: 1.5; stroke-dasharray: 2 4; }
+.timeline .letter { font-size: 0.5rem; font-weight: 700; }
+.tick { stroke: var(--text-tertiary); stroke-width: 2.5; stroke-linecap: round; cursor: pointer; }
+.tick.b0 { stroke: var(--branch-a); }
+.tick.b1 { stroke: var(--branch-b); }
+.tick.b2 { stroke: var(--branch-c); }
+.tick.bn { stroke: var(--text); }
+.tick.unknown { stroke: var(--warning); }
+
+/* ---- the state a branch holds -------------------------------------------- */
+
+.states { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--sp-large); }
+.state { border-top: 3px solid var(--trunk); }
+.state.b0 { border-top-color: var(--branch-a); }
+.state.b1 { border-top-color: var(--branch-b); }
+.state.b2 { border-top-color: var(--branch-c); }
+.state h3 { font-size: var(--fs-primary); font-weight: var(--fw-bold); display: flex; align-items: center; gap: var(--sp-small); }
+.kv { display: grid; grid-template-columns: 132px minmax(0, 1fr); row-gap: 6px; margin-top: var(--sp-medium); font-size: var(--fs-secondary); }
+.kv dt { color: var(--text-tertiary); }
+.kv dd { color: var(--text); overflow-wrap: anywhere; }
+.kv dd.mono { font-size: 11px; }
+.subhead { margin-top: var(--sp-large); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+.roster { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--sp-medium); list-style: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 20px; padding: 0 8px; border-radius: var(--r-pill);
+  border: 1px solid var(--border); font-size: 11px; color: var(--text);
+}
+.chip em { font-style: normal; color: var(--text-tertiary); font-size: 10px; }
+
+/* ---- the log lines behind a mark ----------------------------------------- */
+
+.log { position: sticky; bottom: 0; z-index: 4; padding-bottom: var(--sp-medium); background: var(--bg); }
+.logx { padding: 0; overflow: hidden; box-shadow: 0 -12px 24px var(--bg); }
+.logx .bar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-small) var(--sp-medium); padding: var(--sp-medium) var(--sp-large);
+  border-bottom: 1px solid var(--border-subtle); font-size: var(--fs-secondary); color: var(--text-secondary);
+}
+.logx .bar b { color: var(--text); font-weight: var(--fw-medium); }
+.btn {
+  height: 28px; padding: 0 var(--sp-medium); border-radius: var(--r-xlarge);
+  background: var(--overlay-light); border: 1px solid var(--border-dark);
+  font: inherit; font-size: var(--fs-secondary); color: var(--text); cursor: pointer;
+}
+.logx pre {
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.75; color: var(--text-secondary);
+  padding: var(--sp-medium) 0; background: var(--bg-inset); overflow: auto; max-height: 36vh; position: relative;
+}
+.logx pre > span { display: block; padding: 0 var(--sp-large); white-space: pre; width: max-content; min-width: 100%; }
+.logx pre > span.hit { background: var(--branch-a-soft); color: var(--text); box-shadow: inset 3px 0 0 var(--branch-a); }
+.logx pre .ln { display: inline-block; min-width: 46px; color: var(--text-tertiary); }
+.logx .quiet { padding: var(--sp-medium) var(--sp-large); }
+
+/* ---- the front page ------------------------------------------------------ */
+
+.ov { border-collapse: collapse; min-width: 100%; }
+.ov th {
+  text-align: left; font-size: 10px; font-weight: var(--fw-medium); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-tertiary); padding: 0 var(--sp-medium) var(--sp-small); white-space: nowrap;
+}
+.ov td { padding: 10px var(--sp-medium); font-size: var(--fs-secondary); border-top: 1px solid var(--border-hairline); white-space: nowrap; }
+.ov .status { display: inline-flex; align-items: center; gap: var(--sp-small); font-weight: var(--fw-medium); }
+/* An id is as long as whoever creates a group makes it: the list shows forty characters of it,
+   which is an id of sixteen bytes in hex and its ellipsis, and the whole of it on hover. */
+.ov a { text-underline-offset: 3px; display: inline-block; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+
+/* Where an installation is stays in sight while the epochs scroll under it. */
+@media (min-width: 1100px) {
+  .lanes .where { position: sticky; right: 0; z-index: 1; box-shadow: -8px 0 8px -8px var(--black); }
+  .lanes thead .where { z-index: 3; }
+}
+
+@media (max-width: 900px) {
+  .rp { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border-subtle); }
+  .main { padding: var(--sp-large); }
+}

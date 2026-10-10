@@ -1,4 +1,4 @@
-"""Serves a collector over HTTP: the calls an uploader and the report page make.
+"""Serves a collector over HTTP: the calls an uploader and the report page make, and the page.
 
 Every call carries the collector's one token, and a write to a run carries that run's receipt.
 Nothing is answered before the token is checked but a request that is not HTTP.
@@ -13,10 +13,11 @@ import socket
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Callable, Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple
 from urllib.parse import parse_qs, unquote
 
-from .collector import Collector, Refused
+from .collector import UNHEARD, Collector, Refused
 
 # What a share address can carry as its token.
 TOKEN = re.compile(r"[A-Za-z0-9_-]{16,128}")
@@ -26,6 +27,37 @@ MAX_BODY = 4 * 1024 * 1024
 _PIECE = 64 * 1024
 _NUMBER = re.compile(r"[0-9]{1,20}")
 _Answer = Tuple[int, object]
+# The report page: `index.html` is the page, and the other files are what it loads.
+PAGE = Path(__file__).parent / "page"
+_KINDS = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+}
+# The page loads from the collector alone and runs no script and no style written into it.
+# An image is let through for the icon a browser asks of every site: a refusal is an error in
+# the page's console. Every answer carries it, so that no page frames one: framed, a report
+# would tell a page of another origin whether the collector holds a conversation.
+_POLICY = (
+    "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "
+    "img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)
+# The cookie a browser shows the token in, kept for the thirty days a log is.
+_COOKIE = "forks_token"
+_COOKIE_AGE = UNHEARD
+_ON_EVERY_ANSWER = (
+    ("Cache-Control", "no-store"),
+    ("X-Content-Type-Options", "nosniff"),
+    ("Referrer-Policy", "no-referrer"),
+    ("Content-Security-Policy", _POLICY),
+)
+
+
+class _Said(NamedTuple):
+    """An answer that is not JSON: its headers, and its body when it has one."""
+
+    headers: Tuple[Tuple[str, str], ...]
+    body: Optional[bytes] = None
 
 
 class Server(ThreadingHTTPServer):
@@ -83,6 +115,10 @@ class Handler(BaseHTTPRequestHandler):
                 raise
 
     def _answer(self) -> None:
+        # A request line that names no version is HTTP/0.9, which has no headers: there is no
+        # call to read, and the answer is its body alone.
+        if self.request_version == "HTTP/0.9":
+            return self.send_error(400)
         self.known = self._has_token()
         try:
             if not self.known:
@@ -144,10 +180,33 @@ class Handler(BaseHTTPRequestHandler):
             self.connection.settimeout(self.timeout)
 
     def _has_token(self) -> bool:
+        """Whether the request shows the token: in its header, or as a browser shows it."""
         scheme, _, token = self.headers.get("Authorization", "").partition(" ")
-        if scheme.lower() != "bearer":
+        if scheme.lower() == "bearer" and self._is_token(token):
+            return True
+        # A browser's ways of showing it open a read and nothing else: no page on another site
+        # can then have a browser write.
+        if self.command != "GET":
             return False
-        return hmac.compare_digest(token.encode(), self.server.token)
+        return self._comes_in() or any(map(self._is_token, self._cookies()))
+
+    def _is_token(self, shown: str) -> bool:
+        return hmac.compare_digest(shown.encode(), self.server.token)
+
+    def _comes_in(self) -> bool:
+        """Whether a browser opens the share address: the base, and the token its whole query."""
+        path, _, query = self.path.partition("?")
+        name, _, token = query.partition("=")
+        return path == "/" and name == "token" and self._is_token(token)
+
+    def _cookies(self) -> List[str]:
+        """Each value the request's cookies give under the token's name."""
+        pairs = (
+            pair.strip().partition("=")
+            for header in self.headers.get_all("Cookie", [])
+            for pair in header.split(";")
+        )
+        return [value for name, _, value in pairs if name == _COOKIE]
 
     def _call(self, body: bytes) -> _Answer:
         path, _, query = self.path.partition("?")
@@ -157,6 +216,10 @@ class Handler(BaseHTTPRequestHandler):
         # The second part of a path is an id: a call is its method and the parts around that.
         where = parts[:1] + parts[2:]
         call = self.command, len(parts), where
+        if call == ("GET", 1, ("",)):
+            return self._let_in() if self._comes_in() else self._page("index.html")
+        if call == ("GET", 2, ("page",)):
+            return self._page(parts[1])
         if call == ("POST", 1, ("runs",)):
             return self._open(body)
         if call == ("PUT", 3, ("runs", "log")):
@@ -196,16 +259,49 @@ class Handler(BaseHTTPRequestHandler):
             raise Refused(400, error="the lines around a line need line=N, from 1")
         return 200, {"lines": self.server.collector.lines_around(run, line)}
 
+    def _let_in(self) -> _Answer:
+        """Sends a browser on to the page, with the token in a cookie in place of its address.
+
+        The place is relative and the cookie names no path, so behind a proxy that serves the
+        collector under a prefix both stay under it. A browser sends a `Lax` cookie on a
+        navigation another site began, which is how a share address is opened where it was
+        posted, and the cookie opens a read alone.
+        """
+        cookie = f"{_COOKIE}={self.server.token.decode()}; HttpOnly; SameSite=Lax"
+        cookie += f"; Max-Age={_COOKIE_AGE}"
+        if self.headers.get("X-Forwarded-Proto", "").strip().lower() == "https":
+            cookie += "; Secure"
+        return 303, _Said((("Location", "./"), ("Set-Cookie", cookie)))
+
+    def _page(self, name: str) -> _Answer:
+        """A file of the page. A name is looked up among the files there, and never opened."""
+        try:
+            (file,) = [file for file in PAGE.iterdir() if file.name == name and file.is_file()]
+            body = file.read_bytes()
+        except (OSError, ValueError):
+            raise Refused(404, error="the page has no such file") from None
+        kind = _KINDS.get(file.suffix, "application/octet-stream")
+        return 200, _Said((("Content-Type", kind),), body)
+
     def _send(self, status: int, said: object) -> None:
-        """Answers a status and, unless there is nothing to say, a body of JSON."""
+        """Answers a status and, unless there is nothing to say, a body: JSON, or as it says."""
         self.send_response_only(status)
+        for name, value in _ON_EVERY_ANSWER:
+            self.send_header(name, value)
         if status == 401:
             self.send_header("WWW-Authenticate", "Bearer")
-        if said is None:
+        if isinstance(said, _Said):
+            headers, body = said
+        elif said is None:
+            headers, body = (), None
+        else:
+            body = said if isinstance(said, bytes) else json.dumps(said).encode()
+            headers = (("Content-Type", "application/json; charset=utf-8"),)
+        for name, value in headers:
+            self.send_header(name, value)
+        if body is None:
             self.end_headers()
             return
-        body = said if isinstance(said, bytes) else json.dumps(said).encode()
-        self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         if self.command != "HEAD":
@@ -218,6 +314,10 @@ class Handler(BaseHTTPRequestHandler):
     def send_error(self, code: int, message: Optional[str] = None, explain: object = None) -> None:
         # What the standard library refuses before a call is read is answered like the rest,
         # and without its message, which quotes the request.
+        if self.command is None:
+            # A request line it cannot read: Python before 3.14 leaves it marked HTTP/0.9,
+            # which would send the answer without its head.
+            self.request_version = ""
         self._send(code, {"error": "the request cannot be read"})
 
     def log_message(self, format: str, *args: object) -> None:

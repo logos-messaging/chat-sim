@@ -50,17 +50,33 @@ SERVING = re.compile(
     r"[0-9-]{10}T[0-9:]{8}Z serving (?P<data>.+) on http://(?P<host>\S+):(?P<port>[0-9]+)/\n"
 )
 NO_TOKEN = b'{"error": "this call needs the collector\'s token"}'
+POLICY = (
+    "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "
+    "img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)
+# What every answer carries, whatever it answers.
+ON_EVERY_ANSWER = (
+    ("Cache-Control", "no-store"),
+    ("X-Content-Type-Options", "nosniff"),
+    ("Referrer-Policy", "no-referrer"),
+    ("Content-Security-Policy", POLICY),
+)
 KEYS = [
     "id",
     "verdict",
     "split_epoch",
     "coverage",
+    "positions",
+    "epochs",
     "branches",
     "states",
+    "lanes",
     "installations",
+    "timeline",
     "messages",
     "unmatched_unreadable",
     "runs",
+    "lines",
 ]
 
 
@@ -373,6 +389,7 @@ class Tokens(Collecting):
             ("GET", f"/runs/{self.run}/log?line=1", None),
             ("GET", "/runs/r9/log?line=1", None),
             ("GET", "/", None),
+            ("GET", "/page/report.js", None),
             ("GET", "/nothing", None),
             ("PATCH", "/runs", b"{}"),
             ("OPTIONS", "/conversations", None),
@@ -388,7 +405,8 @@ class Tokens(Collecting):
             {"Authorization": TOKEN},
             {"Authorization": f"Basic {TOKEN}"},
             {"Authorization": f"Bearer {TOKEN} {TOKEN}"},
-            {"Cookie": f"forks_token={TOKEN}"},
+            {"Cookie": f"forks_token={TOKEN[:-1]}"},
+            {"Cookie": f"token={TOKEN}"},
             {"Forks-Receipt": self.receipt},
         ]
         held, written = tree(self.data), list(self.served.written)
@@ -396,8 +414,10 @@ class Tokens(Collecting):
         for (method, path, body), headers in itertools.product(self.calls(), strangers):
             answers.add(self.served.call(method, path, body, None, headers=headers.items()))
         for method, path, body in self.calls():
-            in_the_address = path + ("&" if "?" in path else "?") + f"token={TOKEN}"
-            answers.add(self.served.call(method, in_the_address, body, None))
+            # The base alone takes the token in its address: it is a browser's way in.
+            if (method, path) != ("GET", "/"):
+                in_the_address = path + ("&" if "?" in path else "?") + f"token={TOKEN}"
+                answers.add(self.served.call(method, in_the_address, body, None))
         (answer,) = answers
         self.assertEqual((answer.status, answer.body), (401, NO_TOKEN))
         self.assertEqual(dict(answer.headers)["WWW-Authenticate"], "Bearer")
@@ -423,8 +443,10 @@ class Tokens(Collecting):
 
     def test_a_call_the_collector_does_not_have_answers_404(self):
         calls = [
-            ("GET", "/"),
             ("GET", "/nothing"),
+            ("GET", "/page"),
+            ("POST", "/"),
+            ("PUT", "/page/report.js"),
             ("GET", "/runs"),
             ("GET", f"/runs/{self.run}"),
             ("GET", f"/runs/{self.run}/log/more?line=1"),
@@ -443,8 +465,9 @@ class Tokens(Collecting):
             with self.subTest(method=method, path=path):
                 answer = self.served.call(method, path, b"" if method in ("POST", "PUT") else None)
                 self.assertEqual((answer.status, list(answer.said)), (404, ["error"]))
-        answer = self.served.call("HEAD", "/conversations")
-        self.assertEqual((answer.status, answer.body), (404, b""))
+        for path in ("/conversations", "/"):
+            answer = self.served.call("HEAD", path)
+            self.assertEqual((answer.status, answer.body), (404, b""))
         self.assertEqual(tree(self.data), held)
 
     def test_an_answer_with_a_body_is_json_and_an_error_says_one_thing(self):
@@ -470,7 +493,9 @@ class Tokens(Collecting):
                     self.assertRegex(error[1], r"^[a-z][^.\n]+$")
         self.assertEqual(answers[409].said, {"size": size, "final": False})
         deleted = self.served.delete(self.run, self.receipt)
-        self.assertEqual((deleted.status, deleted.headers, deleted.body), (204, (), b""))
+        self.assertEqual(
+            (deleted.status, deleted.headers, deleted.body), (204, ON_EVERY_ANSWER, b"")
+        )
 
     def test_a_request_that_is_not_http_is_answered_without_its_own_words(self):
         answer = self.served.raw(b"what a log says\r\n\r\n")
@@ -1255,7 +1280,13 @@ class Reports(Collecting):
         second, _ = self.served.share(logged(member("raya")), "the name of both")
         report = self.served.report()
         self.assertEqual(list(report), KEYS)
-        at = {"run": first, "line": 4, "time": "2026-10-08T10:00:04.000Z", "has_offset": True}
+        at = {
+            "run": first,
+            "line": 4,
+            "time": "2026-10-08T10:00:04.000Z",
+            "has_offset": True,
+            "seconds": START - DAY - 2 * HOUR + 4,
+        }
         self.assertEqual(
             report["runs"],
             [
@@ -1321,6 +1352,9 @@ class Reports(Collecting):
                         {"name": run["id"], "final": run["final"], "delivery": run["delivery"]}
                         for run in report["runs"]
                     ]
+                    if len(written.conversations) == 1:
+                        self.assertEqual(report["lines"], written.lines)
+                    del report["lines"]
                     self.assertEqual(json.dumps(report), json.dumps(conversation))
 
     def test_a_report_is_drawn_from_every_run_a_seat_wrote_in(self):
@@ -1471,7 +1505,9 @@ class Drawing(Collecting):
         self.assertEqual(self.drawn, [CONVO])
         sent = len(noise) + len(line) - 1
         self.assertEqual(after["runs"][0]["size"], before["runs"][0]["size"] + sent)
-        self.assertEqual(dict(after, runs=None), dict(before, runs=None))
+        read = {count: before["lines"][count] + 3 for count in ("lines", "unstamped")}
+        self.assertEqual(after["lines"], dict(before["lines"], **read))
+        self.assertEqual(dict(after, runs=None, lines=None), dict(before, runs=None, lines=None))
         self.served.put(*self.runs["saro"], b"\n")
         self.assertEqual(seat_of(json.loads(self.asked()), "saro")["epoch"], 2)
         self.assertEqual(self.drawn, [CONVO, CONVO])
@@ -1728,6 +1764,7 @@ class FrontPage(Collecting):
                     "coverage": {"sharing": 8, "seats": 8},
                     "branches": [{"label": "A", "epoch": 8}, {"label": "B", "epoch": 7}],
                     "heard": "2026-10-09T12:00:00Z",
+                    "unheard": 0,
                 },
                 {
                     "id": OTHER,
@@ -1736,6 +1773,7 @@ class FrontPage(Collecting):
                     "coverage": {"sharing": 1, "seats": 1},
                     "branches": [{"label": "A", "epoch": 2}],
                     "heard": "2026-10-09T12:00:00Z",
+                    "unheard": 0,
                 },
             ],
         )
@@ -1942,11 +1980,17 @@ class ThirtyDays(Collecting):
                     "id": hexed("saro"),
                     "account": account("saro"),
                     "runs": [],
+                    "kept": True,
                     "position": "ended",
                     "branch": None,
                     "epoch": epoch,
                     "state": None,
+                    "listed": list(range(1, epoch + 1)),
+                    "unreached": [],
+                    "behind_by": None,
                     "history": [],
+                    "cells": [],
+                    "spans": [],
                 },
             )
             self.assertEqual(

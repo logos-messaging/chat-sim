@@ -10,15 +10,6 @@ from .records import Counts
 from .rule import Conversation, Installation
 
 _WIDTH = 100
-_POSITIONS = (
-    rule.TIP,
-    rule.BEHIND,
-    rule.LINEAGE_UNKNOWN,
-    rule.ENDED,
-    rule.REMOVED,
-    rule.NEVER_JOINED,
-    rule.NO_DATA,
-)
 
 
 def render(conversations: Sequence[Conversation], counts: Counts) -> str:
@@ -69,7 +60,8 @@ def _conversation(conversation: Conversation) -> str:
 def _reading_order(installation: Installation) -> Tuple:
     """Branch by branch, the installations on none last, and within each by position."""
     branch = installation.branch or ""
-    return not branch, len(branch), branch, _POSITIONS.index(installation.position), installation.id
+    position = rule.POSITIONS.index(installation.position)
+    return not branch, len(branch), branch, position, installation.id
 
 
 def _row(installation: Installation) -> List[str]:

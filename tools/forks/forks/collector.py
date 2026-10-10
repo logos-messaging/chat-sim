@@ -88,6 +88,7 @@ class _Label:
     app: str
     size: int
     heard: int
+    counts: Counts
 
 
 @dataclass(frozen=True)
@@ -236,7 +237,7 @@ class Collector:
     def conversations(self) -> dict:
         """Every conversation a held log names, the worst first, and what became of the lines."""
         with self._lock:
-            self._sweep()
+            now = self._sweep()
             convos = sorted(self._holds)
             counts = sum((run.counts for run in self._runs.values()), Counts())
         listed = []
@@ -244,18 +245,24 @@ class Collector:
             if found is not None:
                 drawn, labels = found
                 heard = max(label.heard for label in labels.values())
-                listed.append(dict(drawn.listed, heard=_stamp(heard)))
+                # A run heard from while the reports were drawn was heard from now.
+                unheard = max(0, now - heard)
+                listed.append(dict(drawn.listed, heard=_stamp(heard), unheard=unheard))
         # Of two that read alike, the one heard from last comes first. A stamp sorts as its time.
         listed.sort(key=lambda entry: entry["heard"], reverse=True)
         listed.sort(key=lambda entry: _place(entry["verdict"]))
         return {"lines": asdict(counts), "conversations": listed}
 
     def conversation(self, convo: str) -> bytes:
-        """A conversation's report as JSON: what `--json` holds for it, and more of each run."""
+        """A conversation's report as JSON: what `--json` holds for it, and more of its runs.
+
+        Each run is answered with what the collector says of it, and their lines are counted.
+        """
         found = self._report(convo)
         if found is None:
             raise Refused(404, error="no log the collector holds names this conversation")
         drawn, labels = found
+        counts = sum((label.counts for label in labels.values()), Counts())
         runs = [
             {
                 "id": run["name"],
@@ -268,7 +275,8 @@ class Collector:
             }
             for run in drawn.runs
         ]
-        return drawn.head + json.dumps(runs).encode() + b"}"
+        lines = json.dumps(asdict(counts))
+        return drawn.head + json.dumps(runs).encode() + b', "lines": ' + lines.encode() + b"}"
 
     def lines_around(self, run_id: str, line: int) -> List[dict]:
         """The lines of a run's log around one of them, each with its number."""
@@ -609,7 +617,7 @@ def _writers(records: Iterable[Record]) -> Set[str]:
 
 
 def _label(run: Run) -> _Label:
-    return _Label(run.name, run.app, run.size, run.heard)
+    return _Label(run.name, run.app, run.size, run.heard, run.counts)
 
 
 def _place(verdict: str) -> int:

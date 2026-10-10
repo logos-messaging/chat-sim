@@ -122,8 +122,8 @@ and other lines print it.
 |---|---|
 | `installation`, `from` | The first four bytes of the installation's key: 8 hex characters. |
 | `account` | The first four bytes of the account id, in hex. An id shorter than four bytes is written whole, and an empty one as nothing. |
-| `convo` | The conversation id as one word. A byte outside `[0-9A-Za-z_-]` is written `%xx`, and the tool keeps the id as written. |
-| `epoch`, `members` | A number. `members` is the length of the roster. |
+| `convo` | The conversation id as one word. A byte outside `[0-9A-Za-z_-]` is written `%xx`, and the tool keeps the id as written. An id holds at most 1597 bytes, which is what fits the 8000 bytes of address the page asks for a conversation by. |
+| `epoch`, `members` | A number, at most 9007199254740991, the largest a browser reads from JSON exactly. `members` is the length of the roster. |
 | `state` | 16 hex characters: a fingerprint of the group state. Installations that hold the same state write the same fingerprint. |
 | `roster` | The members, comma-separated, each `installation:account`. |
 | `frame` | The id of a frame, in hex. |
@@ -139,8 +139,8 @@ No line stops the tool. The last line of a report counts what was read:
 - **without a stamp**: lines that do not start with a stamp, such as a backtrace or the output of
   a build. They are skipped.
 - **malformed**: lines on a report target whose record lacks a field, repeats one, holds a
-  value of the wrong shape, or gives a `members` that is not the length of its `roster`. They are
-  skipped.
+  value of the wrong shape or past its bound, or gives a `members` that is not the length of its
+  `roster`. They are skipped.
 - **unknown**: lines on a report target whose record name the tool does not know. They are
   skipped. A field the tool does not know is ignored, and the record is read.
 
@@ -316,6 +316,14 @@ are given.
       "verdict": "split at epoch 3",
       "split_epoch": 3,
       "coverage": {"sharing": 4, "seats": 4},
+      "positions": [
+        {
+          "position": "tip",
+          "count": 4,
+          "installations": ["19f6b0e3", "7b1e44d9", "a3f91c07", "e09a3f52"]
+        }
+      ],
+      "epochs": [1, 2, 3, 4],
       "branches": [
         {
           "label": "A",
@@ -331,10 +339,22 @@ are given.
           "epoch": 3,
           "state": "e849c2aa9ab1f74d",
           "branch": "B",
+          "lineage": "branch",
+          "toward": null,
+          "holders": 1,
           "members": 4,
           "roster": ["19f6b0e3", "7b1e44d9", "a3f91c07", "e09a3f52"],
           "held_by": ["e09a3f52"],
-          "after": [{"epoch": 2, "state": "763449d6cdefb10f"}]
+          "after": [{"epoch": 2, "state": "763449d6cdefb10f"}],
+          "row": 1
+        }
+      ],
+      "lanes": [
+        {
+          "under": "branch",
+          "branch": "B",
+          "positions": ["tip"],
+          "installations": ["e09a3f52"]
         }
       ],
       "installations": [
@@ -342,10 +362,14 @@ are given.
           "id": "e09a3f52",
           "account": "0d7a66f3",
           "runs": ["pax"],
+          "kept": false,
           "position": "tip",
           "branch": "B",
           "epoch": 3,
           "state": "e849c2aa9ab1f74d",
+          "listed": [],
+          "unreached": [],
+          "behind_by": null,
           "history": [
             {
               "kind": "epoch",
@@ -355,12 +379,16 @@ are given.
                 "run": "pax",
                 "line": 7,
                 "time": "2026-10-08T15:33:12.080+02:00",
-                "has_offset": true
+                "has_offset": true,
+                "seconds": 1791466392.08
               }
             }
-          ]
+          ],
+          "cells": [{"epoch": 1, "kind": "wrote", "steps": [0]}],
+          "spans": [{"start": 1791466339.014, "end": 1791466339.017, "online": true}]
         }
       ],
+      "timeline": {"start": 1791466306.08, "end": 1791466732.412},
       "messages": [
         {
           "frame": "e3b94d10",
@@ -371,7 +399,8 @@ are given.
             "run": "raya",
             "line": 12,
             "time": "2026-10-08T14:37:00.601+01:00",
-            "has_offset": true
+            "has_offset": true,
+            "seconds": 1791466620.601
           },
           "cells": {
             "19f6b0e3": "read",
@@ -394,7 +423,8 @@ are given.
                 "run": "pax",
                 "line": 5,
                 "time": "2026-10-08T15:32:20.077+02:00",
-                "has_offset": true
+                "has_offset": true,
+                "seconds": 1791466340.077
               }
             }
           ]
@@ -410,20 +440,65 @@ The lists above are cut to one entry each.
 - `lines` is the count the text report ends with.
 - `conversations` are in the order of their ids.
 - `split_epoch` is the first epoch with two states, or `null`.
+- `positions` are the positions an installation is in, in the order `tip`, `behind`,
+  `lineage unknown`, `ended`, `removed`, `never joined`, `no data`, each with its installations
+  and their `count`.
+- `epochs` are the epochs a state or a leave names, in order.
 - `branches` are in the order of their names. `since` is the epoch of a branch's first state,
   and `epoch`, `state` and `members` describe its newest.
 - `states` are every state reported, by epoch and then fingerprint. `branch` is `null` for a
-  state on no branch, `held_by` lists the installations that reported it, and `after` lists the
-  states that links lead to it from.
+  state on no branch, `held_by` lists the installations that reported it and `holders` counts
+  them, and `after` lists the states that links lead to it from. `lineage` says how the state
+  stands among the branches, by the newest state of each:
+
+  | `lineage` | When |
+  |---|---|
+  | `branch` | There is a split, and the state is on a branch. |
+  | `side` | There is a split, the state is on no branch, and links lead on from it to the newest state of one branch alone, which `toward` names. |
+  | `shared` | There is a split, the state is on no branch, and links lead on from it to the newest states of two or more branches. Or there is no split, and it is the newest state or links lead on from it to the newest. |
+  | `unknown` | Links lead on from it to the newest state of no branch. |
+
+  `row` is the row of the lineage a page draws the state in, counted from the top. A row is a
+  line of states. Each branch has one, in the order of `branches`: its newest state and the
+  states links lead to it from, each by the latest it came from, back to a state an earlier row
+  holds, which the row leaves. A state no such line reaches starts a row the same way, the
+  newest first. A row stands under the one it leaves, nearer to it the later it leaves, so that
+  a link to a row's first state crosses no row that leaves earlier.
+
+- `lanes` are the installations under the headings they are read under, each heading with the
+  `positions` of its installations, each once. First come the branches of a split, by name:
+  `under` is `branch`, and `branch` names it. Then comes `one line` without a split, or
+  `neither branch` with one, and last `not placed`. An installation goes by the last state it
+  wrote, also when a leave follows it: under that state's branch when its `lineage` is `branch`,
+  under `one line` or `neither branch` when it is `shared`, and under `not placed` when it is
+  `side` or `unknown` or the installation wrote no state. Under a heading they come by position,
+  in the order of `positions`, and then by id, and a heading with no installation is left out.
 - `installations` are every seat, by id. `account` comes from the installation's `run` record
   or, without one, from a roster, and is `""` for an account of no bytes. `epoch` is the epoch of
   its last record, and `state` and `branch` are `null` when that record is a leave or the seat
   has no record. `history` holds its records in the order written, each of kind `epoch` or
-  `left`, and a leave has no state. A seat that goes by a kept line has the line's `account`
-  and `epoch`, no `state`, `branch` or history, and in `runs` only the runs that hold other
-  records of its own.
+  `left`, and a leave has no state. A seat that goes by a kept line says so in `kept`: it has
+  the line's `account` and `epoch`, no `state`, `branch` or history, and in `runs` only the runs
+  that hold other records of its own. `listed` holds, for a seat that wrote no `epoch` and no
+  `left` record, the epochs of the states whose roster lists it, and is empty for any other.
+  `unreached` holds, for a seat that is `behind`, the epochs of the states that links lead on to
+  from its newest, and `behind_by` says how many epochs the last of them is above its own: they
+  are empty and `null` for any other. `cells` are its lane, one for each epoch the lane holds
+  something at, in the order of the epochs. A cell of kind `wrote` holds in `steps` the places
+  in `history` of the records the installation wrote at that epoch, in the order written,
+  whatever else is said of the epoch. A cell of kind `unreached` is an epoch of `unreached`, and
+  a cell of kind `listed` an epoch of `listed` for a seat nobody shared a log of: one that wrote
+  in no log held and goes by no kept line. `steps` is empty in both. `spans` are the runs it
+  wrote in as stretches of time, in seconds since 1970 in UTC: each run from the first to the
+  last of the installation's records in it and the run's `delivery` records, cut where the
+  delivery state turns to `online` or away from it, each stretch with whether it was `online`.
+  A run is read as online until its first `delivery` record.
+- `timeline` is the first and the last second among the stamps of the records that name the
+  conversation. A run of `spans` reaches past it where the run wrote anything else before or
+  after: its `run` record, a `delivery` record or a record of another conversation.
 - `at` is where a record was written: the run, the line in it, and the stamp as written.
-  `has_offset` says whether the stamp carries its offset from UTC.
+  `has_offset` says whether the stamp carries its offset from UTC, and `seconds` is the stamp as
+  seconds since 1970 in UTC, a stamp without an offset read as UTC.
 - `messages` has an entry for each frame a `sent` record names, in the order sent. `state` is the
   state its sender held at that epoch, or `null` when the sender wrote no `epoch` record for it.
   `cells` says what became of the post on each seat, and `why` gives the cause for each
@@ -447,7 +522,7 @@ The lists above are cut to one entry each.
 `report` reads the logs someone gathered. `serve` gathers them: it takes the logs members send
 it as they run, keeps them, and answers each conversation's report as JSON, drawn by the same
 rule from what it holds when it is asked. [`share`](#sharing-logs) sends it the logs of a
-directory.
+directory, and [its page](#the-page) draws the reports in a browser.
 
 From the repository root:
 
@@ -489,19 +564,26 @@ a label its sender gave it, and two runs may carry one name.
 | `GET /conversations` | | 200: every conversation the logs held name, the worst first. |
 | `GET /conversations/CID` | | 200: the report of one conversation. |
 | `GET /runs/ID/log?line=N` | | 200 `{"lines": [{"line": N, "text": "..."}]}`: line `N` of the run's log, the two before it and the three after. |
+| `GET /` | | 200: [the page](#the-page). |
+| `GET /page/NAME` | | 200: the file `NAME` of the page, which is `index.html`, `report.css` or `report.js`. |
+| `GET /?token=TOKEN` | | 303 to `./`, with a cookie that holds the token: a browser's way in. |
 
 | Status | When |
 |---|---|
 | 400 | A body, an offset or a line is not what the call takes, or a body gives its length twice or beside a transfer coding. |
 | 401 | The call does not carry the token. The answer says nothing else, whatever was asked for. |
 | 403 | A write to a run does not carry that run's receipt. |
-| 404 | The collector has no such run, no such conversation or no such call. |
+| 404 | The collector has no such run, no such conversation, no such file of the page or no such call. |
 | 411 | A `POST` or a `PUT` does not say the length of its body. |
 | 413 | A body is longer than 4 MiB. |
 | 507 | With `--max-bytes`, the bytes would take the logs held past it. Nothing is appended and nothing is marked, and the run still counts as heard from. Its sender loses nothing, and asks again later. |
 
-Every answer with a body is JSON, and an error is `{"error": "..."}`. A `PUT` without bytes at
-the size held changes no log, and it is how the collector knows it still hears from a run.
+Every answer with a body is JSON, but for the page and its files, and an error is
+`{"error": "..."}`. Every answer carries `Cache-Control: no-store`,
+`X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and a
+`Content-Security-Policy` that lets the page load from the collector alone, run no script or
+style written into it, and lets no page show an answer in a frame. A `PUT` without bytes at the size held changes no log, and it is
+how the collector knows it still hears from a run.
 Records are read from whole lines: what follows the last line break of the bytes held waits for
 the bytes that end it.
 
@@ -511,6 +593,17 @@ the bytes that end it.
 may send logs, and read every report and every line of every log held. It does not hide what
 crosses the network: the collector speaks plain HTTP, so off the loopback address the token and
 the logs travel in the clear unless something in front of it adds TLS.
+
+A browser sends no such header for an address a person opens, so it comes in by the share
+address: `GET /?token=TOKEN`, the token being the whole query, answers 303 to `./` and sets the
+cookie `forks_token=TOKEN; HttpOnly; SameSite=Lax; Max-Age=2592000`, with `; Secure` when the
+request carries `X-Forwarded-Proto: https`. The cookie lasts the thirty days a log does. It
+stands for the header on a `GET` and on nothing else: a write needs the header, so no page of
+another site can have a browser write. It is `Lax` so that a share address opens from where it
+was posted: a browser sends such a cookie when a link on another site is followed, and to
+nothing that site loads by itself. A token in the query of any other call opens nothing. The
+redirect is relative and the cookie names no path, so behind a proxy that serves the collector
+under a path both stay under that path.
 
 **The receipt** of a run is answered once, when the run is opened, and goes on every write to
 that run, in the header `Forks-Receipt: R`: an append, the final mark and the delete. So a holder
@@ -556,8 +649,9 @@ later, with a line in the collector's log each time.
 
 ### The collector's JSON
 
-`GET /conversations/CID` answers the object that `--json` holds for a conversation, with two
-differences. Wherever it names a run, it gives the run's id. And each entry of `runs` says more:
+`GET /conversations/CID` answers the object that `--json` holds for a conversation, with three
+differences. Wherever it names a run, it gives the run's id. It ends with `lines`, the count of
+lines over the runs its report lists. And each entry of `runs` says more:
 
 ```json
 {
@@ -577,13 +671,64 @@ written `%25`.
 
 `GET /conversations` answers `lines`, the count over every log held, and `conversations`, each
 with its `id`, `verdict`, `split_epoch` and `coverage`, the `label` and newest `epoch` of each of
-its `branches`, and `heard`, the latest of the runs its report lists. They come the worst first:
-a split with two or more sides live, with one, with none, then `whole as far as seen`,
-`whole, members behind`, `not enough data`, `no live member` and `whole`. Of two that read alike,
-the one heard from last comes first.
+its `branches`, `heard`, the latest of the runs its report lists, and `unheard`, the seconds
+from then to the answer. They come the worst first: a split with two or more sides live, with
+one, with none, then `whole as far as seen`, `whole, members behind`, `not enough data`,
+`no live member` and `whole`. Of two that read alike, the one heard from last comes first.
 
 A report is drawn when it is asked for and kept until a write changes it: a record of one of its
 seats, a final mark on a run one of them wrote in, or a log that goes.
+
+### The page
+
+The collector serves a page that draws its reports. A person opens the collector's share address
+in a browser, the address `share` takes:
+
+```text
+http://127.0.0.1:8750/?token=5d1c0a9e7b3f42d8
+```
+
+The collector answers with [the cookie](#the-token-and-the-receipt) and sends the browser on to
+the same address without the token, where the page stays. The page is the three files of
+`forks/page`, served as they stand: it has no build step and loads nothing from another host.
+
+| Part | What it shows |
+|---|---|
+| The list at the left | Every conversation a held log names, the worst first, with its verdict, how many of its seats share a log and how long ago the collector heard from a run of it. |
+| The front page | The same conversations as a table, each also with the newest epoch of each of its branches, and under it the count of lines over every log held. |
+| The title | The conversation's id, and how long ago the collector heard from a run of it. |
+| The verdict | A conversation's verdict in the words of the report, how many of its seats share a log, and how many malformed lines were skipped when any was. |
+| The tiles | How many seats share a log, how many branches there are and the first epoch with two states when there is a split, and how many installations are in each position, with their ids when they are three or fewer. |
+| Lineage of states | Every reported state as a circle that holds how many installations reported it, in the column of its epoch and in its `row`, a line of states named for its newest: a branch, the states that only one branch's logs reach, the shared line, or the states of unknown lineage. A line is a link, a mark stands at the first epoch with two states, and each branch ends in its name, its newest epoch and how many installations are on it. |
+| Installations | A row for each installation, under the headings of `lanes`, with a line for each run it wrote in: the run's name, what sent it and when the collector last heard from it. A cell for each epoch of its `cells`: every record it wrote there in the order written, each a state with the letter of its branch or a leave, or an epoch it has not reached, or an epoch whose roster lists a seat nobody shared a log of. Then its position, with an end mark where it is `removed`, `ended` or `never joined` unless a leave ends the lane, and the words `its log is gone` for a seat that goes by a kept line. The lanes open at the newest epoch. |
+| Timeline | A row for each installation over the time from the first to the last record that names the conversation: a line for each of its runs, cut where the run reaches past that time, dotted where the run's `delivery` records say it was not online, with a mark where it reached each epoch. Times are UTC, and the date stands under the first stamp of each day. |
+| The state each branch holds | The newest state of each branch: its epoch, its fingerprint, how many its roster lists, the installations on it and the seats its roster lists. |
+| Log | The line of a record in its run's log with the lines around it, when a cell of the installations or a mark of the timeline is clicked. The lines stay open while the page reads again, and close when their record is drawn no more. |
+
+The page reads `GET conversations`, and `GET conversations/CID` for the conversation its address
+names after `#`, when it is opened and again every 30 seconds while its tab is visible. A read
+of the 30 seconds is left out while the one before it is under way, and a read gives the
+collector up when 20 seconds pass without a byte of its answer. It reads
+`GET runs/ID/log?line=N` when a cell or a mark is opened. Every address it uses is relative, so
+it works under whatever path a proxy serves the collector at.
+
+The page decides nothing: every verdict, position, count, order and heading it shows is in the
+collector's JSON. What a run's name, an account or a log line says reaches the page as text and
+never as markup.
+
+When the collector answers 401, the page says that the share address must be opened again. When
+the collector holds no log that names the conversation shown, the page says so and links to the
+front page. When the collector does not answer, the page says when it last did, in UTC, and what
+it drew stays. It stays as well when the answer is not the collector's JSON, which the page says
+it cannot read. A reader is left at the part they were reading when a report grows.
+
+Every link, every cell that holds a record and every mark of the timeline can be reached and
+opened from the keyboard, with an outline around the one that has the focus: Tab moves from part
+to part, the arrow keys, Home and End move among the cells and among the marks, Enter or Space
+opens the log lines, and Escape closes them. A read that draws the page anew leaves each table
+the cell the Tab key stopped at in it. A conversation that is opened takes the focus at its
+title, and closing the log lines gives it back to the mark that opened them. A position has its
+icon and its word, and a branch its letter as well as its hue.
 
 ## Sharing logs
 
@@ -715,7 +860,38 @@ that named its log.
 - The tail of a split verdict also counts a live installation whose state is on no branch: one a
   later split follows, or one whose later states are not one line.
 - The collector speaks plain HTTP, one request to a connection, and closes a connection that
-  falls silent for 30 seconds. It serves the calls above and no page.
+  falls silent for 30 seconds.
+- The cookie is `Secure` only when the request says `X-Forwarded-Proto: https`. Behind a proxy
+  that adds TLS and not that header, a browser sends the cookie over plain HTTP as well.
+- A browser keeps a cookie by host, whatever the port. A second collector on the host, with a
+  token of its own, takes the place of the first one's cookie, and the first answers 401 until
+  its share address is opened again. Whatever else answers on another port of the host is sent
+  the cookie, and the token in it.
+- Behind a proxy that serves the collector under a path, a page of any other application of that
+  host is of the collector's origin: in the browser of someone who opened the share address it
+  reads the reports and the logs. A collector whose logs the rest of a host must not read wants
+  a host name of its own.
+- Opened in a browser, a share address with a path must end the path in `/`: the redirect and
+  every address of the page are relative, and after `http://HOST/forks?token=TOKEN` they lead to
+  `http://HOST/`.
+- The page shows what it read last, and reads only while its tab is visible: what it shows can be
+  30 seconds behind the collector. Each read asks for the whole JSON of the conversation shown,
+  25 MB for the conversation below, and over a link that does not carry it in 30 seconds one
+  read follows another.
+- The page shows the states, the installations and the runs of a conversation, and none of its
+  messages.
+- Every installation has a row among the installations and a row on the timeline, and none is
+  folded away. The conversation of 300 members and 300 epochs below is 25 MB of JSON and 282,000
+  elements: over four runs Firefox built and laid it out in 1.7 to 2.0 seconds once it held the
+  JSON, and showed it 1.9 to 2.4 seconds after the conversation was asked for.
+- The page gives the first three branches a hue each and any further branch one fill: there the
+  letter alone tells the branches apart.
+- The timeline places a record by its stamp, and a stamp without an offset is read as UTC: logs
+  stamped in the local time of two zones are drawn that far apart.
+- The timeline covers the time of the records that name the conversation. A run that wrote
+  nothing within that time, as the run of a seat that never joined may, has a row and no line.
+- The page asks for the typeface Public Sans and ships no font: where it is not installed, the
+  browser uses the system's.
 - A body the collector refuses for its length, or for saying none, is answered unread. A client
   that reads an answer only once it has sent its body finds the connection closed instead.
 - The body of a call without the token is read and kept nowhere, for 30 seconds at most, and then
@@ -729,8 +905,8 @@ that named its log.
   of a log that names its conversation: the log nobody read may be the one that does. The lines
   stay in their `run.json` until a start that finds no such directory.
 - The collector holds every record in memory. Logs of 300 members, each 300 epochs of one
-  conversation, 500 MB in all, took 20 seconds to read at a start and a second to draw the
-  report of, in 160 MiB of memory.
+  conversation, 500 MB in all, took 20 seconds to read at a start and a second and a half to
+  draw the report of, in 235 MiB of memory at the most and 155 MiB once it was drawn.
 - A directory is for one collector. Nothing stops a second from starting on it, and the two
   would each replace the other's `run.json`.
 - `--max-bytes` counts the bytes of the logs, and not what `run.json` takes.
@@ -775,7 +951,9 @@ members would share them, with the verdict and the positions the tool must give 
 `tests/fixtures/real` holds two logs of a real group, cut to their records and the lines around
 them. The tests of the collector each start one on a loopback port the system picks, and call it
 over HTTP. The tests of `share` send to such a collector, and to a scripted stand-in for the
-answers a collector never gives.
+answers a collector never gives. The tests of the page come in as a browser does, by the share
+address and the cookie, and read the page's files for what they must not hold: no test runs a
+browser.
 
 ## Layout
 
@@ -787,5 +965,6 @@ answers a collector never gives.
 | `forks/text.py` | Writes the report as text. |
 | `forks/collector.py` | Keeps the runs members send, and draws each conversation's report. |
 | `forks/serve.py` | Serves a collector over HTTP. |
+| `forks/page/` | The page `serve` answers: `index.html`, `report.css` and `report.js`. |
 | `forks/share.py` | Sends the runs in some paths to a collector. |
 | `forks/cli.py` | The command line. |

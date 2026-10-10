@@ -1,6 +1,6 @@
 import unittest
 
-from forks.records import Counts, instant, read_complete_lines, read_lines
+from forks.records import MAX_CONVO, MAX_NUMBER, Counts, instant, read_complete_lines, read_lines
 
 ROSTER = "a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7"
 PLACED = "installation=a3f91c07 convo=2a30d6a2c1 epoch=7"
@@ -222,6 +222,9 @@ class NotARecord(unittest.TestCase):
             "an account of five bytes": "run installation=a3f91c07 account=5be2c0d1a3",
             "an epoch that is no number": LEFT.replace("epoch=8", "epoch=eight"),
             "a negative epoch": LEFT.replace("epoch=8", "epoch=-8"),
+            "an epoch no browser reads exactly": LEFT.replace("epoch=8", f"epoch={2**53}"),
+            "as many members": EPOCH.replace("members=2", f"members={2**53}"),
+            "an epoch of twenty-one digits": LEFT.replace("epoch=8", "epoch=" + "9" * 21),
             "a state of the wrong length": EPOCH.replace("b77d02c4a91e03d5", "b77d02c4"),
             "a roster entry without an account": EPOCH.replace(ROSTER, "a3f91c07,7b1e44d9"),
             "an empty roster": EPOCH.replace(ROSTER, ""),
@@ -229,6 +232,8 @@ class NotARecord(unittest.TestCase):
             "a roster longer than its members": EPOCH.replace("members=2", "members=1"),
             "a conversation id with a raw byte": LEFT.replace("2a30d6a2c1", "a/b"),
             "an empty conversation id": LEFT.replace("2a30d6a2c1", ""),
+            "a conversation id a byte too long": LEFT.replace("2a30d6a2c1", "a" * 1598),
+            "one too long by a byte written %xx": LEFT.replace("2a30d6a2c1", "a" * 1597 + "%e6"),
             "a cause the tool does not know": f"unreadable {PLACED} frame=e3b9 why=late",
             "a frame that is no hash": f"sent {PLACED} frame=xyz",
         }
@@ -237,6 +242,14 @@ class NotARecord(unittest.TestCase):
                 self.assertNoRecord(tracing(message), malformed=1)
         asleep = module("delivery state=asleep", target="chat_module::report")
         self.assertNoRecord(asleep, malformed=1)
+
+    def test_the_largest_number_and_the_longest_conversation_id_are_read(self):
+        self.assertEqual((MAX_NUMBER, MAX_CONVO), (2**53 - 1, 1597))
+        newest = only(tracing(LEFT.replace("epoch=8", f"epoch={MAX_NUMBER}")))
+        self.assertEqual(newest.epoch, 2**53 - 1)
+        for convo in ("a" * MAX_CONVO, "%e6" * MAX_CONVO):
+            with self.subTest(convo=convo[:6]):
+                self.assertEqual(only(tracing(LEFT.replace("2a30d6a2c1", convo))).convo, convo)
 
     def test_invalid_utf8_is_counted_and_skipped(self):
         stamp = b"2026-10-09T06:54:50.313738Z  INFO "

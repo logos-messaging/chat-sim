@@ -74,6 +74,15 @@ class Reading:
     consumed: int
 
 
+# The largest number a browser reads from JSON exactly, 2^53 - 1: the page shows an epoch as the
+# JSON holds it.
+MAX_NUMBER = 9007199254740991
+# The most bytes a conversation id holds. The page asks for a conversation by its id in an
+# address, where a byte written `%xx` takes five: `/conversations/` and this many of those are
+# the 8000 bytes of address every server is asked to take (RFC 9110, 4.1).
+MAX_CONVO = (8000 - len("/conversations/")) // 5
+
+
 class _UnknownRecord(Exception):
     pass
 
@@ -90,7 +99,7 @@ def _shaped(pattern: str) -> Callable[[str], str]:
 
 
 def _number(value: str) -> int:
-    if not re.fullmatch(r"[0-9]{1,20}", value):
+    if not re.fullmatch(r"[0-9]{1,20}", value) or int(value) > MAX_NUMBER:
         raise ValueError(value)
     return int(value)
 
@@ -110,7 +119,7 @@ _installation = _shaped(r"[0-9a-f]{8}")
 # An installation is the first four bytes of a key. An account is the first four bytes of what a
 # member's credential holds, which may be fewer, or none.
 _account = _shaped(r"(?:[0-9a-f]{2}){0,4}")
-_convo = _shaped(r"(?:[0-9A-Za-z_-]|%[0-9a-f]{2})+")
+_convo = _shaped(r"(?:[0-9A-Za-z_-]|%%[0-9a-f]{2}){1,%d}" % MAX_CONVO)
 _fingerprint = _shaped(r"[0-9a-f]{16}")
 _frame = _shaped(r"[0-9a-f]+")
 _placed = {"installation": _installation, "convo": _convo, "epoch": _number}
