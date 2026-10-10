@@ -9,8 +9,9 @@ as it goes, and `forks` reads the logs the members share and says what they add 
 or several, who is on which branch, who is behind, who was removed, and how much of the group the
 logs cover.
 
-The tool reads logs and nothing else: `report` reads the files it is given, and `serve` the logs
-members send it. It needs Python 3.9 or newer and no package beyond the standard library.
+The tool reads logs and nothing else: `report` reads the files it is given, `serve` the logs
+members send it, and `share` sends files to where `serve` runs. It needs Python 3.9 or newer and
+no package beyond the standard library.
 
 ## Getting a log with records in it
 
@@ -85,7 +86,7 @@ read.
 |---|---|
 | 0 | Every conversation in the logs reads `whole`, and no line on a report target was malformed. |
 | 1 | A conversation reads anything else, the logs hold no conversation, or a line on a report target was malformed. |
-| 2 | The command line is wrong, or a log cannot be read. |
+| 2 | The command line is wrong, a log cannot be read, or the report cannot be written. |
 
 ## The lines it reads
 
@@ -445,7 +446,8 @@ The lists above are cut to one entry each.
 
 `report` reads the logs someone gathered. `serve` gathers them: it takes the logs members send
 it as they run, keeps them, and answers each conversation's report as JSON, drawn by the same
-rule from what it holds when it is asked.
+rule from what it holds when it is asked. [`share`](#sharing-logs) sends it the logs of a
+directory.
 
 From the repository root:
 
@@ -583,6 +585,114 @@ the one heard from last comes first.
 A report is drawn when it is asked for and kept until a write changes it: a record of one of its
 seats, a final mark on a run one of them wrote in, or a log that goes.
 
+## Sharing logs
+
+`share` sends logs to a collector from a terminal: every run in the paths it is given, once, and
+then it ends.
+
+From the repository root:
+
+```sh
+python3 tools/forks share --to 'http://127.0.0.1:8750/?token=5d1c0a9e7b3f42d8' logs/
+```
+
+`--to` takes the collector's share address: where its calls are made, and its token after
+`?token=`. A `PATH` is what it is to `report`: a log, or a directory, which stands for every
+`.log` file directly in it. The parts of a [run](#runs) go as one stream, in their order, and the
+run goes by the name `report` gives it, cut to 64 characters, with `forks share` as its app. A
+run is sent whole: a log named by itself while its directory holds another part of its run is
+refused, since the name the run is remembered by would stand for one stream now, and for another
+once the directory is named.
+
+```console
+$ python3 tools/forks share --to 'http://127.0.0.1:8750/?token=5d1c0a9e7b3f42d8' logs/
+mira: sent 2414 bytes, 127.0.0.1:8750 holds 2414 of 2414
+pax: sent 2236 bytes, 127.0.0.1:8750 holds 2236 of 2236
+raya: sent 2132 bytes, 127.0.0.1:8750 holds 2132 of 2132
+saro: sent 2150 bytes, 127.0.0.1:8750 holds 2150 of 2150
+```
+
+A line on standard output says of each run how many bytes this go sent, and how many the
+collector holds of the bytes the disk held when the go began: the run is whole there when the
+last two are one number. A run the collector gave no size of has no such line. What kept a run
+from being whole is a line on standard error. A line that speaks of the collector names it by its
+host, and the token is in nothing the command prints or writes. A line is written when its run is
+done: a go whose output nobody reads any more ends there, with 2.
+
+Run again, the command goes on with the same runs and sends what their logs gained. It keeps no
+offset: of a run it sent before it asks the collector, with a request that holds no bytes at the
+size the disk has, and a 409 says where to go on. A request holds at most 1 MiB of a run and is
+given up after 30 seconds.
+
+| Status | Meaning |
+|---|---|
+| 0 | The collector holds every run whole. |
+| 1 | A run is not whole there. |
+| 2 | The command line, the address or a path cannot be used, a directory's `.forks-share.json` cannot be read as its own or written, another `share` is sending from a directory, or nobody reads what the command prints. |
+
+### The share address
+
+Everything before `?` is the base, and each call is made under it, with a `/` added where the
+base does not end in one. `share` refuses an address that is not `http` or `https`, or that holds
+a fragment, a user or a password, no `token`, more than one, one spelled with an escape, or one
+that is not 16 to 128 characters of `A-Z`, `a-z`, `0-9`, `_` and `-`, or whose host has a label
+that is empty or longer than 63 characters. It quotes no address it refuses. Nor does `forks`
+quote one that stands out of its place, as in `forks --to ADDRESS share logs/`: in what it says
+of a command line, `ADDRESS` stands for each word that holds `token=`. An `https` address is
+checked against the certificates the system trusts.
+
+### What it remembers
+
+`share` keeps one file in each directory it sends logs from, `.forks-share.json`:
+
+```json
+{
+  "http://127.0.0.1:8750/": {
+    "saro": {
+      "id": "18fae263f6ea83ec26079157cea3f019",
+      "receipt": "vxNFW7h5EQ4zl8_C7fSShRxUJ-j9NDWkC0GtzFkQEcI"
+    }
+  }
+}
+```
+
+The file is cut to one run here. For each collector, under its base, and each run, under its
+name, it holds the id the collector gave the run and the receipt the run's writes must carry,
+and never the token: an id or a receipt that holds the token is not what the opening of a run
+promises. With it the next go adds to the same runs, and without it every log is sent as a new
+run beside the old one. It is replaced in one step, and only its owner can read it: beside the
+token, a receipt is the right to add to a run, to end it and to delete it. It is written once
+before a run is opened, so a directory no file can be made in has no run opened. A file that is
+not as `share` writes it, one that names a collector or a run twice among them, is refused: the
+go says so, sends nothing from that directory and leaves the file as it is.
+
+A go holds each directory it sends from until it ends, by a lock of the system's on the directory
+itself, which leaves no file behind. A second go at the same time says so and sends nothing from
+that directory: the two would each open a run for a log, and each replace the other's file.
+
+### What the collector answers
+
+| Answer | What `share` does |
+|---|---|
+| 200 | It goes on with the next bytes, until the collector holds what the disk held. |
+| 409 | It goes on from the size the answer gives. When that is more than the disk has, it stops the run and says so. So it does at the second 409 a run answers in one go: the run grows by another hand, or is final. |
+| 404 | It drops the run's entry, opens the run again and sends it whole, in the same go. |
+| 403 | It says that the run's receipt was refused, and goes on with the next run. |
+| 413 | It says that the request was longer than is taken, and goes on with the next run. |
+| 401 | It says that the token was refused, and stops. |
+| 507 | It says that the collector holds as many bytes as it may, and stops. |
+| Any other, one that does not say what its call promises, none in 30 seconds, or no connection | It says so in a line and stops, since no other run would fare better. A redirect is such an answer, and is not followed. |
+
+None of them loses anything: the logs are on the disk, and the next go asks again.
+
+### No run is marked final
+
+A file does not say whether its writer is gone, so `share` marks no run final. An installation
+whose logs all came this way never reads `ended`: one whose application has stopped stays live
+where it stood, and a group the others took on from there reads `whole, members behind` where it
+would read `whole`. That lasts while the collector holds the run, thirty days from the last go
+that named its log.
+
 ## Limits
 
 - In the line shape of `tracing`, a span without fields and a one-word target look alike: each is
@@ -624,6 +734,33 @@ seats, a final mark on a run one of them wrote in, or a log that goes.
 - A directory is for one collector. Nothing stops a second from starting on it, and the two
   would each replace the other's `run.json`.
 - `--max-bytes` counts the bytes of the logs, and not what `run.json` takes.
+- The share address is an argument of `share`, so its token is in the shell's history and, while
+  the command runs, in the list of processes.
+- `share` sends a log from a file, which it can read again from where the collector stopped, and
+  refuses a pipe.
+- `share` sends a run as far as the disk held it when the go began: what a log gains during a go
+  is sent by the next, and a log its writer moved aside or cut during a go is sent no further in
+  that go.
+- A log written anew under the name of one that was sent is taken for that log, grown: `share`
+  adds its bytes past the size the collector holds, and stops only when it is the shorter. To
+  send it as a new run, take its entry out of `.forks-share.json`.
+- A run whose opening the collector answered and `share` did not hear, did not live to write
+  down or could not write down, as when the disk fills between the two writes of the file, stays
+  on the collector, empty, until its thirty days are over.
+- An entry stays in `.forks-share.json` when its log is gone from the directory.
+- `share` holds a directory by `flock`, which Python has on Unix. Where Python has none, or the
+  system gives no lock on a directory, it says so and sends nothing from the directory.
+- `share` reads a log through a link as `report` does: the run is named after the file the link
+  leads to, and `.forks-share.json` is kept in that file's directory, which must take it, and not
+  in the directory of the link.
+- A collector is remembered by its base as the address spells it. Under another spelling, such as
+  `HTTP://` for `http://`, `localhost` for `127.0.0.1`, a port with a zero before it or a second
+  `/` at the end, it is another collector to `share`, and every log is sent to it as a new run.
+- A request of `share` holds up to 1 MiB and is given up after 30 seconds, so over a link that
+  carries less than 34 KiB a second a run with 1 MiB or more to send does not arrive.
+- `.forks-share.json` is not synced to disk: after a power cut it may be cut short, and is then
+  refused until it is removed by hand.
+- `share` calls the collector itself, and reads no proxy from the environment.
 
 ## Tests
 
@@ -637,7 +774,8 @@ python3 -m unittest discover -s tools/forks
 members would share them, with the verdict and the positions the tool must give in `expect.json`.
 `tests/fixtures/real` holds two logs of a real group, cut to their records and the lines around
 them. The tests of the collector each start one on a loopback port the system picks, and call it
-over HTTP.
+over HTTP. The tests of `share` send to such a collector, and to a scripted stand-in for the
+answers a collector never gives.
 
 ## Layout
 
@@ -649,4 +787,5 @@ over HTTP.
 | `forks/text.py` | Writes the report as text. |
 | `forks/collector.py` | Keeps the runs members send, and draws each conversation's report. |
 | `forks/serve.py` | Serves a collector over HTTP. |
+| `forks/share.py` | Sends the runs in some paths to a collector. |
 | `forks/cli.py` | The command line. |

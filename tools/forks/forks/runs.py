@@ -55,6 +55,18 @@ def find_runs(paths: Iterable[Path]) -> List[RunLog]:
     return runs
 
 
+def left_out(run: RunLog) -> List[Path]:
+    """The `.log` files of a run's directory that are parts of the run and not among its own.
+
+    A run found by the files that were named may lack them; found by its directory, it has them.
+    """
+    directory = run.parts[-1].parent
+    beside = {file.resolve() for file in _held(directory)} - set(run.parts)
+    return sorted(
+        file for file in beside if file.parent == directory and _place(file.name)[0] == run.name
+    )
+
+
 def _in_order(found: Dict[_Place, Path]) -> Tuple[Path, ...]:
     return tuple(found[place] for place in sorted(found))
 
@@ -67,10 +79,15 @@ def read_run(run: RunLog) -> Reading:
 def _logs(path: Path) -> List[Path]:
     if not path.is_dir():
         return [path]
-    logs = [file for file in path.iterdir() if file.suffix == ".log" and file.is_file()]
+    logs = _held(path)
     if not logs:
         raise InputError(f"{path} holds no .log file")
     return logs
+
+
+def _held(directory: Path) -> List[Path]:
+    """The logs a directory holds: the `.log` files directly in it."""
+    return [file for file in directory.iterdir() if file.suffix == ".log" and file.is_file()]
 
 
 def _place(file_name: str) -> Tuple[str, _Place]:

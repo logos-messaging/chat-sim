@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from forks.records import Counts
-from forks.runs import InputError, find_runs, read_run
+from forks.runs import InputError, find_runs, left_out, read_run
 
 
 def run_line(installation: str) -> str:
@@ -97,6 +97,20 @@ class Runs(unittest.TestCase):
         paths = [self.write("saro.log"), self.write("saro.001.log"), self.write("raya.log")]
         runs = find_runs(paths)
         self.assertEqual([(run.name, len(run.parts)) for run in runs], [("raya", 1), ("saro", 2)])
+
+    def test_the_parts_of_a_run_that_were_not_named_are_found_in_its_directory(self):
+        named = self.write("saro.log")
+        rest = [self.write("saro.001.log"), self.write("saro.002.log")]
+        for other in ("saro.1000.log", "saro.txt", "raya.001.log", "deeper/saro.003.log"):
+            self.write(other)
+        # A link is a file of the directory it leads to.
+        (self.directory / "saro.004.log").symlink_to(self.write("elsewhere/saro.004.log"))
+        (run,) = find_runs([named])
+        self.assertEqual(left_out(run), [path.resolve() for path in rest])
+        (run,) = find_runs([named, *rest])
+        self.assertEqual(left_out(run), [])
+        (alone,) = find_runs([self.write("alone/capture.txt")])
+        self.assertEqual(left_out(alone), [])
 
     def test_two_runs_under_one_name_are_refused(self):
         paths = [self.write("monday/saro.log"), self.write("tuesday/saro.log")]
