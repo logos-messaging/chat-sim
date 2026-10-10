@@ -34,6 +34,8 @@ python3 tools/forks report scale.log
 RUST_LOG=warn,libchat::groupv2trace=info cargo run -p chat-cli -- --name saro --log-file saro.log
 ```
 
+With `--headless` its filter lets the records through, and `RUST_LOG` is not needed.
+
 logos-chat-module, the Logos module that wraps libchat, writes a log file of its own, in a line
 shape of its own. The tool reads both shapes: see [The lines it reads](#the-lines-it-reads).
 
