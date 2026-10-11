@@ -9,9 +9,10 @@ as it goes, and `forks` reads the logs the members share and says what they add 
 or several, who is on which branch, who is behind, who was removed, and how much of the group the
 logs cover.
 
-The tool reads logs and nothing else: `report` reads the files it is given, `serve` the logs
-members send it, and `share` sends files to where `serve` runs. It needs Python 3.9 or newer and
-no package beyond the standard library.
+The tool reads logs and nothing else: `report` reads the files it is given, `check` holds what
+they add up to against a file that says what was expected, `serve` reads the logs members send
+it, and `share` sends files to where `serve` runs. It needs Python 3.9 or newer and no package
+beyond the standard library.
 
 ## Getting a log with records in it
 
@@ -603,6 +604,85 @@ The lists above, and `marks`, are cut to one entry each.
   epoch behind adds one for every such frame the group sends.
 - `runs` are the runs the seats wrote in, by name, each with the changes of its delivery state.
 
+## Checking a report
+
+`check` holds the report of one conversation against a file that says what was expected of it,
+and says each way the two differ:
+
+```sh
+python3 tools/forks check --expect FILE PATH...
+```
+
+The paths are read as `report` reads them. The file is JSON. This one expects the group of
+[Running it](#running-it) whole, with a member the logs never name and without Mira:
+
+```json
+{
+  "conversation": "b05d4417e9",
+  "verdict": "whole",
+  "installations": {
+    "a3f91c07": {"name": "saro", "position": "tip"},
+    "7b1e44d9": {"name": "raya", "position": "tip"},
+    "e09a3f52": {"name": "pax", "position": "tip"},
+    "b54a9d10": {"name": "kes", "position": "tip"}
+  },
+  "posts": [
+    {"sender": "a3f91c07", "cells": {"7b1e44d9": "read", "e09a3f52": "read"}},
+    {"sender": "7b1e44d9", "cells": {"a3f91c07": "read", "e09a3f52": "read"}},
+    {"sender": "a3f91c07", "cells": {"7b1e44d9": "read"}}
+  ]
+}
+```
+
+| Field | What it holds |
+|---|---|
+| `conversation` | The id of the conversation to check. The logs may hold others, which are not looked at. |
+| `verdict` | The [verdict](#verdicts) the report must give, whole, with the epoch where it names one. |
+| `installations` | Every installation the report must hold, by the eight hex characters a log names it by. An installation the report holds and the file does not is a difference, and so is one the file holds and the report does not. |
+| `position` | Of an installation: its [position](#positions) in the report. |
+| `name` | Of an installation, and optional: what a difference calls it, before its id. The check knows nothing of where the name comes from. |
+| `posts` | Optional. The posts the report must hold, each known by its sender and its place among that sender's posts in the file, since a log holds nothing of what a post said: the second entry of a sender is the second post it sent. A sender's posts are counted in the order its log holds their `sent` records, run after run, so two it wrote within one stamp keep their order. A file without `posts` says nothing of posts and they are not looked at; with `posts`, a post the report holds and the file does not is a difference, so an empty list expects none. |
+| `sender` | Of a post: the installation that sent it, one of `installations`. |
+| `cells` | Of a post: what became of it on an installation, by the words of `cells` in [the JSON report](#the-json-report): `sent`, `read`, `unreadable`, `not a member`, `no log` or `no record`. An installation it leaves out is not held to anything for that post. |
+
+It prints one line when the report is as expected, and otherwise a line for each difference, with
+what the report says before what was expected:
+
+```console
+$ python3 tools/forks check --expect expect.json logs/
+verdict: split at epoch 3, expected whole
+kes (b54a9d10): not in the report, expected tip
+19f6b0e3: tip, not expected
+post 1 of raya (7b1e44d9) on pax (e09a3f52): unreadable, expected read
+post 2 of saro (a3f91c07): not in the report
+post 1 of pax (e09a3f52): in the report, not expected
+```
+
+A cell the file names and the report lacks reads `not in the report` where its word would stand,
+as the position of Kes does here, and a conversation no log names reads
+`conversation b05d4417e9: not in the logs`. A line on a report target that was malformed is a
+difference too, since the report was drawn without it.
+
+A post an installation holds `unreadable` with `sender` for its cause reads
+`unreadable since the sender's account could not be checked`. The post decrypted there, so what
+kept it from being read is the lookup of the account and not the state of the group.
+
+A post whose `sent` record is in no log given is in no report, so it is not counted: each later
+post of its sender is then held against the entry before its own, and the lines name the wrong
+posts. Nothing in a log says which post of the file a record is of.
+
+The check looks at the verdict, the positions and the cells of the posts, and at nothing else
+the report holds. It does not look at `unmatched_unreadable`, the `unreadable` records of frames
+no log given says it sent, which a vote or a commit an installation could not read adds to as
+much as a post does: a report that holds such records can be as expected. Nor does it look at
+why a cell is `unreadable`, but to word `sender` in a difference.
+
+| Status | Meaning |
+|---|---|
+| 0 | The report is as the file expects: `conversation b05d4417e9: as expected`. |
+| 1 | The report differs, or a line on a report target was malformed. |
+| 2 | The command line is wrong, a log cannot be read, or the file is no expectation: it is not JSON, says a field twice, lacks a field, holds one it does not know or one of another kind than the table gives, names an installation by anything but eight hex characters in lower case, gives a `sender` or an installation of `cells` that is not among `installations`, gives a position or a word of `cells` the report never says, or holds a `name`, a `verdict` or a `conversation` with a character that is not printed, a line break among them. Where the refusal quotes the file, such a character is escaped. |
+
 ## Collecting logs
 
 `report` reads the logs someone gathered. `serve` gathers them: it takes the logs members send
@@ -1159,6 +1239,8 @@ python3 -m unittest discover -s tools/forks
 
 `tests/fixtures/histories` holds thirty histories of a group, each a directory of logs as its
 members would share them, with the verdict and the positions the tool must give in `expect.json`.
+The tests of `check` hold each of those histories against an expectation made of its
+`expect.json`, and against ones that differ from it.
 `tests/fixtures/real` holds two logs of a real group, cut to their records and the lines around
 them. The tests of the collector each start one on a loopback port the system picks, and call it
 over HTTP. The tests of `share` send to such a collector, and to a scripted stand-in for the
@@ -1178,6 +1260,7 @@ No test runs a browser.
 | `forks/runs.py` | Turns files and directories into runs. |
 | `forks/rule.py` | Decides the report from records. It reads no file. |
 | `forks/text.py` | Writes the report as text. |
+| `forks/check.py` | Holds a conversation's report against an expectation. |
 | `forks/collector.py` | Keeps the runs members send, and draws each conversation's report. |
 | `forks/serve.py` | Serves a collector over HTTP. |
 | `forks/page/` | The page `serve` answers: `index.html`, `report.css` and `report.js`. |

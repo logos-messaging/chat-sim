@@ -1,5 +1,5 @@
-"""The command line: `forks report PATH...`, `forks serve --data DIR --token-file FILE` and
-`forks share --to ADDRESS PATH...`.
+"""The command line: `forks report PATH...`, `forks check --expect FILE PATH...`,
+`forks serve --data DIR --token-file FILE` and `forks share --to ADDRESS PATH...`.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import NoReturn, Optional, Sequence
 from urllib.parse import unquote
 
-from . import rule, share, text
+from . import check, rule, share, text
 from .collector import Collector
 from .records import Counts
 from .runs import InputError, find_runs, read_run
@@ -30,12 +30,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     commands = parser.add_subparsers(metavar="COMMAND", required=True)
     _add_report(commands)
+    _add_check(commands)
     _add_serve(commands)
     _add_share(commands)
     args = parser.parse_args(argv)
     try:
         return args.run(args)
-    except (InputError, OSError) as error:
+    except (InputError, check.NoExpectation, OSError) as error:
         _complain(str(error))
         return 2
 
@@ -69,6 +70,46 @@ def _report(args: argparse.Namespace) -> int:
     whole = conversations and all(c.verdict == rule.WHOLE for c in conversations)
     # A verdict drawn without a record that could not be read is not a clean bill.
     return 0 if whole and not counts.malformed else 1
+
+
+def _add_check(commands: argparse._SubParsersAction) -> None:
+    command = commands.add_parser(
+        "check",
+        help="say whether one conversation in some logs reads as a file expects",
+        description="Reads the trace records in logs and holds one conversation's report "
+        "against an expectation: its verdict, the position of each installation and what "
+        "became of each post. Exits 0 when the report is as expected, 1 when it differs or a "
+        "record was malformed, 2 when the logs or the expectation cannot be used.",
+    )
+    command.add_argument(
+        "--expect",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help="the expectation: a conversation, and what its report must hold",
+    )
+    command.add_argument(
+        "paths", metavar="PATH", nargs="+", type=Path, help="a log, or a directory of logs"
+    )
+    command.set_defaults(run=_check)
+
+
+def _check(args: argparse.Namespace) -> int:
+    expectation = check.read(args.expect)
+    readings = [read_run(run) for run in find_runs(args.paths)]
+    records = (record for reading in readings for record in reading.records)
+    reported = rule.report(records, only=[expectation.conversation])
+    found = check.differences(expectation, reported[0] if reported else None)
+    malformed = sum(reading.counts.malformed for reading in readings)
+    if malformed:
+        # A report drawn without a record that could not be read is not the one expected.
+        found.append(
+            "1 malformed line was skipped: the report was drawn without it"
+            if malformed == 1
+            else f"{malformed} malformed lines were skipped: the report was drawn without them"
+        )
+    _print("\n".join(found) or f"conversation {expectation.conversation}: as expected")
+    return 1 if found else 0
 
 
 def _add_serve(commands: argparse._SubParsersAction) -> None:
