@@ -10,12 +10,24 @@ import unittest
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from sim.peers import Interrupted, OutOfBudget, Peer, Registry, Stopped, Watch, name_of
+from sim.peers import (
+    Interrupted,
+    OutOfBudget,
+    Peer,
+    Registry,
+    Stopped,
+    Watch,
+    index_of,
+    name_of,
+)
 from sim.run import Settings
 
-REGISTRY = Settings(chat_cli=Path(), peers=0, out=Path()).registry
+REGISTRY = Settings.registry
 NODE = "/ip4/127.0.0.1/tcp/4001/p2p/16Uiu2HAm65ah8ABpi9PiX79T6PthDwhmknXi3161ZKT1ZbeeX1Rd"
-READY = json.dumps({"type": "ready", "name": "raya", "address": "a1", "node_address": NODE})
+KEY = "c0ffee11" + "9" * 56
+READY = json.dumps(
+    {"type": "ready", "name": "raya", "address": "a1", "installation": KEY, "node_address": NODE}
+)
 
 # A peer that answers each input with a line of a roster and then with the input's result.
 ANSWERING = f"""
@@ -47,6 +59,11 @@ class Names(unittest.TestCase):
             [name_of(index) for index in range(8)],
             ["saro", "raya", "pax", "mira", "kes", "tomo", "peer7", "peer8"],
         )
+
+    def test_a_name_is_that_of_one_peer_or_of_none(self):
+        self.assertEqual([index_of(name_of(index)) for index in range(12)], list(range(12)))
+        for name in ("", "Saro", "saro ", "peer", "peer3", "peer6", "peer07", "peer-7", "peer7a"):
+            self.assertIsNone(index_of(name), name)
 
 
 class Watching(unittest.TestCase):
@@ -96,6 +113,7 @@ class Lines(Scratch):
         peer.read_ready(soon())
 
         self.assertEqual((peer.address, peer.node_address), ("a1", NODE))
+        self.assertEqual(peer.installation, "c0ffee11")
         self.assertTrue(peer.started_at <= peer.ready_at <= time.time())
 
     def test_the_lines_a_peer_wrote_are_kept_beside_its_log(self):
@@ -108,6 +126,21 @@ class Lines(Scratch):
         kept = (self.directory / "raya.out").read_text(encoding="utf-8").splitlines()
         self.assertEqual(kept[0], READY)
         self.assertEqual(json.loads(kept[2])["input"], 1)
+
+    def test_what_a_peer_wrote_is_read_back_once_it_ended_but_for_what_is_no_object(self):
+        lines = ['{"type": "inbound_error"}', "[1]", "bye"]
+        peer = self.peer(f"import sys; sys.stdin.read(); print(*{lines!r}, sep='\\n')")
+        peer.close()
+
+        self.assertFalse(peer.reap(soon()))
+        self.assertEqual(peer.written(), [{"type": "inbound_error"}])
+
+    def test_a_peer_that_does_not_end_by_the_deadline_is_killed_and_said_so(self):
+        peer = self.peer("import sys, time; sys.stdin.read(); time.sleep(60)")
+        peer.close()
+
+        self.assertTrue(peer.reap(time.monotonic() + 0.2))
+        self.assertEqual(peer.ended(), -signal.SIGKILL)
 
     def test_an_input_is_answered_by_the_result_that_bears_its_number(self):
         peer = self.peer(ANSWERING)

@@ -1,0 +1,14 @@
+{
+  "members": 50,
+  "timers": {
+    "voting_delay": 1000,
+    "consensus_timeout": 17500,
+    "commit_batch_window": 13500,
+    "freeze_duration": 6500,
+    "proposal_expiration": 26000
+  },
+  "steps": [
+    {"step": "seat", "to": 50, "batch": 10},
+    {"step": "post"}
+  ]
+}

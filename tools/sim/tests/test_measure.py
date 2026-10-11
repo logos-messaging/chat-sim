@@ -141,6 +141,21 @@ class Logs(unittest.TestCase):
         self.assertIsNone(measure.held(self.log, CONVO, 3))
         self.assertIsNone(measure.held(self.log, "another", 2))
 
+    def test_the_frames_whose_sender_could_not_be_checked_are_counted(self):
+        def unreadable(why: str) -> str:
+            fields = f"installation=e9b55953 convo={CONVO} frame=d0cf2be190f059bc epoch=2 why={why}"
+            # Each part in a colour of its own, as chat-cli writes a record.
+            coloured = fields.replace(" ", " \x1b[3m").replace("=", "\x1b[0m\x1b[2m=\x1b[0m")
+            return (
+                "\x1b[2m2026-10-10T05:40:26.000000Z\x1b[0m \x1b[32m INFO\x1b[0m "
+                f"\x1b[2mlibchat::groupv2trace\x1b[0m\x1b[2m:\x1b[0m unreadable \x1b[3m{coloured}\n"
+            )
+
+        log = self.log + "".join(map(unreadable, ("sender", "decrypt", "epoch", "sender")))
+
+        self.assertEqual(measure.unchecked(log), 2)
+        self.assertEqual(measure.unchecked(self.log), 0)
+
     def test_a_roster_the_log_does_not_hold_is_not_reached(self):
         self.assertIsNone(measure.reached(self.log, CONVO, 5))
         self.assertIsNone(measure.reached(self.log, "another", 7))

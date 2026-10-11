@@ -1,9 +1,10 @@
 """A stand-in for a headless chat-cli, for the tests that run the tool.
 
-It takes the command line the tool gives a peer and writes the lines a peer writes. Its node is a
-socket on loopback: it dials the nodes it is told to dial and passes a frame on to every link but
-the one the frame came by, so a roster or a post reaches the peers the wiring links and no other.
-Into the store it is given it writes `<name>.json`, with its process id and its arguments.
+It takes the command line the tool gives a peer and writes the lines a peer writes, and into its
+log the trace records a peer writes. Its node is a socket on loopback: it dials the nodes it is
+told to dial and passes a frame on to every link but the one the frame came by, so a roster or a
+post reaches the peers the wiring links and no other. Into the store it is given it writes
+`<name>.json`, with its process id and its arguments.
 
     standin.py [--fault NAME[=PEER]]... <what the tool gives chat-cli>
 
@@ -39,6 +40,10 @@ FAULTS = {
     "dies-at-roster": "ends when a roster reaches it",
     "refuses-post": "refuses a /send",
     "deaf": "shows no post",
+    "garbles": "cannot read a post: it shows none, and writes an `inbound_error` line of it",
+    "unchecked": "gets no answer for the sender of a post: it shows none",
+    "grumbles": "writes an `inbound_error` line of each post, whatever else it does with it",
+    "dies-at-the-end": "ends with a status of its own once its input ended",
     "lingers": "runs on for LINGER seconds after its input ended, having written `<name>.eof`",
     "slow": "takes START to start, ROSTER to hold a roster, DELIVERY to get a post and LOOKUP "
     "to look its sender up",
@@ -53,7 +58,33 @@ START, ROSTER, DELIVERY, LOOKUP = 0.3, 0.4, 0.2, 0.3
 WELCOME = 1000
 
 MESH = {"mesh-of-three": 3, "mesh-of-four": 4}
+
+# The durations of the group's settings, as chat-cli's flags name them.
+DURATIONS = (
+    "voting-delay",
+    "consensus-timeout",
+    "commit-batch-window",
+    "freeze-duration",
+    "retry-window",
+    "backup-takeover-window",
+    "proposal-expiration",
+    "recovery-auto-commit-delay",
+)
 BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+# What a peer that cannot read a post says of it, and what one that grumbles says of any.
+GARBLED = "An error occurred during AEAD decryption"
+GRUMBLED = "The frame is of an epoch the group has left"
+
+
+def installation_of(address: str) -> str:
+    """The key of the installation at an address, which every stand-in can work out."""
+    return address[::-1]
+
+
+def seat_of(address: str) -> str:
+    """A member as a roster lists it: its installation and its account, four bytes of each."""
+    return f"{installation_of(address)[:8]}:{address[:8]}"
 
 
 class Peer:
@@ -62,7 +93,7 @@ class Peer:
         named = (flag.partition("=") for flag in args.fault)
         self.faults = {fault for fault, _, peer in named if peer in ("", args.name)}
         self.address = secrets.token_hex(32)
-        self.installation = secrets.token_hex(4)
+        self.installation = installation_of(self.address)
         self.log_file = args.log_file
         self.registry = urlsplit(args.registry_url)
         self.rosters = {}
@@ -102,7 +133,8 @@ class Peer:
             self.links.remove(link)
 
     def publish(self, **frame) -> None:
-        self.take(dict(frame, id=secrets.token_hex(8)), None)
+        frame.setdefault("id", secrets.token_hex(8))
+        self.take(frame, None)
 
     def take(self, frame: dict, source) -> None:
         with self.lock:
@@ -134,6 +166,7 @@ class Peer:
         joined = convo not in self.rosters
         short = "short-roster" in self.faults
         self.rosters[convo] = roster["members"][:-1] if short else roster["members"]
+        self.epochs[convo] = roster["epoch"]
         state = secrets.token_hex(8) if short or "split" in self.faults else roster["state"]
         self.record(convo, roster["epoch"], state)
         if joined:
@@ -144,11 +177,23 @@ class Peer:
     def show(self, post: dict) -> None:
         if "deaf" in self.faults:
             return
+        frame = f"convo={post['convo']} frame={post['id']}"
+        if "grumbles" in self.faults:
+            self.write(type="inbound_error", message=GRUMBLED)
+        if "garbles" in self.faults:
+            self.report("unreadable", f"{frame} epoch={post['epoch']} why=decrypt")
+            self.write(type="inbound_error", message=GARBLED)
+            return
+        if "unchecked" in self.faults:
+            self.report("unreadable", f"{frame} epoch={post['epoch']} why=sender")
+            return
         if "slow" in self.faults:
             time.sleep(DELIVERY)
         self.ask("GET", f"/v1/account/{post['from']}")
         if "slow" in self.faults:
             time.sleep(LOOKUP)
+        sender = installation_of(post["from"])[:8]
+        self.report("received", f"{frame} from={sender} epoch={post['epoch']}")
         self.write(type="message", convo=post["convo"], text=post["text"], **{"from": post["from"]})
 
     def ask(self, method: str, path: str, body=None) -> None:
@@ -169,11 +214,15 @@ class Peer:
         with open(self.log_file, "a", encoding="utf-8") as log:
             log.write(f"{stamp}  INFO {target}: {text}\n")
 
+    def report(self, record: str, fields: str) -> None:
+        self.log("libchat::groupv2trace", f"{record} installation={self.installation[:8]} {fields}")
+
     def record(self, convo: str, epoch: int, state: str) -> None:
-        self.log(
-            "libchat::groupv2trace",
-            f"epoch installation={self.installation} convo={convo} epoch={epoch} state={state} "
-            f"members={len(self.rosters[convo])}",
+        members = self.rosters[convo]
+        self.report(
+            "epoch",
+            f"convo={convo} epoch={epoch} state={state} members={len(members)} "
+            f"roster={','.join(map(seat_of, members))}",
         )
 
     def result(self, **fields) -> None:
@@ -209,8 +258,12 @@ class Peer:
             self.result(error="The stand-in refuses to send anything.")
         elif command == "/send":
             convo, _, post = rest.partition(" ")
+            frame, epoch = secrets.token_hex(8), self.epochs.get(convo, 0)
+            self.report("sent", f"convo={convo} frame={frame} epoch={epoch}")
             self.result(text="Message sent", convo=convo)
-            self.publish(kind="post", convo=convo, text=post, **{"from": self.address})
+            self.publish(
+                kind="post", id=frame, convo=convo, text=post, epoch=epoch, **{"from": self.address}
+            )
         else:
             self.result(error=f"Unknown command: {command}")
 
@@ -237,6 +290,8 @@ def main() -> None:
     parser.add_argument("--keys", type=Path, required=True)
     parser.add_argument("--registry-url", required=True)
     parser.add_argument("--group-commit", choices=["fast", "default"], required=True)
+    for duration in DURATIONS:
+        parser.add_argument(f"--group-{duration}-ms", type=int)
     parser.add_argument("--cluster-id", type=int, required=True)
     parser.add_argument("--max-message-kib", type=int, required=True)
     parser.add_argument("--static-node", action="append", default=[])
@@ -251,6 +306,7 @@ def main() -> None:
         json.dumps({"pid": os.getpid(), "arguments": sys.argv[1:]}), encoding="utf-8"
     )
     peer = Peer(args)
+    peer.report("run", f"account={peer.address[:8]}")
     if "dies-at-start" in peer.faults:
         sys.exit(STATUS)
     if "slow" in peer.faults:
@@ -275,6 +331,8 @@ def main() -> None:
     if "lingers" in peer.faults:
         (args.data / f"{args.name}.eof").write_text("", encoding="utf-8")
         time.sleep(LINGER)
+    if "dies-at-the-end" in peer.faults:
+        sys.exit(STATUS)
 
 
 if __name__ == "__main__":

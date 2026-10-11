@@ -12,6 +12,7 @@ _EPOCH = re.compile(
     r"^(\S+) .*libchat::groupv2trace: epoch .*\bconvo=(\S+) epoch=(\d+) state=(\S+) members=(\d+)"
 )
 _WELCOME = re.compile(r"^(\S+) .*libchat::inbox_v2: Publish WelcomeMessage bytes=(\d+)")
+_UNCHECKED = re.compile(r" libchat::groupv2trace: unreadable .*\bwhy=sender\b")
 
 # What a log has to let through for `welcomes` to find anything in it.
 LOG_FILTER = "warn,libchat::groupv2trace=info,libchat::inbox_v2=info"
@@ -78,6 +79,14 @@ def welcomes(log: str, since: float, until: float) -> List[int]:
         for welcome in found
         if welcome and since <= _written(welcome.group(1)) <= until
     ]
+
+
+def unchecked(log: str) -> int:
+    """How many frames a log says decrypted with no answer for their sender's account.
+
+    Such a record tells of the registry and not of the group: the lookup of the sender failed.
+    """
+    return sum(bool(_UNCHECKED.search(line)) for line in _ANSI.sub("", log).splitlines())
 
 
 def lookups(requests: Sequence[dict], account: str, since: float, until: float) -> List[float]:

@@ -1,0 +1,129 @@
+"""What a run's logs come to: `forks` reads them, each of its commands as a process of its own."""
+
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple
+from urllib.parse import quote
+
+if TYPE_CHECKING:
+    from .run import Settings
+
+# The token of a share address: what follows `token=` in its query.
+_TOKEN = re.compile(r"[?&]token=([^&#]*)")
+
+
+# What `encodeURIComponent` leaves as it is, beyond what `quote` does.
+_UNESCAPED = "!*'()"
+
+
+class NoAddress(Exception):
+    """Why an address is no share address. It never quotes the address, which holds a token."""
+
+
+def collector(address: str) -> Tuple[str, str]:
+    """Where a collector's page is, and its token, as a share address gives them."""
+    token = _TOKEN.search(address)
+    if not token or not token[1]:
+        raise NoAddress("the address holds no token")
+    base = address.partition("?")[0]
+    return (base if base.endswith("/") else base + "/"), token[1]
+
+
+def page_of(address: str, conversation: str) -> str:
+    """The address of a conversation's page on a collector, which holds no token."""
+    # Escaped as a browser's `encodeURIComponent` escapes it, which is how the page reads it.
+    return f"{collector(address)[0]}#{quote(conversation, safe=_UNESCAPED)}"
+
+
+def judge(settings: Settings, installations: List[str], report: dict) -> None:
+    """Writes the expectation, has `forks` report on the logs and check them, and shares them.
+
+    `installations` are the ids of the peers in the order they started. The report gains
+    `verdict` and `at_tip`, `check` or why there is none as `unchecked`, and `page` or `unshared`
+    when the logs were to be shared.
+    """
+    out: Path = settings.out
+    convo = report["conversation"]
+    expectation = settings.scenario.expectation(convo, installations)
+    (out / "expect.json").write_text(json.dumps(expectation, indent=2) + "\n", encoding="utf-8")
+
+    _, drawn, _ = _forks(settings, "report", "--json", str(out / "report.json"), str(out))
+    (out / "report.txt").write_text(drawn, encoding="utf-8")
+    conversation = _reported(out / "report.json", convo)
+    if conversation is not None:
+        seats = {seat["id"]: seat["position"] for seat in conversation["installations"]}
+        report["verdict"] = conversation["verdict"]
+        report["at_tip"] = sum(seats.get(seat) == "tip" for seat in expectation["installations"])
+
+    report["check"], report["unchecked"] = _checked(
+        *_forks(settings, "check", "--expect", str(out / "expect.json"), str(out))
+    )
+
+    if settings.share is not None:
+        status, _, complained = _forks(settings, "share", "--to", settings.share, str(out))
+        if status == 0:
+            report["page"] = page_of(settings.share, convo)
+        else:
+            # `forks share` quotes no token. What it complained of is kept all the same, and
+            # nothing a run writes may hold one.
+            token = collector(settings.share)[1]
+            report["unshared"] = complained.replace(token, "TOKEN").splitlines()
+
+
+def _checked(status: int, said: str, complained: str) -> Tuple[Optional[dict], Optional[str]]:
+    """What `forks check` found, or why it found nothing.
+
+    It ends with status 0 for a report as expected and with 1 for one that differs, a line a
+    difference. Anything else is a check that was not made, which is no difference of the report.
+    """
+    differences = said.splitlines()
+    if status == 0 or (status == 1 and differences):
+        return {"as_expected": status == 0, "differences": differences if status else []}, None
+    return None, _ending("forks check", status, complained)
+
+
+def _ending(command: str, status: int, complained: str) -> str:
+    """How a command of `forks` ended, and the last line of what it complained of."""
+    how = f"status {status}" if status >= 0 else f"signal {-status}"
+    last = complained.splitlines()[-1:]
+    return f"{command} ended with {how}" + (f": {last[0]}" if last else "")
+
+
+def unreadable(settings: Settings, address: str) -> Optional[str]:
+    """Why `forks share` refuses a share address, in its words, or `None` when it takes it."""
+    # `forks` reads the address before the help it is asked for, and with that it sends nothing.
+    status, _, complained = _forks(settings, "share", "--to", address, "--help")
+    if status == 0:
+        return None
+    complained = complained.replace(collector(address)[1], "TOKEN")
+    _, refused, why = complained.rpartition("argument --to: ")
+    return why.strip() if refused else _ending("forks share", status, complained)
+
+
+def _forks(settings: Settings, *arguments: str) -> Tuple[int, str, str]:
+    """Runs a command of `forks`: its exit status, what it printed and what it complained of."""
+    done = subprocess.run(
+        [sys.executable, "-B", str(settings.forks), *arguments],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        # A terminal sends its interrupt to every process of a group, and the run that has its
+        # processes ended is past being interrupted.
+        start_new_session=True,
+        text=True,
+        errors="replace",
+    )
+    return done.returncode, done.stdout, done.stderr
+
+
+def _reported(file: Path, convo: str) -> Optional[dict]:
+    """The report of `convo` in what `forks report --json` wrote, when it wrote one."""
+    try:
+        conversations: Sequence[dict] = json.loads(file.read_bytes())["conversations"]
+    except (OSError, ValueError):
+        return None
+    return next((held for held in conversations if held["id"] == convo), None)

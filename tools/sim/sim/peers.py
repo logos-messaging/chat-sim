@@ -19,6 +19,9 @@ GRACE = 30.0
 # How long a wait goes on before it looks again at what it watches.
 WATCH = 0.2
 
+# A fork report names an installation by the first four bytes of its key, in hex.
+INSTALLATION = 8
+
 
 class Stopped(Exception):
     """A step of the run did not come about: a wait ran out of budget, or a process ended."""
@@ -64,6 +67,17 @@ def name_of(index: int) -> str:
     return NAMES[index] if index < len(NAMES) else f"peer{index + 1}"
 
 
+def index_of(name: str) -> Optional[int]:
+    """Where the peer `name` is started among the peers, or `None` when no peer has that name."""
+    if name in NAMES:
+        return NAMES.index(name)
+    try:
+        index = int(name[len("peer") :]) - 1
+    except ValueError:
+        return None
+    return index if index >= len(NAMES) and name == name_of(index) else None
+
+
 class _Lines:
     """The lines of a pipe, each stamped with the time it was read and copied to a file."""
 
@@ -81,6 +95,10 @@ class _Lines:
                 self._queue.put((at, raw.decode("utf-8", "replace").rstrip("\n")))
         self._queue.put(None)
 
+    def join(self) -> None:
+        """Waits until every line the process wrote before it ended is in the copy."""
+        self._thread.join(GRACE)
+
     def next(self, deadline: float, watch: Watch) -> Optional[Tuple[float, str]]:
         """The next line and when it was read, or `None` at the end of the pipe.
 
@@ -96,13 +114,15 @@ class _Lines:
                     raise OutOfBudget("no line within the budget") from None
 
 
-def _end(process: subprocess.Popen, deadline: float) -> None:
-    """Waits for `process` to end by `deadline`, and kills it when it has not."""
+def _end(process: subprocess.Popen, deadline: float) -> bool:
+    """Waits for `process` to end by `deadline`, and kills it when it has not: `True` then."""
     try:
         process.wait(timeout=max(deadline - time.monotonic(), 0))
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait()
+        return True
+    return False
 
 
 class _Process:
@@ -120,12 +140,16 @@ class _Process:
     ):
         self.name = name
         self.stderr = directory / f"{stem}.stderr"
+        self.out = directory / f"{stem}.out"
         self._watch = watch
         with open(self.stderr, "wb") as stderr:
-            self._process = subprocess.Popen(
-                command, stdin=stdin, stdout=subprocess.PIPE, stderr=stderr, env=env
-            )
-        self._lines = _Lines(self._process.stdout, directory / f"{stem}.out")
+            try:
+                self._process = subprocess.Popen(
+                    command, stdin=stdin, stdout=subprocess.PIPE, stderr=stderr, env=env
+                )
+            except OSError as error:
+                raise Stopped(f"{name} could not be started: {error}") from None
+        self._lines = _Lines(self._process.stdout, self.out)
 
     def ended(self) -> Optional[int]:
         """The status the process ended with, or `None` while it runs."""
@@ -193,6 +217,7 @@ class Peer(_Process):
         self._unclaimed: List[Tuple[float, dict]] = []
         self._inputs = 0
         self.address = ""
+        self.installation = ""
         self.node_address = ""
         self.ready_at = 0.0
 
@@ -226,6 +251,7 @@ class Peer(_Process):
         if ready.get("type") != "ready" or "node_address" not in ready:
             raise Stopped(f"{self.name}: its first line names no node: {ready}")
         self.address = ready["address"]
+        self.installation = ready["installation"][:INSTALLATION]
         self.node_address = ready["node_address"]
 
     def input(self, text: str, deadline: float) -> Tuple[float, float, dict]:
@@ -265,7 +291,19 @@ class Peer(_Process):
         except OSError:
             pass
 
-    def reap(self, deadline: float) -> Optional[int]:
-        """Waits for the peer to end, killing it at `deadline`. Returns its exit status."""
-        _end(self._process, deadline)
-        return self._process.returncode
+    def reap(self, deadline: float) -> bool:
+        """Waits for the peer to end, killing it at `deadline`: `True` when it was killed."""
+        return _end(self._process, deadline)
+
+    def written(self) -> List[dict]:
+        """Every line the peer wrote, once it has ended. One that is no JSON object is left out."""
+        self._lines.join()
+        lines = []
+        for text in self.out.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                line = json.loads(text)
+            except ValueError:
+                continue
+            if isinstance(line, dict):
+                lines.append(line)
+        return lines

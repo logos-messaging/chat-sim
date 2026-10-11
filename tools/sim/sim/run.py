@@ -1,22 +1,22 @@
-"""One run: a registry, peers on a network of their own, one group, one post."""
+"""One run: a registry, peers on a network of their own, and the steps of a scenario."""
 
 from __future__ import annotations
 
+import collections
+import json
 import os
 import secrets
 import signal
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-from . import measure, wiring
+from . import judge, measure, table, wiring
 from .peers import GRACE, WATCH, Interrupted, OutOfBudget, Peer, Registry, Stopped, Watch, name_of
+from .scenario import Scenario, Seat, senders
 
 REPOSITORY = Path(__file__).resolve().parents[3]
-
-# chat-cli's two sets of group timers, by the name `--group-commit` takes.
-TIMERS = ("fast", "default")
 
 # No preset holds this cluster id, and every node of a run is given it.
 CLUSTER_ID = 77
@@ -27,40 +27,59 @@ POLL = 0.5
 # How long a node has to answer what its state is.
 ANSWER = 10.0
 
+# How a peer ended: before the run asked it to, with status 0 once asked, with another status
+# or by a signal once asked, or killed because it had not ended within the grace.
+EARLY, ASKED, IN_ITS_STOP, KILLED = "early", "asked", "in its stop", "killed"
+
+
+class NoDirectory(Exception):
+    """Why the directory a run writes to could not be made."""
+
 
 @dataclass(frozen=True)
 class Settings:
     """What a run is given."""
 
     chat_cli: Path
-    peers: int
+    scenario: Scenario
     out: Path
-    batch: int = 10
-    timers: str = "fast"
-    max_message_kib: int = 512
-    # Seconds each step may take: a peer's start, the wiring, a batch, the post.
-    budget: float = 180.0
+    # The share address of a collector the run's logs go to.
+    share: Optional[str] = None
     registry: Path = REPOSITORY / ".github" / "scripts" / "mock-registry.py"
+    forks: Path = REPOSITORY / "tools" / "forks"
 
 
 def run(settings: Settings, watch: Watch) -> dict:
-    """Runs a group from its first peer to its post, ends every process, and returns the report.
+    """Does a scenario's steps, ends every process, and has the logs judged.
 
-    A signal `watch` takes before the processes are being ended interrupts the run.
+    Returns the report, which it also writes into the run's directory as `run.json` and, as
+    the tables a person reads, `run.txt`. A signal `watch` takes before the processes are being
+    ended interrupts the run.
     """
-    settings.out.mkdir(parents=True)
+    make(settings.out)
+    scenario = settings.scenario
     report = {
-        "peers": settings.peers,
+        "members": scenario.members,
         "ok": False,
         "stopped": None,
-        "timers": settings.timers,
-        "batch": settings.batch,
+        "steps": len(scenario.steps),
+        "steps_done": 0,
+        "timers": scenario.timers,
         "cluster_id": CLUSTER_ID,
-        "max_message_kib": settings.max_message_kib,
-        "budget": settings.budget,
+        "max_message_kib": scenario.max_message_kib,
+        "budget": scenario.budget,
+        "load": {"start": list(os.getloadavg()), "end": None},
         "nodes": [],
         "batches": [],
-        "post": None,
+        "posts": [],
+        "conversation": None,
+        "check": None,
+        "unchecked": None,
+        "verdict": None,
+        "at_tip": None,
+        "seated": scenario.seated,
+        "page": None,
+        "unshared": [],
     }
     peers: List[Peer] = []
     registry: Optional[Registry] = None
@@ -79,23 +98,47 @@ def run(settings: Settings, watch: Watch) -> dict:
         pass
     finally:
         watch.close()
-        _stop(peers, registry)
+        _stop(peers, registry, report)
+    report["load"]["end"] = list(os.getloadavg())
     if watch.signal is not None:
         report["stopped"] = f"interrupted by {signal.Signals(watch.signal).name}"
-    post = report["post"]
-    report["ok"] = report["stopped"] is None and post is not None and not post["unread"]
+    elif report["conversation"] is not None:
+        judge.judge(settings, [peer.installation for peer in peers], report)
+    check = report["check"]
+    report["ok"] = report["stopped"] is None and check is not None and check["as_expected"]
+    (settings.out / "run.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    (settings.out / "run.txt").write_text(table.render(report), encoding="utf-8")
     return report
 
 
+def make(directory: Path) -> None:
+    """Makes a directory that is not there yet, and those above it."""
+    try:
+        directory.mkdir(parents=True)
+    except OSError as error:
+        raise NoDirectory(str(error)) from None
+
+
 def _deadline(settings: Settings) -> float:
-    return time.monotonic() + settings.budget
+    return time.monotonic() + settings.scenario.budget
+
+
+def _timers(scenario: Scenario) -> List[str]:
+    """The flags that give a peer the scenario's group timers."""
+    if isinstance(scenario.timers, str):
+        return ["--group-commit", scenario.timers]
+    flags = ["--group-commit", "default"]
+    for duration, milliseconds in scenario.timers.items():
+        flags += [f"--group-{duration.replace('_', '-')}-ms", str(milliseconds)]
+    return flags
 
 
 def _group(
     settings: Settings, registry: Registry, peers: List[Peer], report: dict, watch: Watch
 ) -> None:
+    scenario = settings.scenario
     started_at = time.time()
-    dialing = wiring.dials(settings.peers)
+    dialing = wiring.dials(scenario.members)
     env = dict(os.environ, RUST_LOG=measure.LOG_FILTER)
     for index, dialed in enumerate(dialing):
         name = name_of(index)
@@ -112,12 +155,11 @@ def _group(
             str(settings.out / "keys"),
             "--registry-url",
             registry.url,
-            "--group-commit",
-            settings.timers,
+            *_timers(scenario),
             "--cluster-id",
             str(CLUSTER_ID),
             "--max-message-kib",
-            str(settings.max_message_kib),
+            str(scenario.max_message_kib),
         ]
         for other in dialed:
             command += ["--static-node", peers[other].node_address]
@@ -126,6 +168,7 @@ def _group(
         report["nodes"].append({"name": name, "dials": [name_of(other) for other in dialed]})
         peer.read_ready(_deadline(settings))
         watch.processes.append(peer)
+        report["nodes"][index]["installation"] = peer.installation
         report["nodes"][index]["ready_s"] = peer.ready_at - started_at
         report["nodes"][index]["start_s"] = peer.ready_at - peer.started_at
 
@@ -134,15 +177,21 @@ def _group(
 
     creator = peers[0]
     convo = creator.run("/new sim", _deadline(settings))["convo"]
+    report["conversation"] = convo
     seated = [creator]
-    for joiners in measure.batches(peers[1:], settings.batch):
-        report["batches"].append(_seat(settings, convo, seated, joiners))
-        seated += joiners
-
-    report["post"] = _post(settings, registry, convo, peers)
-    unread = report["post"]["unread"]
-    if unread:
-        raise Stopped(f"the post was not read within the budget by: {', '.join(unread)}")
+    for step in scenario.steps:
+        if isinstance(step, Seat):
+            for joiners in measure.batches(peers[len(seated) : step.to], step.batch):
+                report["batches"].append(_seat(settings, convo, seated, joiners))
+                seated += joiners
+        else:
+            for sender in senders(step, len(seated)):
+                post = _post(settings, registry, convo, peers[sender], seated)
+                report["posts"].append(post)
+                if post["unread"]:
+                    unread = ", ".join(post["unread"])
+                    raise Stopped(f"the post was not read within the budget by: {unread}")
+        report["steps_done"] += 1
 
 
 def _links(state: dict) -> dict:
@@ -182,11 +231,18 @@ def _pause(seconds: float, watch: Watch) -> None:
         time.sleep(min(left, WATCH))
 
 
+def _expected(members: List[Peer], said: Dict[str, str], word: str) -> List[Peer]:
+    """The members a scenario expects `word` of: each one it says nothing else of."""
+    return [member for member in members if said.get(member.name, word) == word]
+
+
 def _seat(settings: Settings, convo: str, seated: List[Peer], joiners: List[Peer]) -> dict:
-    """The creator adds `joiners` in one input. Returns once every member holds the new roster.
+    """The creator adds `joiners` in one input. Returns once the members hold the new roster.
 
     A joiner holds it by a Welcome for a group of that size, and the creator sends a joiner one
     Welcome. So the Welcomes it published meanwhile are those of this roster, one a joiner.
+    The members waited on are the creator, in whose log the Welcomes are counted, and each one
+    the scenario expects at the tip.
     """
     deadline = _deadline(settings)
     creator = seated[0]
@@ -199,7 +255,9 @@ def _seat(settings: Settings, convo: str, seated: List[Peer], joiners: List[Peer
     joined_at = sent_at
     reached = []
     behind: List[OutOfBudget] = []
-    for member in seated + joiners:
+    positions = settings.scenario.expect.positions
+    at_the_tip = [creator] + _expected(seated[1:] + joiners, positions, "tip")
+    for member in at_the_tip:
         try:
             if member in joiners:
                 joined_at = max(joined_at, _roster_line(member, convo, deadline))
@@ -210,7 +268,7 @@ def _seat(settings: Settings, convo: str, seated: List[Peer], joiners: List[Peer
         # A member that does not hold the roster may hold its epoch all the same, by a commit
         # the others did not take.
         epoch = reached[0].epoch
-        held = [measure.held(_log(member), convo, epoch) for member in seated + joiners]
+        held = [measure.held(_log(member), convo, epoch) for member in at_the_tip]
         states = {state for state in held if state is not None}
         if len(states) > 1:
             raise Stopped(
@@ -266,18 +324,21 @@ def _reached(member: Peer, convo: str, members: int, deadline: float) -> measure
         _roster_line(member, convo, deadline)
 
 
-def _post(settings: Settings, registry: Registry, convo: str, peers: List[Peer]) -> dict:
-    """The last member seated posts, and every other member waits for the post."""
+def _post(
+    settings: Settings, registry: Registry, convo: str, poster: Peer, seated: List[Peer]
+) -> dict:
+    """`poster` posts, and each other member the scenario expects to read the post waits for it."""
     deadline = _deadline(settings)
-    poster = peers[-1]
     text = f"sim {secrets.token_hex(8)}"
     sent_at, _, result = poster.input(f"/send {convo} {text}", deadline)
     if result.get("ok") is not True:
         raise Stopped(f"{poster.name}: the post was refused: {result.get('error')}")
 
+    others = [member for member in seated if member is not poster]
+    readers = _expected(others, settings.scenario.expect.posts, "read")
     read_at = []
     unread = []
-    for reader in peers[:-1]:
+    for reader in readers:
         try:
             at, _ = reader.wait_for(
                 "the post",
@@ -295,7 +356,7 @@ def _post(settings: Settings, registry: Registry, convo: str, peers: List[Peer])
         registry.served(), poster.address, sent_at, max(read_at, default=sent_at)
     )
     post = measure.post_times(sent_at, read_at, asked_at)
-    post.update(poster=poster.name, readers=len(peers) - 1, unread=unread)
+    post.update(poster=poster.name, readers=len(readers), unread=unread)
     return post
 
 
@@ -309,11 +370,39 @@ def _last_words(peers: List[Peer], report: dict) -> None:
         del node["end"]["address"]
 
 
-def _stop(peers: List[Peer], registry: Optional[Registry]) -> None:
+def _stop(peers: List[Peer], registry: Optional[Registry], report: dict) -> None:
+    """Ends every process, and says of each peer how it ended and what it could not process."""
+    early = [peer.ended() is not None for peer in peers]
     for peer in peers:
         peer.close()
     deadline = time.monotonic() + GRACE
-    for peer in peers:
-        peer.reap(deadline)
+    for node, peer, was_early in zip(report["nodes"], peers, early):
+        killed = peer.reap(deadline)
+        node.update(_ending(peer.ended(), was_early, killed))
+        node["inbound_errors"] = _inbound_errors(peer)
+        node["unchecked_senders"] = measure.unchecked(_log(peer))
     if registry is not None:
         registry.stop()
+
+
+def _ending(status: int, early: bool, killed: bool) -> dict:
+    """How a peer ended: its exit status, or the signal that ended it, and when."""
+    if early:
+        ended = EARLY
+    elif killed:
+        ended = KILLED
+    else:
+        ended = ASKED if status == 0 else IN_ITS_STOP
+    return {
+        "exit_status": status if status >= 0 else None,
+        "exit_signal": -status if status < 0 else None,
+        "ended": ended,
+    }
+
+
+def _inbound_errors(peer: Peer) -> Dict[str, int]:
+    """How many `inbound_error` lines a peer wrote, by their message."""
+    counted = collections.Counter(
+        str(line.get("message")) for line in peer.written() if line.get("type") == "inbound_error"
+    )
+    return dict(counted.most_common())

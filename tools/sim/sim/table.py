@@ -1,23 +1,43 @@
-"""A run's report as text."""
+"""A run's report as text, and a sweep's row for a run."""
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Union
+
+# A sweep's row up to what its check found, which is as long as it is.
+_ROW = "{:>3}  {:>7}  {:>10}  {:<22}  "
 
 
 def render(report: dict) -> str:
     """The report as the tables a person reads."""
-    post = report["post"]
     lines = [
-        f"{report['peers']} peers, {report['timers']} group timers, batches of {report['batch']}, "
+        f"{report['members']} members, {_timers(report['timers'])}, "
         f"largest message {report['max_message_kib']} KiB",
-        _outcome(report),
+        *_outcome(report),
+        _load(report["load"]),
         "",
     ]
     lines += _columns(
-        ("node", "ready", "start", "dials", "wired", "mesh", "end", "mesh", "refused", "dropped"),
+        (
+            "node",
+            "ready",
+            "start",
+            "dials",
+            "wired",
+            "mesh",
+            "end",
+            "mesh",
+            "refused",
+            "dropped",
+            "errors",
+            "exit",
+        ),
         [_node(node) for node in report["nodes"]],
     )
+    errors = _errors(report["nodes"])
+    if errors:
+        lines.append("")
+        lines += _columns(("inbound_error", "lines", "peers"), errors)
     if report["batches"]:
         lines.append("")
         lines += _columns(
@@ -34,29 +54,89 @@ def render(report: dict) -> str:
                 for number, batch in enumerate(report["batches"], 1)
             ],
         )
-    if post is not None:
+    if report["posts"]:
         lines.append("")
-        lines.append(
-            f"post from {post['poster']}: read by {post['readers'] - len(post['unread'])} "
-            f"of {post['readers']}{_spread(post['read'])}"
+        lines += _columns(
+            ("post", "from", "read by", "median", "worst", "delivered", "worst", "lookup"),
+            [_post(number, post) for number, post in enumerate(report["posts"], 1)],
         )
-        if post["delivered"] is None:
-            lines.append(
-                f"registry: {post['lookups']} lookups of the poster, not one a reader, "
-                "so delivery and lookup are not told apart"
-            )
-        else:
-            lines.append(
-                f"delivered, by when the lookup reached the registry{_spread(post['delivered'])}"
-            )
-            lines.append(f"registry lookup: mean {_seconds(post['lookup_mean'])}")
     return "\n".join(lines) + "\n"
 
 
-def _outcome(report: dict) -> str:
-    if report["ok"]:
-        return "every member read the post"
-    return f"stopped: {report['stopped']}"
+def row(number: int, seconds: float, report: dict) -> str:
+    """A sweep's row for a run: how its check went, and what stopped its steps if anything did."""
+    said = [_check(report)]
+    if report["stopped"] is not None:
+        said.append(f"stopped: {report['stopped']}")
+    if report["page"] is not None:
+        said.append(report["page"])
+    elif report["unshared"]:
+        said.append(f"not shared: {report['unshared'][0]}")
+    at_tip = "-" if report["at_tip"] is None else f"{report['at_tip']} of {report['seated']}"
+    return _ROW.format(number, f"{seconds:.1f}", at_tip, report["verdict"] or "-") + "; ".join(said)
+
+
+def head() -> str:
+    """The line above a sweep's rows."""
+    return _ROW.format("run", "seconds", "at the tip", "verdict") + "check"
+
+
+def _check(report: dict) -> str:
+    """How a run's check went, in a few words: the first difference, and how many more."""
+    check = report["check"]
+    if check is None:
+        unchecked = report["unchecked"]
+        return "not checked" if unchecked is None else f"not checked: {unchecked}"
+    if check["as_expected"]:
+        return "as expected"
+    first, more = check["differences"][0], len(check["differences"]) - 1
+    return f"{first}, and {more} more" if more else first
+
+
+def _timers(timers: Union[str, Dict[str, int]]) -> str:
+    if isinstance(timers, str):
+        return f"{timers} group timers"
+    given = ", ".join(f"{name} {milliseconds} ms" for name, milliseconds in timers.items())
+    return f"group timers {given}" if given else "default group timers"
+
+
+def _outcome(report: dict) -> List[str]:
+    lines = []
+    if report["stopped"] is not None:
+        lines.append(
+            f"stopped after {report['steps_done']} of {report['steps']} steps: "
+            f"{report['stopped']}"
+        )
+    check = report["check"]
+    if check is None and report["unchecked"] is None:
+        lines.append("not checked: " + _unchecked(report))
+        return lines
+    lines.append(
+        f"{report['verdict'] or 'no report'}: "
+        f"{report['at_tip'] or 0} of {report['seated']} members at the tip"
+    )
+    if check is None:
+        lines.append(f"not checked: {report['unchecked']}")
+    elif check["as_expected"]:
+        lines.append("the report is as expected")
+    else:
+        lines += [f"not as expected: {difference}" for difference in check["differences"]]
+    if report["page"] is not None:
+        lines.append(f"shared: {report['page']}")
+    lines += [f"not shared: {complaint}" for complaint in report["unshared"]]
+    return lines
+
+
+def _unchecked(report: dict) -> str:
+    if report["conversation"] is None:
+        return "the run made no conversation"
+    return "the run was interrupted"
+
+
+def _load(load: dict) -> str:
+    start, end = load["start"][0], (load["end"] or [None])[0]
+    at_the_end = "" if end is None else f", {end:.2f} at the end"
+    return f"load average {start:.2f} at the start{at_the_end}"
 
 
 def _node(node: dict) -> Sequence[str]:
@@ -73,6 +153,48 @@ def _node(node: dict) -> Sequence[str]:
         _count(end.get("mesh_peers")),
         _count(end.get("publish_refused")),
         _count(end.get("inbound_dropped")),
+        _count(sum(node["inbound_errors"].values()) if "inbound_errors" in node else None),
+        _exit(node),
+    )
+
+
+def _exit(node: dict) -> str:
+    """How a peer ended, where that was not with status 0 once it was asked to."""
+    if "ended" not in node:
+        return "-"
+    if node["exit_signal"] is not None:
+        status = f"signal {node['exit_signal']}"
+    else:
+        status = str(node["exit_status"])
+    return status if node["ended"] == "asked" else f"{status} {node['ended']}"
+
+
+def _errors(nodes: Sequence[dict]) -> List[Sequence[str]]:
+    """Each message of an `inbound_error` line: how many lines held it, and of how many peers."""
+    lines: Dict[str, int] = {}
+    peers: Dict[str, int] = {}
+    for node in nodes:
+        for message, count in node.get("inbound_errors", {}).items():
+            lines[message] = lines.get(message, 0) + count
+            peers[message] = peers.get(message, 0) + 1
+    return [
+        (message, str(count), str(peers[message]))
+        for message, count in sorted(lines.items(), key=lambda held: (-held[1], held[0]))
+    ]
+
+
+def _post(number: int, post: dict) -> Sequence[str]:
+    read = post["read"] or {}
+    delivered = post["delivered"] or {}
+    return (
+        str(number),
+        post["poster"],
+        f"{post['readers'] - len(post['unread'])} of {post['readers']}",
+        _seconds(read.get("median")),
+        _seconds(read.get("worst")),
+        _seconds(delivered.get("median")),
+        _seconds(delivered.get("worst")),
+        _seconds(post["lookup_mean"]),
     )
 
 
@@ -82,12 +204,6 @@ def _welcomes(welcome_bytes: List[int]) -> str:
     if sizes[0] == sizes[-1]:
         return f"{len(sizes)} x {sizes[0]}"
     return f"{len(sizes)} x {sizes[0]}..{sizes[-1]}"
-
-
-def _spread(spread: Optional[dict]) -> str:
-    if spread is None:
-        return ""
-    return f", median {_seconds(spread['median'])}, worst {_seconds(spread['worst'])}"
 
 
 def _seconds(seconds: Optional[float]) -> str:

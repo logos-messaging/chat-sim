@@ -1,4 +1,4 @@
-"""Runs the tool from a checkout: `python3 tools/sim --chat-cli PATH --peers N --out DIR`."""
+"""Runs the tool from a checkout: `python3 tools/sim run SCENARIO --chat-cli PATH --out DIR`."""
 
 import sys
 
