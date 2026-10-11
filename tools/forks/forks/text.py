@@ -7,7 +7,7 @@ from typing import List, Sequence, Tuple
 
 from . import rule
 from .records import Counts
-from .rule import Conversation, Installation
+from .rule import Branch, Conversation, Installation
 
 _WIDTH = 100
 
@@ -47,14 +47,34 @@ def _conversation(conversation: Conversation) -> str:
         newest = f"epoch {branch.epoch}, state {branch.state}, {members}"
         on_it = "on it: " + (", ".join(branch.installations) or "nobody")
         lines.append(f"  branch {branch.label}: {newest}")
-        lines.append(
-            textwrap.fill(on_it, _WIDTH, initial_indent="    ", subsequent_indent="      ")
-        )
+        # What made a branch's first state tells it from the others: a lone one has none to be
+        # told from.
+        if len(conversation.branches) > 1 and branch.first_commits:
+            lines.append(_under(_made_by(branch)))
+        lines.append(_under(on_it))
     if conversation.branches:
         lines.append("")
     rows = [["installation", "account", "name", "epoch", "position", "branch"]]
     rows += map(_row, sorted(conversation.installations, key=_reading_order))
     return "\n".join(lines + _table(rows))
+
+
+def _under(said: str) -> str:
+    """What is said of a branch under its own line, wrapped."""
+    return textwrap.fill(said, _WIDTH, initial_indent="    ", subsequent_indent="      ")
+
+
+def _made_by(branch: Branch) -> str:
+    """The commit that made a branch's first state, as those that reported the state named it."""
+    where = f"first state at epoch {branch.since}, made by"
+    if len(branch.first_commits) == 1:
+        (only,) = branch.first_commits
+        return f"{where} commit {only.commit} by {only.by}"
+    *named, last = (
+        f"{each.commit} by {each.by} ({each.holders} name{'s' if each.holders == 1 else ''} it)"
+        for each in branch.first_commits
+    )
+    return f"{where} commits {', '.join(named)} and {last}"
 
 
 def _reading_order(installation: Installation) -> Tuple:

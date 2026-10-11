@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import io
 import itertools
 import json
@@ -9,7 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Sequence, Tuple
 
 from forks.cli import main
 
@@ -20,6 +21,7 @@ REAL = FIXTURES / "real"
 TOOL = Path(__file__).resolve().parents[1]
 
 SARO, RAYA, PAX, MIRA, KES = "a3f91c07", "7b1e44d9", "e09a3f52", "19f6b0e3", "b54a9d10"
+EPOCH_RECORD = re.compile(r".* libchat::groupv2trace: epoch .* state=(?P<state>[0-9a-f]+) .*")
 
 
 def positions(conversation: dict) -> dict:
@@ -50,6 +52,63 @@ def epoch_line(installation: str) -> str:
         f"installation={installation} convo=2a30d6a2c1 epoch=1 state=b77d02c4a91e03d5 "
         f"members=2 roster={SARO}:5be2c0d1,{RAYA}:91c0e3a7"
     )
+
+
+def split_lines(
+    saro: str = "", raya: str = "", mira: str = "", pax: str = "", on: Sequence[str] = ()
+) -> List[str]:
+    """One log of a group of four that is on one state at epoch 2 and on two at epoch 3.
+
+    Saro, Raya and Mira take one state there and Pax another, and the record each writes of
+    that epoch ends with the words given for it. Those named in `on` go on to one state.
+    """
+    stamp = "2026-10-09T06:54:50.313738Z  INFO libchat::groupv2trace: epoch "
+    roster = f"members=4 roster={SARO}:5be2c0d1,{RAYA}:91c0e3a7,{MIRA}:d2184c8e,{PAX}:0d7a66f3"
+    took = {SARO: ("897d8438305ac6d2", saro), RAYA: ("897d8438305ac6d2", raya)}
+    took.update({MIRA: ("897d8438305ac6d2", mira), PAX: ("e849c2aa9ab1f74d", pax)})
+    lines = []
+    for installation, (state, words) in took.items():
+        placed = f"{stamp}installation={installation} convo=2a30d6a2c1"
+        lines.append(f"{placed} epoch=2 state=763449d6cdefb10f {roster}")
+        lines.append(f"{placed} epoch=3 state={state} {roster} {words}".rstrip())
+        if installation in on:
+            lines.append(f"{placed} epoch=4 state=5a850890461cab7f {roster}")
+    return lines
+
+
+def named_after(state: str) -> Tuple[str, str]:
+    """A commit and a committer for a state, which every record of the state can name."""
+    digest = hashlib.sha256(state.encode()).hexdigest()
+    return digest[:16], digest[16:24]
+
+
+def named_by_all(state: dict) -> List[dict]:
+    """What a state says of its commit once each installation that reported it named that one."""
+    commit, by = named_after(state["state"])
+    return [{"commit": commit, "by": by, "holders": state["holders"]}]
+
+
+def commits_out_of(conversation: dict) -> Tuple[List[list], List[list]]:
+    """Takes the commits out of a report: those of each state, and the first of each branch."""
+    states = [state.pop("commits") for state in conversation["states"]]
+    return states, [branch.pop("first_commits") for branch in conversation["branches"]]
+
+
+def copy_of(logs: Path, scratch: Path, named: bool) -> Path:
+    """A copy of a directory of logs in which every `epoch` record names a commit, or none does."""
+    copy = scratch / ("named" if named else "unnamed")
+    copy.mkdir()
+    for log in sorted(logs.glob("*.log")):
+        lines = log.read_text().split("\n")
+        for index, line in enumerate(lines):
+            # A record is found under the colour codes some of the logs carry.
+            found = EPOCH_RECORD.fullmatch(re.sub(r"\x1b\[[0-9;]*m", "", line))
+            if found:
+                lines[index] = re.sub(r" commit=\S+ by=\S+$", "", line)
+            if found and named:
+                lines[index] += " commit={} by={}".format(*named_after(found["state"]))
+        (copy / log.name).write_text("\n".join(lines))
+    return copy
 
 
 def counted(lines: int, records: int, unstamped: int = 0) -> dict:
@@ -172,6 +231,144 @@ class Histories(unittest.TestCase):
         )
 
 
+class Commits(unittest.TestCase):
+    """The commit a log names as the one that made a state, as the report says it."""
+
+    def test_a_state_says_the_commit_that_made_it_and_how_many_of_its_holders_named_it(self):
+        states = run_report(HISTORIES / "split-at-an-epoch").conversation["states"]
+        self.assertEqual(
+            [(state["epoch"], state["holders"], state["commits"]) for state in states],
+            [
+                # Saro made the group by a commit of his own, and the three joined from a welcome.
+                (1, 4, [{"commit": "6b1d09f3a47c58e2", "by": SARO, "holders": 1}]),
+                (2, 4, [{"commit": "2f8d61c0b9e4a753", "by": SARO, "holders": 4}]),
+                (3, 3, [{"commit": "c41f9be27a6d03e5", "by": SARO, "holders": 3}]),
+                (3, 1, [{"commit": "77b0a1c2d3e4f5a6", "by": RAYA, "holders": 1}]),
+                (4, 3, [{"commit": "9a03e7d15c4b82f6", "by": MIRA, "holders": 3}]),
+            ],
+        )
+
+    def test_the_branches_of_a_split_say_the_commit_that_made_the_first_state_of_each(self):
+        reported = run_report(HISTORIES / "split-at-an-epoch")
+        self.assertEqual(
+            [
+                (branch["label"], branch["since"], branch["first_commits"])
+                for branch in reported.conversation["branches"]
+            ],
+            [
+                ("A", 3, [{"commit": "c41f9be27a6d03e5", "by": SARO, "holders": 3}]),
+                ("B", 3, [{"commit": "77b0a1c2d3e4f5a6", "by": RAYA, "holders": 1}]),
+            ],
+        )
+        self.assertIn(
+            "\n"
+            "  branch A: epoch 4, state 5a850890461cab7f, 4 members\n"
+            "    first state at epoch 3, made by commit c41f9be27a6d03e5 by a3f91c07\n"
+            "    on it: 19f6b0e3, 7b1e44d9, a3f91c07\n"
+            "  branch B: epoch 3, state e849c2aa9ab1f74d, 4 members\n"
+            "    first state at epoch 3, made by commit 77b0a1c2d3e4f5a6 by 7b1e44d9\n"
+            "    on it: e09a3f52\n"
+            "\n",
+            reported.text,
+        )
+
+    def test_a_first_state_under_two_hashes_says_how_many_name_each_on_wrapped_lines(self):
+        ours, theirs = f"commit=c41f9be27a6d03e5 by={SARO}", f"commit=5e0d7a2b91c6f483 by={SARO}"
+        other = f"commit=77b0a1c2d3e4f5a6 by={RAYA}"
+        text = report_of(*split_lines(ours, ours, theirs, other)).text
+        self.assertIn(
+            "  branch A: epoch 3, state 897d8438305ac6d2, 4 members\n"
+            "    first state at epoch 3, made by commits c41f9be27a6d03e5 by a3f91c07 (2 name "
+            "it) and\n"
+            "      5e0d7a2b91c6f483 by a3f91c07 (1 names it)\n"
+            "    on it: 19f6b0e3, 7b1e44d9, a3f91c07\n"
+            "  branch B: epoch 3, state e849c2aa9ab1f74d, 4 members\n"
+            "    first state at epoch 3, made by commit 77b0a1c2d3e4f5a6 by 7b1e44d9\n"
+            "    on it: e09a3f52\n",
+            text,
+        )
+
+    def test_three_commits_of_a_first_state_are_listed_with_a_comma_and_an_and(self):
+        ours, theirs = f"commit=c41f9be27a6d03e5 by={SARO}", f"commit=5e0d7a2b91c6f483 by={SARO}"
+        text = report_of(*split_lines(ours, theirs, f"commit=5e0d7a2b91c6f483 by={MIRA}")).text
+        self.assertIn(
+            "    first state at epoch 3, made by commits 5e0d7a2b91c6f483 by 19f6b0e3 (1 names "
+            "it),\n"
+            "      5e0d7a2b91c6f483 by a3f91c07 (1 names it) and c41f9be27a6d03e5 by a3f91c07 (1 "
+            "names it)\n"
+            "    on it: 19f6b0e3, 7b1e44d9, a3f91c07\n",
+            text,
+        )
+
+    def test_a_branch_whose_first_state_names_no_commit_has_no_line_for_one(self):
+        named = f"commit=c41f9be27a6d03e5 by={SARO}"
+        made = "    first state at epoch 3, made by commit c41f9be27a6d03e5 by a3f91c07\n"
+        on_a = "  branch A: epoch 3, state 897d8438305ac6d2, 4 members\n"
+        of_a = "    on it: 19f6b0e3, 7b1e44d9, a3f91c07\n"
+        on_b = "  branch B: epoch 3, state e849c2aa9ab1f74d, 4 members\n"
+        of_b = "    on it: e09a3f52\n"
+        self.assertIn(on_a + of_a + on_b + of_b, report_of(*split_lines()).text)
+        self.assertIn(on_a + made + of_a + on_b + of_b, report_of(*split_lines(raya=named)).text)
+        self.assertIn(on_a + of_a + on_b + made + of_b, report_of(*split_lines(pax=named)).text)
+
+    def test_a_conversation_of_one_branch_has_no_line_for_a_commit(self):
+        named = f" commit=c41f9be27a6d03e5 by={SARO}"
+        reported = report_of(epoch_line(SARO) + named, epoch_line(RAYA) + named)
+        (branch,) = reported.conversation["branches"]
+        self.assertEqual(
+            branch["first_commits"], [{"commit": "c41f9be27a6d03e5", "by": SARO, "holders": 2}]
+        )
+        self.assertEqual(reported.text, report_of(epoch_line(SARO), epoch_line(RAYA)).text)
+
+    def test_a_lone_branch_that_begins_in_two_states_has_no_line_for_a_commit(self):
+        ours, theirs = f"commit=c41f9be27a6d03e5 by={SARO}", f"commit=77b0a1c2d3e4f5a6 by={RAYA}"
+        reported = report_of(*split_lines(ours, ours, ours, theirs, on=(SARO, PAX)))
+        (branch,) = reported.conversation["branches"]
+        self.assertEqual(
+            (branch["since"], branch["first_commits"]),
+            (
+                3,
+                [
+                    {"commit": "c41f9be27a6d03e5", "by": SARO, "holders": 3},
+                    {"commit": "77b0a1c2d3e4f5a6", "by": RAYA, "holders": 1},
+                ],
+            ),
+        )
+        self.assertIn(
+            "  split at epoch 3, one side live\n"
+            "  4 of 4 seats share a log\n"
+            "\n"
+            "  branch A: epoch 4, state 5a850890461cab7f, 4 members\n"
+            "    on it: 19f6b0e3, 7b1e44d9, a3f91c07, e09a3f52\n"
+            "\n",
+            reported.text,
+        )
+
+    def test_logs_that_name_commits_read_as_the_same_logs_without_them_but_for_the_commits(self):
+        for logs in (*sorted(HISTORIES.iterdir()), REAL):
+            with self.subTest(logs=logs.name), tempfile.TemporaryDirectory() as scratch:
+                named = run_report(copy_of(logs, Path(scratch), named=True))
+                unnamed = run_report(copy_of(logs, Path(scratch), named=False))
+                self.assertEqual((named.status, named.lines), (unnamed.status, unnamed.lines))
+                beyond = [line for line in named.text.splitlines() if "first state at" not in line]
+                self.assertEqual(beyond, unnamed.text.splitlines())
+                for told, bare in zip(named.conversations, unnamed.conversations):
+                    states, branches = told["states"], told["branches"]
+                    # A branch's first state is the first of its states, which are in order.
+                    first = [
+                        next(state for state in states if state["branch"] == branch["label"])
+                        for branch in branches
+                    ]
+                    self.assertEqual(
+                        commits_out_of(told),
+                        (list(map(named_by_all, states)), list(map(named_by_all, first))),
+                    )
+                    self.assertEqual(
+                        commits_out_of(bare), ([[]] * len(states), [[]] * len(branches))
+                    )
+                    self.assertEqual(told, bare)
+
+
 class RealLogs(unittest.TestCase):
     """Two runs of a group's members in one process, cut to their records and the lines around."""
 
@@ -197,6 +394,7 @@ class RealLogs(unittest.TestCase):
                     "state": "a4a74167e563f44b",
                     "members": 2,
                     "installations": ["4e826d53", "810d744e"],
+                    "first_commits": [],
                 },
                 {
                     "label": "B",
@@ -205,6 +403,7 @@ class RealLogs(unittest.TestCase):
                     "state": "9c8d750bcf2c225f",
                     "members": 3,
                     "installations": ["602b850d"],
+                    "first_commits": [],
                 },
             ],
         )
@@ -259,6 +458,7 @@ class RealLogs(unittest.TestCase):
                     "state": "4410ce160df420ac",
                     "members": 2,
                     "installations": ["57d94add", "a36648f1"],
+                    "first_commits": [],
                 }
             ],
         )

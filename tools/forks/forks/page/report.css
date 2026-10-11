@@ -452,6 +452,11 @@ svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: rou
 .kv dt { color: var(--text-tertiary); }
 .kv dd { color: var(--text); overflow-wrap: anywhere; }
 .kv dd.mono { font-size: 11px; }
+/* The commits of a first state: a hash and an id are in the colour of the value they are part
+   of, and a gap stands before each commit after the first, as a narrow card breaks one in two
+   lines. */
+.kv dd .mono { color: inherit; }
+.kv dd > div + div { margin-top: var(--sp-tiny); }
 .subhead { margin-top: var(--sp-large); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
 .roster { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--sp-medium); list-style: none; }
 .chip {

@@ -693,6 +693,21 @@
     return under.flatMap((fold) => (unfolded.has(foldName(fold)) ? [fold, ...fold.installations] : [fold]));
   }
 
+  /* The commits a state's holders named as what made it, each in the parts of a line: its hash,
+     who committed it by the names of the runs held of that installation and by its id, and how
+     many named it where the state names more than one. A name is text whoever shared its run
+     chose, and letters read from the right move what stands beside them: `apart` makes of a
+     name a part that moves nothing. */
+  function madeBy(commits, at, apart) {
+    return commits.map((each) => {
+      const seat = at.seats.get(each.by);
+      const names = seat ? [...new Set(seat.runs.map((run) => at.runs.get(run).name))] : [];
+      const who = [...names.flatMap((name, index) => [index ? ', ' : ' by ', apart(name)]), names.length ? ' ' : ' by '];
+      const count = commits.length > 1 ? [` (${each.holders} ${each.holders === 1 ? 'names' : 'name'} it)`] : [];
+      return [each.commit, who, each.by, ...count];
+    });
+  }
+
   /* How a state is drawn wherever it stands: its class, its letter and its word. */
   function look(state, at) {
     const hue = (label) => at.hues.get(label) || 'bn';
@@ -743,9 +758,13 @@
         drawing.append(svg('path', { class: `link ${cls}`, d: `M${from.x + NODE} ${from.y}C${bend} ${from.y} ${bend} ${here.y} ${here.x - NODE} ${here.y}` }));
       }
       const stays = stay ? `, ${stay} of them behind` : '';
+      /* U+2068 and U+2069 are to the words of a title what `bdi` is to a card. */
+      const commits = madeBy(state.commits, at, (name) => `\u2068${name}\u2069`).map((parts) => parts.flat().join(''));
+      const last = commits.pop();
+      const commit = last === undefined ? '' : `, ${commits.length ? `commits ${commits.join(', ')} and` : 'commit'} ${last}`;
       const node = into(
         svg('g'),
-        svg('title', {}, `epoch ${state.epoch}, state ${state.state}, ${word}, reported by ${state.holders}${stays}, ${state.members} in its roster`),
+        svg('title', {}, `epoch ${state.epoch}, state ${state.state}, ${word}, reported by ${state.holders}${stays}, ${state.members} in its roster${commit}`),
         svg('circle', { class: cls, cx: here.x, cy: here.y, r: NODE }),
         svg('text', { class: 'n', x: here.x, y: here.y + 4, 'text-anchor': 'middle' }, state.holders),
         svg('text', { class: 'fp', x: here.x, y: here.y - NODE - 6, 'text-anchor': 'middle' }, state.state.slice(0, 8)),
@@ -1291,6 +1310,11 @@
       const facts = el('dl', 'kv');
       for (const [name, value] of [['Epoch', branch.epoch], ['State', branch.state], ['In its roster', branch.members], ['Its first state', `epoch ${branch.since}`]]) {
         facts.append(el('dt', '', name), el('dd', name === 'State' ? 'mono' : '', value));
+      }
+      /* What made a branch's first state tells it from the others: a lone one has none to be told from. */
+      if (convo.branches.length > 1 && branch.first_commits.length) {
+        const lines = madeBy(branch.first_commits, at, (name) => el('bdi', '', name)).map(([commit, who, id, ...count]) => into(el('div'), el('span', 'mono', commit), ...who, el('span', 'mono', id), ...count));
+        facts.append(el('dt', '', 'Its first commit'), into(el('dd'), ...lines));
       }
       const newest = at.states.get(`${branch.epoch}:${branch.state}`);
       card.setAttribute('data-key', `state ${branch.label}`);

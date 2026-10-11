@@ -43,6 +43,8 @@ class Record:
     frame: Optional[str] = None
     sender: Optional[str] = None
     why: Optional[str] = None
+    commit: Optional[str] = None
+    by: Optional[str] = None
 
 
 @dataclass
@@ -130,13 +132,22 @@ _convo = _shaped(r"(?:[0-9A-Za-z_-]|%%[0-9a-f]{2}){1,%d}" % MAX_CONVO)
 _fingerprint = _shaped(r"[0-9a-f]{16}")
 # A frame is named by eight bytes of a hash.
 _frame = _shaped(r"[0-9a-f]{1,16}")
+# A commit is named by the first eight bytes of the hash of its bytes.
+_commit = _shaped(r"[0-9a-f]{16}")
 _placed = {"installation": _installation, "convo": _convo, "epoch": _number}
 
-# Each target's records, and for each the fields it must carry.
+# Each target's records, and for each the fields it carries.
 _RECORDS: Dict[str, Dict[str, Dict[str, Callable]]] = {
     "libchat::groupv2trace": {
         "run": {"installation": _installation, "account": _account},
-        "epoch": {**_placed, "state": _fingerprint, "members": _number, "roster": _roster},
+        "epoch": {
+            **_placed,
+            "state": _fingerprint,
+            "members": _number,
+            "roster": _roster,
+            "commit": _commit,
+            "by": _installation,
+        },
         "left": _placed,
         "sent": {**_placed, "frame": _frame},
         "received": {**_placed, "frame": _frame, "from": _installation},
@@ -151,6 +162,9 @@ _RECORDS: Dict[str, Dict[str, Dict[str, Callable]]] = {
         "delivery": {"state": _shaped("initialising|online|error|stopped")},
     },
 }
+# The fields a record may lack, all of them or none: libchat writes a commit and who committed
+# it together, and neither at an epoch its installation applied no commit to reach.
+_TOGETHER = frozenset({"commit", "by"})
 # `from` is a Python keyword.
 _ATTRIBUTE = {"from": "sender"}
 
@@ -273,6 +287,8 @@ def _fields(kinds: Dict[str, Dict[str, Callable]], message: str) -> Tuple[str, d
     fields = {}
     for key, parse in kinds[kind].items():
         if key not in written:
+            if key in _TOGETHER and _TOGETHER.isdisjoint(written):
+                continue
             raise ValueError(key)
         fields[_ATTRIBUTE.get(key, key)] = parse(written[key])
     if "roster" in fields and fields["members"] != len(fields["roster"]):

@@ -10,6 +10,7 @@ from forks.rule import (
     LANES_IN_SIGHT,
     POSITIONS,
     SHOWN_CELLS,
+    Commit,
     Conversation,
     Fates,
     Held,
@@ -43,7 +44,9 @@ class Log:
     def start(self, name: str) -> None:
         self._add("run", installation=name, account=f"account-of-{name}")
 
-    def epoch(self, name: str, epoch: int, state: str, roster: str, convo: str = CONVO) -> None:
+    def epoch(
+        self, name: str, epoch: int, state: str, roster: str, convo: str = CONVO, **applied: str
+    ) -> None:
         members = tuple((member, f"account-of-{member}") for member in roster.split())
         self._add(
             "epoch",
@@ -53,6 +56,7 @@ class Log:
             state=state,
             members=len(members),
             roster=members,
+            **applied,
         )
 
     def left(self, name: str, epoch: int) -> None:
@@ -1043,6 +1047,226 @@ class Branches(unittest.TestCase):
         conversation = one(logs)
         self.assertEqual(conversation.verdict, "split seen from epoch 1")
         self.assertEqual([branch.label for branch in conversation.branches][-3:], ["Z", "AA", "AB"])
+
+
+class Commits(unittest.TestCase):
+    def test_a_state_says_the_commit_its_holders_named_and_how_many_of_them_named_it(self):
+        logs = started("saro", "raya", "kes")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 1, "X1", PAIR)
+            logs[name].epoch(name, 2, "X2", PAIR + " kes", commit="c2", by="saro")
+        # Kes joined there from a welcome, and applied no commit.
+        logs["kes"].epoch("kes", 2, "X2", PAIR + " kes")
+        first, second = one(logs).states
+        self.assertEqual(first.commits, [])
+        self.assertEqual((second.holders, second.held_by), (3, ["kes", "raya", "saro"]))
+        self.assertEqual(second.commits, [Commit("c2", "saro", 2)])
+
+    def test_one_state_under_two_hashes_names_both_the_most_named_first(self):
+        logs = started("saro", "raya", "pax", "mira")
+        for name in ("saro", "raya", "pax"):
+            logs[name].epoch(name, 2, "X2", ALL4, commit="d2", by="saro")
+        logs["mira"].epoch("mira", 2, "X2", ALL4, commit="c2", by="saro")
+        (state,) = one(logs).states
+        self.assertEqual(state.holders, 4)
+        self.assertEqual(state.commits, [Commit("d2", "saro", 3), Commit("c2", "saro", 1)])
+
+    def test_commits_as_many_named_go_by_their_hash_and_then_by_who_committed(self):
+        logs = started("saro", "raya", "pax", "mira")
+        named = {"saro": ("d2", "pax"), "raya": ("c2", "saro"), "pax": ("c2", "raya")}
+        for name, (commit, by) in named.items():
+            logs[name].epoch(name, 2, "X2", ALL4, commit=commit, by=by)
+        logs["mira"].epoch("mira", 2, "X2", ALL4, commit="d2", by="mira")
+        (state,) = one(logs).states
+        self.assertEqual(
+            state.commits,
+            [
+                Commit("c2", "raya", 1),
+                Commit("c2", "saro", 1),
+                Commit("d2", "mira", 1),
+                Commit("d2", "pax", 1),
+            ],
+        )
+
+    def test_an_installation_that_reports_a_state_again_names_its_commit_once(self):
+        for again in ({}, dict(commit="c2", by="saro")):
+            with self.subTest(again=again):
+                logs = started("saro", "raya")
+                for name in ("saro", "raya"):
+                    logs[name].epoch(name, 2, "X2", PAIR, commit="c2", by="saro")
+                # Saro's application starts again, and reports the state it holds.
+                logs["saro"].start("saro")
+                logs["saro"].epoch("saro", 2, "X2", PAIR, **again)
+                (state,) = one(logs).states
+                self.assertEqual(state.holders, 2)
+                self.assertEqual(state.commits, [Commit("c2", "saro", 2)])
+
+    def test_an_installation_whose_records_of_a_state_disagree_names_each_commit_once(self):
+        logs = started("saro", "raya")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 2, "X2", PAIR, commit="c2", by="saro")
+        logs["saro"].start("saro")
+        logs["saro"].epoch("saro", 2, "X2", PAIR, commit="d2", by="raya")
+        (state,) = one(logs).states
+        self.assertEqual(state.holders, 2)
+        self.assertEqual(state.commits, [Commit("c2", "saro", 2), Commit("d2", "raya", 1)])
+
+    def test_who_committed_need_not_be_a_seat_of_the_conversation(self):
+        logs = started("saro", "raya")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 2, "X2", PAIR, commit="c2", by="tomo")
+        conversation = one(logs)
+        self.assertEqual(conversation.states[0].commits, [Commit("c2", "tomo", 2)])
+        self.assertEqual(sorted(positions(conversation)), ["raya", "saro"])
+
+    def test_each_branch_of_a_split_says_the_commits_of_its_first_state(self):
+        logs = started("saro", "raya", "pax", "mira")
+        for name in ("saro", "raya", "pax", "mira"):
+            logs[name].epoch(name, 2, "X2", ALL4, commit="c2", by="saro")
+        for name in ("saro", "raya", "mira"):
+            logs[name].epoch(name, 3, "A3", ALL4, commit="a3", by="saro")
+        logs["pax"].epoch("pax", 3, "B3", ALL4, commit="b3", by="raya")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 4, "A4", ALL4, commit="a4", by="mira")
+        conversation = one(logs)
+        self.assertEqual(conversation.verdict, "split at epoch 3")
+        self.assertEqual(
+            [(b.label, b.since, b.state, b.first_commits) for b in conversation.branches],
+            [
+                ("A", 3, "A4", [Commit("a3", "saro", 3)]),
+                ("B", 3, "B3", [Commit("b3", "raya", 1)]),
+            ],
+        )
+        self.assertEqual(
+            [(state.state, state.commits) for state in conversation.states],
+            [
+                ("X2", [Commit("c2", "saro", 4)]),
+                ("A3", [Commit("a3", "saro", 3)]),
+                ("B3", [Commit("b3", "raya", 1)]),
+                ("A4", [Commit("a4", "mira", 2)]),
+            ],
+        )
+
+    def test_a_branch_whose_first_state_nobody_named_a_commit_for_says_none(self):
+        logs = started("saro", "raya", "kes")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 2, "X2", ALL3, commit="c2", by="saro")
+        logs["saro"].epoch("saro", 3, "A3", ALL3, commit="a3", by="saro")
+        logs["raya"].epoch("raya", 3, "B3", ALL3 + " kes", commit="b3", by="raya")
+        # Kes joined a state of its own from a welcome, and went on by a commit.
+        logs["kes"].epoch("kes", 3, "K3", ALL3 + " kes")
+        logs["kes"].epoch("kes", 4, "K4", ALL3 + " kes", commit="k4", by="kes")
+        conversation = one(logs)
+        self.assertEqual(
+            [(b.since, b.state, b.first_commits) for b in conversation.branches],
+            [
+                (3, "A3", [Commit("a3", "saro", 1)]),
+                (3, "B3", [Commit("b3", "raya", 1)]),
+                (3, "K4", []),
+            ],
+        )
+
+    def test_the_branches_a_branch_splits_into_say_the_commits_they_began_with(self):
+        logs = started("saro", "raya", "pax", "mira")
+        for name in ("saro", "raya", "pax", "mira"):
+            logs[name].epoch(name, 1, "X1", ALL4)
+        for name in ("saro", "raya", "mira"):
+            logs[name].epoch(name, 2, "A2", ALL4, commit="a2", by="saro")
+        logs["pax"].epoch("pax", 2, "B2", ALL4, commit="b2", by="pax")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 3, "A3", ALL4, commit="a3", by="raya")
+        logs["mira"].epoch("mira", 3, "C3", ALL4, commit="c3", by="mira")
+        conversation = one(logs)
+        self.assertEqual(conversation.verdict, "split at epoch 2")
+        self.assertEqual(
+            [(b.label, b.since, b.state, b.first_commits) for b in conversation.branches],
+            [
+                ("A", 3, "A3", [Commit("a3", "raya", 2)]),
+                ("B", 2, "B2", [Commit("b2", "pax", 1)]),
+                ("C", 3, "C3", [Commit("c3", "mira", 1)]),
+            ],
+        )
+        # The state the two came from is on no branch, and is the first state of none.
+        (shared,) = [state for state in conversation.states if state.state == "A2"]
+        self.assertEqual((shared.branch, shared.commits), (None, [Commit("a2", "saro", 3)]))
+
+    def test_a_branch_that_begins_in_two_states_says_the_commits_of_both(self):
+        logs = started("saro", "raya", "pax", "mira")
+        logs["saro"].epoch("saro", 3, "A3", ALL4, commit="a3", by="saro")
+        for name in ("raya", "mira"):
+            logs[name].epoch(name, 3, "B3", ALL4, commit="b3", by="raya")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 4, "C4", ALL4, commit="c4", by="saro")
+        alone = [Commit("b3", "raya", 2), Commit("a3", "saro", 1)]
+        (branch,) = one(logs).branches
+        self.assertEqual((branch.since, branch.state, branch.first_commits), (3, "C4", alone))
+        logs["pax"].epoch("pax", 3, "D3", ALL4, commit="d3", by="pax")
+        self.assertEqual(
+            [(b.label, b.since, b.state, b.first_commits) for b in one(logs).branches],
+            [("A", 3, "C4", alone), ("B", 3, "D3", [Commit("d3", "pax", 1)])],
+        )
+
+    def test_an_installation_counts_once_for_a_commit_it_names_at_two_first_states(self):
+        logs = started("saro", "raya")
+        for state in ("A3", "B3"):
+            # Saro's application starts again, and holds another state at the epoch.
+            logs["saro"].start("saro")
+            logs["saro"].epoch("saro", 3, state, PAIR, commit="c3", by="raya")
+            logs["saro"].epoch("saro", 4, "C4", PAIR)
+        logs["raya"].epoch("raya", 3, "B3", PAIR, commit="c3", by="raya")
+        (branch,) = one(logs).branches
+        self.assertEqual((branch.since, branch.first_commits), (3, [Commit("c3", "raya", 2)]))
+
+    def test_the_one_branch_of_a_group_that_never_split_says_those_of_the_first_state_held(self):
+        logs = started("saro", "raya")
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 5, "X5", PAIR, commit="c5", by="raya")
+            logs[name].epoch(name, 6, "X6", PAIR, commit="c6", by="saro")
+        (branch,) = one(logs).branches
+        self.assertEqual((branch.since, branch.first_commits), (5, [Commit("c5", "raya", 2)]))
+
+    def test_a_record_that_is_read_as_a_leave_names_no_commit(self):
+        logs = started("saro", "pax")
+        logs["saro"].epoch("saro", 1, "X1", "saro pax")
+        logs["saro"].epoch("saro", 2, "X2", "saro", commit="c2", by="saro")
+        logs["pax"].epoch("pax", 1, "X1", "saro pax")
+        logs["pax"].epoch("pax", 2, "X2", "saro", commit="d2", by="saro")
+        (_, second) = one(logs).states
+        self.assertEqual((second.held_by, second.commits), (["saro"], [Commit("c2", "saro", 1)]))
+
+    def test_copies_of_a_run_are_one_run_whatever_commit_each_names(self):
+        named = (dict(commit="c2", by="saro"), dict(commit="d2", by="raya"), {})
+        pairs = [(ours, theirs) for ours in named for theirs in named if ours != theirs]
+        for ours, theirs in pairs:
+            with self.subTest(ours=ours, theirs=theirs):
+                copies = [Log("monday"), Log("tuesday")]
+                for copy, applied in zip(copies, (ours, theirs)):
+                    copy.start("saro")
+                    copy.epoch("saro", 2, "X2", PAIR, **applied)
+                conversation = one(copies)
+                self.assertEqual([run.name for run in conversation.runs], ["monday"])
+                (state,) = conversation.states
+                self.assertEqual(state.commits, [Commit(holders=1, **ours)] if ours else [])
+
+    def test_runs_that_open_at_one_stamp_go_in_one_order_whatever_commit_each_names(self):
+        for first, second in (("c2", "d2"), ("d2", "c2")):
+            with self.subTest(first=first):
+                logs = [Log("monday"), Log("tuesday")]
+                for log, commit, state in zip(logs, (first, second), ("A3", "B3")):
+                    log.start("saro")
+                    log.epoch("saro", 2, "X2", PAIR, commit=commit, by="saro")
+                    log.epoch("saro", 3, state, PAIR)
+                saro = seat_of(one(logs), "saro")
+                self.assertEqual((saro.runs, saro.state), (["monday", "tuesday"], "B3"))
+
+    def test_the_commits_are_in_the_json(self):
+        logs = started("saro", "raya")
+        logs["saro"].epoch("saro", 2, "A2", PAIR, commit="a2", by="saro")
+        logs["raya"].epoch("raya", 2, "B2", PAIR)
+        told = as_json(one(logs))
+        named = [{"commit": "a2", "by": "saro", "holders": 1}]
+        self.assertEqual([state["commits"] for state in told["states"]], [named, []])
+        self.assertEqual([branch["first_commits"] for branch in told["branches"]], [named, []])
 
 
 def written(message: Message) -> Dict[str, Tuple[str, int]]:

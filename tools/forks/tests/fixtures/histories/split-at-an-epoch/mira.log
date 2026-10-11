@@ -5,14 +5,14 @@
 2026-10-08T13:32:57.077+00:00 INFO: chat_module::report: delivery state=online
 2026-10-08T13:33:49.077+00:00 INFO: libchat::inbox_v2: Process WelcomeMessage
 2026-10-08T13:33:49.080+00:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=b05d4417e9 epoch=1 state=77797f82b14f233d members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
-2026-10-08T13:34:53.083+00:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=b05d4417e9 epoch=2 state=763449d6cdefb10f members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T13:34:53.083+00:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=b05d4417e9 epoch=2 state=763449d6cdefb10f members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e commit=2f8d61c0b9e4a753 by=a3f91c07
 2026-10-08T13:35:16.486+00:00 INFO: libchat::groupv2trace: received installation=19f6b0e3 convo=b05d4417e9 frame=8f21c07a from=a3f91c07 epoch=2
 2026-10-08T13:35:16.488+00:00 INFO: chat_module::actions: received 48 bytes in b05d4417e9 from 5be2
-2026-10-08T13:36:20.491+00:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=b05d4417e9 epoch=3 state=897d8438305ac6d2 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T13:36:20.491+00:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=b05d4417e9 epoch=3 state=897d8438305ac6d2 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e commit=c41f9be27a6d03e5 by=a3f91c07
 2026-10-08T13:37:01.001+00:00 INFO: libchat::groupv2trace: received installation=19f6b0e3 convo=b05d4417e9 frame=e3b94d10 from=7b1e44d9 epoch=3
 2026-10-08T13:37:01.003+00:00 INFO: chat_module::actions: received 48 bytes in b05d4417e9 from 91c0
 2026-10-08T13:37:24.805+00:00 INFO: libchat::groupv2trace: unreadable installation=19f6b0e3 convo=b05d4417e9 frame=41d6a9e0 epoch=3 why=decrypt
 2026-10-08T13:37:24.806+00:00 WARNING: chat_module::actions: inbound error: could not decrypt a group frame
-2026-10-08T13:38:28.809+00:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=b05d4417e9 epoch=4 state=5a850890461cab7f members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T13:38:28.809+00:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=b05d4417e9 epoch=4 state=5a850890461cab7f members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e commit=9a03e7d15c4b82f6 by=19f6b0e3
 2026-10-08T13:38:52.412+00:00 INFO: libchat::groupv2trace: unreadable installation=19f6b0e3 convo=b05d4417e9 frame=77b4d2c5 epoch=3 why=epoch
 2026-10-08T13:38:52.413+00:00 WARNING: chat_module::actions: inbound error: could not decrypt a group frame

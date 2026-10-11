@@ -58,8 +58,10 @@ conversation b05d4417e9
   4 of 4 seats share a log
 
   branch A: epoch 4, state 5a850890461cab7f, 4 members
+    first state at epoch 3, made by commit c41f9be27a6d03e5 by a3f91c07
     on it: 19f6b0e3, 7b1e44d9, a3f91c07
   branch B: epoch 3, state e849c2aa9ab1f74d, 4 members
+    first state at epoch 3, made by commit 77b0a1c2d3e4f5a6 by 7b1e44d9
     on it: e09a3f52
 
   installation  account   name  epoch  position  branch
@@ -73,12 +75,24 @@ lines: 69 read, 42 records, 0 without a stamp, 0 malformed, 0 unknown
 
 Here `logs/` holds `saro.log`, `raya.log`, `pax.log` and `mira.log`. Saro, Raya and Mira went on
 to epoch 4 together. Pax applied a different commit at epoch 3 and is alone on the other branch.
+The three applied one that Saro committed, and Pax one that Raya committed.
 
 Each conversation in the logs gets its own block: the verdict, the coverage, every branch with its
 newest epoch, the fingerprint of the state there, how many members that state holds and which
 installations are on it, and then every installation with its account, the run it wrote in, the
 newest epoch it reported and its position. The last line says what became of the lines that were
 read.
+
+Where a conversation has more than one branch, a branch whose first state names a commit says under
+its own line the epoch of that state, the commit that made it and the installation that committed
+it, as the two above do. The first state is the first the logs hold of the branch: where a split is
+only seen from an epoch, it is not where the branch began. Where the installations that reported
+that state name more than one commit, the line says each and how many of them name it:
+
+```text
+    first state at epoch 3, made by commits c41f9be27a6d03e5 by a3f91c07 (2 name it) and
+      5e0d7a2b91c6f483 by a3f91c07 (1 names it)
+```
 
 `--json FILE` also writes the whole report as JSON, which holds more than the text does. See
 [The JSON report](#the-json-report).
@@ -114,7 +128,7 @@ and other lines print it.
 | Target | Record | Fields | What it says |
 |---|---|---|---|
 | `libchat::groupv2trace` | `run` | `installation` `account` | An installation started, acting for an account. |
-| `libchat::groupv2trace` | `epoch` | `installation` `convo` `epoch` `state` `members` `roster` | The installation holds the conversation at this epoch, in this state, with these members. |
+| `libchat::groupv2trace` | `epoch` | `installation` `convo` `epoch` `state` `members` `roster`, and `commit` `by` together or neither | The installation holds the conversation at this epoch, in this state, with these members. `commit` and `by` say the commit it applied to reach the epoch, and the installation that committed it. |
 | `libchat::groupv2trace` | `left` | `installation` `convo` `epoch` | The commit that made this epoch removed the installation. |
 | `libchat::groupv2trace` | `sent` | `installation` `convo` `frame` `epoch` | The installation published a post of its own. |
 | `libchat::groupv2trace` | `received` | `installation` `convo` `frame` `from` `epoch` | The installation read a post another one sent. |
@@ -123,12 +137,13 @@ and other lines print it.
 
 | Field | Written as |
 |---|---|
-| `installation`, `from` | The first four bytes of the installation's key: 8 hex characters. |
+| `installation`, `from`, `by` | The first four bytes of the installation's key: 8 hex characters. |
 | `account` | The first four bytes of the account id, in hex. An id shorter than four bytes is written whole, and an empty one as nothing. |
 | `convo` | The conversation id as one word. A byte outside `[0-9A-Za-z_-]` is written `%xx`, and the tool keeps the id as written. An id holds at most 1597 bytes, which is what fits the 8000 bytes of address the page asks for a conversation by. |
 | `epoch`, `members` | A number, at most 9007199254740991, the largest a browser reads from JSON exactly. `members` is the length of the roster. The `epoch` of an `unreadable` record is the one the frame's header names, which nothing has checked: any number below 2^64. |
 | `state` | 16 hex characters: a fingerprint of the group state. Installations that hold the same state write the same fingerprint. |
 | `roster` | The members, comma-separated, each `installation:account`. |
+| `commit` | 16 hex characters: the first eight bytes of the SHA-256 of a commit's bytes. |
 | `frame` | The id of a frame: 16 hex characters, eight bytes of a hash of the frame as it travels. The tool reads a shorter one and no longer one. |
 | `why` | `epoch`, `decrypt` or `sender`. |
 | `state` of `delivery` | `initialising`, `online`, `error` or `stopped`. |
@@ -136,14 +151,20 @@ and other lines print it.
 `run`, `epoch` and `left` decide the verdict. The other four add detail, and logs without them
 read the same.
 
+An `epoch` record carries `commit` and `by` together or not at all. It carries neither where its
+installation applied no commit to reach the epoch, as when it joined there from a welcome, and an
+older libchat writes neither on any record. The two decide nothing: but for the commits it
+lists, a report is the same with them and without. On any other record they are fields the tool
+does not know.
+
 No line stops the tool. The last line of a report counts what was read:
 
 - **records**: the lines read as records.
 - **without a stamp**: lines that do not start with a stamp, such as a backtrace or the output of
   a build. They are skipped.
 - **malformed**: lines on a report target whose record lacks a field, repeats one, holds a
-  value of the wrong shape or past its bound, or gives a `members` that is not the length of its
-  `roster`. They are skipped.
+  value of the wrong shape or past its bound, gives a `members` that is not the length of its
+  `roster`, or carries one of `commit` and `by` without the other. They are skipped.
 - **unknown**: lines on a report target whose record name the tool does not know. They are
   skipped. A field the tool does not know is ignored, and the record is read.
 
@@ -334,7 +355,8 @@ are given.
           "epoch": 4,
           "state": "5a850890461cab7f",
           "members": 4,
-          "installations": ["19f6b0e3", "7b1e44d9", "a3f91c07"]
+          "installations": ["19f6b0e3", "7b1e44d9", "a3f91c07"],
+          "first_commits": [{"commit": "c41f9be27a6d03e5", "by": "a3f91c07", "holders": 3}]
         }
       ],
       "states": [
@@ -349,7 +371,8 @@ are given.
           "roster": ["19f6b0e3", "7b1e44d9", "a3f91c07", "e09a3f52"],
           "held_by": ["e09a3f52"],
           "after": [{"epoch": 2, "state": "763449d6cdefb10f"}],
-          "row": 1
+          "row": 1,
+          "commits": [{"commit": "77b0a1c2d3e4f5a6", "by": "7b1e44d9", "holders": 1}]
         }
       ],
       "lanes": [
@@ -492,7 +515,10 @@ The lists above, and `marks`, are cut to one entry each.
   and their `count`.
 - `epochs` are the epochs a state or a leave names, in order.
 - `branches` are in the order of their names. `since` is the epoch of a branch's first state,
-  and `epoch`, `state` and `members` describe its newest.
+  and `epoch`, `state` and `members` describe its newest. `first_commits` are the `commits` of
+  its first state. Where a branch holds more than one state at `since`, as when two there lead
+  on to one state, they are those of each, and an installation counts once for a commit and who
+  committed it.
 - `states` are every state reported, by epoch and then fingerprint. `branch` is `null` for a
   state on no branch, `held_by` lists the installations that reported it and `holders` counts
   them, and `after` lists the states that links lead to it from. `lineage` says how the state
@@ -511,6 +537,14 @@ The lists above, and `marks`, are cut to one entry each.
   holds, which the row leaves. A state no such line reaches starts a row the same way, the
   newest first. A row stands under the one it leaves, nearer to it the later it leaves, so that
   a link to a row's first state crosses no row that leaves earlier.
+
+  `commits` are the commits that the installations which reported the state named as the one
+  they applied to reach it: each with the installation that committed it in `by`, and in
+  `holders` how many of them named the two together. The most named comes first, and then they
+  go by `commit` and by `by`. The list is empty where no record of the state names a commit, and
+  holds more than one where its installations applied it under two hashes or their logs
+  disagree. An installation counts once for a commit and who committed it, however often it
+  reported the state.
 
 - `lanes` are the installations under the headings they are read under, each heading with the
   `positions` of its installations, each once. First come the branches of a split, by name:
@@ -888,11 +922,11 @@ the same address without the token, where the page stays. The page is the three 
 | The title | The conversation's id, and how long ago the collector heard from a run of it. |
 | The verdict | A conversation's verdict in the words of the report, how many of its seats share a log, and how many malformed lines were skipped when any was. |
 | The tiles | How many seats share a log, how many branches there are and the first epoch with two states when there is a split, and how many installations are in each position, with their ids when they are three or fewer. |
-| Lineage of states | Every reported state as a circle that holds how many installations reported it, in the column of its epoch and in its `row`, a line of states named for its newest: a branch, the states that only one branch's logs reach, the shared line, or the states of unknown lineage. A ring marks the newest state of installations that are `behind`, with how many they are under it. A line is a link, a mark stands at the first epoch with two states, and each branch ends in its name, its newest epoch and how many installations are on it. |
+| Lineage of states | Every reported state as a circle that holds how many installations reported it, in the column of its epoch and in its `row`, a line of states named for its newest: a branch, the states that only one branch's logs reach, the shared line, or the states of unknown lineage. A ring marks the newest state of installations that are `behind`, with how many they are under it. A line is a link, a mark stands at the first epoch with two states, and each branch ends in its name, its newest epoch and how many installations are on it. With the pointer on a circle, the words it gives end in the commit that made its state and who committed it, written as on the card of a branch, where a log names one. |
 | Installations | A row for each installation, under the headings of `lanes`, with a line for each run it wrote in: the run's name, what sent it and when the collector last heard from it. A cell for each epoch of its `cells`: every record it wrote there in the order written, each a state with the letter of its branch or a leave, or an epoch it has not reached, or an epoch whose roster lists a seat nobody shared a log of. Then its position, with an end mark where it is `removed`, `ended` or `never joined` unless a leave ends the lane, and the words `its log is gone` for a seat that goes by a kept line. The lanes open at the newest epoch. |
 | Timeline | A row for each installation over the time from the first to the last record that names the conversation: a line for each of its runs, cut where the run reaches past that time, dotted where the run's `delivery` records say it was not online, with a mark where it reached each epoch. For each post the messages draw, the row of an installation has a mark at the stamp of its own record of it: a filled circle where it sent the post, a ring where it read it, a cross where it arrived and could not be read. Times are UTC, and the date stands under the first stamp of each day. |
 | Messages | A row for each post in the order sent: its `utc`, with the stamp as written when the pointer is on it, its frame, its sender, and the state it was sent in as the lanes draw it, with the letter of its branch, or its epoch alone where its sender reported no state there. Then a cell for each installation, in the order and under the headings of `lanes`: `sent`, `read`, `unreadable` with the cause its installation gave, `no record`, a hatched cell for a seat nobody shared a log of, an empty box for one that was no member when the post was sent, each of the two with its word when the pointer is on it. Where `shown_messages` is less than the posts there are, the newest posts are drawn, as many as it says, here and on the timeline, and a button draws all of them, or the newest again. Under the table stands `unmatched_unreadable`, when it is not zero, as a count of reports, with what it counts. A conversation whose logs hold no post says so in a line where the table would be. |
-| The state each branch holds | The newest state of each branch: its epoch, its fingerprint, how many its roster lists, the installations on it and the seats its roster lists. |
+| The state each branch holds | The newest state of each branch: its epoch, its fingerprint, how many its roster lists, the installations on it and the seats its roster lists. Where the conversation has more than one branch, a branch whose first state names a commit also says that commit and who committed it: the names its runs were shared under, each once, where the collector holds a log of it, and its id. Where the installations that reported that state name more than one commit, each has a line of its own with how many of them name it. |
 | Log | The line of a record in its run's log with the lines around it, when a cell of the installations, a mark of the timeline or a cell of the messages that stands for a record is clicked. The lines stay open while the page reads again, and close when their record is drawn no more. |
 
 A conversation of more than 23 installations is drawn folded, as its `folded` says: a row for
@@ -984,10 +1018,10 @@ once the directory is named.
 
 ```console
 $ python3 tools/forks share --to 'http://127.0.0.1:8750/?token=5d1c0a9e7b3f42d8' logs/
-mira: sent 2414 bytes, 127.0.0.1:8750 holds 2414 of 2414
-pax: sent 2236 bytes, 127.0.0.1:8750 holds 2236 of 2236
-raya: sent 2132 bytes, 127.0.0.1:8750 holds 2132 of 2132
-saro: sent 2150 bytes, 127.0.0.1:8750 holds 2150 of 2150
+mira: sent 2522 bytes, 127.0.0.1:8750 holds 2522 of 2522
+pax: sent 2308 bytes, 127.0.0.1:8750 holds 2308 of 2308
+raya: sent 2240 bytes, 127.0.0.1:8750 holds 2240 of 2240
+saro: sent 2294 bytes, 127.0.0.1:8750 holds 2294 of 2294
 ```
 
 A line on standard output says of each run how many bytes this go sent, and how many the

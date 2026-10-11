@@ -67,8 +67,11 @@ _1970 = datetime(1970, 1, 1)
 Node = Tuple[int, str]
 # The installation of a roster's entry.
 _MEMBER = itemgetter(0)
-# What a record says: every field but where it was written.
-_SAID = attrgetter(*(field.name for field in fields(Record) if field.name not in ("run", "line")))
+# What a record says: every field but where it was written and the commit it names, which
+# decides nothing.
+_SAID = attrgetter(
+    *(field.name for field in fields(Record) if field.name not in ("run", "line", "commit", "by"))
+)
 
 
 @dataclass(frozen=True)
@@ -167,12 +170,25 @@ class StateId:
 
 
 @dataclass(frozen=True)
+class Commit:
+    """A commit that installations named as the one that made a state, and who committed it.
+
+    `holders` counts the installations that named the two together.
+    """
+
+    commit: str
+    by: str
+    holders: int
+
+
+@dataclass(frozen=True)
 class State:
     """A reported state: its branch if it is on one, and the states it came from.
 
     `lineage` says how it stands among the branches, and `toward` names the branch of a state
     that is one side's. `holders` counts the installations that reported it. `row` is the row of
-    the lineage a page draws it in, counted from the top.
+    the lineage a page draws it in, counted from the top. `commits` are what its holders named as
+    the commit that made it, the most named first.
     """
 
     epoch: int
@@ -186,11 +202,16 @@ class State:
     held_by: List[str]
     after: List[StateId]
     row: int
+    commits: List[Commit]
 
 
 @dataclass(frozen=True)
 class Branch:
-    """A line of states no other branch shares: where it starts, its newest state, who is on it."""
+    """A line of states no other branch shares: where it starts, its newest state, who is on it.
+
+    `first_commits` are the `commits` of its first state, or of every state it holds at `since`
+    where two there lead on to one.
+    """
 
     label: str
     since: int
@@ -198,6 +219,7 @@ class Branch:
     state: str
     members: int
     installations: List[str]
+    first_commits: List[Commit]
 
 
 @dataclass(frozen=True)
@@ -484,7 +506,7 @@ def _earlier_length(records: List[Record], other: List[Record]) -> bool:
 
 
 def _says_the_same(one: Record, other: Record) -> bool:
-    """Whether two records differ in nothing but where they were written."""
+    """Whether two records differ in nothing but where they were written and the commit named."""
     # The stamps alone tell most pairs of runs apart, at a fraction of the cost.
     return one.time == other.time and _SAID(one) == _SAID(other)
 
@@ -500,6 +522,8 @@ class _Lineage:
     def __init__(self, convo: str, logs: _Logs) -> None:
         self.reported: Dict[Node, Record] = {}
         self.holders: Dict[Node, Set[str]] = defaultdict(set)
+        # For a state, each commit and committer an installation named as what made it.
+        self.named: Dict[Node, Set[Tuple[str, str, str]]] = defaultdict(set)
         self.links: Dict[Node, Set[Node]] = defaultdict(set)
         self.parents: Dict[Node, Set[Node]] = defaultdict(set)
         self.accounts: Dict[str, str] = {}
@@ -539,6 +563,8 @@ class _Lineage:
                 for member, account in record.roster:
                     self.accounts.setdefault(member, account)
             self.holders[node].add(installation)
+            if record.commit is not None:
+                self.named[node].add((record.commit, record.by, installation))
             self.wrote[installation].append(node)
             if prev is not None and prev[0] < node[0]:
                 self.links[prev].add(node)
@@ -548,6 +574,18 @@ class _Lineage:
     def roster(self, node: Node) -> FrozenSet[str]:
         """The installations a state's roster lists."""
         return frozenset(map(_MEMBER, self.reported[node].roster))
+
+    def commits(self, *nodes: Node) -> List[Commit]:
+        """What the holders of states named as the commit that made each, the most named first.
+
+        An installation counts once for a commit, at however many of the states it named it.
+        """
+        told = {naming for node in nodes for naming in self.named.get(node, ())}
+        named = Counter((commit, by) for commit, by, _ in told)
+        return [
+            Commit(commit, by, holders)
+            for (commit, by), holders in sorted(named.items(), key=lambda each: (-each[1], each[0]))
+        ]
 
     def split_epoch(self) -> Optional[int]:
         """The first epoch that holds two states."""
@@ -912,13 +950,15 @@ def _seconds(time: str) -> float:
 
 def _branch(label: str, branch: Set[Node], lineage: _Lineage) -> Branch:
     newest = max(branch)
+    since = min(branch)[0]
     return Branch(
         label=label,
-        since=min(branch)[0],
+        since=since,
         epoch=newest[0],
         state=newest[1],
         members=lineage.reported[newest].members,
         installations=lineage.on(branch),
+        first_commits=lineage.commits(*(node for node in branch if node[0] == since)),
     )
 
 
@@ -941,6 +981,7 @@ def _state(
         held_by=sorted(lineage.holders[node]),
         after=[StateId(*parent) for parent in sorted(lineage.parents.get(node, ()))],
         row=row,
+        commits=lineage.commits(node),
     )
 
 

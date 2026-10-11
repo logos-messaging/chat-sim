@@ -6,6 +6,7 @@ ROSTER = "a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7"
 PLACED = "installation=a3f91c07 convo=2a30d6a2c1 epoch=7"
 EPOCH = f"epoch {PLACED} state=b77d02c4a91e03d5 members=2 roster={ROSTER}"
 LEFT = "left installation=e09a3f52 convo=2a30d6a2c1 epoch=8"
+APPLIED = "commit=c0c1c2c3c4c5c6c7 by=7b1e44d9"
 
 
 def tracing(message: str, target: str = "libchat::groupv2trace", spans: str = "") -> str:
@@ -119,6 +120,17 @@ class TheSevenRecords(unittest.TestCase):
         self.assertEqual((record.kind, record.epoch, record.members), ("epoch", 7, 2))
         self.assertEqual(record.state, "b77d02c4a91e03d5")
 
+    def test_an_epoch_names_the_commit_it_was_reached_by_and_who_committed_it(self):
+        for line in (tracing(f"{EPOCH} {APPLIED}"), module(f"{EPOCH} {APPLIED}")):
+            with self.subTest(line=line):
+                record = only(line)
+                self.assertEqual((record.commit, record.by), ("c0c1c2c3c4c5c6c7", "7b1e44d9"))
+                self.assertEqual((record.kind, record.epoch, record.members), ("epoch", 7, 2))
+
+    def test_an_epoch_no_commit_was_applied_to_reach_names_none(self):
+        record = only(tracing(EPOCH))
+        self.assertEqual((record.commit, record.by), (None, None))
+
     def test_left(self):
         record = only(module(LEFT))
         self.assertEqual((record.kind, record.convo, record.epoch), ("left", "2a30d6a2c1", 8))
@@ -149,8 +161,24 @@ class TheSevenRecords(unittest.TestCase):
         self.assertEqual(record.roster, tuple(members))
 
     def test_a_field_the_tool_does_not_know_is_ignored(self):
-        record = only(tracing(f"{EPOCH} commit=c41f by=a3f91c07"))
+        record = only(tracing(f"{EPOCH} tree=c41f signed=a3f91c07"))
         self.assertEqual((record.kind, record.epoch), ("epoch", 7))
+
+    def test_a_commit_on_any_other_record_is_a_field_the_tool_does_not_know(self):
+        others = {
+            "run": "run installation=810d744e account=7361726f",
+            "left": LEFT,
+            "sent": f"sent {PLACED} frame=41d6",
+            "received": f"received {PLACED} frame=41d6 from=e09a3f52",
+            "unreadable": f"unreadable {PLACED} frame=e3b9 why=epoch",
+        }
+        for kind, message in others.items():
+            for named in (APPLIED, "commit=c41f", "by=saro"):
+                with self.subTest(kind=kind, named=named):
+                    record = only(tracing(f"{message} {named}"))
+                    self.assertEqual((record.kind, record.commit, record.by), (kind, None, None))
+        delivery = only(module(f"delivery state=online {APPLIED}", target="chat_module::report"))
+        self.assertEqual((delivery.kind, delivery.commit, delivery.by), ("delivery", None, None))
 
 
 class NotARecord(unittest.TestCase):
@@ -212,7 +240,7 @@ class NotARecord(unittest.TestCase):
         malformed = {
             "a missing field": "left installation=e09a3f52 convo=2a30d6a2c1",
             "a repeated key": f"{LEFT} epoch=9",
-            "a repeated key the tool does not know": f"{EPOCH} commit=c41f commit=9be2",
+            "a repeated key the tool does not know": f"{EPOCH} tree=c41f tree=9be2",
             "a word that is no field": f"{LEFT} late",
             "two spaces": LEFT.replace(" convo", "  convo"),
             "an installation of the wrong length": EPOCH.replace("a3f91c07 ", "a3f91c "),
@@ -237,6 +265,18 @@ class NotARecord(unittest.TestCase):
             "a cause the tool does not know": f"unreadable {PLACED} frame=e3b9 why=late",
             "a frame that is no hash": f"sent {PLACED} frame=xyz",
             "a frame longer than a hash": f"sent {PLACED} frame={'41d6a9e0' * 2}c",
+            "a commit without who committed it": f"{EPOCH} commit=c0c1c2c3c4c5c6c7",
+            "who committed without a commit": f"{EPOCH} by=7b1e44d9",
+            "a commit named twice": f"{EPOCH} {APPLIED} commit=c0c1c2c3c4c5c6c7",
+            "a commit of seven bytes": f"{EPOCH} {APPLIED.replace('c7 ', ' ')}",
+            "a commit of nine bytes": f"{EPOCH} {APPLIED.replace('c7 ', 'c7c8 ')}",
+            "a commit in upper case": f"{EPOCH} {APPLIED.replace('c0c1', 'C0C1')}",
+            "a commit of no bytes": f"{EPOCH} commit= by=7b1e44d9",
+            "a committer of three bytes": f"{EPOCH} {APPLIED[:-2]}",
+            "a committer of five bytes": f"{EPOCH} {APPLIED}9c",
+            "a committer in upper case": f"{EPOCH} {APPLIED.replace('7b1e', '7B1E')}",
+            "a committer of no bytes": f"{EPOCH} commit=c0c1c2c3c4c5c6c7 by=",
+            "a committer with its account": f"{EPOCH} {APPLIED}:91c0e3a7",
         }
         for what, message in malformed.items():
             with self.subTest(what=what):

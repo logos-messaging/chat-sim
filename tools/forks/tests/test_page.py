@@ -34,6 +34,7 @@ from .test_serve import (
     hexed,
     logged,
     member,
+    numbered,
     positions,
     tree,
 )
@@ -852,6 +853,11 @@ class Sources(unittest.TestCase):
         ring = ":focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }"
         self.assertIn(ring, styles)
         self.assertIsNone(re.search(r"outline:\s*(none|0)\b", styles))
+
+    def test_a_first_commit_is_in_the_colour_of_its_value_and_a_gap_stands_before_the_next(self):
+        styles = self.read("report.css")
+        self.assertIn(".kv dd .mono { color: inherit; }", styles)
+        self.assertIn(".kv dd > div + div { margin-top: var(--sp-tiny); }", styles)
 
 
 def split_logs() -> Dict[str, Log]:
@@ -2945,6 +2951,292 @@ class Folded(Collecting):
         first, again = self.draw(answers, {"answers": {}})
         self.assertEqual((again["asked"], again["validators"]), (first["asked"], [None, None]))
         self.assertEqual((again["report"], again["notice"]), (first["report"], None))
+
+
+FIVE = "saro raya kes pax mira"
+
+
+def named_logs() -> Dict[str, Log]:
+    """A group of five that split, as four of its members name the commit that made each state.
+
+    Raya commits the second epoch. At the third Saro, Raya and Mira take a state Saro commits,
+    which Mira names under another hash as a commit of Kes, who shares no log. Pax takes a state
+    of his own there and names Tomo, whom no roster lists, as the one that committed it.
+    """
+    logs = {name: member(name, 1, FIVE) for name in ("saro", "raya", "pax", "mira")}
+    for name, log in logs.items():
+        log.epoch(name, 2, "X2", FIVE, commit="c2", by="raya")
+    for name in ("saro", "raya"):
+        logs[name].epoch(name, 3, "A3", FIVE, commit="a3", by="saro")
+    logs["mira"].epoch("mira", 3, "A3", FIVE, commit="m3", by="kes")
+    logs["pax"].epoch("pax", 3, "B3", FIVE, commit="b3", by="tomo")
+    return logs
+
+
+def unnamed(log: bytes) -> bytes:
+    """A log without the commit any of its records names."""
+    return re.sub(rb" commit=\S+ by=\S+", b"", log)
+
+
+def facts(state: dict, branch: str) -> Dict[str, dict]:
+    """What the card of a branch says of it, by what each row is called."""
+    (listed,) = classed(keyed(state["report"], f"state {branch}"), "kv")
+    called, said = listed["kids"][::2], listed["kids"][1::2]
+    return {words(name): value for name, value in zip(called, said)}
+
+
+def titles(report: dict, state: dict) -> Dict[str, str]:
+    """What the circle of each state says to a pointer, by the name a test logs the state under."""
+    (drawing,) = classed(state["report"], "lineage")
+    said = [words(made) for made in within(drawing) if made["tag"] == "title"]
+    names = {hexed(name, 16): name for name in ("X1", "X2", "A3", "B3", "B4")}
+    return {names[held["state"]]: title for held, title in zip(report["states"], said)}
+
+
+def circle(epoch: int, state: str, word: str, holders: int, members: int = 5) -> str:
+    """What the circle of a state that names no commit says to a pointer."""
+    held = f"state {hexed(state, 16)}, {word}, reported by {holders}"
+    return f"epoch {epoch}, {held}, {members} in its roster"
+
+
+def apart(name: str) -> str:
+    """A run's name as a circle says it: between the marks that set it apart from the id."""
+    return f"\u2068{name}\u2069"
+
+
+def uncommitted(made: dict) -> dict:
+    """An element without what is drawn of a commit: a row of a card, the end of a title."""
+    kids = [kid if isinstance(kid, str) else uncommitted(kid) for kid in made["kids"]]
+    if made["tag"] == "title":
+        kids = [re.sub(r", commits? .*", "", kid) for kid in kids]
+    if made["tag"] == "dl":
+        rows = {at for at, kid in enumerate(kids) if words(kid) == "Its first commit"}
+        kids = [kid for at, kid in enumerate(kids) if not {at, at - 1} & rows]
+    return {**made, "kids": kids}
+
+
+@unittest.skipUnless(NODE, "node runs the page's script, and is not on this machine")
+class Commits(Collecting):
+    """The commit the logs name as the one that made a state, as the script draws it."""
+
+    answers = Drawn.answers
+    draw = Drawn.draw
+
+    def drawn(self, logs: Dict[str, bytes]) -> Tuple[dict, dict]:
+        """What a collector of their own reports of these logs, and what the page draws of it."""
+        # Each collector names its runs alike, so two drawings differ by their logs alone.
+        self.mint = numbered(self.numbers())
+        self.served = self.elsewhere()
+        for name, log in logs.items():
+            self.served.share(log, name)
+        (state,) = self.draw(self.answers())
+        self.assertIsNone(state["notice"])
+        return self.served.report(), state
+
+    def named(self) -> Tuple[dict, dict]:
+        return self.drawn({name: logged(log) for name, log in named_logs().items()})
+
+    def test_the_card_of_a_branch_says_its_first_commit_and_who_committed_it(self):
+        report, state = self.named()
+        a, b = report["branches"]
+        self.assertEqual(
+            (a["first_commits"], b["first_commits"]),
+            (
+                [
+                    {"commit": hexed("a3", 16), "by": hexed("saro"), "holders": 2},
+                    {"commit": hexed("m3", 16), "by": hexed("kes"), "holders": 1},
+                ],
+                [{"commit": hexed("b3", 16), "by": hexed("tomo"), "holders": 1}],
+            ),
+        )
+        for branch in "AB":
+            self.assertEqual(
+                list(facts(state, branch)),
+                ["Epoch", "State", "In its roster", "Its first state", "Its first commit"],
+            )
+            # The row is in the face of the words: its hash and its id alone are in the mono one.
+            self.assertEqual(facts(state, branch)["Its first commit"]["attrs"], {})
+        # Each commit of a state under two hashes has a line, and says how many name it. Saro
+        # is named by the run he shares. Kes shares none, and is his id alone.
+        ours, theirs = facts(state, "A")["Its first commit"]["kids"]
+        self.assertEqual(
+            (words(ours), words(theirs)),
+            (
+                f"{hexed('a3', 16)} by saro {hexed('saro')} (2 name it)",
+                f"{hexed('m3', 16)} by {hexed('kes')} (1 names it)",
+            ),
+        )
+        # The one commit of a state is a line that counts nobody. Tomo is no seat: his id alone.
+        (only,) = facts(state, "B")["Its first commit"]["kids"]
+        self.assertEqual(words(only), f"{hexed('b3', 16)} by {hexed('tomo')}")
+        for line, commit, by in ((ours, "a3", "saro"), (theirs, "m3", "kes"), (only, "b3", "tomo")):
+            self.assertEqual(line["tag"], "div")
+            self.assertEqual(
+                [words(made) for made in classed(line, "mono")], [hexed(commit, 16), hexed(by)]
+            )
+
+    def test_a_circle_of_the_lineage_says_the_commit_that_made_its_state(self):
+        report, state = self.named()
+        self.assertEqual(
+            titles(report, state),
+            {
+                "X1": circle(1, "X1", "shared line", 4),
+                "X2": circle(2, "X2", "shared line", 4)
+                + f", commit {hexed('c2', 16)} by {apart('raya')} {hexed('raya')}",
+                "A3": circle(3, "A3", "branch A", 3)
+                + f", commits {hexed('a3', 16)} by {apart('saro')} {hexed('saro')} (2 name it)"
+                + f" and {hexed('m3', 16)} by {hexed('kes')} (1 names it)",
+                "B3": circle(3, "B3", "branch B", 1)
+                + f", commit {hexed('b3', 16)} by {hexed('tomo')}",
+            },
+        )
+
+    def test_three_commits_of_a_state_are_listed_with_a_comma_and_an_and(self):
+        logs = named_logs()
+        logs["raya"] = member("raya", 2, FIVE)
+        logs["raya"].epoch("raya", 3, "A3", FIVE, commit="r3", by="raya")
+        report, state = self.drawn({name: logged(log) for name, log in logs.items()})
+        by = {"a3": f"saro {hexed('saro')}", "m3": hexed("kes"), "r3": f"raya {hexed('raya')}"}
+        named = sorted(f"{hexed(commit, 16)} by {who} (1 names it)" for commit, who in by.items())
+        self.assertEqual(
+            [words(line) for line in facts(state, "A")["Its first commit"]["kids"]], named
+        )
+        said = [re.sub("saro|raya", lambda name: apart(name[0]), line) for line in named]
+        self.assertEqual(
+            titles(report, state)["A3"],
+            circle(3, "A3", "branch A", 3) + f", commits {said[0]}, {said[1]} and {said[2]}",
+        )
+
+    def test_who_committed_is_named_by_each_name_its_runs_were_shared_under_once(self):
+        logs = {name: logged(log) for name, log in named_logs().items()}
+        again = Log("saro", 11)
+        again.start("saro")
+        again.epoch("saro", 3, "A3", FIVE)
+        said = f"{hexed('a3', 16)} by saro {hexed('saro')} (2 name it)"
+        for name, who in ((None, "saro"), ("saro", "saro"), ("at home", "saro, at home")):
+            with self.subTest(name=name):
+                report, state = self.drawn(logs)
+                if name is not None:
+                    self.served.share(logged(again), name)
+                    report = self.served.report()
+                    (state,) = self.draw(self.answers())
+                names = [run["name"] for run in report["runs"]]
+                self.assertEqual(names, ["saro", "raya", "pax", "mira"] + [name] * bool(name))
+                (ours, _) = facts(state, "A")["Its first commit"]["kids"]
+                self.assertEqual(words(ours), said.replace("saro", who, 1))
+                each = ", ".join(map(apart, who.split(", ")))
+                self.assertIn(
+                    f", commits {said.replace('saro', each, 1)} and ", titles(report, state)["A3"]
+                )
+
+    def test_a_name_stands_apart_from_the_id_after_it_whichever_way_it_is_read(self):
+        logs = {name: logged(log) for name, log in named_logs().items()}
+        # A name in Hebrew, and one that has what follows it read from the right.
+        sara, turned = "\u05e9\u05e8\u05d4", "\u202eoras"
+        self.drawn({sara: logs.pop("saro"), **logs})
+        again = Log("saro", 11)
+        again.start("saro")
+        again.epoch("saro", 3, "A3", FIVE)
+        self.served.share(logged(again), turned)
+        (state,) = self.draw(self.answers())
+        (ours, _) = facts(state, "A")["Its first commit"]["kids"]
+        self.assertEqual(
+            [kid if isinstance(kid, str) else (kid["tag"], words(kid)) for kid in ours["kids"]],
+            [
+                ("span", hexed("a3", 16)),
+                " by ",
+                ("bdi", sara),
+                ", ",
+                ("bdi", turned),
+                " ",
+                ("span", hexed("saro")),
+                " (2 name it)",
+            ],
+        )
+        self.assertIn(
+            f" by {apart(sara)}, {apart(turned)} {hexed('saro')} (2 name it) and ",
+            titles(self.served.report(), state)["A3"],
+        )
+
+    def test_a_branch_whose_first_state_names_no_commit_has_no_row_for_one(self):
+        logs = named_logs()
+        logs["pax"] = member("pax", 2, FIVE)
+        logs["pax"].epoch("pax", 3, "B3", FIVE)
+        logs["pax"].epoch("pax", 4, "B4", FIVE, commit="b4", by="pax")
+        report, state = self.drawn({name: logged(log) for name, log in logs.items()})
+        a, b = report["branches"]
+        self.assertEqual((len(a["first_commits"]), b["first_commits"]), (2, []))
+        self.assertIn("Its first commit", facts(state, "A"))
+        self.assertEqual(
+            list(facts(state, "B")), ["Epoch", "State", "In its roster", "Its first state"]
+        )
+        # The state it began with says no commit, and the one a commit made says that one.
+        said = titles(report, state)
+        self.assertEqual(
+            (said["B3"], said["B4"]),
+            (
+                circle(3, "B3", "branch B", 1),
+                circle(4, "B4", "branch B", 1)
+                + f", commit {hexed('b4', 16)} by {apart('pax')} {hexed('pax')}",
+            ),
+        )
+
+    def test_the_card_of_a_conversation_that_is_whole_has_no_row_for_a_commit(self):
+        logs = {name: member(name, 0) for name in ("saro", "raya")}
+        for name, log in logs.items():
+            log.epoch(name, 2, "X2", "saro raya", commit="c2", by="raya")
+        report, state = self.drawn({name: logged(log) for name, log in logs.items()})
+        (branch,) = report["branches"]
+        named = {"commit": hexed("c2", 16), "by": hexed("raya"), "holders": 2}
+        self.assertEqual((report["split_epoch"], branch["first_commits"]), (None, [named]))
+        self.assertEqual(
+            list(facts(state, "A")), ["Epoch", "State", "In its roster", "Its first state"]
+        )
+        # The circle of its one state says the commit, as that of any state does.
+        said = circle(2, "X2", "shared line", 2, 2)
+        raya = f"{apart('raya')} {named['by']}"
+        self.assertEqual(
+            titles(report, state), {"X2": f"{said}, commit {named['commit']} by {raya}"}
+        )
+
+    def test_the_card_of_a_lone_branch_that_begins_in_two_states_has_no_row_for_a_commit(self):
+        logs = {name: member(name, 2) for name in ("saro", "raya")}
+        logs["saro"].epoch("saro", 3, "A3", "saro raya", commit="a3", by="saro")
+        logs["raya"].epoch("raya", 3, "B3", "saro raya", commit="b3", by="raya")
+        for name, log in logs.items():
+            log.epoch(name, 4, "B4", "saro raya", commit="b4", by="saro")
+        report, state = self.drawn({name: logged(log) for name, log in logs.items()})
+        (branch,) = report["branches"]
+        named = sorted([(hexed("a3", 16), hexed("saro")), (hexed("b3", 16), hexed("raya"))])
+        self.assertEqual(
+            (report["split_epoch"], branch["since"], branch["first_commits"]),
+            (3, 3, [{"commit": commit, "by": by, "holders": 1} for commit, by in named]),
+        )
+        self.assertEqual(
+            list(facts(state, "A")), ["Epoch", "State", "In its roster", "Its first state"]
+        )
+        # The circle of each of the two says the commit that made it.
+        said = titles(report, state)
+        by = {"A3": f"{hexed('a3', 16)} by {apart('saro')} {hexed('saro')}"}
+        by["B3"] = f"{hexed('b3', 16)} by {apart('raya')} {hexed('raya')}"
+        for name, commit in by.items():
+            self.assertEqual(said[name], circle(3, name, "branch A", 1, 2) + f", commit {commit}")
+
+    def test_logs_that_name_no_commit_are_drawn_as_the_same_logs_that_do_but_for_the_commits(self):
+        logs = {name: logged(log) for name, log in named_logs().items()}
+        told, named = self.drawn(logs)
+        bare, plain = self.drawn({name: unnamed(log) for name, log in logs.items()})
+        self.assertEqual([run["id"] for run in told["runs"]], [run["id"] for run in bare["runs"]])
+        self.assertNotEqual(named["report"], plain["report"])
+        self.assertEqual(json.dumps(uncommitted(named["report"])), json.dumps(plain["report"]))
+        # Nothing of a commit is drawn of them: no row, and no title that goes on.
+        self.assertEqual(uncommitted(plain["report"]), plain["report"])
+        for branch in "AB":
+            self.assertNotIn("Its first commit", facts(plain, branch))
+        self.assertEqual(
+            [said.split(", ")[-1] for said in titles(bare, plain).values()],
+            ["5 in its roster"] * 4,
+        )
 
 
 class Gained(Collecting):

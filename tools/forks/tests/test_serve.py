@@ -109,6 +109,8 @@ def line_of(record: Record, group: str = "") -> str:
     if record.kind == "epoch":
         roster = ",".join(f"{hexed(group + name)}:{account(name)}" for name, _ in record.roster)
         said.update(state=hexed(record.state, 16), members=len(record.roster), roster=roster)
+    if record.commit is not None:
+        said.update(commit=hexed(record.commit, 16), by=hexed(group + record.by))
     if record.frame is not None:
         said["frame"] = record.frame
     if record.sender is not None:
