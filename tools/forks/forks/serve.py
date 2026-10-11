@@ -6,6 +6,8 @@ Nothing is answered before the token is checked but a request that is not HTTP.
 
 from __future__ import annotations
 
+import gzip
+import hashlib
 import hmac
 import json
 import re
@@ -27,6 +29,17 @@ MAX_BODY = 4 * 1024 * 1024
 _PIECE = 64 * 1024
 _NUMBER = re.compile(r"[0-9]{1,20}")
 _Answer = Tuple[int, object]
+_JSON = "application/json; charset=utf-8"
+# The level gzip codes at, measured under zlib-ng 2.3.3 on reports of 25.6 MB (300 installations
+# over 300 epochs) and 37.0 MB (100 over 2000 posts). Level 5 takes 0.07 s and 0.06 s and leaves
+# 2.81 MB and 1.65 MB: level 6 is under 1% smaller for half as long again, and level 1 leaves
+# 3.12 MB and 3.16 MB.
+_LEVEL = 5
+# gzip as a request names it among the codings it takes, with the weight it gives it.
+_GZIP = re.compile(r"\s*gzip\s*(?:;\s*q\s*=\s*([01](?:\.[0-9]{0,3})?)\s*)?", re.IGNORECASE)
+# The list, a report and the files of the page go as the request takes them, and a 304 says
+# so as the 200 in its place would.
+_VARY = ("Vary", "Accept-Encoding")
 # The report page: `index.html` is the page, and the other files are what it loads.
 PAGE = Path(__file__).parent / "page"
 _KINDS = {
@@ -54,7 +67,7 @@ _ON_EVERY_ANSWER = (
 
 
 class _Said(NamedTuple):
-    """An answer that is not JSON: its headers, and its body when it has one."""
+    """An answer that gives its own headers, and its body when it has one."""
 
     headers: Tuple[Tuple[str, str], ...]
     body: Optional[bytes] = None
@@ -230,10 +243,27 @@ class Handler(BaseHTTPRequestHandler):
             self.server.collector.delete(parts[1], self.headers.get("Forks-Receipt"))
             return 204, None
         if call == ("GET", 1, ("conversations",)):
-            return 200, self.server.collector.conversations()
+            return self._unless_held(json.dumps(self.server.collector.conversations()).encode())
         if call == ("GET", 2, ("conversations",)):
-            return 200, self.server.collector.conversation(parts[1])
+            return self._unless_held(self.server.collector.conversation(parts[1]))
         raise Refused(404, error="the collector has no such call")
+
+    def _unless_held(self, body: bytes) -> _Answer:
+        """JSON under its validator, or 304 and no body where the request names that validator.
+
+        The validator is a hash of the JSON and weak: it stands for the JSON in whichever
+        coding it is sent.
+        """
+        tag = f'"{hashlib.sha256(body).hexdigest()}"'
+        named = (
+            name.strip()
+            for header in self.headers.get_all("If-None-Match", [])
+            for name in header.split(",")
+        )
+        # A validator is compared without its mark of weakness, and `*` names whatever is held.
+        if any(name in ("*", tag, f"W/{tag}") for name in named):
+            return 304, _Said((("ETag", f"W/{tag}"), _VARY))
+        return 200, self._as_taken(body, ("Content-Type", _JSON), ("ETag", f"W/{tag}"))
 
     def _open(self, body: bytes) -> _Answer:
         try:
@@ -281,7 +311,23 @@ class Handler(BaseHTTPRequestHandler):
         except (OSError, ValueError):
             raise Refused(404, error="the page has no such file") from None
         kind = _KINDS.get(file.suffix, "application/octet-stream")
-        return 200, _Said((("Content-Type", kind),), body)
+        return 200, self._as_taken(body, ("Content-Type", kind))
+
+    def _as_taken(self, body: bytes, *headers: Tuple[str, str]) -> _Said:
+        """A body coded with gzip for a request that takes it, and said to go by the request."""
+        if self._takes_gzip():
+            coded = gzip.compress(body, _LEVEL, mtime=0)
+            return _Said((*headers, _VARY, ("Content-Encoding", "gzip")), coded)
+        return _Said((*headers, _VARY), body)
+
+    def _takes_gzip(self) -> bool:
+        """Whether the request names gzip among the codings it takes, at a weight above none."""
+        named = (
+            _GZIP.fullmatch(coding)
+            for header in self.headers.get_all("Accept-Encoding", [])
+            for coding in header.split(",")
+        )
+        return any(float(weighed[1] or 1) > 0 for weighed in named if weighed)
 
     def _send(self, status: int, said: object) -> None:
         """Answers a status and, unless there is nothing to say, a body: JSON, or as it says."""
@@ -296,7 +342,7 @@ class Handler(BaseHTTPRequestHandler):
             headers, body = (), None
         else:
             body = said if isinstance(said, bytes) else json.dumps(said).encode()
-            headers = (("Content-Type", "application/json; charset=utf-8"),)
+            headers = (("Content-Type", _JSON),)
         for name, value in headers:
             self.send_header(name, value)
         if body is None:

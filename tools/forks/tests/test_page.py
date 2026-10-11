@@ -1,5 +1,6 @@
 """The report page as the collector serves it, and a browser's way in to it."""
 
+import gzip
 import hmac
 import itertools
 import json
@@ -387,6 +388,198 @@ class Headers(Browsing):
                 self.assertEqual(
                     len(carried(answer, "Set-Cookie") + carried(answer, "Location")), expected
                 )
+
+
+class Rereads(Browsing):
+    """What the list and a report are answered when they are read again, and how a body is sent."""
+
+    def read_again(self) -> List[str]:
+        return ["/conversations", f"/conversations/{CONVO}"]
+
+    def tags(self) -> Dict[str, str]:
+        """The validator each address answers now."""
+        return {path: carried(self.served.get(path), "ETag")[0] for path in self.read_again()}
+
+    def said_more(self) -> None:
+        """Saro's log holds a state more."""
+        log = Log("saro", 11)
+        log.epoch("saro", 3, "X3", "saro raya")
+        self.served.put(self.run, self.receipt, logged(log))
+
+    def coded(self) -> List[str]:
+        """The addresses whose answer goes coded to a request that takes gzip."""
+        return ["/", *(f"/page/{name}" for name in FILES), *self.read_again()]
+
+    def test_the_list_and_a_report_carry_one_validator_and_no_other_answer_does(self):
+        for path in self.read_again():
+            with self.subTest(path=path):
+                self.assertRegex(self.tags()[path], r'^W/"[0-9a-f]{64}"$')
+                self.assertEqual(len(carried(self.served.get(path), "ETag")), 1)
+        others = ["/", "/page/report.js", f"/runs/{self.run}/log?line=1", "/nothing"]
+        for path in [*others, f"/conversations/{OTHER}"]:
+            with self.subTest(path=path):
+                answer = self.served.call("GET", path, headers=[("If-None-Match", "*")])
+                self.assertEqual(carried(answer, "ETag"), [])
+                self.assertNotEqual(answer.status, 304)
+
+    def test_a_validator_changes_when_the_body_it_came_with_does_and_only_then(self):
+        def read() -> Dict[str, Tuple[bytes, List[str]]]:
+            answers = {path: self.served.get(path) for path in self.read_again()}
+            return {path: (said.body, carried(said, "ETag")) for path, said in answers.items()}
+
+        first = read()
+        self.assertEqual(read(), first)
+        # A second on, the list says its conversation went unheard a second longer.
+        self.clock.now += 1
+        later = read()
+        self.said_more()
+        more = read()
+        for path in self.read_again():
+            with self.subTest(path=path):
+                unheard = path == "/conversations"
+                self.assertEqual(later[path][0] != first[path][0], unheard)
+                self.assertEqual(later[path][1] != first[path][1], unheard)
+                self.assertNotEqual(more[path][0], later[path][0])
+                self.assertNotEqual(more[path][1], later[path][1])
+
+    def test_a_request_that_names_the_validator_is_answered_304_and_no_body(self):
+        for path, tag in self.tags().items():
+            strong = tag[2:]
+            for named in (tag, strong, f'"0", {tag}', f'{strong} , W/"0"', "*"):
+                with self.subTest(path=path, named=named):
+                    answer = self.served.call("GET", path, headers=[("If-None-Match", named)])
+                    self.assertEqual((answer.status, answer.body), (304, b""))
+                    self.assertEqual(
+                        answer.headers,
+                        (*ON_EVERY_ANSWER, ("ETag", tag), ("Vary", "Accept-Encoding")),
+                    )
+            body = self.served.get(path).body
+            for named in ('W/"0"', strong.strip('"'), f"{tag}0", f"w/{strong}", tag.upper(), ""):
+                with self.subTest(path=path, named=named):
+                    answer = self.served.call("GET", path, headers=[("If-None-Match", named)])
+                    self.assertEqual((answer.status, answer.body), (200, body))
+                    self.assertEqual(carried(answer, "ETag"), [tag])
+
+    def test_of_two_headers_that_name_validators_either_may_name_it(self):
+        for path, tag in self.tags().items():
+            for named in (('"0"', tag), (tag, '"0"')):
+                with self.subTest(path=path, named=named):
+                    answer = self.send(
+                        f"GET {path} HTTP/1.1",
+                        f"Authorization: Bearer {TOKEN}",
+                        *(f"If-None-Match: {name}" for name in named),
+                    )
+                    self.assertEqual((answer.status, answer.body), (304, b""))
+
+    def test_a_validator_of_a_body_that_changed_since_is_answered_the_new_body(self):
+        held = self.tags()
+        self.said_more()
+        for path, tag in self.tags().items():
+            with self.subTest(path=path):
+                self.assertNotEqual(tag, held[path])
+                answer = self.served.call("GET", path, headers=[("If-None-Match", held[path])])
+                self.assertEqual((answer.status, answer.body), (200, self.served.get(path).body))
+                self.assertEqual(carried(answer, "ETag"), [tag])
+                again = self.served.call("GET", path, headers=[("If-None-Match", tag)])
+                self.assertEqual(again.status, 304)
+
+    def test_a_validator_opens_nothing_without_the_token(self):
+        for path, tag in self.tags().items():
+            for named in (tag, "*"):
+                with self.subTest(path=path, named=named):
+                    answer = self.browse("GET", path, **{"If-None-Match": named})
+                    self.assertEqual((answer.status, answer.body), (401, NO_TOKEN))
+                    self.assertEqual(carried(answer, "ETag"), [])
+                    cookie = {"If-None-Match": named, "Cookie": COOKIE}
+                    self.assertEqual(self.browse("GET", path, **cookie).status, 304)
+
+    def test_the_page_the_list_and_a_report_are_gzip_coded_for_a_request_that_names_gzip(self):
+        takes = {
+            "gzip": True,
+            "GZIP": True,
+            "deflate, gzip;q=0.5": True,
+            "gzip;Q=0.5": True,
+            "br;q=1.0, gzip ; q=0.001": True,
+            "identity": False,
+            "deflate, br": False,
+            "gzip;q=0": False,
+            "gzip; q=0.000": False,
+            "x-gzip": False,
+            "gzipped": False,
+            "*": False,
+            "": False,
+        }
+        for path in self.coded():
+            plain = self.served.get(path)
+            self.assertEqual(carried(plain, "Content-Encoding"), [])
+            for named, coded in takes.items():
+                with self.subTest(path=path, named=named):
+                    answer = self.served.call("GET", path, headers=[("Accept-Encoding", named)])
+                    self.assertEqual(answer.status, plain.status)
+                    self.assertEqual(carried(answer, "Content-Encoding"), ["gzip"] * coded)
+                    self.assertEqual(carried(answer, "Content-Length"), [str(len(answer.body))])
+                    said = gzip.decompress(answer.body) if coded else answer.body
+                    self.assertEqual(said, plain.body)
+                    for name in ("Content-Type", "ETag"):
+                        self.assertEqual(carried(answer, name), carried(plain, name))
+
+    def test_of_two_headers_that_name_codings_either_may_name_gzip(self):
+        for named in (("br", "gzip"), ("gzip", "br")):
+            with self.subTest(named=named):
+                answer = self.send(
+                    "GET /conversations HTTP/1.1",
+                    f"Authorization: Bearer {TOKEN}",
+                    *(f"Accept-Encoding: {name}" for name in named),
+                )
+                self.assertEqual(carried(answer, "Content-Encoding"), ["gzip"])
+                plain = self.served.get("/conversations").body
+                self.assertEqual(gzip.decompress(answer.body), plain)
+
+    def test_an_answer_that_may_go_coded_says_that_it_goes_by_the_coding_asked_for(self):
+        asked = {"Accept-Encoding": "gzip"}
+        answers = [self.served.get(path) for path in self.coded()]
+        answers += [self.served.call("GET", path, headers=asked.items()) for path in self.coded()]
+        tag = self.tags()["/conversations"]
+        unchanged = self.served.call(
+            "GET", "/conversations", headers=[("If-None-Match", tag), *asked.items()]
+        )
+        for answer in [*answers, unchanged]:
+            with self.subTest(status=answer.status, body=len(answer.body)):
+                self.assertEqual(answer.headers[: len(ON_EVERY_ANSWER)], ON_EVERY_ANSWER)
+                self.assertEqual(carried(answer, "Vary"), ["Accept-Encoding"])
+        self.assertEqual((unchanged.status, unchanged.body), (304, b""))
+        self.assertEqual(carried(unchanged, "Content-Encoding"), [])
+
+    def test_any_other_answer_goes_as_it_stands_whatever_coding_is_asked_for(self):
+        asked = {"Accept-Encoding": "gzip"}
+        lines = f"/runs/{self.run}/log?line=1"
+        answers = []
+        # A read that is never coded is answered as when no coding is asked for.
+        for path in (lines, "/nothing", f"/conversations/{OTHER}", "/page/nothing.js"):
+            answers.append(self.served.call("GET", path, headers=asked.items()))
+            self.assertEqual(answers[-1], self.served.get(path), path)
+        # So is a refusal, of whatever would have gone coded.
+        for path in (*self.coded(), lines):
+            answers.append(self.browse("GET", path, **asked))
+            self.assertEqual(answers[-1], self.browse("GET", path), path)
+            self.assertEqual((answers[-1].status, answers[-1].body), (401, NO_TOKEN), path)
+        answers.append(self.browse("GET", f"/?token={TOKEN}", **asked))
+        for method, path, body, receipt in self.writes():
+            sent = {**receipt, **asked}.items()
+            answers.append(self.served.call(method, path, body, headers=sent))
+        # The final mark names the size before the append, and is refused for it.
+        self.assertEqual([answer.status for answer in answers[-5:]], [303, 201, 200, 409, 204])
+        for answer in answers:
+            with self.subTest(status=answer.status, body=answer.body[:20]):
+                self.assertEqual(carried(answer, "Vary") + carried(answer, "Content-Encoding"), [])
+                # A body here is JSON, and begins as JSON does.
+                self.assertIn(answer.body[:1], (b"{", b""))
+                self.assertEqual(carried(answer, "Content-Length") == [], answer.body == b"")
+
+    def test_a_coded_body_says_nothing_of_when_it_was_coded(self):
+        answer = self.served.call("GET", "/conversations", headers=[("Accept-Encoding", "gzip")])
+        # The four bytes after a gzip stream's flags are the time it was made at.
+        self.assertEqual((answer.body[:4], answer.body[4:8]), (b"\x1f\x8b\x08\x00", bytes(4)))
 
 
 class Files(Browsing):
@@ -1485,7 +1678,7 @@ class Folded(Collecting):
             self.clock.now += 60
 
     def answers(self) -> Dict[str, dict]:
-        """What the collector answers each address the page asks of the conversation."""
+        """What the collector answers each address the page asks, with the validator it carries."""
         report = self.served.report()
         marks = [at for post in report["messages"] for at in post["marks"].values()]
         marks += [step["at"] for seat in report["installations"] for step in seat["history"]]
@@ -1495,6 +1688,7 @@ class Folded(Collecting):
         for path in paths:
             answer = self.served.get(f"/{path}")
             said[path] = {"status": answer.status, "text": answer.body.decode()}
+            said[path]["tag"] = "".join(carried(answer, "ETag"))
         return said
 
     def read(self, answers: Dict[str, dict]) -> Tuple[dict, List[str], Dict[str, dict]]:
@@ -2640,6 +2834,40 @@ class Folded(Collecting):
         self.assertEqual(open_in(read["report"]), [hers] * 2)
         self.assertIn(f"time {raya}", lines(read, "Timeline"))
         self.assertTrue(stop_in(read, "Timeline")["aria-label"].startswith(f"{raya}, frame 8f21"))
+
+    def test_a_read_that_is_answered_304_draws_nothing_and_keeps_what_was_opened(self):
+        before = self.answers()
+        listing, report = "conversations", f"conversations/{CONVO}"
+        both = [listing, report]
+        self.clock.now += 60
+        later = {listing: self.answers()[listing]}
+        self.post(11, "5ac1")
+        reads = [{"answers": said} for said in ({}, later, self.answers(), {})]
+        first, opened, *read = self.draw(before, {"press": ".tog"}, *reads)
+        same, unheard, changed, again = read
+        # The first read names no validator, and every later one names the one it holds.
+        self.assertEqual((first["asked"], first["validators"]), (both, [None, None]))
+        self.assertEqual([state["asked"] for state in read], [both] * 4)
+        tags = [before[path]["tag"] for path in both]
+        self.assertEqual((same["validators"], unheard["validators"]), (tags, tags))
+        self.assertEqual([state["notice"] for state in read], [None] * 4)
+        self.assertEqual((same["unchanged"], same["report"]), (both, opened["report"]))
+        # The list alone changed: the conversation went unheard a minute longer.
+        self.assertEqual(unheard["unchanged"], [report])
+        self.assertIn("Last heard from 1 min ago", words(same["report"]))
+        self.assertIn("Last heard from 2 min ago", words(unheard["report"]))
+        lanes = [plain(keyed(state["report"], "Installations")) for state in (opened, unheard)]
+        self.assertEqual(lanes[0], lanes[1])
+        # A post more: both are read whole, the fold stays open, and the new validators are held.
+        self.assertEqual((changed["unchanged"], keys(changed)[-1]), ([], "post 5ac1"))
+        self.assertEqual(lines(changed, "Installations"), lines(opened, "Installations"))
+        self.assertEqual((again["unchanged"], again["report"]), (both, changed["report"]))
+
+    def test_a_collector_that_gives_no_validator_is_read_whole_each_time(self):
+        answers = {path: dict(said, tag="") for path, said in self.answers().items()}
+        first, again = self.draw(answers, {"answers": {}})
+        self.assertEqual((again["asked"], again["validators"]), (first["asked"], [None, None]))
+        self.assertEqual((again["report"], again["notice"]), (first["report"], None))
 
 
 class Gained(Collecting):

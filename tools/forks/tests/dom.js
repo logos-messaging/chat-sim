@@ -193,17 +193,27 @@ function fire(target, type, key) {
 
 const given = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const asked = [];
+const validators = [];
+const unchanged = [];
 /* The start of the paths whose answers wait, and the answers that wait for it to be let go. */
 let held = null;
 const waiting = [];
 
-async function fetch(path) {
+/* An answer that is given a validator carries it, and is 304 and no body to a request that
+   names it. What a request names is noted as a browser would send it. */
+async function fetch(path, asks) {
   asked.push(path);
+  validators.push('If-None-Match' in asks.headers ? String(asks.headers['If-None-Match']) : null);
   if (held !== null && path.startsWith(held)) await new Promise((come) => waiting.push(come));
   const answer = given.answers[path] || { status: 404, text: '{"error": "nothing is answered here"}' };
+  const headers = { get: (name) => (name === 'ETag' && answer.tag) || null };
+  if (answer.tag && asks.headers['If-None-Match'] === answer.tag) {
+    unchanged.push(path);
+    return { status: 304, ok: false, headers, body: null };
+  }
   const pieces = [new TextEncoder().encode(answer.text)];
   const read = async () => (pieces.length ? { done: false, value: pieces.pop() } : { done: true });
-  return { status: answer.status, ok: answer.status === 200, body: { getReader: () => ({ read }) } };
+  return { status: answer.status, ok: answer.status === 200, headers, body: { getReader: () => ({ read }) } };
 }
 
 /* Every promise of the page is kept before the next turn of the loop: it waits for no timer. */
@@ -234,6 +244,8 @@ const state = () => ({
   log: log.hidden ? null : dump(log),
   notice: notice.hidden ? null : notice.textContent,
   asked: asked.splice(0),
+  validators: validators.splice(0),
+  unchanged: unchanged.splice(0),
   window: scrollY,
   sight: Object.fromEntries(report.querySelectorAll('.scroll').map((box) => [box.className, sight(box)])),
 });

@@ -647,8 +647,8 @@ a label its sender gave it, and two runs may carry one name.
 | `PUT /runs/ID/log?offset=N` | The run's bytes from `N` on, at most 4 MiB, or none. | 200 `{"size": S, "final": F}` when `N` was the size held: the bytes are appended. 409 with the same object when it was not: nothing is appended. |
 | `PUT /runs/ID/log?offset=N&final=1` | The last bytes, or none. | The same, and the run is final: its writer is gone. A final run answers 409 to more bytes, and 200 to its mark sent again. |
 | `DELETE /runs/ID` | | 204: the run's log and its records are gone. |
-| `GET /conversations` | | 200: every conversation the logs held name, the worst first. |
-| `GET /conversations/CID` | | 200: the report of one conversation. |
+| `GET /conversations` | | 200: every conversation the logs held name, the worst first. 304 when the request names the validator of that answer. |
+| `GET /conversations/CID` | | 200: the report of one conversation. 304 when the request names the validator of that answer. |
 | `GET /runs/ID/log?line=N` | | 200 `{"lines": [{"line": N, "text": "..."}]}`: line `N` of the run's log, the two before it and the three after. |
 | `GET /` | | 200: [the page](#the-page). |
 | `GET /page/NAME` | | 200: the file `NAME` of the page, which is `index.html`, `report.css` or `report.js`. |
@@ -656,6 +656,7 @@ a label its sender gave it, and two runs may carry one name.
 
 | Status | When |
 |---|---|
+| 304 | A read of the list or of a conversation names, in `If-None-Match`, the validator of what it would be answered. The answer has no body. |
 | 400 | A body, an offset or a line is not what the call takes, or a body gives its length twice or beside a transfer coding. |
 | 401 | The call does not carry the token. The answer says nothing else, whatever was asked for. |
 | 403 | A write to a run does not carry that run's receipt. |
@@ -672,6 +673,24 @@ style written into it, and lets no page show an answer in a frame. A `PUT` witho
 how the collector knows it still hears from a run.
 Records are read from whole lines: what follows the last line break of the bytes held waits for
 the bytes that end it.
+
+The answers to `GET /conversations` and `GET /conversations/CID` carry an `ETag`, a validator
+made from the bytes of the JSON: it changes when the JSON does, and only then. A request that
+names it in `If-None-Match` is answered 304 with the same `ETag` and no body, so a reader that
+holds the answer is sent none of it again. The validator is weak, and is named as well without
+its `W/`, in a list of others, or by `*`. The list says how many seconds ago each conversation
+was heard from, so its JSON is another with every second. The report of a conversation says of
+each of its runs how many bytes are held and when it was last heard from, so its JSON is
+another whenever the collector hears from one of them, with a record more or without: a read
+finds it unchanged only while none of its runs is heard from. The token is asked for before
+the validator is read: without it the answer is 401, whatever the request names.
+
+The list, the report of a conversation and the page with its files are sent coded with gzip,
+under `Content-Encoding: gzip`, to a request whose `Accept-Encoding` names `gzip` at a weight
+above 0, and as they stand to any other. A `*` there does not name it. Those answers say
+`Vary: Accept-Encoding`, and so does a 304. Every other answer goes as it stands, whatever the
+request takes, and says no `Vary`: the lines of a log, the answer to a write, and an error.
+The 304 and the coded answers carry the headers every answer carries.
 
 ### The token and the receipt
 
@@ -819,9 +838,10 @@ messages, and names neither.
 The page reads `GET conversations`, and `GET conversations/CID` for the conversation its address
 names after `#`, when it is opened and again every 30 seconds while its tab is visible. A read
 of the 30 seconds is left out while the one before it is under way, and a read gives the
-collector up when 20 seconds pass without a byte of its answer. It reads
-`GET runs/ID/log?line=N` when a cell or a mark is opened. Every address it uses is relative, so
-it works under whatever path a proxy serves the collector at.
+collector up when 20 seconds pass without a byte of its answer. A read names the validator that
+came with what the page holds, and to a 304 the page keeps what it holds and draws nothing
+again. It reads `GET runs/ID/log?line=N` when a cell or a mark is opened. Every address it uses
+is relative, so it works under whatever path a proxy serves the collector at.
 
 The page decides nothing: every verdict, position, count, order and heading it shows is in the
 collector's JSON, and so are what became of a post on a seat, how many posts are drawn at
@@ -1008,9 +1028,19 @@ that named its log.
   every address of the page are relative, and after `http://HOST/forks?token=TOKEN` they lead to
   `http://HOST/`.
 - The page shows what it read last, and reads only while its tab is visible: what it shows can be
-  30 seconds behind the collector. Each read asks for the whole JSON of the conversation shown,
-  25 MB for the conversation below, and over a link that does not carry it in 30 seconds one
-  read follows another.
+  30 seconds behind the collector. A read that finds nothing changed is answered 304 in 400
+  bytes, and finds nothing changed only while none of the conversation's runs is heard from. One
+  that follows a run heard from, with a record more or without, is answered the whole JSON of
+  the conversation shown, 25 MB for the conversation below and 2.8 or 2.9 MB coded with gzip, by
+  the zlib the collector's Python is built with, and the page draws it anew. Over a link that
+  does not carry it in 30 seconds one read follows another. The list is another with every
+  second, and is answered whole each time.
+- The collector closes the connection after each answer, a coded one as well. The `fetch` that
+  node 22.23 has of its own asks for gzip unasked, and on the coded reports of the two
+  conversations of 25 and 37 MB below its process ended on a failed assertion of its own each
+  time it was tried. It read a coded report of 0.3 MB whole, and with
+  `Accept-Encoding: identity` both of the large ones as they stand. Firefox, `curl --compressed`
+  and Python's `http.client` read the coded ones.
 - A post is known by its frame, its sender and its stamp: the records hold nothing of what it
   said, and the page shows nothing of it.
 - A `received` record that names a frame no shared log holds a `sent` record of gives no row and
@@ -1038,9 +1068,12 @@ that named its log.
   the messages.
 - `marks` is most of the JSON of a conversation with posts. With 8 installations and 50 posts it
   is 103 kB, with 30 and 500 it is 2.9 MB, and with 100 and 2000 it is 37.0 MB, 30.6 MB of it
-  `marks` and 0.2 MB its `folds` and the `folds` of its posts. The collector answered them in
-  0.01, 0.13 and 1.9 seconds when it drew the report and in 1, 5 and 85 milliseconds from the
-  one it kept.
+  `marks` and 0.2 MB its `folds` and the `folds` of its posts. Coded with gzip they are 6 kB,
+  133 or 134 kB and 1.65 MB, by the zlib the collector's Python is built with. The collector
+  answered them in 0.01, 0.13 and 1.9 seconds when it drew the report. From the one it kept it
+  answered them in 1, 5 and 85 milliseconds as they stand, in 1, 12 and 170 coded with gzip, and
+  in 1, 5 and 85 when it answered 304: the validator is made from the bytes of the JSON at each
+  read, and nothing of an answer is kept for the next.
 - The messages start with the newest posts, as many as `shown_messages` says, and the timeline
   marks the same posts. Firefox drew them, 50, 66 and 20 rows of the three conversations above,
   the second and the third folded, in 0.04 to 0.07, 0.04 to 0.42 and 0.03 seconds, over three
@@ -1051,7 +1084,9 @@ that named its log.
   post on the line of each of them: 136,000 elements, which held the page for 0.9 to 1.9 seconds
   over three runs, in a tab of 0.9 GiB. Closing it held the page for 0.17 to 0.20 seconds, and
   opening a count of a post for 0.17 to 0.35.
-- A read of the 37.0 MB that finds nothing changed holds the page for 0.15 to 0.2 seconds.
+- A read that finds nothing changed holds the page for under 0.01 seconds. With those 136,000
+  elements drawn, the longest wait between two frames of the page was 0.03 to 0.05 seconds
+  around such a read.
 - A fold that is opened has a row for each of its installations, among the installations and on
   the timeline, and none of them is left out. The conversation of 300 members and 300 epochs
   below is 25 MB of JSON. Folded it is 4,700 elements, which Firefox showed 0.14 to 0.19 seconds

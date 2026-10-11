@@ -103,6 +103,8 @@
   const unfolded = new Set();
   /* The parts of a folded conversation that grow with its group, as they stand drawn. */
   let parts = new Map();
+  /* What the collector said last at each address it gave a validator for. */
+  const tagged = new Map();
   /* What the arrow keys move between: a mark that opens log lines, and a button that unfolds. */
   const STOPS = '[data-m], [data-unfolds]';
 
@@ -160,7 +162,10 @@
     };
     try {
       wait();
-      const answer = await fetch(path, { signal: stop.signal, cache: 'no-store' });
+      const had = tagged.get(path);
+      const answer = await fetch(path, { signal: stop.signal, cache: 'no-store', headers: had ? { 'If-None-Match': had.tag } : {} });
+      /* The collector says what it said last: it sends nothing, and nothing is read again. */
+      if (answer.status === 304 && had) return had;
       const pieces = answer.body.getReader();
       const decoder = new TextDecoder();
       let text = '';
@@ -172,7 +177,7 @@
       if (answer.status === 401) return { refused: true };
       if (answer.status === 404) return { gone: true };
       if (!answer.ok) return { silent: true };
-      return { text, said: JSON.parse(text) };
+      return { path, tag: answer.headers.get('ETag'), text, said: JSON.parse(text) };
     } catch (unanswered) {
       return unanswered instanceof SyntaxError ? { unreadable: true } : { silent: true };
     } finally {
@@ -241,6 +246,9 @@
       sayWhy({ unreadable: true });
       return;
     }
+    /* What is drawn is held under its validator: the list, and the conversation shown alone. */
+    tagged.clear();
+    for (const said of [listing, convo]) if (said && said.tag) tagged.set(said.path, said);
     answered = new Date();
     say('');
   }
