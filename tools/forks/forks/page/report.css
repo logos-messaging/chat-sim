@@ -189,6 +189,13 @@ svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: rou
 .tile .v { font-size: 26px; font-weight: var(--fw-bold); margin-top: 2px; }
 .tile .d { font-size: 11px; color: var(--text-secondary); margin-top: 2px; overflow-wrap: anywhere; }
 .tile .who { font-family: var(--font-mono); font-size: 11px; color: var(--text); margin-top: 4px; overflow-wrap: anywhere; }
+.tile .asks { margin-top: 6px; }
+.tile .asks .btn { height: 22px; font-size: 11px; white-space: nowrap; }
+/* The names a reader asked of a tile, under the tiles. */
+.tiled { display: flex; flex-direction: column; gap: var(--sp-small); min-width: 0; }
+.named { font-family: var(--font-mono); font-size: 11px; color: var(--text); overflow-wrap: anywhere; }
+.named b { display: inline-block; font-family: var(--font); font-weight: var(--fw-medium); color: var(--text-secondary); }
+.named b::first-letter { text-transform: uppercase; }
 
 .sec { display: flex; flex-direction: column; gap: var(--sp-medium); min-width: 0; }
 .sechead { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-small) var(--sp-medium); }
@@ -285,9 +292,24 @@ svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: rou
 .lanes td.e.word { text-align: left; padding-left: 14px; font-size: 11px; color: var(--text-tertiary); }
 .endmark { display: inline-flex; vertical-align: middle; margin-right: 6px; color: var(--text-secondary); }
 .pos { display: inline-flex; align-items: center; gap: 6px; }
-.lanes .more { display: block; padding-left: 20px; font-size: 11px; color: var(--text-secondary); }
+/* What a fold's counts cannot say stands in words under where it is, on lines as long as the
+   words and of forty characters at most. */
+.lanes .more { display: block; width: max-content; max-width: 40ch; padding-left: 20px; font-size: 11px; color: var(--text-secondary); white-space: normal; }
 .lanes .run { display: block; }
 .lanes td.e .cell + .cell { margin-left: 4px; }
+
+/* A button that unfolds says which way before its words, as it says it to a screen reader. */
+[aria-expanded]::before {
+  content: ""; display: inline-block; margin-right: 6px; vertical-align: 1px;
+  border: 4px solid transparent; border-right-width: 0; border-left: 6px solid var(--text-secondary);
+}
+[aria-expanded="true"]::before { transform: rotate(90deg); }
+/* A fold: the installations of one position as one row, which opens to a row for each. */
+.tog { font: inherit; color: inherit; text-align: left; background: none; border: none; border-radius: var(--r-small); cursor: pointer; }
+.tog + .dim { margin-left: var(--sp-small); font-size: 11px; font-weight: 400; }
+/* In a fold's cell a count stands for each state its installations hold there, as wide as its digits. */
+.cell.sum { width: auto; min-width: 36px; padding: 0 5px; gap: 3px; }
+.cell.sum.hatch { opacity: 1; }
 
 /* ---- timeline ------------------------------------------------------------ */
 
@@ -322,6 +344,14 @@ svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: rou
 .tick.b2 { stroke: var(--branch-c); }
 .tick.bn { stroke: var(--text); }
 .tick.unknown { stroke: var(--warning); }
+/* On a fold's line a band reaches from the first of its installations at a state to the last. */
+.reach { stroke: var(--trunk); stroke-width: 7; opacity: 0.5; }
+.reach.b0 { stroke: var(--branch-a); }
+.reach.b1 { stroke: var(--branch-b); }
+.reach.b2 { stroke: var(--branch-c); }
+.reach.bn { stroke: var(--text); }
+.reach.unknown { stroke: var(--warning); }
+.fold .tick { cursor: auto; }
 
 /* A post on the line of an installation that wrote a record of it: a disc where it was sent,
    a ring where it was read, a cross where it could not be. */
@@ -384,7 +414,28 @@ svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: rou
 .mk.hatch { height: 22px; background: repeating-linear-gradient(135deg, var(--border-strong) 0 2px, transparent 2px 6px); opacity: 0.6; }
 .mk.out { height: 22px; border-color: var(--border-strong); }
 .legend .mk { min-width: 0; padding: 0; }
-.rest { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-small) var(--sp-medium); font-size: var(--fs-secondary); color: var(--text-secondary); }
+/* Folded, a cell is a button that counts, and opens to the installations under its post. */
+.posts thead th.m .of { display: block; color: var(--text-tertiary); }
+.tally {
+  display: inline-flex; align-items: flex-start; gap: 4px; padding: 2px; font: inherit; color: inherit;
+  background: none; border: 1px solid transparent; border-radius: var(--r-medium); cursor: pointer;
+}
+.tally::before { content: none; }
+.tally:hover, .tally[aria-expanded="true"] { border-color: var(--border-strong); }
+.tally .mk, .whom .mk { min-width: 0; }
+.mk .sw { margin-right: 4px; vertical-align: -1px; }
+.posts tr.whose td { padding: var(--sp-small) var(--sp-large) var(--sp-medium); background: var(--bg-inset); white-space: normal; }
+/* The installations a count stands for, by what became of the post on them: as wide as the
+   box of the messages is beside the rail, and in sight wherever that box is scrolled to. */
+.whom {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px var(--sp-medium); align-items: start;
+  position: sticky; left: var(--sp-large); width: min(72rem, calc(100vw - var(--rail) - 6.5rem));
+}
+.whom + .whom { margin-top: var(--sp-medium); }
+.whom > b { grid-column: 1 / -1; font-size: 11px; font-weight: var(--fw-medium); color: var(--text-secondary); }
+.whom .roster { margin-top: 0; gap: 4px; }
+.whom .roster .mk[role="button"] { color: var(--text); border-color: var(--border-strong); }
+.rest, .count { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-small) var(--sp-medium); font-size: var(--fs-secondary); color: var(--text-secondary); }
 .sw.out { border: 1px solid var(--border-strong); }
 
 /* ---- the state a branch holds -------------------------------------------- */
@@ -406,6 +457,7 @@ svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: rou
   border: 1px solid var(--border); font-size: 11px; color: var(--text);
 }
 .chip em { font-style: normal; color: var(--text-tertiary); font-size: 10px; }
+.count { margin-top: var(--sp-medium); }
 
 /* ---- the log lines behind a mark ----------------------------------------- */
 
@@ -453,4 +505,5 @@ svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: rou
   .rp { grid-template-columns: minmax(0, 1fr); }
   .rail { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border-subtle); }
   .main { padding: var(--sp-large); }
+  .whom { width: calc(100vw - 5rem); }
 }

@@ -71,12 +71,15 @@ KEYS = [
     "branches",
     "states",
     "lanes",
+    "folds",
+    "folded",
     "installations",
     "timeline",
     "messages",
     "shown_messages",
     "unmatched_unreadable",
     "runs",
+    "heard",
     "lines",
 ]
 
@@ -1322,6 +1325,36 @@ class Reports(Collecting):
         self.assertEqual(seats["saro"]["history"][0]["at"]["run"], first)
         self.assertEqual(positions(report, seats), dict(saro="ended", raya="tip"))
 
+    def test_a_fold_says_how_many_runs_its_installations_wrote_in_and_when_they_were_heard(self):
+        # Saro shares a run Raya wrote in too, and Raya a run that is final and a day later one
+        # that is not.
+        trio = "saro raya kes"
+        both = member("saro", roster=trio)
+        both.epoch("raya", 1, "X1", trio)
+        self.served.share(logged(both), "saro")
+        self.clock.pass_days(1)
+        self.served.share(logged(member("raya", roster=trio)), "raya", final=True)
+        self.clock.pass_days(1)
+        last, receipt = self.served.share(logged(member("raya", roster=trio, hour=11)), "raya")
+        report = self.served.report()
+        self.assertEqual(
+            [(fold["position"], len(fold["installations"])) for fold in report["folds"]],
+            [("tip", 2), ("no data", 1)],
+        )
+        days = [f"2026-10-{day:02}T12:00:00Z" for day in (9, 10, 11, 12)]
+        nothing = {"runs": 0, "final": 0, "first": None, "last": None}
+        self.assertEqual(
+            report["heard"],
+            [{"runs": 3, "final": 1, "first": days[0], "last": days[2]}, nothing],
+        )
+        # A run that is heard from again, with no byte more, is the last heard.
+        self.clock.pass_days(1)
+        self.served.put(last, receipt)
+        self.assertEqual(
+            self.served.report()["heard"],
+            [{"runs": 3, "final": 1, "first": days[0], "last": days[3]}, nothing],
+        )
+
     def test_a_log_shared_twice_and_marked_once_ends_its_installation_whichever_is_marked(self):
         for marked in (0, 1):
             with self.subTest(marked=marked):
@@ -1362,6 +1395,7 @@ class Reports(Collecting):
                     if len(written.conversations) == 1:
                         self.assertEqual(report["lines"], written.lines)
                     del report["lines"]
+                    del report["heard"]
                     self.assertEqual(json.dumps(report), json.dumps(conversation))
 
     def test_a_report_is_drawn_from_every_run_a_seat_wrote_in(self):

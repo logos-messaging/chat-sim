@@ -69,6 +69,7 @@ def as_reported(report: dict) -> dict:
         said = said.replace(json.dumps(run["id"]), json.dumps(run["name"]))
     renamed = json.loads(said)
     del renamed["lines"]
+    del renamed["heard"]
     renamed["runs"] = [
         {"name": run["name"], "final": run["final"], "delivery": run["delivery"]}
         for run in renamed["runs"]

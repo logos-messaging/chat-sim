@@ -18,6 +18,9 @@ const LINE = 5;
 const ROW = 10;
 const SIGHT = 20;
 let scrollY = 0;
+/* How many elements the script made, and what it asked to have brought into sight and how. */
+let made = 0;
+const reached = [];
 
 class Text {
   constructor(text) {
@@ -53,6 +56,7 @@ class Element {
     this.hidden = false;
     this.scrolled = 0;
     Object.assign(this, { scrollLeft: 0, scrollWidth: 0, offsetTop: 0 });
+    made += 1;
   }
 
   get named() { return this.querySelectorAll('[data-key]'); }
@@ -64,6 +68,8 @@ class Element {
 
   get children() { return this.childNodes.filter((node) => node instanceof Element); }
   get parentElement() { return this.parentNode; }
+  get previousElementSibling() { return this.beside(-1); }
+  get nextElementSibling() { return this.beside(1); }
   get isConnected() { return document.body.contains(this); }
   get className() { return this.attributes.get('class') || ''; }
   set className(value) { this.setAttribute('class', value); }
@@ -96,6 +102,11 @@ class Element {
     parent.append(node);
     parent.childNodes.splice(place, 1, parent.childNodes.pop());
     this.parentNode = null;
+  }
+
+  beside(step) {
+    const around = this.parentNode.children;
+    return around[around.indexOf(this) + step] || null;
   }
 
   contains(node) {
@@ -144,6 +155,7 @@ class Element {
   }
 
   scrollTo(left, top) { Object.assign(this, { scrollLeft: left, scrollTop: top }); }
+  scrollIntoView(how) { reached.push([this.getAttribute('aria-label'), how]); }
   addEventListener(type, listener) { this.listeners.push([type, listener]); }
 }
 
@@ -167,14 +179,16 @@ notice.hidden = true;
 log.hidden = true;
 
 /* An event at an element, heard there, at each element around it, at the document and at the
-   window, as one that bubbles is. */
+   window, as one that bubbles is. Says whether a listener took it for its own. */
 function fire(target, type, key) {
-  const event = { target, type, key, altKey: false, ctrlKey: false, metaKey: false, preventDefault() {} };
+  let taken = false;
+  const event = { target, type, key, altKey: false, ctrlKey: false, metaKey: false, preventDefault() { taken = true; } };
   const around = [];
   for (let each = target; each; each = each.parentNode) around.push(...each.listeners);
   for (const [name, listener] of [...around, ...heard.document, ...heard.window]) {
     if (name === type) listener(event);
   }
+  return taken;
 }
 
 const given = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
@@ -214,6 +228,8 @@ function sight(box) {
 }
 
 const state = () => ({
+  made: [made, made = 0][0],
+  reached: reached.splice(0),
   report: dump(report),
   log: log.hidden ? null : dump(log),
   notice: notice.hidden ? null : notice.textContent,
@@ -241,7 +257,9 @@ function take(step) {
   } else if (step.scroll) {
     report.querySelector(step.scroll).scrollTop = step.top;
   } else if (step.key) {
-    fire(document.activeElement, 'keydown', step.key);
+    const focused = document.activeElement;
+    /* Enter and Space press a button that holds the focus, unless the page took the key. */
+    if (!fire(focused, 'keydown', step.key) && focused.matches('button') && ['Enter', ' '].includes(step.key)) fire(focused, 'click');
   } else {
     const pressed = document.body.querySelectorAll(step.press)[step.nth || 0];
     /* A press puts the focus on what takes it, and then is a click. */

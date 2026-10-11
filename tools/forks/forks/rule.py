@@ -9,7 +9,7 @@ and decides the rest.
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, fields
 from datetime import datetime
 from functools import cached_property
@@ -50,8 +50,16 @@ LISTED = "listed"
 # What a record of a post says became of it on the installation that wrote it.
 _SAYS = {"sent": "sent", "received": "read", "unreadable": "unreadable"}
 # The cells of the messages a page draws before it is asked for the rest: what a browser draws,
-# each with its mark on the timeline, in about a tenth of a second.
+# each with its mark on the timeline, in about a tenth of a second. A row counts as a cell for
+# each installation, on a page that starts folded as well, which draws a cell for each fold.
 SHOWN_CELLS = 2000
+# The installations a page draws a lane each for. With more it starts folded, a row for each
+# heading and position. Firefox gives a window 1080 px high a page of 994 px, the box of the
+# lanes takes 86% of it, and under the table's head of 38 px and one heading of 32 px that is
+# room for 23 lanes of one run each, at 33 px.
+LANES_IN_SIGHT = 23
+# What a post can come to on an installation, in the order its counts are listed.
+_FATES = ("sent", "read", "unreadable", "not a member", "no log", "no record")
 
 _1970 = datetime(1970, 1, 1)
 
@@ -223,6 +231,79 @@ class Lanes:
 
 
 @dataclass(frozen=True)
+class Range:
+    """The lowest and the highest of a number among the installations of a fold."""
+
+    low: int
+    high: int
+
+
+@dataclass(frozen=True)
+class Held:
+    """A state at an epoch, among the installations of a fold.
+
+    `count` is how many of them wrote it there, and `first` and `last` are the stamps of the
+    first and the last of those records, in seconds since 1970 in UTC.
+    """
+
+    state: str
+    count: int
+    first: float
+    last: float
+
+
+@dataclass(frozen=True)
+class Stack:
+    """What the lanes of a fold hold between them at an epoch.
+
+    `wrote` counts the installations that wrote a record there: `states` says how many wrote
+    each state and `left` how many a leave, and `several` counts those that are under more than
+    one of them. `unreached` and `listed` count the lanes that hold that there.
+    """
+
+    epoch: int
+    wrote: int
+    states: List[Held]
+    left: int
+    several: int
+    unreached: int
+    listed: int
+
+
+@dataclass(frozen=True)
+class Fold:
+    """The installations under one heading that are in one position, as one row.
+
+    `kept` counts those that go by a kept line, and `logs` those that wrote in a log that is
+    held. `epoch` and `behind_by` reach from the lowest to the highest that its installations
+    say, and `listed_from` does for those without an epoch, by the first epoch a roster lists
+    each at. `cells` are their lanes laid over one another, epoch by epoch.
+    """
+
+    under: str
+    branch: Optional[str]
+    position: str
+    installations: List[str]
+    kept: int
+    logs: int
+    epoch: Optional[Range]
+    behind_by: Optional[Range]
+    listed_from: Optional[Range]
+    cells: List[Stack]
+
+
+@dataclass(frozen=True)
+class Fates:
+    """What became of a post on the installations of a fold, as counts.
+
+    `cells` counts them by what became of it, and `why` counts the unreadable by their cause.
+    """
+
+    cells: Dict[str, int]
+    why: Dict[str, int]
+
+
+@dataclass(frozen=True)
 class Timeline:
     """The first and the last stamp of the records that name the conversation.
 
@@ -239,7 +320,8 @@ class Message:
     """A post, and what became of it on every installation.
 
     `utc` is the stamp it was sent at, in UTC and cut to its second. `marks` holds, for each
-    installation whose cell stands for a record it wrote, where that record was written.
+    installation whose cell stands for a record it wrote, where that record was written. `folds`
+    counts the cells of each fold of the conversation, in the order of its `folds`.
     """
 
     frame: str
@@ -251,6 +333,7 @@ class Message:
     cells: Dict[str, str]
     why: Dict[str, str]
     marks: Dict[str, Mark]
+    folds: List[Fates]
 
 
 @dataclass(frozen=True)
@@ -275,7 +358,8 @@ class Conversation:
     """What the shared logs say about one conversation.
 
     `shown_messages` is how many of the last `messages` a page draws before it is asked for the
-    rest.
+    rest. `folds` are the `lanes` by position, and `folded` says whether a page starts with a
+    row for each of them in place of a lane for each installation.
     """
 
     id: str
@@ -287,6 +371,8 @@ class Conversation:
     branches: List[Branch]
     states: List[State]
     lanes: List[Lanes]
+    folds: List[Fold]
+    folded: bool
     installations: List[Installation]
     timeline: Timeline
     messages: List[Message]
@@ -766,7 +852,9 @@ def _conversation(
         for record in logs.convos[convo]
         if record.kind not in ("epoch", "left")
     ]
-    messages, unmatched = _messages(convo, seats, lineage, logs)
+    lanes = _lanes(positions, lineage, label, lineages)
+    folds = _folds(lanes, installations)
+    messages, unmatched = _messages(convo, seats, lineage, logs, folds)
     return Conversation(
         id=convo,
         verdict=lineage.verdict(positions),
@@ -787,7 +875,9 @@ def _conversation(
             _state(node, lineage, label, lineages[node], rows[node])
             for node in sorted(lineage.reported)
         ],
-        lanes=_lanes(positions, lineage, label, lineages),
+        lanes=lanes,
+        folds=folds,
+        folded=len(seats) > LANES_IN_SIGHT,
         installations=installations,
         timeline=Timeline(min(stamps), max(stamps)),
         messages=messages,
@@ -938,6 +1028,79 @@ def _lanes(
     ]
 
 
+def _folds(lanes: List[Lanes], installations: List[Installation]) -> List[Fold]:
+    """Each heading's installations by position, in the order they are read in."""
+    seats = {seat.id: seat for seat in installations}
+    return [
+        _fold(lane, position, [seats[seat] for seat in lane.installations])
+        for lane in lanes
+        for position in lane.positions
+    ]
+
+
+def _fold(lane: Lanes, position: str, under: List[Installation]) -> Fold:
+    seats = [seat for seat in under if seat.position == position]
+    return Fold(
+        under=lane.under,
+        branch=lane.branch,
+        position=position,
+        installations=[seat.id for seat in seats],
+        kept=sum(seat.kept for seat in seats),
+        logs=sum(bool(seat.runs) for seat in seats),
+        epoch=_range(seat.epoch for seat in seats),
+        behind_by=_range(seat.behind_by for seat in seats),
+        listed_from=_range(
+            seat.listed[0] for seat in seats if seat.epoch is None and seat.listed
+        ),
+        cells=_stacks(seats),
+    )
+
+
+def _range(numbers: Iterable[Optional[int]]) -> Optional[Range]:
+    """From the lowest to the highest of the numbers that are known, when one is."""
+    known = [number for number in numbers if number is not None]
+    return Range(min(known), max(known)) if known else None
+
+
+def _stacks(seats: List[Installation]) -> List[Stack]:
+    """Some installations' lanes laid over one another: what they hold at each epoch, by epoch.
+
+    An installation counts once under each state it wrote at an epoch, however often it wrote
+    it there, and once under a leave.
+    """
+    kinds: Dict[int, Counter] = defaultdict(Counter)
+    # For each epoch and state, the stamps of its records, and how many installations wrote it.
+    stamps: Dict[int, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
+    holders: Dict[int, Counter] = defaultdict(Counter)
+    for seat in seats:
+        for cell in seat.cells:
+            steps = [seat.history[place] for place in cell.steps]
+            # A leave holds no state, and stands here as none.
+            wrote = {step.state for step in steps}
+            kinds[cell.epoch][cell.kind] += 1
+            kinds[cell.epoch]["left"] += None in wrote
+            kinds[cell.epoch]["several"] += len(wrote) > 1
+            holders[cell.epoch].update(wrote - {None})
+            for step in steps:
+                if step.state is not None:
+                    stamps[cell.epoch][step.state].append(step.at.seconds)
+    return [
+        Stack(
+            epoch=epoch,
+            wrote=kinds[epoch][WROTE],
+            states=[
+                Held(state, holders[epoch][state], min(at), max(at))
+                for state, at in sorted(stamps[epoch].items())
+            ],
+            left=kinds[epoch]["left"],
+            several=kinds[epoch]["several"],
+            unreached=kinds[epoch][UNREACHED],
+            listed=kinds[epoch][LISTED],
+        )
+        for epoch in sorted(kinds)
+    ]
+
+
 def _spans(seat: str, logs: _Logs) -> List[Span]:
     """Each run an installation wrote in as stretches of time, cut where its delivery changed.
 
@@ -974,7 +1137,7 @@ def _run(name: str, final: bool, logs: _Logs) -> Run:
 
 
 def _messages(
-    convo: str, seats: List[str], lineage: _Lineage, logs: _Logs
+    convo: str, seats: List[str], lineage: _Lineage, logs: _Logs, folds: List[Fold]
 ) -> Tuple[List[Message], int]:
     """A row for each post, and how many `unreadable` records name a frame no `sent` does.
 
@@ -1004,6 +1167,7 @@ def _messages(
             post.installation: post,
         }
         cells = {seat: _cell(seat, wrote.get(seat), roster, logs) for seat in seats}
+        why = {seat: wrote[seat].why for seat in seats if cells[seat] == "unreadable"}
         rows.append(
             Message(
                 frame=post.frame,
@@ -1013,12 +1177,23 @@ def _messages(
                 at=_mark(post),
                 utc=f"{instant(post.time)[0].isoformat(timespec='seconds')}Z",
                 cells=cells,
-                why={seat: wrote[seat].why for seat in seats if cells[seat] == "unreadable"},
+                why=why,
                 marks={seat: _mark(wrote[seat]) for seat in seats if seat in wrote},
+                folds=[_fates(fold.installations, cells, why) for fold in folds],
             )
         )
     unmatched = sum(record.kind == "unreadable" and record.frame not in posts for record in records)
     return rows, unmatched
+
+
+def _fates(seats: List[str], cells: Dict[str, str], why: Dict[str, str]) -> Fates:
+    """What became of a post on some installations, as counts in an order that does not vary."""
+    became = Counter(cells[seat] for seat in seats)
+    causes = Counter(why[seat] for seat in seats if seat in why)
+    return Fates(
+        cells={fate: became[fate] for fate in _FATES if became[fate]},
+        why={cause: causes[cause] for cause in sorted(causes)},
+    )
 
 
 def _cell(

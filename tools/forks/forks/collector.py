@@ -99,6 +99,8 @@ class _Drawn:
     # The report as JSON, up to its runs: they are answered with what the collector says of each.
     head: bytes
     runs: List[dict]
+    # For each fold of the report, the runs its installations wrote in, each once.
+    folds: List[List[str]]
     listed: dict
 
 
@@ -257,6 +259,8 @@ class Collector:
         """A conversation's report as JSON: what `--json` holds for it, and more of its runs.
 
         Each run is answered with what the collector says of it, and their lines are counted.
+        `heard` says of each fold how many runs its installations wrote in, how many of them are
+        final, and when the collector heard from the first and the last heard of them.
         """
         found = self._report(convo)
         if found is None:
@@ -275,8 +279,19 @@ class Collector:
             }
             for run in drawn.runs
         ]
+        final = {run["name"] for run in drawn.runs if run["final"]}
+        heard = [
+            {
+                "runs": len(fold),
+                "final": len(final.intersection(fold)),
+                "first": _stamp(min(labels[run].heard for run in fold)) if fold else None,
+                "last": _stamp(max(labels[run].heard for run in fold)) if fold else None,
+            }
+            for fold in drawn.folds
+        ]
         lines = json.dumps(asdict(counts))
-        return drawn.head + json.dumps(runs).encode() + b', "lines": ' + lines.encode() + b"}"
+        tail = b', "heard": ' + json.dumps(heard).encode() + b', "lines": ' + lines.encode()
+        return drawn.head + json.dumps(runs).encode() + tail + b"}"
 
     def lines_around(self, run_id: str, line: int) -> List[dict]:
         """The lines of a run's log around one of them, each with its number."""
@@ -594,12 +609,17 @@ def _draw(
     (conversation,) = rule.report(records, final, kept, only=[convo])
     tree = rule.as_json(conversation)
     runs = tree.pop("runs")
+    wrote = {seat["id"]: seat["runs"] for seat in tree["installations"]}
+    folds = [
+        list(dict.fromkeys(run for seat in fold["installations"] for run in wrote[seat]))
+        for fold in tree["folds"]
+    ]
     listed = {key: tree[key] for key in ("id", "verdict", "split_epoch", "coverage")}
     listed["branches"] = [
         {"label": branch["label"], "epoch": branch["epoch"]} for branch in tree["branches"]
     ]
     head = json.dumps(tree)[:-1] + ', "runs": '
-    return _Drawn(at, head.encode(), runs, listed)
+    return _Drawn(at, head.encode(), runs, folds, listed)
 
 
 def _lines_of(run: Run) -> List[Kept]:

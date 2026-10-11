@@ -1,18 +1,23 @@
 import random
 import unittest
+from collections import Counter
 from dataclasses import replace
 from typing import Dict, List, Set, Tuple
 from unittest import mock
 
 from forks.records import Record
 from forks.rule import (
+    LANES_IN_SIGHT,
     POSITIONS,
     SHOWN_CELLS,
     Conversation,
+    Fates,
+    Held,
     Installation,
     Kept,
     Mark,
     Message,
+    Range,
     Span,
     State,
     as_json,
@@ -1313,7 +1318,7 @@ class Messages(unittest.TestCase):
     def test_the_json_holds_a_mark_as_it_holds_where_a_post_was_sent(self):
         _, second = as_json(self.conversation())["messages"]
         self.assertEqual(
-            list(second), "frame sender epoch state at utc cells why marks".split()
+            list(second), "frame sender epoch state at utc cells why marks folds".split()
         )
         self.assertEqual(second["utc"], "2026-10-08T12:00:04Z")
         self.assertEqual(sorted(second["marks"]), ["pax", "raya", "saro"])
@@ -1764,6 +1769,409 @@ class ForAPage(unittest.TestCase):
         seat = seat_of(one(logs, kept=[kept_line("saro")]), "saro")
         self.assertEqual((seat.kept, seat.position, seat.epoch), (True, "ended", 2))
         self.assertEqual((seat.listed, seat.cells), ([1, 2], []))
+
+
+def folds(conversation: Conversation) -> List[tuple]:
+    return [
+        (fold.under, fold.branch, fold.position, fold.installations)
+        for fold in conversation.folds
+    ]
+
+
+class Folds(unittest.TestCase):
+    """The lanes of one position laid over one another, for a page that draws a row for them."""
+
+    split = Branches.split
+    posts = Messages.conversation
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.read = read_histories()
+
+    def behind(self) -> Conversation:
+        """Saro and Raya at the tip of four states, Mira and Pax behind, Kes and Tomo unshared."""
+        logs = started("saro", "raya", "pax", "mira")
+        logs["raya"].hour = 11
+        for name, reached in (("saro", 4), ("raya", 4), ("mira", 3), ("pax", 2)):
+            for epoch in range(1, reached + 1):
+                logs[name].epoch(name, epoch, f"X{epoch}", ALL5 + (" tomo" if epoch > 2 else ""))
+        return one(logs)
+
+    def test_a_fold_is_the_installations_of_one_position_under_one_heading_as_they_are_read(self):
+        self.assertEqual(
+            folds(self.split()),
+            [
+                ("branch", "A", "tip", ["pax"]),
+                ("branch", "A", "behind", ["raya"]),
+                ("branch", "B", "tip", ["saro"]),
+                ("neither branch", None, "behind", ["mira"]),
+                ("not placed", None, "no data", ["kes"]),
+            ],
+        )
+        for name, conversation in self.read:
+            with self.subTest(history=name):
+                where = positions(conversation)
+                expected = [
+                    (
+                        lane.under,
+                        lane.branch,
+                        position,
+                        [seat for seat in lane.installations if where[seat] == position],
+                    )
+                    for lane in conversation.lanes
+                    for position in lane.positions
+                ]
+                self.assertEqual(folds(conversation), expected)
+                # Fold after fold, the installations stand as lane after lane lists them.
+                self.assertEqual(
+                    [seat for fold in conversation.folds for seat in fold.installations],
+                    [seat for lane in conversation.lanes for seat in lane.installations],
+                )
+
+    def test_a_fold_counts_at_each_epoch_what_its_lanes_hold_there(self):
+        tip, behind, unshared = self.behind().folds
+        counted = [
+            [(stack.epoch, stack.wrote, stack.unreached, stack.listed) for stack in fold.cells]
+            for fold in (tip, behind, unshared)
+        ]
+        self.assertEqual(
+            counted,
+            [
+                [(1, 2, 0, 0), (2, 2, 0, 0), (3, 2, 0, 0), (4, 2, 0, 0)],
+                [(1, 2, 0, 0), (2, 2, 0, 0), (3, 1, 1, 0), (4, 0, 2, 0)],
+                [(1, 0, 0, 1), (2, 0, 0, 1), (3, 0, 0, 2), (4, 0, 0, 2)],
+            ],
+        )
+        for name, conversation in self.read:
+            for fold in conversation.folds:
+                with self.subTest(history=name, fold=(fold.under, fold.branch, fold.position)):
+                    seats = [seat_of(conversation, seat) for seat in fold.installations]
+                    cells = [cell for seat in seats for cell in seat.cells]
+                    self.assertEqual(
+                        [stack.epoch for stack in fold.cells],
+                        sorted({cell.epoch for cell in cells}),
+                    )
+                    for stack in fold.cells:
+                        kinds = Counter(cell.kind for cell in cells if cell.epoch == stack.epoch)
+                        self.assertEqual(
+                            (stack.wrote, stack.unreached, stack.listed),
+                            (kinds["wrote"], kinds["unreached"], kinds["listed"]),
+                        )
+
+    def test_a_fold_says_how_many_wrote_each_state_at_an_epoch_and_from_when_to_when(self):
+        tip, behind, _ = self.behind().folds
+        # Raya wrote each state an hour after Saro did.
+        self.assertEqual(
+            [stack.states for stack in tip.cells],
+            [[Held(f"X{line - 1}", 2, at(line), at(line, hour=11))] for line in (2, 3, 4, 5)],
+        )
+        self.assertEqual(
+            [stack.states for stack in behind.cells],
+            [
+                [Held("X1", 2, at(2), at(2))],
+                [Held("X2", 2, at(3), at(3))],
+                [Held("X3", 1, at(4), at(4))],
+                [],
+            ],
+        )
+        for name, conversation in self.read:
+            for fold in conversation.folds:
+                with self.subTest(history=name, fold=(fold.under, fold.branch, fold.position)):
+                    seats = [seat_of(conversation, seat) for seat in fold.installations]
+                    for stack in fold.cells:
+                        # Each installation's records of a state at the epoch, by state.
+                        wrote = [
+                            (seat.id, step.state, step.at.seconds)
+                            for seat in seats
+                            for step in seat.history
+                            if step.epoch == stack.epoch and step.kind == "epoch"
+                        ]
+                        states = sorted({state for _, state, _ in wrote})
+                        self.assertEqual([held.state for held in stack.states], states)
+                        for held in stack.states:
+                            stamps = [stamp for _, state, stamp in wrote if state == held.state]
+                            holders = {seat for seat, state, _ in wrote if state == held.state}
+                            self.assertEqual(
+                                (held.count, held.first, held.last),
+                                (len(holders), min(stamps), max(stamps)),
+                            )
+                        left = {
+                            seat.id
+                            for seat in seats
+                            for step in seat.history
+                            if step.epoch == stack.epoch and step.kind == "left"
+                        }
+                        self.assertEqual(stack.left, len(left))
+
+    def test_an_installation_counts_once_under_each_state_it_wrote_at_an_epoch_and_under_a_leave(
+        self,
+    ):
+        # Tomo wrote B2, and in a later run A2 twice and A3 twice. Kes wrote A3 and left at its
+        # epoch.
+        first, second, kes = Log("tomo-0", hour=9), Log("tomo-1", hour=11), Log("kes")
+        first.start("tomo")
+        first.epoch("tomo", 1, "X1", "tomo kes")
+        first.epoch("tomo", 2, "B2", "tomo kes")
+        second.start("tomo")
+        second.epoch("tomo", 2, "A2", "tomo kes")
+        second.epoch("tomo", 2, "A2", "tomo kes")
+        second.epoch("tomo", 3, "A3", "tomo kes")
+        second.epoch("tomo", 3, "A3", "tomo kes")
+        kes.start("kes")
+        for epoch, state in ((1, "X1"), (2, "A2"), (3, "A3")):
+            kes.epoch("kes", epoch, state, "tomo kes")
+        kes.left("kes", 3)
+        conversation = one([second, first, kes])
+        self.assertEqual(
+            folds(conversation),
+            [("branch", "A", "tip", ["tomo"]), ("branch", "A", "removed", ["kes"])],
+        )
+        tip, removed = conversation.folds
+        at_two = tip.cells[1]
+        self.assertEqual(
+            at_two.states,
+            [
+                Held("A2", 1, at(2, hour=11), at(3, hour=11)),
+                Held("B2", 1, at(3, hour=9), at(3, hour=9)),
+            ],
+        )
+        self.assertEqual((at_two.wrote, at_two.left, at_two.several), (1, 0, 1))
+        # One state written twice at an epoch is one state there.
+        self.assertEqual([stack.several for stack in tip.cells], [0, 1, 0])
+        self.assertEqual(tip.cells[2].states, [Held("A3", 1, at(4, hour=11), at(5, hour=11))])
+        at_three = removed.cells[2]
+        self.assertEqual(at_three.states, [Held("A3", 1, at(4), at(4))])
+        self.assertEqual((at_three.wrote, at_three.left, at_three.several), (1, 1, 1))
+        self.assertEqual([(stack.left, stack.several) for stack in removed.cells[:2]], [(0, 0)] * 2)
+
+    def test_a_fold_says_from_where_to_where_its_installations_stand(self):
+        tip, behind, unshared = self.behind().folds
+        self.assertEqual((tip.epoch, tip.behind_by, tip.listed_from), (Range(4, 4), None, None))
+        self.assertEqual(
+            (behind.epoch, behind.behind_by, behind.listed_from), (Range(2, 3), Range(1, 2), None)
+        )
+        # Kes is listed from the first epoch and Tomo from the third, and neither is at one.
+        self.assertEqual(
+            (unshared.epoch, unshared.behind_by, unshared.listed_from), (None, None, Range(1, 3))
+        )
+        # A group that begins at epoch 0: Raya stands at it, Mira an epoch on, and Pax, who
+        # shares no log, is listed from it.
+        logs = started("saro", "raya", "mira")
+        for name, reached in (("saro", 2), ("raya", 0), ("mira", 1)):
+            for epoch in range(reached + 1):
+                logs[name].epoch(name, epoch, f"X{epoch}", ALL4)
+        _, behind, unshared = one(logs).folds
+        self.assertEqual(
+            (behind.epoch, behind.behind_by, unshared.listed_from),
+            (Range(0, 1), Range(1, 2), Range(0, 0)),
+        )
+        for name, conversation in self.read:
+            for fold in conversation.folds:
+                with self.subTest(history=name, fold=(fold.under, fold.branch, fold.position)):
+                    seats = [seat_of(conversation, seat) for seat in fold.installations]
+                    unplaced = [seat for seat in seats if seat.epoch is None and seat.listed]
+                    for said, numbers in (
+                        (fold.epoch, [seat.epoch for seat in seats]),
+                        (fold.behind_by, [seat.behind_by for seat in seats]),
+                        (fold.listed_from, [seat.listed[0] for seat in unplaced]),
+                    ):
+                        known = [number for number in numbers if number is not None]
+                        self.assertEqual(said, Range(min(known), max(known)) if known else None)
+
+    def test_a_fold_counts_the_logs_that_are_held_and_the_lines_that_are_kept(self):
+        tip, behind, unshared = self.behind().folds
+        self.assertEqual(
+            [(fold.logs, fold.kept) for fold in (tip, behind, unshared)], [(2, 0), (2, 0), (0, 0)]
+        )
+        logs = started("raya")
+        logs["raya"].epoch("raya", 1, "X1", PAIR)
+        logs["raya"].epoch("raya", 2, "X2", PAIR)
+        conversation = one(logs, kept=[kept_line("saro")])
+        self.assertEqual(
+            [(*fold.installations, fold.logs, fold.kept) for fold in conversation.folds],
+            [("raya", 1, 0), ("saro", 0, 1)],
+        )
+        went = 0
+        for name, conversation in self.read:
+            for fold in conversation.folds:
+                with self.subTest(history=name, fold=(fold.under, fold.branch, fold.position)):
+                    seats = [seat_of(conversation, seat) for seat in fold.installations]
+                    self.assertEqual(fold.kept, sum(seat.kept for seat in seats))
+                    self.assertEqual(fold.logs, sum(bool(seat.runs) for seat in seats))
+                    went += fold.kept
+        self.assertEqual(went, len(KEPT) - 1)
+
+    def test_a_page_starts_folded_with_more_installations_than_lanes_are_in_sight(self):
+        self.assertEqual(LANES_IN_SIGHT, 23)
+        for seats, folded in ((23, False), (24, True)):
+            with self.subTest(seats=seats):
+                others = (f"seat{number}" for number in range(1, seats))
+                conversation = posted(" ".join(["saro", *others]), 0)
+                self.assertEqual(len(conversation.installations), seats)
+                self.assertEqual(conversation.folded, folded)
+                self.assertIs(as_json(conversation)["folded"], folded)
+                # Folded or not, the folds are there.
+                everyone = sorted(positions(conversation))
+                self.assertEqual(folds(conversation), [("one line", None, "tip", everyone)])
+        with mock.patch("forks.rule.LANES_IN_SIGHT", 2):
+            self.assertEqual((posted(PAIR, 0).folded, posted(ALL3, 0).folded), (False, True))
+            # A seat nobody shared a log of has a lane as well, and counts as the others do.
+            logs = started(*PAIR.split())
+            for name in PAIR.split():
+                logs[name].epoch(name, 1, "X1", ALL3)
+            self.assertEqual((len(one(logs).installations), one(logs).folded), (3, True))
+
+    def test_a_post_counts_under_each_fold_what_became_of_it_there(self):
+        conversation = self.posts()
+        self.assertEqual(
+            folds(conversation),
+            [
+                ("branch", "A", "tip", ["kes", "raya", "saro"]),
+                ("branch", "B", "tip", ["pax"]),
+                ("not placed", None, "no data", ["mira"]),
+            ],
+        )
+        first, second = conversation.messages
+        self.assertEqual(
+            first.folds,
+            [
+                Fates({"sent": 1, "read": 1, "not a member": 1}, {}),
+                Fates({"no record": 1}, {}),
+                Fates({"no log": 1}, {}),
+            ],
+        )
+        self.assertEqual(
+            second.folds,
+            [
+                Fates({"sent": 1, "read": 1, "no record": 1}, {}),
+                Fates({"unreadable": 1}, {"decrypt": 1}),
+                Fates({"no log": 1}, {}),
+            ],
+        )
+        for post in conversation.messages:
+            for fold, fates in zip(conversation.folds, post.folds):
+                with self.subTest(frame=post.frame, fold=fold.installations):
+                    became = Counter(post.cells[seat] for seat in fold.installations)
+                    self.assertEqual(fates.cells, dict(became))
+                    self.assertEqual(sum(fates.cells.values()), len(fold.installations))
+
+    def test_the_counts_of_a_post_stand_in_one_order_and_its_causes_by_name(self):
+        logs = started(*ALL5.split())
+        for name in ALL5.split():
+            logs[name].epoch(name, 1, "X1", ALL5 + " tomo")
+        logs["saro"].sent("saro", "8f21", 1)
+        logs["kes"].unreadable("kes", "8f21", 1, "sender")
+        logs["raya"].unreadable("raya", "8f21", 1, "epoch")
+        logs["pax"].unreadable("pax", "8f21", 1, "sender")
+        (post,) = one(logs).messages
+        counted, unshared = post.folds
+        self.assertEqual(
+            (list(counted.cells.items()), list(counted.why.items())),
+            ([("sent", 1), ("unreadable", 3), ("no record", 1)], [("epoch", 1), ("sender", 2)]),
+        )
+        self.assertEqual(unshared, Fates({"no log": 1}, {}))
+        logs["mira"].received("mira", "8f21", "saro", 1)
+        (post,) = one(logs).messages
+        self.assertEqual(list(post.folds[0].cells), ["sent", "read", "unreadable"])
+        # Saro posts to Raya, Pax and Mira, and the group goes on without the two and without
+        # Kes, whom it took in after the post. Pax shares a log that holds none of the group,
+        # and Mira and Kes share none.
+        logs = started(*ALL3.split())
+        for epoch, roster in ((1, ALL4), (2, PAIR + " kes"), (3, PAIR)):
+            for name in PAIR.split():
+                logs[name].epoch(name, epoch, f"X{epoch}", roster)
+            if epoch == 1:
+                logs["saro"].sent("saro", "8f21", 1)
+        conversation, removed = one(logs), ["kes", "mira", "pax"]
+        self.assertEqual(folds(conversation)[1:], [("not placed", None, "removed", removed)])
+        (post,) = conversation.messages
+        self.assertEqual(
+            list(post.folds[1].cells.items()),
+            [("not a member", 1), ("no log", 1), ("no record", 1)],
+        )
+        self.assertEqual([post.cells[seat] for seat in removed], list(post.folds[1].cells))
+        # Saro posts to Raya, Pax, Mira and Kes, takes Tomo in, and both leave. A seventh seat
+        # goes on from a state no link leads to, so no log places the six, and its roster lists
+        # none of them. Raya read the post and Pax could not, Mira's log holds none of the
+        # group, and Kes shares none.
+        logs = started("saro", "raya", "pax", "mira", "tomo", "seat7")
+        logs["saro"].epoch("saro", 1, "X1", ALL5)
+        logs["saro"].sent("saro", "8f21", 1)
+        logs["saro"].epoch("saro", 2, "X2", "saro tomo")
+        logs["raya"].received("raya", "8f21", "saro", 1)
+        logs["pax"].unreadable("pax", "8f21", 1, "epoch")
+        for name in ("saro", "tomo"):
+            logs[name].left(name, 2)
+        logs["seat7"].epoch("seat7", 3, "X3", "seat7")
+        conversation, six = one(logs), sorted(ALL5.split() + ["tomo"])
+        self.assertEqual(folds(conversation)[1:], [("not placed", None, "removed", six)])
+        (post,) = conversation.messages
+        fates = ["sent", "read", "unreadable", "not a member", "no log", "no record"]
+        self.assertEqual(list(post.folds[1].cells.items()), [(fate, 1) for fate in fates])
+
+    def test_the_first_and_the_last_stamp_of_a_state_keep_the_fraction_of_their_second(self):
+        wrote = [
+            stamped("saro", 1, "2026-10-08T10:00:01.201Z"),
+            stamped("raya", 1, "2026-10-08T10:00:02.601Z"),
+        ]
+        (conversation,) = report(wrote)
+        (fold,) = conversation.folds
+        self.assertEqual(fold.cells[0].states, [Held("X1", 2, at(1) + 0.201, at(2) + 0.601)])
+
+    def test_the_json_holds_a_fold_and_the_counts_of_a_post_as_the_report_does(self):
+        said = as_json(self.split())
+        self.assertIs(said["folded"], False)
+        self.assertEqual(
+            said["folds"][1],
+            {
+                "under": "branch",
+                "branch": "A",
+                "position": "behind",
+                "installations": ["raya"],
+                "kept": 0,
+                "logs": 1,
+                "epoch": {"low": 2, "high": 2},
+                "behind_by": {"low": 1, "high": 1},
+                "listed_from": None,
+                "cells": [
+                    {
+                        "epoch": 1,
+                        "wrote": 1,
+                        "states": [{"state": "X1", "count": 1, "first": at(2), "last": at(2)}],
+                        "left": 0,
+                        "several": 0,
+                        "unreached": 0,
+                        "listed": 0,
+                    },
+                    {
+                        "epoch": 2,
+                        "wrote": 1,
+                        "states": [{"state": "A2", "count": 1, "first": at(3), "last": at(3)}],
+                        "left": 0,
+                        "several": 0,
+                        "unreached": 0,
+                        "listed": 0,
+                    },
+                    {
+                        "epoch": 3,
+                        "wrote": 0,
+                        "states": [],
+                        "left": 0,
+                        "several": 0,
+                        "unreached": 1,
+                        "listed": 0,
+                    },
+                ],
+            },
+        )
+        self.assertEqual(
+            as_json(self.posts())["messages"][1]["folds"],
+            [
+                {"cells": {"sent": 1, "read": 1, "no record": 1}, "why": {}},
+                {"cells": {"unreadable": 1}, "why": {"decrypt": 1}},
+                {"cells": {"no log": 1}, "why": {}},
+            ],
+        )
 
 
 def at(second: int, hour: int = 10) -> float:

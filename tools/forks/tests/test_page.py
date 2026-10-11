@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import unittest
+from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Tuple
 from unittest import mock
@@ -976,6 +978,16 @@ class Drawn(Collecting):
         titles = [made for made in within(table["kids"][0]) if made["tag"] == "th"]
         self.assertEqual({made["attrs"]["scope"] for made in titles}, {"col"})
 
+    def test_a_conversation_of_few_installations_is_drawn_a_lane_for_each_and_nothing_unfolds(self):
+        answers = self.answers()
+        report = json.loads(answers[f"conversations/{CONVO}"]["text"])
+        self.assertIs(report["folded"], False)
+        (state,) = self.draw(answers)
+        order = [seat for lane in report["lanes"] for seat in lane["installations"]]
+        self.assertEqual(lines(state, "Installations"), [f"lane {seat}" for seat in order])
+        self.assertEqual(lines(state, "Timeline"), [f"time {seat}" for seat in order])
+        self.assertEqual((unfolding(state["report"]), classed(state["report"], "fold")), ([], []))
+
     def test_a_cell_and_a_mark_of_a_post_ask_for_the_lines_of_their_own_record(self):
         answers = self.answers()
         report = json.loads(answers[f"conversations/{CONVO}"]["text"])
@@ -1307,6 +1319,1327 @@ class Drawn(Collecting):
         self.assertTrue(elsewhere["notice"].startswith("The answer at this address is not one"))
         self.assertEqual([fold(state) for state in (whole, elsewhere, again)], [every] * 3)
         self.assertEqual(fold(pressed), newest)
+
+
+SIX = "saro raya kes tomo pax mira"
+# The sign a count is drawn with, as a cell of the same thing is.
+SIGNS = {"read": "\u2713", "unreadable": "\u2715"}
+HEADINGS = {
+    "one line": "The one line",
+    "neither branch": "On neither branch",
+    "not placed": "Not placed",
+}
+
+
+def crowd_logs(group: str = "") -> Dict[str, bytes]:
+    """A group of six that split, as five of its members share their logs.
+
+    Saro, Raya and Kes are at the tip of one branch and Tomo is an epoch behind them on it, Pax
+    is on the other, and Mira shares no log. Everyone reads Saro's post from before the split.
+    Raya's is read at her tip and is unreadable to Tomo and to Pax. Pax's is unreadable on the
+    other branch, where Kes holds no record of it.
+    """
+    logs = {name: member(name, 2, SIX) for name in SIX.split()[:5]}
+    for name in ("saro", "raya", "kes", "tomo"):
+        logs[name].epoch(name, 3, "A3", SIX)
+    logs["pax"].epoch("pax", 3, "B3", SIX)
+    for name in ("saro", "raya", "kes"):
+        logs[name].epoch(name, 4, "A4", SIX)
+    logs["saro"].sent("saro", "8f21", 2)
+    for name in ("raya", "kes", "tomo", "pax"):
+        logs[name].received(name, "8f21", "saro", 2)
+    logs["raya"].sent("raya", "e3b9", 4)
+    for name in ("saro", "kes"):
+        logs[name].received(name, "e3b9", "raya", 4)
+    logs["tomo"].unreadable("tomo", "e3b9", 4, "epoch")
+    logs["pax"].unreadable("pax", "e3b9", 4, "decrypt")
+    logs["pax"].sent("pax", LONG, 3)
+    for name in ("saro", "raya"):
+        logs[name].unreadable(name, LONG, 3, "decrypt")
+    logs["tomo"].unreadable("tomo", LONG, 3, "sender")
+    return {name: logged(log, group) for name, log in logs.items()}
+
+
+def torn_logs() -> Dict[str, Log]:
+    """The group of six as two of its members write the states of both branches at an epoch.
+
+    Raya writes the other branch's state before her own at the third epoch, and she and Kes do
+    at the fourth. Tomo leaves at the fourth without a state there, and Mira shares no log.
+    """
+    logs = {name: member(name, 2, SIX) for name in SIX.split()[:5]}
+    logs["raya"].epoch("raya", 3, "B3", SIX)
+    for name in ("saro", "raya", "kes", "tomo"):
+        logs[name].epoch(name, 3, "A3", SIX)
+    for epoch in (3, 4):
+        logs["pax"].epoch("pax", epoch, f"B{epoch}", SIX)
+    for name in ("raya", "kes"):
+        logs[name].epoch(name, 4, "B4", SIX)
+    for name in ("saro", "raya", "kes"):
+        logs[name].epoch(name, 4, "A4", SIX)
+    logs["tomo"].left("tomo", 4)
+    return logs
+
+
+def keyed(made: dict, key: str) -> dict:
+    """The one element in a document that keeps this name from one drawing to the next."""
+    (found,) = [each for each in within(made) if each["attrs"].get("data-key") == key]
+    return found
+
+
+def lines(state: dict, part: str) -> List[str]:
+    """The names of the rows the arrow keys move between in a part of the report."""
+    under = within(keyed(state["report"], part))
+    return [row["attrs"]["data-key"] for row in under if "data-row" in row["attrs"]]
+
+
+def unfolding(made: dict) -> List[dict]:
+    """The buttons in an element that open something and close it again."""
+    return [each for each in within(made) if "data-unfolds" in each["attrs"]]
+
+
+def open_in(made: dict) -> List[str]:
+    """The names of what stands open in an element."""
+    stands = [each["attrs"] for each in unfolding(made)]
+    return [attrs["data-unfolds"] for attrs in stands if attrs["aria-expanded"] == "true"]
+
+
+def focused(state: dict) -> dict:
+    """The attributes of the one element of the report that holds the focus."""
+    (held,) = [each for each in within(state["report"]) if each.get("focused")]
+    return held["attrs"]
+
+
+def held_open(state: dict) -> Tuple[str, str]:
+    """What the button that holds the focus is named, and whether it says it is open."""
+    return focused(state)["aria-label"], focused(state)["aria-expanded"]
+
+
+def plain(made: dict) -> dict:
+    """An element without what says where the focus and the Tab key are, and which mark it is."""
+    moves = ("data-m", "tabindex")
+    return {
+        "tag": made["tag"],
+        "attrs": {name: value for name, value in made["attrs"].items() if name not in moves},
+        "kids": [kid if isinstance(kid, str) else plain(kid) for kid in made["kids"]],
+    }
+
+
+def name_of(fold: dict) -> str:
+    """The heading and the position a fold is named by."""
+    under = HEADINGS.get(fold["under"], f"Branch {fold['branch']}")
+    return f"{under}, {fold['position']}"
+
+
+def counted(count: int) -> str:
+    return "1 installation" if count == 1 else f"{count} installations"
+
+
+def reach(numbers: List[int]) -> str:
+    low, high = min(numbers), max(numbers)
+    return f"{low}" if low == high else f"{low} to {high}"
+
+
+def lined(cell: dict) -> List[str]:
+    """The words of each line a cell holds."""
+    return [words(line) for line in cell["kids"]]
+
+
+def spanned(row: dict) -> int:
+    """How many columns the cells of a row span between them."""
+    return sum(int(cell["attrs"].get("colspan", 1)) for cell in row["kids"])
+
+
+def stop_in(state: dict, part: str) -> dict:
+    """The attributes of the one cell of a part's table that the Tab key stops at."""
+    moved = [made["attrs"] for made in within(keyed(state["report"], part))]
+    moved = [attrs for attrs in moved if "data-m" in attrs or "data-unfolds" in attrs]
+    (held,) = [attrs for attrs in moved if attrs.get("tabindex") == "0"]
+    return held
+
+
+def size(made: dict) -> int:
+    """How many elements an element is, with all it holds."""
+    return sum(1 for _ in within(made))
+
+
+def utc(seconds: float) -> str:
+    """A stamp as a browser writes one, to the millisecond."""
+    at = datetime.fromtimestamp(seconds, timezone.utc)
+    return at.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+@unittest.skipUnless(NODE, "node runs the page's script, and is not on this machine")
+class Folded(Collecting):
+    """What the script draws of a conversation the collector says a page starts folded."""
+
+    post = Drawn.post
+    draw = Drawn.draw
+
+    def setUp(self) -> None:
+        super().setUp()
+        # Three lanes are in sight, so the six fold. Each log is shared a minute after the last.
+        self.enter(mock.patch("forks.rule.LANES_IN_SIGHT", 3))
+        self.runs = {}
+        for name, log in crowd_logs().items():
+            self.runs[name] = self.served.share(log, name)
+            self.clock.now += 60
+
+    def answers(self) -> Dict[str, dict]:
+        """What the collector answers each address the page asks of the conversation."""
+        report = self.served.report()
+        marks = [at for post in report["messages"] for at in post["marks"].values()]
+        marks += [step["at"] for seat in report["installations"] for step in seat["history"]]
+        paths = ["conversations", f"conversations/{CONVO}"]
+        paths += [f"runs/{at['run']}/log?line={at['line']}" for at in marks]
+        said = {}
+        for path in paths:
+            answer = self.served.get(f"/{path}")
+            said[path] = {"status": answer.status, "text": answer.body.decode()}
+        return said
+
+    def read(self, answers: Dict[str, dict]) -> Tuple[dict, List[str], Dict[str, dict]]:
+        """The report in some answers, the names of its folds and its installations by id."""
+        report = json.loads(answers[f"conversations/{CONVO}"]["text"])
+        seats = {seat["id"]: seat for seat in report["installations"]}
+        return report, [name_of(fold) for fold in report["folds"]], seats
+
+    def unfolded(self, answers: Dict[str, dict]) -> Dict[str, dict]:
+        """The same answers from a collector that says the page does not start folded."""
+        path = f"conversations/{CONVO}"
+        report = dict(json.loads(answers[path]["text"]), folded=False)
+        return {**answers, path: {"status": 200, "text": json.dumps(report), "tag": ""}}
+
+    def shares(self, logs: Dict[str, Log]) -> None:
+        """Another collector, to which each of these logs is shared a minute after the last."""
+        self.served = self.elsewhere()
+        self.runs = {}
+        for name, log in logs.items():
+            self.runs[name] = self.served.share(logged(log), name)
+            self.clock.now += 60
+
+    def test_a_folded_page_draws_a_row_for_each_fold_where_the_other_draws_a_lane_for_each(self):
+        answers = self.answers()
+        report, names, seats = self.read(answers)
+        self.assertIs(report["folded"], True)
+        self.assertEqual(
+            [(fold["under"], fold["branch"], fold["position"]) for fold in report["folds"]],
+            [
+                ("branch", "A", "tip"),
+                ("branch", "A", "behind"),
+                ("branch", "B", "tip"),
+                ("not placed", None, "no data"),
+            ],
+        )
+        (state,) = self.draw(answers)
+        (flat,) = self.draw(self.unfolded(answers))
+        order = [seat for lane in report["lanes"] for seat in lane["installations"]]
+        self.assertEqual(lines(state, "Installations"), [f"fold {name}" for name in names])
+        self.assertEqual(lines(flat, "Installations"), [f"lane {seat}" for seat in order])
+        self.assertEqual(lines(state, "Timeline"), [f"span {name}" for name in names])
+        self.assertEqual(lines(flat, "Timeline"), [f"time {seat}" for seat in order])
+        for drawn, columns in ((state, len(names)), (flat, len(order))):
+            for row in rows(drawn):
+                self.assertEqual(len(row["kids"]), 4 + columns)
+        (table,) = classed(state["report"], "posts")
+        over, titles = table["kids"][0]["kids"]
+        self.assertEqual(
+            [words(title) for title in titles["kids"]],
+            [fold["position"] + counted(len(fold["installations"])) for fold in report["folds"]],
+        )
+        # A heading spans the folds under it, as it spans its installations on the other page.
+        self.assertEqual(
+            [(words(under), int(under["attrs"]["colspan"])) for under in over["kids"][4:]],
+            [("Branch A", 2), ("Branch B", 1), ("Not placed", 1)],
+        )
+        # Nothing unfolds on a page that is not folded, and a fold is nowhere on it.
+        self.assertEqual((unfolding(flat["report"]), classed(flat["report"], "fold")), ([], []))
+        # A fold opens among the lanes and on the timeline, and each post has a count under it.
+        # Four are at the tip, and of the rosters all but the one that is on the second branch
+        # hold more than a tile names.
+        self.assertEqual(
+            Counter(made["attrs"]["class"] for made in unfolding(state["report"])),
+            {"tog": 2 * len(names), "tally": 3 * len(names), "btn": 1 + 3},
+        )
+
+    def test_every_control_that_unfolds_is_a_button_that_says_whether_it_is_open(self):
+        answers = self.answers()
+        _, names, _ = self.read(answers)
+        closed, opened = self.draw(answers, {"press": ".tog"})
+        for state in (closed, opened):
+            for made in unfolding(state["report"]):
+                attrs = made["attrs"]
+                with self.subTest(control=attrs["aria-label"]):
+                    self.assertEqual((made["tag"], attrs["type"]), ("button", "button"))
+                    self.assertIn(attrs["aria-expanded"], ("true", "false"))
+                    self.assertTrue(attrs["data-unfolds"])
+        # One press opens the fold among the lanes and on the timeline, and nothing else.
+        self.assertEqual(open_in(closed["report"]), [])
+        self.assertEqual(open_in(opened["report"]), names[:1] * 2)
+
+    def test_a_fold_counts_at_each_epoch_the_installations_that_hold_a_record_there(self):
+        # Saro goes on to a state more, which leaves Kes and Raya behind with Tomo.
+        ahead = Log("saro", 12)
+        ahead.epoch("saro", 5, "A5", SIX)
+        self.served.put(*self.runs["saro"], logged(ahead))
+        answers = self.answers()
+        report, _, seats = self.read(answers)
+        (state,) = self.draw(answers)
+        runs = {run["id"]: run for run in report["runs"]}
+        for fold in report["folds"]:
+            name, under = name_of(fold), [seats[seat] for seat in fold["installations"]]
+            of = counted(len(under))
+            with self.subTest(fold=name):
+                who, none, *cells = keyed(state["report"], f"fold {name}")["kids"]
+                (button,) = unfolding(who)
+                self.assertEqual(button["attrs"]["aria-label"], f"{name}: {of}")
+                self.assertEqual((words(who), words(none)), (fold["position"] + of, ""))
+                *epochs, over, where, heard = cells
+                last = max(held["epoch"] for seat in under for held in seat["cells"])
+                self.assertEqual(len(epochs), report["epochs"].index(last) + 1)
+                for epoch, cell in zip(report["epochs"], epochs):
+                    # What each installation of the fold holds at the epoch, and wrote there.
+                    held = [
+                        (each["kind"], [seat["history"][place] for place in each["steps"]])
+                        for seat in under
+                        for each in seat["cells"]
+                        if each["epoch"] == epoch
+                    ]
+                    states = Counter(
+                        state for _, wrote in held for state in {step["state"] for step in wrote}
+                    )
+                    kinds = Counter(kind for kind, _ in held)
+                    expected = [(states[state], f", state {state}") for state in sorted(states)]
+                    expected += [(kinds["unreached"], ", not reached")] * bool(kinds["unreached"])
+                    expected += [(kinds["listed"], ", no log shared")] * bool(kinds["listed"])
+                    self.assertEqual(len(cell["kids"]), len(expected))
+                    for made, (count, ends) in zip(cell["kids"], expected):
+                        label = made["attrs"]["aria-label"]
+                        self.assertTrue(label.startswith(f"epoch {epoch}, {count} of {of}, "))
+                        self.assertTrue(label.endswith(ends), label)
+                        self.assertTrue(words(made).endswith(str(count)), words(made))
+                at = [seat["epoch"] for seat in under if seat["epoch"] is not None]
+                behind = [seat["behind_by"] for seat in under if seat["behind_by"] is not None]
+                stands = [fold["position"]]
+                stands += [f"epoch{'s' * (min(at) != max(at))} {reach(at)}"] if at else []
+                stands += [] if at else [f"listed from epoch {under[0]['listed'][0]}"]
+                stands += [f"{reach(behind)} behind"] if behind else []
+                self.assertEqual(words(where), ", ".join(stands))
+                stamps = sorted(runs[run]["heard"] for seat in under for run in seat["runs"])
+                span = [f"{stamps[0]} to", stamps[-1]] if len(set(stamps)) > 1 else stamps[:1]
+                self.assertEqual(lined(heard), span or ["no log held"])
+                self.assertEqual(words(over), "")
+        tip, behind = (keyed(state["report"], f"fold Branch A, {at}") for at in ("tip", "behind"))
+        # Of the three behind, two reached the fourth epoch, and each is one or two behind.
+        (fourth,) = report["folds"][1]["cells"][3]["states"]
+        self.assertEqual(
+            [made["attrs"]["aria-label"] for made in behind["kids"][5]["kids"]],
+            [
+                f"epoch 4, 2 of 3 installations, branch A, state {fourth['state']}",
+                "epoch 4, 1 of 3 installations, not reached",
+            ],
+        )
+        self.assertEqual(words(behind["kids"][-2]), "behind, epochs 3 to 4, 1 to 2 behind")
+        # Saro was heard from last, and Raya, Kes and Tomo a minute apart before.
+        self.assertEqual(
+            (lined(tip["kids"][-1]), lined(behind["kids"][-1])),
+            (["2026-10-09T12:05:00Z"], ["2026-10-09T12:01:00Z to", "2026-10-09T12:03:00Z"]),
+        )
+
+    def test_a_fold_says_how_many_of_its_runs_are_final_and_of_how_many_it_holds_no_log(self):
+        # Both branches go on without Mira and Tomo. Mira shares two logs that hold none of the
+        # group, Raya a run more that is final, and Tomo's run ends in a leave.
+        for name, epoch, state in (("saro", 5, "A5"), ("pax", 4, "B4")):
+            ahead = Log(name, 12)
+            ahead.epoch(name, epoch, state, "saro raya kes pax")
+            self.served.put(*self.runs[name], logged(ahead))
+        for name, hour, final in (("mira", 12, False), ("mira", 13, False), ("raya", 12, True)):
+            alone = Log(name, hour)
+            alone.start(name)
+            self.runs[f"{name}, alone at {hour}"] = self.served.share(logged(alone), name, final)
+        leave = Log("tomo", 12)
+        leave.left("tomo", 4)
+        self.served.put(*self.runs.pop("tomo"), logged(leave), final=True)
+        # Every run but Tomo's is heard from on the day before his log is deleted.
+        self.clock.pass_days(29)
+        for run in self.runs.values():
+            self.served.put(*run)
+        self.clock.pass_days(2)
+        (state,) = self.draw(self.answers())
+        behind, removed = (
+            keyed(state["report"], f"fold {name}")
+            for name in ("Branch A, behind", "Not placed, removed")
+        )
+        self.assertEqual(lined(behind["kids"][-1]), ["2026-11-07T12:05:00Z", "1 of 3 runs final"])
+        self.assertEqual(
+            [words(cell) for cell in removed["kids"][-3:-1]],
+            ["removed, the log is gone of 1", "removed, epoch 4, listed from epoch 1"],
+        )
+        # No log is held of Tomo, the one installation of two: Mira's two runs are one log more.
+        self.assertEqual(lined(removed["kids"][-1]), ["2026-11-07T12:05:00Z", "no log held of 1"])
+
+    def test_a_fold_counts_an_installation_under_each_state_and_leave_it_wrote_at_an_epoch(self):
+        self.shares(torn_logs())
+        answers = self.answers()
+        report, _, seats = self.read(answers)
+        (state,) = self.draw(answers)
+        # How a state is said and lettered: one of a branch by its letter, the others by none.
+        looks = {
+            (held["epoch"], held["state"]): (f"branch {held['branch']}", held["branch"])
+            if held["lineage"] == "branch"
+            else ("shared line", "")
+            for held in report["states"]
+        }
+        self.assertEqual({held["lineage"] for held in report["states"]}, {"shared", "branch"})
+        for fold in report["folds"]:
+            name, under = name_of(fold), [seats[seat] for seat in fold["installations"]]
+            of = counted(len(under))
+            row = keyed(state["report"], f"fold {name}")
+            for epoch, cell in zip(report["epochs"], row["kids"][2:-3]):
+                at = [held for seat in under for held in seat["cells"] if held["epoch"] == epoch]
+                # The states each installation wrote at the epoch, and None for a leave.
+                wrote = [
+                    {seat["history"][place]["state"] for place in held["steps"]}
+                    for seat in under
+                    for held in seat["cells"]
+                    if held["epoch"] == epoch and held["steps"]
+                ]
+                states = Counter(state for each in wrote for state in each if state is not None)
+                left = sum(None in each for each in wrote)
+                kinds = Counter(held["kind"] for held in at)
+                expected = [
+                    (f"{looks[epoch, each][0]}, state {each}", looks[epoch, each][1], states[each])
+                    for each in sorted(states)
+                ]
+                expected += [("left", "", left)] * bool(left)
+                expected += [("not reached", "", kinds["unreached"])] * bool(kinds["unreached"])
+                expected += [("no log shared", "", kinds["listed"])] * bool(kinds["listed"])
+                with self.subTest(fold=name, epoch=epoch):
+                    self.assertEqual(len(cell["kids"]), len(expected))
+                    for made, (word, letter, count) in zip(cell["kids"], expected):
+                        label = f"epoch {epoch}, {count} of {of}, {word}"
+                        attrs = made["attrs"]
+                        self.assertEqual(
+                            (attrs["aria-label"], attrs["title"], attrs["role"]),
+                            (label, label, "img"),
+                        )
+                        self.assertEqual(words(made), f"{letter}{count}")
+        tip, removed = (
+            keyed(state["report"], f"fold {name}")
+            for name in ("Branch A, tip", "On neither branch, removed")
+        )
+        # Raya is counted under both states of the third epoch, and she and Kes of the fourth.
+        self.assertEqual(
+            [
+                sorted(made["attrs"]["aria-label"].split(", ")[1] for made in cell["kids"])
+                for cell in tip["kids"][4:6]
+            ],
+            [
+                ["1 of 3 installations", "3 of 3 installations"],
+                ["2 of 3 installations", "3 of 3 installations"],
+            ],
+        )
+        twice = "wrote more than one state, or a state and a leave, and"
+        self.assertEqual(
+            [words(more) for more in classed(tip["kids"][-2], "more")],
+            [
+                f"at epoch 3, 1 of them {twice} is counted under each",
+                f"at epoch 4, 2 of them {twice} are counted under each",
+            ],
+        )
+        # Tomo's leave is all that his row holds at the fourth epoch.
+        (leave,) = removed["kids"][5]["kids"]
+        self.assertEqual(leave["attrs"]["aria-label"], "epoch 4, 1 of 1 installation, left")
+        self.assertEqual(classed(removed["kids"][-2], "more"), [])
+
+    def test_a_fold_says_whose_log_is_gone_and_who_shared_none(self):
+        # Both branches go on without Kes and Tomo, who leave. Their runs are final, and Pax's.
+        for name, epoch, state in (("saro", 5, "A5"), ("raya", 5, "A5"), ("pax", 4, "B4")):
+            ahead = Log(name, 12)
+            ahead.epoch(name, epoch, state, "saro raya pax mira")
+            self.served.put(*self.runs[name], logged(ahead), final=name == "pax")
+        for name, epoch in (("tomo", 4), ("kes", 5)):
+            leave = Log(name, 12)
+            leave.left(name, epoch)
+            self.served.put(*self.runs[name], logged(leave), final=True)
+        (held,) = self.draw(self.answers())
+        ended = keyed(held["report"], "fold Branch B, ended")
+        self.assertEqual(words(ended["kids"][-3]), "ended")
+        self.assertEqual(lined(ended["kids"][-1]), ["2026-10-09T12:05:00Z", "1 of 1 run final"])
+        # Saro and Raya are heard from on the day before the three final logs are deleted, and
+        # after it their rosters list Mira no more.
+        self.clock.pass_days(29)
+        for name in ("saro", "raya"):
+            self.served.put(*self.runs[name])
+        self.clock.pass_days(2)
+        gone = self.answers()
+        for name in ("saro", "raya"):
+            ahead = Log(name, 13)
+            ahead.epoch(name, 6, "A6", "saro raya pax")
+            self.served.put(*self.runs[name], logged(ahead))
+        mixed = self.answers()
+
+        def said(state: dict, name: str) -> List[str]:
+            """What a fold says of its logs: at the end of its row, as its runs, on its line."""
+            lane, line = (keyed(state["report"], f"{row} {name}") for row in ("fold", "span"))
+            (on_line,) = classed(line, "said")
+            return [words(lane["kids"][-3]), *lined(lane["kids"][-1]), words(on_line)]
+
+        report, names, _ = self.read(gone)
+        self.assertEqual(
+            [(name, fold["kept"], fold["logs"]) for name, fold in zip(names, report["folds"])][1:],
+            [
+                ("Not placed, ended", 1, 0),
+                ("Not placed, removed", 2, 0),
+                ("Not placed, no data", 0, 0),
+            ],
+        )
+        (state,) = self.draw(gone)
+        self.assertEqual(
+            [said(state, name) for name in names[1:]],
+            [
+                ["ended, its log is gone", "no log held", "its log is gone"],
+                ["removed, the log is gone of 2", "no log held", "their logs are gone"],
+                ["", "no log held", "no log shared"],
+            ],
+        )
+        report, names, seats = self.read(mixed)
+        fold = report["folds"][2]
+        self.assertEqual(
+            (names[2], len(fold["installations"]), fold["kept"], fold["logs"]),
+            ("Not placed, removed", 3, 2, 0),
+        )
+        state, opened = self.draw(mixed, {"press": ".tog", "nth": 2})
+        self.assertEqual(
+            said(state, names[2]),
+            [
+                "removed, the log is gone of 2",
+                "no log held",
+                "the log is gone of 2, no log shared of 1",
+            ],
+        )
+        # Opened, the line of each says the same of its own log.
+        lines_of = [keyed(opened["report"], f"time {seat}") for seat in fold["installations"]]
+        self.assertEqual(
+            [words(line["kids"][1]) for line in lines_of],
+            [
+                "its log is gone" if seats[seat]["kept"] else "no log shared"
+                for seat in fold["installations"]
+            ],
+        )
+        self.assertEqual(sum(seats[seat]["kept"] for seat in fold["installations"]), 2)
+
+    def test_a_fold_that_holds_the_log_of_some_counts_the_others_and_draws_its_line(self):
+        # Tomo's run is deleted, both branches go on without him and Mira, and Mira shares a log
+        # that holds none of the group.
+        self.served.delete(*self.runs.pop("tomo"))
+        for name, epoch, state in (("saro", 5, "A5"), ("pax", 4, "B4")):
+            ahead = Log(name, 12)
+            ahead.epoch(name, epoch, state, "saro raya kes pax")
+            self.served.put(*self.runs[name], logged(ahead))
+        alone = Log("mira", 12)
+        alone.start("mira")
+        self.served.share(logged(alone), "mira")
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        fold = report["folds"][-1]
+        self.assertEqual(
+            (names[-1], len(fold["installations"]), fold["kept"], fold["logs"]),
+            ("Not placed, removed", 2, 0, 1),
+        )
+        (state,) = self.draw(answers)
+        lane, line = (keyed(state["report"], f"{row} {names[-1]}") for row in ("fold", "span"))
+        self.assertEqual(words(lane["kids"][-3]), "removed")
+        self.assertEqual(lined(lane["kids"][-1]), ["2026-10-09T12:05:00Z", "no log held of 1"])
+        self.assertEqual((classed(line, "hatched"), len(classed(line, "plot"))), ([], 1))
+
+    def test_a_fold_that_holds_no_cell_is_its_words_from_where_a_roster_first_lists_it(self):
+        # Mira is listed from the first epoch and Tomo from the second, and each shares a log
+        # that holds none of the group.
+        logs = {name: Log(name) for name in ("saro", "raya", "mira", "tomo")}
+        for name, log in logs.items():
+            log.start(name)
+        for name in ("saro", "raya"):
+            logs[name].epoch(name, 1, "X1", "saro raya mira")
+            logs[name].epoch(name, 2, "X2", "saro raya mira tomo")
+        self.shares(logs)
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        fold = report["folds"][-1]
+        self.assertEqual(
+            (names[-1], len(fold["installations"]), fold["cells"], fold["listed_from"]),
+            ("Not placed, never joined", 2, [], {"low": 1, "high": 2}),
+        )
+        (state,) = self.draw(answers)
+        who, none, over, where, heard = keyed(state["report"], f"fold {names[-1]}")["kids"]
+        self.assertEqual(
+            (words(who), words(none), words(over), words(where)),
+            (
+                "never joined2 installations",
+                "",
+                "never joined",
+                "never joined, listed from epochs 1 to 2",
+            ),
+        )
+        # Its words start under the first epoch, behind the mark of where it is.
+        self.assertEqual(int(over["attrs"]["colspan"]), len(report["epochs"]) + 1)
+        self.assertEqual(len(classed(over, "endmark")), 1)
+        self.assertEqual(lined(heard), ["2026-10-09T12:07:00Z to", "2026-10-09T12:08:00Z"])
+
+    def test_every_row_of_a_table_spans_the_columns_of_its_head(self):
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        # A fold is open among the lanes, and a count under the first post.
+        *_, opened = self.draw(answers, {"press": ".tog"}, {"press": ".tally"})
+        (lanes,) = classed(opened["report"], "lanes")
+        (titles,), body = (part["kids"] for part in lanes["kids"])
+        self.assertEqual(len(titles["kids"]), 4 + len(report["epochs"]) + 3)
+        self.assertEqual(len(body), len(report["lanes"]) + len(names) + 3)
+        for row in body:
+            self.assertEqual(spanned(row), len(titles["kids"]), row["attrs"]["data-key"])
+        # A fold has no account, name or sender: its counts start under the first epoch.
+        for name in names:
+            who, none, *_ = keyed(opened["report"], f"fold {name}")["kids"]
+            self.assertEqual((who["tag"], int(none["attrs"]["colspan"])), ("th", 3))
+        (posts,) = classed(opened["report"], "posts")
+        (over, titles), body = (part["kids"] for part in posts["kids"])
+        self.assertEqual((spanned(over), len(titles["kids"])), (4 + len(names), len(names)))
+        self.assertEqual(keys(opened), ["post 8f21", "who 8f21", f"post {LONG}", "post e3b9"])
+        self.assertEqual([spanned(row) for row in body], [4 + len(names)] * 4)
+
+    def test_a_fold_opens_to_the_lane_of_each_of_its_installations_and_closes_again(self):
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        closed, opened, again = self.draw(answers, {"press": ".tog"}, {"press": ".tog"})
+        (flat,) = self.draw(self.unfolded(answers))
+        under = report["folds"][0]["installations"]
+        for part, fold, lane in (("Installations", "fold", "lane"), ("Timeline", "span", "time")):
+            with self.subTest(part=part):
+                folds = [f"{fold} {name}" for name in names]
+                self.assertEqual(lines(closed, part), folds)
+                lanes = [f"{lane} {seat}" for seat in under]
+                self.assertEqual(lines(opened, part), [folds[0], *lanes, *folds[1:]])
+                self.assertEqual(lines(again, part), folds)
+                # An opened lane is the lane of the page that is not folded, node for node.
+                for seat in under:
+                    self.assertEqual(
+                        plain(keyed(opened["report"], f"{lane} {seat}")),
+                        plain(keyed(flat["report"], f"{lane} {seat}")),
+                    )
+        # One press opens the fold among the lanes and on the timeline, and the focus stays.
+        label = f"{names[0]}: 3 installations"
+        self.assertEqual((held_open(opened), held_open(again)), ((label, "true"), (label, "false")))
+        self.assertEqual(open_in(opened["report"]), names[:1] * 2)
+        self.assertEqual(plain(again["report"]), plain(closed["report"]))
+        # Pressed on the timeline, the fold opens in both, and the focus stays on the timeline.
+        _, there = self.draw(answers, {"press": ".tog", "nth": len(names)})
+        self.assertEqual(open_in(there["report"]), names[:1] * 2)
+        (held,) = [made for made in within(keyed(there["report"], "Timeline")) if "focused" in made]
+        self.assertEqual(held["attrs"]["data-unfolds"], names[0])
+
+    def test_a_folds_line_reaches_from_its_first_installation_at_a_state_to_its_last(self):
+        late = Log("kes", 12)
+        late.epoch("kes", 4, "A4", SIX)
+        self.served.put(*self.runs["kes"], logged(late))
+        answers = self.answers()
+        report, _, seats = self.read(answers)
+        (drawn,) = self.draw(answers)
+        start, end = report["timeline"]["start"], report["timeline"]["end"]
+        for fold in report["folds"]:
+            name, under = name_of(fold), [seats[seat] for seat in fold["installations"]]
+            with self.subTest(fold=name):
+                row = keyed(drawn["report"], f"span {name}")
+                wrote = [
+                    (step["epoch"], step["state"], seat["id"], step["at"]["seconds"])
+                    for seat in under
+                    for step in seat["history"]
+                    if step["kind"] == "epoch"
+                ]
+                bands = [made for made in within(row) if made["tag"] == "g"]
+                held = sorted({(epoch, state) for epoch, state, _, _ in wrote})
+                self.assertEqual(len(bands), len(held))
+                for band, (epoch, state) in zip(bands, held):
+                    stamps = [at for *place, _, at in wrote if place == [epoch, state]]
+                    holders = {seat for *place, seat, _ in wrote if place == [epoch, state]}
+                    label = band["attrs"]["aria-label"]
+                    self.assertTrue(label.startswith(f"{name}, epoch {epoch}, "), label)
+                    ends = f", {len(holders)} of {counted(len(under))}, "
+                    ends += f"from {utc(min(stamps))} to {utc(max(stamps))}"
+                    self.assertTrue(label.endswith(ends), label)
+                    (band_line,) = [made for made in band["kids"][1:] if made["tag"] == "line"]
+                    for edge, stamp in (("x1", min(stamps)), ("x2", max(stamps))):
+                        across = float(band_line["attrs"][edge].rstrip("%"))
+                        self.assertAlmostEqual(across, (stamp - start) / (end - start) * 100, 3)
+                # Of the posts, a fold's line marks those its installations sent, and no other.
+                sent = [
+                    f"{seat}, frame {post['frame']} from {seat}, sent, at {post['at']['time']}"
+                    for seat in fold["installations"]
+                    for post in report["messages"]
+                    if post["sender"] == seat
+                ]
+                marks = [made["attrs"] for made in classed(row, "post")]
+                self.assertEqual([mark["aria-label"] for mark in marks], sent)
+                self.assertEqual({mark["class"] for mark in marks} - {"post sent"}, set())
+                self.assertEqual(classed(row, "on") + classed(row, "off"), [])
+                self.assertEqual("no log shared" in words(row), not fold["logs"])
+        # Kes wrote the newest state again two hours after Raya and Saro did.
+        (newest,) = [
+            made["attrs"]["aria-label"]
+            for made in within(keyed(drawn["report"], "span Branch A, tip"))
+            if made["tag"] == "g" and ", epoch 4, " in made["attrs"]["aria-label"]
+        ]
+        self.assertTrue(
+            newest.endswith(
+                "3 of 3 installations, from 2026-10-08T10:00:05.000Z to 2026-10-08T12:00:01.000Z"
+            ),
+            newest,
+        )
+        # The timeline says what a line of several leaves out, and only where one is drawn.
+        (noted,) = classed(keyed(drawn["report"], "Timeline"), "quiet")
+        self.assertIn(" It leaves out the rest of what a line for each of them draws", words(noted))
+        (flat,) = self.draw(self.unfolded(answers))
+        self.assertEqual(classed(keyed(flat["report"], "Timeline"), "quiet"), [])
+
+    def test_a_band_says_how_many_of_its_fold_reached_its_state_between_its_two_ticks(self):
+        self.shares(torn_logs())
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        (drawn,) = self.draw(answers)
+        start, end = report["timeline"]["start"], report["timeline"]["end"]
+        fold = report["folds"][0]
+        held = [(cell["epoch"], each) for cell in fold["cells"] for each in cell["states"]]
+        # Of the three at the tip, one reached the other branch's state of the third epoch.
+        self.assertEqual((names[0], len(fold["installations"])), ("Branch A, tip", 3))
+        self.assertEqual(
+            [sorted(each["count"] for each in cell["states"]) for cell in fold["cells"]],
+            [[3], [3], [1, 3], [2, 3]],
+        )
+        self.assertTrue(any(each["first"] != each["last"] for _, each in held))
+        row = keyed(drawn["report"], f"span {names[0]}")
+        bands = [made for made in within(row) if made["tag"] == "g"]
+        self.assertEqual(len(bands), len(held))
+        for band, (epoch, each) in zip(bands, held):
+            with self.subTest(epoch=epoch, state=each["state"]):
+                title, _, first, last, *letter = band["kids"]
+                label = band["attrs"]["aria-label"]
+                self.assertEqual((band["attrs"]["role"], words(title)), ("img", label))
+                self.assertTrue(label.startswith(f"{names[0]}, epoch {epoch}, "), label)
+                ends = f", {each['count']} of 3 installations, "
+                ends += f"from {utc(each['first'])} to {utc(each['last'])}"
+                self.assertTrue(label.endswith(ends), label)
+                for tick, stamp in ((first, each["first"]), (last, each["last"])):
+                    across = float(tick["attrs"]["x"].rstrip("%"))
+                    self.assertEqual(tick["tag"], "rect")
+                    self.assertAlmostEqual(across, (stamp - start) / (end - start) * 100, 3)
+                # Off the shared line a band carries the letter of its branch.
+                branch = re.search(r", branch (\w), ", label)
+                self.assertEqual([words(made) for made in letter], [branch[1]] if branch else [])
+                self.assertEqual(branch is None, ", shared line, " in label)
+
+    def test_an_open_fold_leaves_the_posts_of_its_installations_to_their_own_lines(self):
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        closed, opened = self.draw(answers, {"press": ".tog"})
+        under = report["folds"][0]["installations"]
+        sent = [post for post in report["messages"] if post["sender"] in under]
+        self.assertEqual(len(sent), 2)
+        for state, marks in ((closed, 2), (opened, 0)):
+            line = keyed(state["report"], f"span {names[0]}")
+            self.assertEqual(len(classed(line, "post")), marks)
+        # A record has one mark on the timeline, whichever line draws it.
+        for state in (closed, opened):
+            said = [
+                made["attrs"]["aria-label"]
+                for made in within(keyed(state["report"], "Timeline"))
+                if "data-m" in made["attrs"]
+            ]
+            self.assertEqual(len(said), len(set(said)))
+            for post in sent:
+                of = f"{post['sender']}, frame {post['frame']} from {post['sender']}, sent, at "
+                self.assertEqual(len([each for each in said if each.startswith(of)]), 1)
+
+    def test_a_cell_of_a_post_counts_the_installations_of_a_fold_by_what_became_of_it(self):
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        (state,) = self.draw(answers)
+        self.assertEqual(keys(state), [f"post {post['frame']}" for post in report["messages"]])
+        seen = set()
+        for row, post in zip(rows(state), report["messages"]):
+            for fold, fates, cell in zip(report["folds"], post["folds"], row["kids"][4:]):
+                name = name_of(fold)
+                with self.subTest(frame=post["frame"], fold=name):
+                    (button,) = cell["kids"]
+                    became = Counter(post["cells"][seat] for seat in fold["installations"])
+                    causes = Counter(
+                        post["why"][seat] for seat in fold["installations"] if seat in post["why"]
+                    )
+                    self.assertEqual(sorted(fates["cells"]), sorted(became))
+                    why = [f"{causes[cause]} {cause}" for cause in sorted(causes)]
+                    said = [
+                        f"{became[fate]} {fate}" + (f" ({', '.join(why)})" if why else "")
+                        if fate == "unreadable"
+                        else f"{became[fate]} {fate}"
+                        for fate in fates["cells"]
+                    ]
+                    of = f"frame {post['frame']} from {post['sender']}, {name}"
+                    attrs = button["attrs"]
+                    self.assertEqual(attrs["aria-label"], f"{of}: {', '.join(said)}")
+                    self.assertEqual(
+                        (button["tag"], attrs["class"], attrs["aria-expanded"]),
+                        ("button", "tally", "false"),
+                    )
+                    self.assertEqual(len(button["kids"]), len(became))
+                    for fate, made in zip(fates["cells"], button["kids"]):
+                        cls, word = DRAWN[fate]
+                        self.assertEqual(made["attrs"]["class"], cls if word else "mk")
+                        drawn = f"{SIGNS.get(fate, '')}{became[fate]} {fate}"
+                        self.assertEqual(
+                            words(made), drawn + ("".join(why) if fate == "unreadable" else "")
+                        )
+                        seen.add(fate)
+        self.assertEqual(seen, set(DRAWN) - {"not a member"})
+
+    def test_a_count_opens_the_installations_it_stands_for_each_with_its_record(self):
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        # Who could not read Pax's post at the tip of the other branch: Raya and Saro.
+        post, fold = report["messages"][1], report["folds"][0]
+        fates = post["folds"][0]
+        self.assertEqual(fates, {"cells": {"unreadable": 2, "no record": 1}, "why": {"decrypt": 2}})
+        count = {"press": ".tally", "nth": len(names)}
+        mark = {"press": ".mk[data-m]", "nth": 1}
+        closed, opened, read, shut = self.draw(answers, count, mark, count)
+        self.assertEqual(keys(opened), ["post 8f21", f"post {LONG}", f"who {LONG}", "post e3b9"])
+        self.assertEqual(open_in(opened["report"]), [focused(opened)["data-unfolds"]])
+        ((under,),) = [each["kids"] for each in keyed(opened["report"], f"who {LONG}")["kids"]]
+        title, *parts = under["kids"]
+        self.assertEqual(words(title), f"{names[0]}, 3 installations")
+        said = []
+        for fate, chip, listed in zip(fates["cells"], parts[::2], parts[1::2]):
+            self.assertEqual(words(chip), f"{SIGNS.get(fate, '')}{fates['cells'][fate]} {fate}")
+            for item in listed["kids"]:
+                (made,) = item["kids"]
+                said.append((words(made), made["attrs"]["role"], made["attrs"]["aria-label"]))
+        of = f"frame {LONG} from {post['sender']}"
+        # Each installation of the fold once, under what became of the post on it.
+        expected = [
+            (
+                seat + post["why"].get(seat, ""),
+                "button" if seat in post["marks"] else "img",
+                ", ".join(filter(None, [seat, of, fate, post["why"].get(seat)])),
+            )
+            for fate in fates["cells"]
+            for seat in fold["installations"]
+            if post["cells"][seat] == fate
+        ]
+        self.assertEqual(said, expected)
+        self.assertEqual([role for _, role, _ in said], ["button", "button", "img"])
+        # The second of them opens the lines around its own record of the post.
+        second = [seat for seat in fold["installations"] if post["cells"][seat] == "unreadable"][1]
+        at = post["marks"][second]
+        self.assertEqual(read["asked"], [f"runs/{at['run']}/log?line={at['line']}"])
+        self.assertIn(f"line {at['line']}{second}, {of}, unreadable, decrypt", words(read["log"]))
+        self.assertEqual((keys(shut), shut["log"]), (keys(closed), None))
+
+    def test_what_a_reader_opened_stays_open_while_the_page_reads_on(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 12))
+        before = self.answers()
+        _, names, _ = self.read(before)
+        self.post(11, "5ac1")
+        self.post(12, "9d07")
+        after = {"answers": self.answers()}
+        count, lane, record = {"press": ".tally"}, {"press": ".tog"}, {"press": ".mk[data-m]"}
+        newest = "The newest 2 of 5 posts are drawn, here and on the timeline"
+        kept = [f"post {LONG}", f"who {LONG}", "post e3b9", "post 5ac1", "post 9d07"]
+        # The focus goes on to a fold among the lanes, or to the lines of a record, or stays.
+        for then in (lane, record, None):
+            with self.subTest(then=then):
+                steps = [count, then, after] if then else [count, after]
+                first, *_, opened, read = self.draw(before, *steps)
+                self.assertEqual(keys(first), [f"post {LONG}", "post e3b9"])
+                self.assertEqual(keys(opened), [f"post {LONG}", f"who {LONG}", "post e3b9"])
+                self.assertEqual(keys(read), kept)
+                self.assertEqual(
+                    fold(read)[0],
+                    f"{newest}, and the older ones back to the one that is open or has the focus.",
+                )
+                messages = keyed(read["report"], "Messages")
+                self.assertEqual(open_in(messages), [f"{LONG} under {names[0]}"])
+                self.assertEqual(
+                    plain(keyed(read["report"], f"who {LONG}")),
+                    plain(keyed(opened["report"], f"who {LONG}")),
+                )
+                self.assertEqual(lines(read, "Installations"), lines(opened, "Installations"))
+                self.assertEqual(len(lines(read, "Installations")), 7 if then == lane else 4)
+                if then == record:
+                    self.assertIn(f", frame {LONG} from ", words(opened["log"]))
+                    self.assertEqual(words(read["log"]), words(opened["log"]))
+                else:
+                    self.assertEqual((read["log"], opened["log"]), (None, None))
+                    self.assertEqual(held_open(read), held_open(opened))
+        # A press of the reader's own for the newest alone keeps none of it, and what is drawn
+        # no more is open no more when it is drawn again.
+        *_, whole, folded, again = self.draw(before, count, after, REST, REST, REST)
+        self.assertEqual(keys(whole), ["post 8f21", *kept])
+        self.assertEqual(keys(folded), ["post 5ac1", "post 9d07"])
+        self.assertEqual(keys(again), [key for key in keys(whole) if key != f"who {LONG}"])
+        self.assertEqual(open_in(again["report"]), [])
+
+    def test_the_arrow_keys_move_between_the_folds_and_their_lanes_and_two_keys_press_a_fold(self):
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        tip, behind = (fold["installations"] for fold in report["folds"][:2])
+        typed = [{"key": key} for key in ("ArrowDown", "ArrowUp", "Enter", "ArrowDown", " ", "End")]
+        states = self.draw(answers, {"press": ".tog"}, *typed)[1:]
+        opened, down, up, enter, onward, space, end = states
+        label, other = f"{names[0]}: 3 installations", f"{names[1]}: 1 installation"
+        self.assertEqual(held_open(opened), (label, "true"))
+        self.assertTrue(focused(down)["aria-label"].startswith(f"{tip[0]}, epoch 1, "))
+        self.assertEqual(focused(down)["role"], "button")
+        self.assertEqual(held_open(up), (label, "true"))
+        # Enter closes the fold, and the focus stays on its button.
+        self.assertEqual(held_open(enter), (label, "false"))
+        self.assertEqual(lines(enter, "Installations"), [f"fold {name}" for name in names])
+        self.assertEqual(held_open(onward), (other, "false"))
+        self.assertEqual(held_open(space), (other, "true"))
+        self.assertEqual(lines(space, "Installations")[2], f"lane {behind[0]}")
+        self.assertEqual(held_open(end), (other, "true"))
+        # Of what the arrow keys move between in a table, the Tab key stops at the one held.
+        for state in states:
+            for part in ("Installations", "Timeline", "Messages"):
+                stops = [
+                    made["attrs"].get("tabindex", "none" if "data-m" in made["attrs"] else "")
+                    for made in within(keyed(state["report"], part))
+                    if "data-m" in made["attrs"] or "data-unfolds" in made["attrs"]
+                ]
+                self.assertEqual(Counter(stops)["0"], 1, part)
+                self.assertEqual(set(stops) - {"0", "-1", "none"}, set(), part)
+        # A button outside a table is a stop of the Tab key as any button is.
+        apart = [made["attrs"] for made in classed(opened["report"], "btn")]
+        self.assertEqual([attrs.get("tabindex") for attrs in apart], [None] * 4)
+
+    def test_the_arrow_keys_move_between_the_counts_of_a_post_and_the_installations_under_it(self):
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        typed = ("ArrowRight", "Enter", "ArrowDown", "ArrowRight", "ArrowUp")
+        typed += ("ArrowDown", "ArrowDown", "ArrowUp")
+        states = self.draw(answers, {"press": ".tally"}, *({"key": key} for key in typed))[1:]
+        opened, right, enter, down, along, up, into, below, back = states
+        first, second = (f"8f21 under {name}" for name in names[:2])
+        held = [focused(state) for state in (opened, right, enter)]
+        self.assertEqual(
+            [(attrs["data-unfolds"], attrs["aria-expanded"]) for attrs in held],
+            [(first, "true"), (second, "false"), (second, "true")],
+        )
+        # Under the post stand the installations of both counts, as they are read.
+        under = [seat for fold in report["folds"][:2] for seat in fold["installations"]]
+        marked = [
+            made["attrs"]["aria-label"].split(",")[0]
+            for made in within(keyed(enter["report"], "who 8f21"))
+            if "data-m" in made["attrs"]
+        ]
+        self.assertEqual(sorted(marked), sorted(under))
+        self.assertEqual(focused(down)["aria-label"].split(",")[0], marked[0])
+        self.assertEqual(focused(along)["aria-label"].split(",")[0], marked[1])
+        self.assertEqual((focused(up)["class"], focused(up)["data-unfolds"]), ("tally", first))
+        # The installations are entered at the first of them from the post, and at the last of
+        # them from the post below.
+        self.assertEqual(focused(into)["aria-label"].split(",")[0], marked[0])
+        self.assertEqual(
+            (focused(below)["class"], focused(below)["data-unfolds"]),
+            ("tally", f"{LONG} under {names[0]}"),
+        )
+        self.assertEqual(focused(back)["aria-label"].split(",")[0], marked[-1])
+
+    def test_a_count_of_more_than_a_tile_names_gives_the_names_when_it_is_asked(self):
+        answers = self.answers()
+        report, _, _ = self.read(answers)
+        closed, opened, again = self.draw(answers, {"press": ".btn"}, {"press": ".btn"})
+        (flat,) = self.draw(self.unfolded(answers))
+        tip, behind = report["positions"][:2]
+        self.assertEqual((tip["position"], tip["count"], behind["count"]), ("tip", 4, 1))
+
+        def tile(state: dict, position: dict) -> List[str]:
+            tiles = keyed(state["report"], "Tiles")["kids"]
+            (made,) = [each for each in tiles if words(each["kids"][0]) == position["position"]]
+            return [words(kid) for kid in made["kids"][3:]]
+
+        names = ", ".join(tip["installations"])
+        for state, under in ((closed, []), (opened, [f"tip {names}"]), (again, [])):
+            self.assertEqual(tile(state, tip), ["Names of all 4"])
+            self.assertEqual([words(made) for made in classed(state["report"], "named")], under)
+        held = focused(opened)
+        self.assertEqual(
+            (held["aria-label"], held["aria-expanded"]), ("Names of all 4 that are tip", "true")
+        )
+        self.assertEqual(focused(again)["aria-expanded"], "false")
+        # A tile of no more than it names is as on a page that is not folded.
+        for state in (closed, opened, flat):
+            self.assertEqual(tile(state, behind), [", ".join(behind["installations"])])
+        self.assertEqual(tile(flat, tip), [])
+
+    def test_a_roster_of_more_than_a_tile_names_is_a_count_and_its_chips_when_they_are_asked(self):
+        answers = self.answers()
+        report, _, _ = self.read(answers)
+        (flat,) = self.draw(self.unfolded(answers))
+        closed, opened = self.draw(answers, {"press": ".btn", "nth": 1})
+        a, b = report["branches"]
+        self.assertEqual((len(a["installations"]), len(b["installations"])), (4, 1))
+        card = keyed(closed["report"], "state A")
+        counts = classed(card, "count")
+        self.assertEqual(
+            [words(made) for made in counts],
+            ["4 installationsNames of all 4", "6 installationsNames of all 6"],
+        )
+        self.assertEqual(
+            [made["attrs"]["aria-label"] for made in unfolding(card)],
+            ["Names of all 4 on branch A", "Names of all 6 in the roster of branch A"],
+        )
+        self.assertEqual(classed(card, "roster"), [])
+        # Asked, the chips of those on the branch are the ones a page that is not folded draws.
+        (asked,) = classed(keyed(opened["report"], "state A"), "roster")
+        on_it, _ = classed(keyed(flat["report"], "state A"), "roster")
+        self.assertEqual((asked, len(asked["kids"])), (on_it, 4))
+        self.assertEqual(held_open(opened), ("Names of all 4 on branch A", "true"))
+        # The one installation on the other branch is named as it stands.
+        for state in (closed, flat):
+            on_it, *_ = classed(keyed(state["report"], "state B"), "roster")
+            (chip,) = on_it["kids"]
+            self.assertEqual(words(chip), f"{b['installations'][0]}tip, on B")
+
+    def test_a_post_stays_drawn_while_the_focus_is_in_its_row(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 12))
+        before = self.answers()
+        _, names, _ = self.read(before)
+        self.post(11, "5ac1")
+        self.post(12, "9d07")
+        # A count of the older post is opened and closed again: the focus is on it, and no more.
+        count = {"press": ".tally"}
+        first, _, closed, read = self.draw(before, count, count, {"answers": self.answers()})
+        self.assertEqual(keys(first), [f"post {LONG}", "post e3b9"])
+        self.assertEqual((keys(closed), open_in(closed["report"])), (keys(first), []))
+        self.assertEqual(keys(read), [f"post {LONG}", "post e3b9", "post 5ac1", "post 9d07"])
+        self.assertEqual(focused(read)["data-unfolds"], f"{LONG} under {names[0]}")
+        self.assertEqual(focused(read)["aria-expanded"], "false")
+        self.assertIn("back to the one that is open or has the focus.", fold(read)[0])
+
+    def test_an_arrow_key_brings_the_cell_it_moves_the_focus_to_into_sight(self):
+        answers = self.answers()
+        pressed, right, down = self.draw(
+            answers, {"press": ".tally"}, {"key": "ArrowRight"}, {"key": "ArrowDown"}
+        )[1:]
+        # A press leaves the box where it is: what is pressed is in sight.
+        self.assertEqual(pressed["reached"], [])
+        # A cell is brought no further than into sight, down its box and across it.
+        nearest = {"block": "nearest", "inline": "nearest"}
+        for state in (right, down):
+            self.assertEqual(state["reached"], [[focused(state)["aria-label"], nearest]])
+        self.assertNotEqual(right["reached"], down["reached"])
+
+    def test_a_press_leaves_each_table_the_stop_of_the_tab_key_it_had(self):
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        # A count of the second post is opened and the focus goes down to the installation
+        # under it. Then the second fold is pressed on the timeline, and the names of a tile.
+        count = {"press": ".tally", "nth": len(names) + 1}
+        line = {"press": ".tog", "nth": len(names) + 1}
+        counted_at, under, lined_at, named = self.draw(
+            answers, count, {"key": "ArrowDown"}, line, {"press": ".btn"}
+        )[1:]
+        tomo = report["folds"][1]["installations"][0]
+        mark = f"{tomo}, frame {LONG} from {report['messages'][1]['sender']}, unreadable, sender"
+        self.assertEqual(
+            stop_in(counted_at, "Messages")["data-unfolds"], f"{LONG} under {names[1]}"
+        )
+        self.assertEqual(focused(under)["aria-label"], mark)
+        self.assertEqual(open_in(named["report"])[0], "that are tip")
+        for state in (under, lined_at, named):
+            self.assertEqual(stop_in(state, "Messages")["aria-label"], mark)
+        # A pressed fold is the stop of its own table, and the fold in the other table is not.
+        first, second = (
+            f"{name}: {counted(len(fold['installations']))}"
+            for name, fold in zip(names, report["folds"][:2])
+        )
+        for state in (lined_at, named):
+            self.assertEqual(stop_in(state, "Timeline")["aria-label"], second)
+            self.assertEqual(stop_in(state, "Installations")["aria-label"], first)
+        self.assertEqual(stop_in(under, "Timeline")["aria-label"], first)
+        # A press that takes no focus gives none to a stop it leaves where it was.
+        (unfocused,) = self.draw(answers, {"press": ".mk.sent"})[1:]
+        self.assertEqual(open_in(unfocused["report"]), [f"8f21 under {names[0]}"])
+        self.assertEqual([made for made in within(unfocused["report"]) if "focused" in made], [])
+
+    def test_the_button_of_the_messages_leaves_each_table_the_stop_of_the_tab_key_it_had(self):
+        self.enter(mock.patch("forks.rule.SHOWN_CELLS", 12))
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        # The second fold is pressed among the installations, the third on the timeline and a
+        # count of the newest post. Then every post is asked for, and the newest two again.
+        lane = {"press": ".tog", "nth": 1}
+        line = {"press": ".tog", "nth": len(names) + 2}
+        count = {"press": ".tally", "nth": len(names) + 1}
+        whole, newest = self.draw(answers, lane, line, count, REST, REST)[4:]
+        self.assertEqual(
+            (fold(whole)[1], fold(newest)[1]), ("Draw the newest 2 only", "Draw all 3")
+        )
+        second, third = (
+            f"{name}: {counted(len(under['installations']))}"
+            for name, under in zip(names[1:3], report["folds"][1:3])
+        )
+        for state in (whole, newest):
+            self.assertEqual(stop_in(state, "Installations")["aria-label"], second)
+            self.assertEqual(stop_in(state, "Timeline")["aria-label"], third)
+            self.assertEqual(stop_in(state, "Messages")["data-unfolds"], f"e3b9 under {names[1]}")
+
+    def test_names_that_were_asked_of_a_tile_stand_under_the_tiles_and_move_none(self):
+        closed, opened, again = self.draw(self.answers(), {"press": ".btn"}, {"press": ".btn"})
+
+        def tiles(state: dict) -> List[Tuple[str, str]]:
+            made = keyed(state["report"], "Tiles")["kids"]
+            return [(words(tile), tile["attrs"]["class"]) for tile in made]
+
+        self.assertEqual({cls for _, cls in tiles(closed)}, {"tile"})
+        self.assertEqual((tiles(opened), tiles(again)), (tiles(closed), tiles(closed)))
+        # The tiles and the names under them are one part of the report, in that order.
+        (under,) = classed(opened["report"], "tiled")
+        self.assertEqual([kid["attrs"]["class"] for kid in under["kids"]], ["tiles", "named"])
+        self.assertIn(under, opened["report"]["kids"])
+        for state in (closed, again):
+            self.assertEqual(classed(state["report"], "tiled"), [])
+            self.assertIn(keyed(state["report"], "Tiles"), state["report"]["kids"])
+
+    def test_names_that_were_asked_of_two_tiles_stand_on_a_line_each(self):
+        # Four at the tip and four an epoch behind them, of a roster of eight.
+        eight = f"{SIX} saro-2 raya-2".split()
+        logs = {name: member(name, 3 if name in eight[:4] else 2, " ".join(eight)) for name in eight}
+        self.shares(logs)
+        answers = self.answers()
+        report, _, _ = self.read(answers)
+        tip, behind = report["positions"][:2]
+        self.assertEqual((tip["count"], behind["position"], behind["count"]), (4, "behind", 4))
+        one, both = self.draw(answers, {"press": ".btn", "nth": 1}, {"press": ".btn"})[1:]
+        said = [f"{at['position']} {', '.join(at['installations'])}" for at in (tip, behind)]
+        self.assertEqual([words(made) for made in classed(one["report"], "named")], said[1:])
+        self.assertEqual([words(made) for made in classed(both["report"], "named")], said)
+
+    def test_names_that_were_asked_of_a_tile_go_once_the_page_is_folded_no_more(self):
+        answers = self.answers()
+        steps = {"press": ".btn"}, {"answers": self.unfolded(answers)}
+        opened, flat = self.draw(answers, *steps)[1:]
+        self.assertEqual(len(classed(opened["report"], "named")), 1)
+        self.assertEqual(classed(flat["report"], "named"), [])
+
+    def test_what_was_opened_is_not_put_back_over_another_conversation_that_was_drawn(self):
+        answers = self.answers()
+        report = json.loads(answers[f"conversations/{CONVO}"]["text"])
+        listing = json.loads(answers["conversations"]["text"])
+        # The other conversation is drawn, and the list beside it then cannot be searched.
+        bent = {
+            "conversations": {"status": 200, "text": json.dumps(dict(listing, conversations=""))},
+            "conversations/other": {"status": 200, "text": json.dumps(dict(report, id="other"))},
+        }
+        steps = {"press": ".tog"}, {"answers": bent}, {"hash": "#other"}, {"press": ".btn"}
+        opened, _, other, named = self.draw(answers, *steps)[1:]
+        self.assertEqual(len(open_in(opened["report"])), 2)
+        self.assertTrue(other["notice"].startswith("The answer at this address is not one"))
+        self.assertEqual(open_in(named["report"]), ["that are tip"])
+
+    def test_three_installations_are_named_where_they_stand_and_no_button_asks_for_them(self):
+        # Three at the tip of one line, whose roster lists Mira as well.
+        four = "saro raya pax mira"
+        self.shares({name: member(name, 2, four) for name in four.split()[:3]})
+        answers = self.answers()
+        report, _, _ = self.read(answers)
+        (tip,) = report["positions"][:1]
+        self.assertEqual((report["folded"], tip["position"], tip["count"]), (True, "tip", 3))
+        (state,) = self.draw(answers)
+        (tile,) = [
+            made
+            for made in keyed(state["report"], "Tiles")["kids"]
+            if words(made["kids"][0]) == "tip"
+        ]
+        self.assertEqual(
+            (tile["attrs"]["class"], [words(kid) for kid in tile["kids"][3:]]),
+            ("tile", [", ".join(tip["installations"])]),
+        )
+        (card,) = classed(state["report"], "state")
+        (on_it,) = classed(card, "roster")
+        self.assertEqual(len(on_it["kids"]), 3)
+        # The roster of four is the one count the page gives the names of when asked.
+        (asks,) = classed(state["report"], "btn")
+        self.assertTrue(asks["attrs"]["aria-label"].startswith("Names of all 4 in the roster of"))
+
+    def test_the_caption_of_a_part_says_what_a_row_of_it_stands_for(self):
+        answers = self.answers()
+        (state,) = self.draw(answers)
+        (flat,) = self.draw(self.unfolded(answers))
+        captions = {
+            "Installations": (
+                "a row is the installations of one position, ",
+                "a row is an installation, ",
+            ),
+            "Timeline": ("a line is the installations of one position: ", "a line is a run, "),
+            "Messages": (
+                "a row is a post, a column the installations of one position, ",
+                "a row is a post, a column an installation, ",
+            ),
+        }
+        for part, starts in captions.items():
+            for drawn, start in zip((state, flat), starts):
+                (head,) = classed(keyed(drawn["report"], part), "sechead")
+                self.assertTrue(words(head["kids"][1]).startswith(start), words(head))
+
+    def test_another_conversation_starts_with_nothing_open(self):
+        # The same group twice: the folds of the two conversations go by the same names.
+        other = f"{CONVO}b"
+        for name, log in crowd_logs("b").items():
+            self.served.share(log, name)
+        answers = self.answers()
+        _, names, _ = self.read(answers)
+        said = self.served.get(f"/conversations/{other}")
+        answers[f"conversations/{other}"] = {"status": said.status, "text": said.body.decode()}
+        self.assertEqual([name_of(each) for each in said.said["folds"]], names)
+        count = {"press": ".tally"}
+        there, back = ({"hash": f"#{convo}"} for convo in (other, CONVO))
+        opened, elsewhere, again = self.draw(answers, {"press": ".tog"}, count, there, back)[2:]
+        self.assertEqual(open_in(opened["report"]), [names[0], names[0], f"8f21 under {names[0]}"])
+        for state, convo in ((elsewhere, other), (again, CONVO)):
+            (title,) = [made for made in within(state["report"]) if made["tag"] == "h1"]
+            self.assertEqual(words(title), convo)
+            self.assertEqual(open_in(state["report"]), [])
+            self.assertEqual(lines(state, "Installations"), [f"fold {name}" for name in names])
+
+    def test_what_a_reader_opened_stays_open_while_another_conversation_is_not_drawn(self):
+        answers = self.answers()
+        _, names, _ = self.read(answers)
+        press = {"press": ".tog"}
+        there, back = {"hash": "#another"}, {"hash": f"#{CONVO}"}
+        # Back before the other conversation is answered, and back from one that cannot be drawn.
+        for name, steps in (("asked", ([there, back],)), ("misshapen", (there, back))):
+            with self.subTest(name):
+                given = {**answers, "conversations/another": {"status": 200, "text": "{}"}}
+                opened, *between, closed = self.draw(given, press, *steps, press)[1:]
+                for state in (opened, *between):
+                    self.assertEqual(open_in(state["report"]), [names[0]] * 2)
+                self.assertEqual(open_in(closed["report"]), [])
+
+    def test_what_a_reader_opened_is_forgotten_once_the_list_was_drawn(self):
+        answers = self.answers()
+        _, names, _ = self.read(answers)
+        steps = {"press": ".tog"}, {"hash": "#"}, {"hash": f"#{CONVO}"}
+        opened, listed, back = self.draw(answers, *steps)[1:]
+        self.assertEqual(open_in(opened["report"]), [names[0]] * 2)
+        self.assertEqual((open_in(listed["report"]), open_in(back["report"])), ([], []))
+
+    def test_a_fold_stays_where_it_stood_in_the_window_when_it_is_pressed(self):
+        # The window is at the installations, under the line of when the group was heard from.
+        reach = {"reach": '[data-key="Installations"]'}
+        _, reached, opened = self.draw(self.answers(), reach, {"press": ".tog"})
+        (line,) = [made for made in within(opened["report"]) if "data-heard" in made["attrs"]]
+        self.assertTrue(words(line).startswith("Last heard from "))
+        self.assertEqual(len(open_in(opened["report"])), 2)
+        self.assertGreater(reached["window"], 0)
+        self.assertEqual(opened["window"], reached["window"])
+
+    def test_a_press_draws_anew_only_the_parts_it_changes(self):
+        answers = self.answers()
+        _, names, _ = self.read(answers)
+        steps = {"press": ".tog"}, {"press": ".btn"}, {"press": ".tally"}, {"press": ".tog"}
+        lanes, named, count, closed = self.draw(answers, *steps)[1:]
+        # Each of the three parts that grow with the group stands unless the press changes it:
+        # a fold the lanes and the timeline, the names of a tile none, a count the messages.
+        for state, stand in (
+            (lanes, ["Messages"]),
+            (named, ["Installations", "Timeline", "Messages"]),
+            (count, ["Installations", "Timeline"]),
+            (closed, ["Messages"]),
+        ):
+            stood = sum(size(keyed(state["report"], part)) for part in stand)
+            # The rest is made anew, but for the report itself.
+            self.assertEqual(state["made"], size(state["report"]) - 1 - stood)
+        self.assertGreater(size(keyed(named["report"], "Installations")), 100)
+
+    def test_a_mark_under_a_count_opens_its_own_record_after_a_fold_is_opened_above_it(self):
+        answers = self.answers()
+        report, names, _ = self.read(answers)
+        post, fold = report["messages"][1], report["folds"][0]
+        count = {"press": ".tally", "nth": len(names)}
+        lane = {"press": ".tog"}
+        mark = {"press": ".mk[data-m]", "nth": 1}
+        second = [seat for seat in fold["installations"] if post["cells"][seat] == "unreadable"][1]
+        at = post["marks"][second]
+        # The fold's lanes and lines put their marks before those of the messages, and take
+        # them away again.
+        for steps in ([count, lane, mark], [lane, count, lane, mark]):
+            with self.subTest(steps=len(steps)):
+                *_, before, read = self.draw(answers, *steps)
+                opened = len(steps) == 3
+                self.assertEqual(len(lines(before, "Installations")), len(names) + 3 * opened)
+                self.assertEqual(read["asked"], [f"runs/{at['run']}/log?line={at['line']}"])
+                said = f"line {at['line']}{second}, frame {LONG} from {post['sender']}, unreadable"
+                self.assertIn(said, words(read["log"]))
+
+    def test_the_log_lines_of_an_installation_stay_open_when_it_moves_to_a_closed_fold(self):
+        before = self.answers()
+        report, names, _ = self.read(before)
+        (tomo,) = report["folds"][1]["installations"]
+        # Tomo's fold is open and the lines around his first record are read as he catches up.
+        late = Log("tomo", 12)
+        late.epoch("tomo", 4, "A4", SIX)
+        self.served.put(*self.runs["tomo"], logged(late))
+        after = self.answers()
+        moved, there, _ = self.read(after)
+        self.assertEqual(
+            (names[1], there[:2]), ("Branch A, behind", ["Branch A, tip", "Branch B, tip"])
+        )
+        self.assertIn(tomo, moved["folds"][0]["installations"])
+        steps = {"press": ".tog", "nth": 1}, {"press": ".cell[data-m]"}, {"answers": after}
+        opened, read = self.draw(before, *steps)[2:]
+        self.assertIn(f"{tomo}, epoch 1, shared line, state ", words(opened["log"]))
+        self.assertEqual(open_in(opened["report"]), [names[1]] * 2)
+        # His new fold is opened for him: the lines stay, and the focus on their button.
+        self.assertEqual(read["log"], opened["log"])
+        self.assertEqual(open_in(read["report"]), [there[0]] * 2)
+        self.assertIn(f"lane {tomo}", lines(read, "Installations"))
+        held = stop_in(read, "Installations")["aria-label"]
+        self.assertTrue(held.startswith(f"{tomo}, epoch 1, "), held)
+
+    def test_the_log_lines_of_a_post_stay_open_when_the_page_turns_folded(self):
+        # Three installations are no more than are in sight. Raya's record of Saro's post is
+        # read as Saro goes on to a roster that lists a fourth.
+        logs = {name: member(name, 2, "saro raya pax") for name in ("saro", "raya")}
+        logs["saro"].sent("saro", "8f21", 2)
+        logs["raya"].received("raya", "8f21", "saro", 2)
+        self.shares(logs)
+        before = self.answers()
+        ahead = Log("saro", 12)
+        ahead.epoch("saro", 3, "X3", "saro raya pax mira")
+        self.served.put(*self.runs["saro"], logged(ahead))
+        after = self.answers()
+        (plain_report, _, _), (report, names, _) = self.read(before), self.read(after)
+        self.assertEqual((plain_report["folded"], report["folded"]), (False, True))
+        post = plain_report["messages"][0]
+        (raya,) = [seat for seat in post["marks"] if seat != post["sender"]]
+        order = [seat for lane in plain_report["lanes"] for seat in lane["installations"]]
+        marked = [seat for seat in order if seat in post["marks"]]
+        cell = {"press": ".mk[data-m]", "nth": marked.index(raya)}
+        first, opened, read = self.draw(before, cell, {"answers": after})
+        self.assertEqual((unfolding(first["report"]), keys(first)), ([], ["post 8f21"]))
+        self.assertIn(f"{raya}, frame 8f21 from ", words(opened["log"]))
+        # The count that stands for her record is opened under the post: the lines stay.
+        self.assertEqual(read["log"], opened["log"])
+        self.assertEqual(keys(read), ["post 8f21", "who 8f21"])
+        (hers,) = [
+            name for name, fold in zip(names, report["folds"]) if raya in fold["installations"]
+        ]
+        self.assertEqual(open_in(read["report"]), [f"8f21 under {hers}"])
+        self.assertTrue(stop_in(read, "Messages")["aria-label"].startswith(f"{raya}, frame 8f21"))
+        # Her mark of the post pressed on the timeline: her fold is opened, and her line holds it.
+        opened, read = self.draw(before, {"press": ".post.read[data-m]"}, {"answers": after})[1:]
+        self.assertIn(f"{raya}, frame 8f21 from ", words(opened["log"]))
+        self.assertEqual(read["log"], opened["log"])
+        self.assertEqual(open_in(read["report"]), [hers] * 2)
+        self.assertIn(f"time {raya}", lines(read, "Timeline"))
+        self.assertTrue(stop_in(read, "Timeline")["aria-label"].startswith(f"{raya}, frame 8f21"))
 
 
 class Gained(Collecting):

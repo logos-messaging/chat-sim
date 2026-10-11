@@ -96,6 +96,15 @@
   let excerpt = null;
   /* The conversation whose every post the reader asked for. */
   let whole = null;
+  /* The conversation that is drawn, as the collector told it. */
+  let told = null;
+  /* What a reader opened, by the names its buttons keep from one drawing to the next: a fold's
+     lanes, a post's installations under a fold, the installations behind a count. */
+  const unfolded = new Set();
+  /* The parts of a folded conversation that grow with its group, as they stand drawn. */
+  let parts = new Map();
+  /* What the arrow keys move between: a mark that opens log lines, and a button that unfolds. */
+  const STOPS = '[data-m], [data-unfolds]';
 
   function el(tag, cls, text) {
     const made = document.createElement(tag);
@@ -207,9 +216,12 @@
     if (mine !== turn) return;
     /* Something that has no list of conversations is not the collector. */
     if (sayWhy(listing.gone ? { silent: true } : listing) || (convo && sayWhy(convo))) return;
-    /* Every post is asked of the conversation that is drawn, until another is drawn in its place. */
-    const asked = whole;
-    if (drawn.report.view !== id) whole = null;
+    /* What a reader opened is of the conversation that is drawn, until another is drawn in its place. */
+    const asked = [whole, [...unfolded]];
+    if (drawn.report.view !== id) {
+      whole = null;
+      unfolded.clear();
+    }
     try {
       redraw(rail, 'rail', id, listing.text, () => railOf(listing.said, id));
       if (id === null) {
@@ -222,7 +234,10 @@
       }
     } catch (shaped) {
       /* JSON of another shape than the collector's: what is drawn stays as it was. */
-      if (drawn.report.view !== id) whole = asked;
+      if (drawn.report.view !== id) {
+        [whole] = asked;
+        for (const key of asked[1]) unfolded.add(key);
+      }
       sayWhy({ unreadable: true });
       return;
     }
@@ -249,7 +264,9 @@
     const made = build();
     /* A focused element that leaves the document leaves the Tab key going on from where it stood. */
     if (container.contains(document.activeElement)) document.activeElement.blur();
-    container.replaceChildren(...made);
+    /* A part that stands as it was drawn stays where it is, and is not laid out again. */
+    if (made.length === container.children.length && made.some((each) => each.parentNode === container)) [...container.children].forEach((child, index) => child === made[index] || child.replaceWith(made[index]));
+    else container.replaceChildren(...made);
     drawn[name] = { view, text };
     container.querySelectorAll('.scroll').forEach((box, index) => {
       if (stays && scrolled[index]) settle(box, ...scrolled[index]);
@@ -257,7 +274,7 @@
       else if (box.hasAttribute('data-newest')) box.scrollTo(box.scrollWidth, 0);
     });
     for (const group of container.querySelectorAll('[data-roving]')) {
-      const first = group.querySelector('[data-m]');
+      const first = group.querySelector(STOPS);
       if (first) hold(first);
     }
     if (place) {
@@ -333,11 +350,15 @@
   function again(container, held, record, focus = true) {
     const place = held.getAttribute('href');
     const name = held.getAttribute('aria-label');
+    const key = held.getAttribute('data-unfolds');
+    /* The lanes and the timeline each have a button for a fold: the one in the same row is it. */
+    const row = (made) => made.closest('[data-key]').getAttribute('data-key');
     let same;
     if (record) same = markOfRecord(container, record);
     else if (place !== null) same = [...container.querySelectorAll('a')].find((made) => made.getAttribute('href') === place);
-    else same = [...container.querySelectorAll('[tabindex], button')].find((made) => made.tagName === held.tagName && made.getAttribute('aria-label') === name);
-    if (same && record) hold(same);
+    else if (key !== null) same = [...container.querySelectorAll('[data-unfolds]')].find((made) => made.getAttribute('data-unfolds') === key && row(made) === row(held));
+    else same = [...container.querySelectorAll('[tabindex], button')].find((made) => made.tagName === held.tagName && made.getAttribute('aria-label') === name && !made.hasAttribute('data-unfolds'));
+    if (same && (record || (key !== null && same.closest('[data-roving]')))) hold(same);
     if (same && focus) same.focus({ preventScroll: true });
   }
 
@@ -358,7 +379,9 @@
   function hold(mark) {
     const group = mark.closest('[data-roving]');
     const was = stops.get(group);
-    if (was && was !== mark) was.removeAttribute('tabindex');
+    /* A button is a stop of the Tab key unless it says otherwise. */
+    if (was && was !== mark && was.hasAttribute('data-unfolds')) was.setAttribute('tabindex', '-1');
+    else if (was && was !== mark) was.removeAttribute('tabindex');
     mark.setAttribute('tabindex', '0');
     stops.set(group, mark);
   }
@@ -501,7 +524,13 @@
       posts,
       fold,
       marks: [],
+      /* The rows the installations fold into, where the collector says the page starts so. */
+      folds: convo.folded ? convo.folds : null,
+      unfolds: new Set(),
+      parts: new Map(),
     };
+    /* The posts a part draws, where it draws any. */
+    const ofPosts = `${posts.length} ${fold}`;
     const back = el('a', 'sub', 'All conversations');
     back.setAttribute('href', '#');
     /* The line is drawn as the list last filled it: empty, it would take no room until it is
@@ -515,16 +544,64 @@
       verdict(convo),
       tiles(convo, at),
       section('Lineage of states', 'a circle is a state and holds how many installations reported it, a line is a link a log proves', lineage(convo, at)),
-      section('Installations', 'a row is an installation, a column an epoch, a cell the state it reported there', ...lanes(convo, at)),
-      section('Timeline', 'a line is a run, a mark where its installation reached an epoch with the letter of its branch, dots where its delivery was not online; times are UTC', ...timeline(convo, at)),
-      section('Messages', 'a row is a post, a column an installation, a cell what became of the post there', ...messages(convo, at)),
+      asDrawn('Installations', '', convo, at, () => section('Installations', at.folds ? 'a row is the installations of one position, a column an epoch, a cell how many of them reported a state there; a row opens to a row for each' : 'a row is an installation, a column an epoch, a cell the state it reported there', ...lanes(convo, at))),
+      asDrawn('Timeline', ofPosts, convo, at, () => section('Timeline', at.folds ? 'a line is the installations of one position: a band from the first to the last of them reaching an epoch, with the letter of its branch; times are UTC' : 'a line is a run, a mark where its installation reached an epoch with the letter of its branch, dots where its delivery was not online; times are UTC', ...timeline(convo, at))),
+      asDrawn('Messages', ofPosts, convo, at, () => section('Messages', at.folds ? 'a row is a post, a column the installations of one position, a cell how many of them each thing became of the post on' : 'a row is a post, a column an installation, a cell what became of the post there', ...messages(convo, at))),
       section(split ? 'The state each branch holds' : 'The state the group holds', 'the newest state of each branch, and whom its roster lists', holds(convo, at)),
       ...linesOf(convo.lines),
     ];
+    /* While the page reads on, the record whose log lines are open stays drawn: where no row
+       that is open holds it now, the fold of its installation is opened for it, among the
+       lanes or under its post, and the conversation is drawn with that. */
+    const sought = at.folds && excerpt && convo !== told ? excerpt.record : null;
+    const lost = sought && !at.marks.some((mark) => mark.section === sought.section && mark.run === sought.run && mark.line === sought.line) ? holderOf(convo, sought) : null;
+    if (lost && !unfolded.has(lost)) {
+      unfolded.add(lost);
+      return conversation(convo, pressed);
+    }
+    for (const { made: stands, by } of at.parts.values()) {
+      if (by) for (const mark of stands.querySelectorAll('[data-m]')) mark.setAttribute('data-m', Number(mark.getAttribute('data-m')) + by);
+    }
     /* Kept once the whole is drawn: a drawing that fails leaves the marks of the one before. */
+    parts = at.parts;
     marks = at.marks;
     runs = at.runs;
+    told = convo;
+    /* What is drawn no more is open no more. */
+    for (const key of [...unfolded]) if (!at.unfolds.has(key)) unfolded.delete(key);
     return made;
+  }
+
+  /* A part of a conversation that grows with its group. On a folded page a press draws anew
+     only the parts it changes: one stands while each of its buttons says what is open and it
+     draws the same posts, and its marks are numbered on from those now before it. */
+  function asDrawn(name, shows, convo, at, build) {
+    const from = at.marks.length;
+    const was = convo === told ? parts.get(name) : undefined;
+    const buttons = was ? [...was.made.querySelectorAll('[data-unfolds]')] : [];
+    const key = (button) => button.getAttribute('data-unfolds');
+    if (was && was.shows === shows && buttons.every((button) => button.getAttribute('aria-expanded') === String(unfolded.has(key(button))))) {
+      for (const mark of was.marks) at.marks.push(mark);
+      for (const button of buttons) at.unfolds.add(key(button));
+      at.parts.set(name, { made: was.made, shows, from, marks: was.marks, by: from - was.from });
+      return was.made;
+    }
+    const made = build();
+    if (at.folds) at.parts.set(name, { made, shows, from, marks: at.marks.slice(from) });
+    return made;
+  }
+
+  /* What a reader opens on a folded page to have a record drawn: the fold of the installation
+     that wrote it, and for a record a count of the messages stands for, that count. */
+  function holderOf(convo, record) {
+    const wrote = (at) => at.run === record.run && at.line === record.line;
+    const message = convo.messages.find((each) => Object.values(each.marks).some(wrote));
+    const seat = message
+      ? Object.keys(message.marks).find((id) => wrote(message.marks[id]))
+      : (convo.installations.find((each) => each.history.some((step) => wrote(step.at))) || {}).id;
+    const fold = convo.folds.find((each) => each.installations.includes(seat));
+    if (!fold) return null;
+    return record.section === 'messages' ? countName(message, fold) : foldName(fold);
   }
 
   function section(name, gloss, ...inside) {
@@ -555,16 +632,57 @@
       const labels = convo.branches.map((branch) => branch.label);
       made.append(tile('Branches', labels.length, `the first epoch with two states is ${convo.split_epoch}`, labels));
     }
+    const asked = [];
     for (const { position, count, installations } of convo.positions) {
-      made.append(tile(position, count, (POSITIONS.get(position) || { gloss: '' }).gloss, count > NAMED ? [] : installations));
+      /* Folded, a count of more than a tile names says who they are when it is asked. */
+      const of = `that are ${position}`;
+      const asks = at.folds && count > NAMED ? names(count, of, at) : null;
+      made.append(tile(position, count, (POSITIONS.get(position) || { gloss: '' }).gloss, count > NAMED ? [] : installations, asks));
+      if (asks && unfolded.has(of)) asked.push(into(el('p', 'named'), el('b', '', position), ` ${installations.join(', ')}`));
     }
+    /* Names that were asked for stand under the tiles, on lines as wide as their row: no tile
+       moves, and the button that asked for them stays where it is. */
+    return asked.length ? into(el('div', 'tiled'), made, ...asked) : made;
+  }
+
+  function tile(name, value, gloss, who = [], asks = null) {
+    const made = into(el('div', 'tile'), el('dt', '', name), el('dd', 'v', value), el('dd', 'd', gloss));
+    if (asks) made.append(into(el('dd', 'asks'), asks));
+    if (who.length) made.append(el('dd', 'who', who.join(', ')));
     return made;
   }
 
-  function tile(name, value, gloss, who = []) {
-    const made = into(el('div', 'tile'), el('dt', '', name), el('dd', 'v', value), el('dd', 'd', gloss));
-    if (who.length) made.append(el('dd', 'who', who.join(', ')));
+  /* The heading a group of installations is read under. */
+  const headed = (group) => (group.under === 'branch' ? `Branch ${group.branch}` : HEADINGS.get(group.under) || group.under);
+  /* The name a fold keeps from one drawing to the next: its heading and its position. */
+  const foldName = (fold) => `${headed(fold)}, ${fold.position}`;
+  /* The name a post's count under a fold keeps. */
+  const countName = (message, fold) => `${message.frame} under ${foldName(fold)}`;
+  const counted = (count) => (count === 1 ? '1 installation' : `${count} installations`);
+
+  /* A button that opens what stands under a name and closes it again, and says which of the
+     two a press will do. Among the cells the arrow keys move between it is one of them, and a
+     stop of the Tab key only while it is the one held. */
+  function unfolds(cls, key, name, at, roving = false) {
+    const made = el('button', cls);
+    made.setAttribute('type', 'button');
+    made.setAttribute('aria-expanded', unfolded.has(key));
+    made.setAttribute('aria-label', name);
+    made.setAttribute('data-unfolds', key);
+    if (roving) made.setAttribute('tabindex', '-1');
+    at.unfolds.add(key);
     return made;
+  }
+
+  /* A button that names the installations a count stands for: those `of` something. */
+  const names = (count, of, at) => into(unfolds('btn', of, `Names of all ${count} ${of}`, at), `Names of all ${count}`);
+
+  /* What is drawn under a heading, in order: an installation each, by its id. Folded, a fold
+     for each position, and after one a reader opened its installations. */
+  function rowsOf(group, at) {
+    if (!at.folds) return group.installations;
+    const under = at.folds.filter((fold) => fold.under === group.under && fold.branch === group.branch);
+    return under.flatMap((fold) => (unfolded.has(foldName(fold)) ? [fold, ...fold.installations] : [fold]));
   }
 
   /* How a state is drawn wherever it stands: its class, its letter and its word. */
@@ -677,7 +795,7 @@
       const heads = into(el('tr', 'grp'), into(under, into(el('span'), el('b', '', title), el('span', '', group.positions.join(', ')))));
       heads.setAttribute('data-key', `under ${title}`);
       body.append(heads);
-      for (const id of group.installations) body.append(lane(at.seats.get(id), convo, at, tail));
+      for (const each of rowsOf(group, at)) body.append(typeof each === 'string' ? lane(at.seats.get(each), convo, at, tail) : foldLane(each, convo, at, tail));
     }
     const table = into(el('table', 'lanes'), into(el('thead'), titles), body);
     table.setAttribute('data-roving', '');
@@ -685,7 +803,9 @@
     box.setAttribute('data-newest', '');
     return [
       legend(convo, at),
-      el('p', 'quiet', 'A cell that holds a record opens the log lines around it. The arrow keys move between such cells, and Enter opens one.'),
+      el('p', 'quiet', at.folds
+        ? 'A row counts, at each epoch, the installations of one position that hold a record there, each count in the colour of the state they hold, and opens to a row for each of them. A cell that holds a record opens the log lines around it. The arrow keys move between the rows and such cells, and Enter opens one.'
+        : 'A cell that holds a record opens the log lines around it. The arrow keys move between such cells, and Enter opens one.'),
       box,
     ];
   }
@@ -727,6 +847,77 @@
       ? ofRuns('heard mono dim', (run) => `${run.heard}${run.final ? ', final' : ''}`)
       : el('td', 'heard mono dim', seat.kept ? 'log gone' : 'no log');
     return into(row, over, into(el('td', 'where'), into(el('span', 'pos'), markOf(mark), el('span', '', where.join(', ')))), heard);
+  }
+
+  /* A fold among the lanes: how many of its installations hold a record at each epoch, where
+     they are, and from when to when the collector last heard from their runs. */
+  function foldLane(fold, convo, at, tail) {
+    const name = foldName(fold);
+    const count = fold.installations.length;
+    const who = into(el('th', 'who'), into(unfolds('tog', name, `${name}: ${counted(count)}`, at, true), fold.position), el('span', 'dim', counted(count)));
+    who.setAttribute('scope', 'row');
+    /* A fold has no account, name or sender of its own. */
+    const none = el('td');
+    none.setAttribute('colspan', 3);
+    const row = into(el('tr', 'fold'), who, none);
+    row.setAttribute('data-row', '');
+    row.setAttribute('data-key', `fold ${name}`);
+    const last = fold.cells[fold.cells.length - 1];
+    /* A fold that holds no cell is its words, from where a roster first lists one of its seats. */
+    const drawnTo = last ? at.columns.get(last.epoch) : (fold.listed_from ? at.columns.get(fold.listed_from.low) : 0) - 1;
+    const cells = new Map(fold.cells.map((held) => [held.epoch, held]));
+    for (const epoch of convo.epochs.slice(0, drawnTo + 1)) row.append(into(el('td', 'e'), ...stack(cells.get(epoch), count, at)));
+    const over = el('td', 'e over');
+    over.setAttribute('colspan', tail - drawnTo - 1);
+    const { mark } = POSITIONS.get(fold.position) || { mark: 'nodata' };
+    if (['removed', 'ended', 'never joined'].includes(fold.position)) {
+      over.append(into(el('span', 'endmark'), markOf(mark)));
+      const gone = count === 1 ? 'its log is gone' : `the log is gone of ${fold.kept}`;
+      over.append(el('span', '', fold.kept ? `${fold.position}, ${gone}` : fold.position));
+    }
+    const reach = ({ low, high }) => (low === high ? `${low}` : `${low} to ${high}`);
+    const epochs = (range) => `${range.low === range.high ? 'epoch' : 'epochs'} ${reach(range)}`;
+    const where = [fold.position];
+    if (fold.epoch) where.push(epochs(fold.epoch));
+    if (fold.listed_from) where.push(`listed from ${epochs(fold.listed_from)}`);
+    if (fold.behind_by) where.push(`${reach(fold.behind_by)} behind`);
+    const stands = into(el('td', 'where'), into(el('span', 'pos'), markOf(mark), el('span', '', where.join(', '))));
+    /* An installation is counted under each state it wrote at an epoch, and under a leave: where
+       one wrote more than one of them, the counts there are more than the installations. */
+    for (const held of fold.cells) {
+      if (held.several) stands.append(el('span', 'more', `at epoch ${held.epoch}, ${held.several} of them wrote more than one state, or a state and a leave, and ${held.several === 1 ? 'is' : 'are'} counted under each`));
+    }
+    const heard = convo.heard[convo.folds.indexOf(fold)];
+    /* A line for each thing said, as a lane has a line for each run: the column stays narrow. */
+    const said = [];
+    if (heard.runs) said.push(...(heard.first === heard.last ? [heard.first] : [`${heard.first} to`, heard.last]));
+    if (heard.final) said.push(`${heard.final} of ${heard.runs} ${heard.runs === 1 ? 'run' : 'runs'} final`);
+    if (fold.logs < count) said.push(fold.logs ? `no log held of ${count - fold.logs}` : 'no log held');
+    return into(row, over, stands, into(el('td', 'heard mono dim'), ...said.map((line) => el('span', 'run', line))));
+  }
+
+  /* What a fold holds at an epoch: how many of its installations wrote each state there, how
+     many a leave, and how many of its lanes hold what no record says, each as a lane draws it. */
+  function stack(held, count, at) {
+    if (held === undefined) return [];
+    const sum = (cls, word, ...inside) => {
+      const made = into(el('span', `cell sum ${cls}`), ...inside);
+      const said = `epoch ${held.epoch}, ${inside[inside.length - 1]} of ${counted(count)}, ${word}`;
+      made.setAttribute('role', 'img');
+      made.setAttribute('aria-label', said);
+      made.setAttribute('title', said);
+      return made;
+    };
+    const made = held.states.map((each) => {
+      const { cls, letter, word } = look(at.states.get(`${held.epoch}:${each.state}`), at);
+      /* Off the shared line a count carries its letter, so that its colour is not all that says it. */
+      return sum(cls, `${word}, state ${each.state}`, ...(cls === 'shared' ? [] : [el('b', '', letter)]), each.count);
+    });
+    if (held.left) made.push(sum('left', 'left', markOf('removed'), held.left));
+    for (const [kind, { cls, word }] of EMPTY) {
+      if (held[kind]) made.push(sum(cls, word, held[kind]));
+    }
+    return made;
   }
 
   /* What a lane holds at an epoch: each record its installation wrote there, in the order written. */
@@ -775,8 +966,53 @@
     for (const message of at.posts) {
       for (const id of Object.keys(message.marks)) wrote.get(id).push(message);
     }
+    /* A fold's line: at each epoch a band from the first of its installations reaching a state
+       to the last of them, and while it is closed the posts they sent. */
+    const strand = (fold) => {
+      const name = foldName(fold);
+      const count = fold.installations.length;
+      const who = into(el('th'), into(unfolds('tog', name, `${name}: ${counted(count)}`, at, true), name), el('span', 'dim', counted(count)));
+      who.setAttribute('scope', 'row');
+      const row = into(el('tr', 'fold'), who);
+      row.setAttribute('data-row', '');
+      row.setAttribute('data-key', `span ${name}`);
+      /* Of installations without a log that is held, some shared one that is gone and some none. */
+      const gone = count === 1 ? 'its log is gone' : 'their logs are gone';
+      const none = fold.kept ? `the log is gone of ${fold.kept}, no log shared of ${count - fold.kept}` : 'no log shared';
+      if (!fold.logs) return into(row, into(el('td'), into(el('div', 'plotbox hatched'), el('span', 'said', fold.kept === count ? gone : none))));
+      const strip = svg('svg', { class: 'plot' });
+      for (const tick of ticks) strip.append(svg('line', { class: 'grid', x1: x(tick), x2: x(tick), y1: 0, y2: '100%' }));
+      for (const held of fold.cells) {
+        for (const each of held.states) {
+          const { cls, letter, word } = look(at.states.get(`${held.epoch}:${each.state}`), at);
+          const said = `${name}, epoch ${held.epoch}, ${word}, ${each.count} of ${counted(count)}, from ${stamp(each.first)} to ${stamp(each.last)}`;
+          const band = into(
+            svg('g', { role: 'img', 'aria-label': said }),
+            svg('title', {}, said),
+            svg('line', { class: `reach ${cls}`, x1: x(each.first), x2: x(each.last), y1: '50%', y2: '50%' }),
+            ...[each.first, each.last].map((seconds) => svg('rect', { class: `tick ${cls}`, x: x(seconds), y: '23%', width: 3, height: '54%', rx: 1, transform: 'translate(-1.5)' })),
+          );
+          if (cls !== 'shared') band.append(svg('text', { class: 'letter', x: x(each.first), y: '15%', 'text-anchor': 'middle', 'aria-hidden': 'true' }, letter));
+          strip.append(band);
+        }
+      }
+      /* A record has one mark in a section: open, a post is on the line of its installation. */
+      for (const id of unfolded.has(name) ? [] : fold.installations) {
+        for (const message of wrote.get(id)) {
+          const mark = message.marks[id];
+          if (message.cells[id] !== 'sent') continue;
+          strip.append(opens(svg('circle', { class: 'post sent', cx: x(mark.seconds), cy: '50%', r: FATES.get('sent').r }), { at: mark }, `${fate(message, id)}, at ${mark.time}`, 'timeline', at));
+        }
+      }
+      return into(row, into(el('td'), into(el('div', 'plotbox'), strip)));
+    };
     const body = el('tbody');
-    for (const id of at.order) {
+    for (const each of at.folds ? convo.lanes.flatMap((group) => rowsOf(group, at)) : at.order) {
+      if (typeof each !== 'string') {
+        body.append(strand(each));
+        continue;
+      }
+      const id = each;
       const seat = at.seats.get(id);
       const who = el('th', 'mono', id);
       who.setAttribute('scope', 'row');
@@ -814,7 +1050,10 @@
     const table = into(el('table', 'times'), into(el('thead'), titles), body);
     table.setAttribute('data-roving', '');
     const box = scroller('timeline', 'The timeline', table);
-    if (!at.posts.length) return [box];
+    const folded = at.folds
+      ? [el('p', 'quiet', 'A line that stands for several installations draws when the first and the last of them reached each state, and the posts they sent. It leaves out the rest of what a line for each of them draws, which is the run itself and when its delivery was not online, a leave, and the posts read or unreadable. A line opens to one for each of its installations, and the arrow keys move between the lines and their marks.')]
+      : [];
+    if (!at.posts.length) return [...folded, box];
     const entry = (shape, text) => {
       const key = svg('svg', { class: 'key', viewBox: '-7 -7 14 14', 'aria-hidden': 'true', focusable: 'false' });
       return into(el('li'), into(key, shape), el('span', '', text));
@@ -825,8 +1064,8 @@
       entry(svg('circle', { class: 'post read', r: FATES.get('read').r }), 'read one'),
       entry(svg('text', { class: 'post unread', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, FATES.get('unreadable').sign), 'one arrived, unreadable'),
     );
-    if (at.fold === 'none' || at.fold === 'all') return [legend, box];
-    return [legend, el('p', 'quiet', `The posts marked are those the messages below draw, of ${convo.messages.length}.`), box];
+    if (at.fold === 'none' || at.fold === 'all') return [legend, ...folded, box];
+    return [legend, ...folded, el('p', 'quiet', `The posts marked are those the messages below draw, of ${convo.messages.length}.`), box];
   }
 
   /* ---- the messages ---- */
@@ -843,6 +1082,13 @@
     let from = newest;
     for (const record of pressed ? [] : [excerpt && excerpt.record, recordOf(document.activeElement)]) {
       const held = record ? convo.messages.findIndex((message) => Object.values(message.marks).some((mark) => mark.run === record.run && mark.line === record.line)) : -1;
+      if (held >= 0) from = Math.min(from, held);
+    }
+    /* Folded, so does a post a count of which the reader opened, and one whose row holds the focus. */
+    if (convo.folded && !pressed) {
+      const row = report.contains(document.activeElement) && document.activeElement.closest('[data-key]');
+      const key = row ? row.getAttribute('data-key') : null;
+      const held = convo.messages.findIndex((message) => key === `post ${message.frame}` || convo.folds.some((fold) => unfolded.has(countName(message, fold))));
       if (held >= 0) from = Math.min(from, held);
     }
     return { posts: convo.messages.slice(from), fold: from < newest ? 'kept' : 'newest' };
@@ -887,6 +1133,67 @@
     return made;
   }
 
+  /* How many installations a thing became of a post on, drawn as a cell of that thing is. */
+  function became(kind, count) {
+    const { cls, sign, text } = FATES.get(kind) || { cls: '', text: kind };
+    /* A cell that holds no word is its swatch beside the words. */
+    const made = text ? el('span', `mk ${cls}`) : into(el('span', 'mk'), el('span', `sw ${cls}`));
+    if (sign) made.append(el('b', '', sign));
+    return into(made, `${count} ${kind}`);
+  }
+
+  /* A post's cell under a fold: how many of the fold's installations each thing became of the
+     post on, and under the unreadable how many gave each cause. It opens to the installations. */
+  function tally(message, fold, fates, at) {
+    const causes = Object.entries(fates.why).map(([cause, count]) => `${count} ${cause}`);
+    const said = Object.entries(fates.cells).map(([kind, count]) => (kind === 'unreadable' ? `${count} ${kind} (${causes.join(', ')})` : `${count} ${kind}`));
+    const made = unfolds('tally', countName(message, fold), `frame ${message.frame} from ${message.sender}, ${foldName(fold)}: ${said.join(', ')}`, at, true);
+    for (const [kind, count] of Object.entries(fates.cells)) {
+      const part = became(kind, count);
+      if (kind === 'unreadable') part.append(...causes.map((cause) => el('small', '', cause)));
+      made.append(part);
+    }
+    return made;
+  }
+
+  /* An installation among those a count of a post stands for. One that wrote a record of the
+     post opens the lines around it. */
+  function among(message, id, at) {
+    const made = el('span', 'mk mono', id);
+    if (message.why[id]) made.append(el('small', '', message.why[id]));
+    const mark = message.marks[id];
+    if (mark) return opens(made, { at: mark }, fate(message, id), 'messages', at);
+    made.setAttribute('role', 'img');
+    made.setAttribute('aria-label', fate(message, id));
+    return made;
+  }
+
+  /* The row under a post: for each fold the reader opened its count under, the installations
+     by what became of the post on them. None where no count of the post is open. */
+  function whom(message, at) {
+    const open = [...at.folds.entries()].filter(([, fold]) => unfolded.has(countName(message, fold)));
+    if (!open.length) return null;
+    const inside = el('td');
+    inside.setAttribute('colspan', 4 + at.folds.length);
+    for (const [index, fold] of open) {
+      const part = into(el('div', 'whom'), el('b', '', `${foldName(fold)}, ${counted(fold.installations.length)}`));
+      for (const [kind, count] of Object.entries(message.folds[index].cells)) {
+        const list = el('ul', 'roster');
+        for (const id of fold.installations) {
+          if (message.cells[id] === kind) list.append(into(el('li'), among(message, id, at)));
+        }
+        part.append(became(kind, count), list);
+      }
+      inside.append(part);
+    }
+    const row = into(el('tr', 'whose'), inside);
+    row.setAttribute('data-row', '');
+    /* Its marks stand line under line: the arrow keys go through them as they are read. */
+    row.setAttribute('data-wraps', '');
+    row.setAttribute('data-key', `who ${message.frame}`);
+    return row;
+  }
+
   function messages(convo, at) {
     const unmatched = convo.unmatched_unreadable
       ? [into(el('p', 'quiet'), el('b', '', `Reports of an unreadable frame of no known post: ${convo.unmatched_unreadable}.`), ' Each is of a frame that could not be read and that no shared log says was a post, and a frame has one for each time an installation reported it. A vote or any other encrypted frame of the group counts as much as a post whose sender shares no log.')]
@@ -900,7 +1207,7 @@
     for (const group of convo.lanes) {
       const branch = group.under === 'branch';
       const under = el('th', branch ? `under ${at.hues.get(group.branch)}` : 'under');
-      under.setAttribute('colspan', group.installations.length);
+      under.setAttribute('colspan', at.folds ? group.positions.length : group.installations.length);
       under.setAttribute('scope', 'col');
       titles.append(into(under, el('span', '', branch ? `Branch ${group.branch}` : HEADINGS.get(group.under) || group.under)));
     }
@@ -914,10 +1221,17 @@
       const row = into(el('tr'), sent, frame, el('td', 'mono', message.sender), into(el('td'), sentIn(message, at)));
       row.setAttribute('data-row', '');
       row.setAttribute('data-key', `post ${message.frame}`);
-      for (const id of at.order) row.append(into(el('td', 'm'), post(message, id, at)));
+      /* Folded, a cell counts the installations of a fold by what became of the post on them. */
+      if (at.folds) row.append(...at.folds.map((fold, index) => into(el('td', 'm'), tally(message, fold, message.folds[index], at))));
+      else for (const id of at.order) row.append(into(el('td', 'm'), post(message, id, at)));
       body.append(row);
+      const who = at.folds && whom(message, at);
+      if (who) body.append(who);
     }
-    const table = into(el('table', 'posts'), into(el('thead'), titles, into(el('tr'), ...at.order.map((id) => heading('m', id)))), body);
+    const columns = at.folds
+      ? at.folds.map((fold) => into(heading('m', fold.position), el('span', 'of', counted(fold.installations.length))))
+      : at.order.map((id) => heading('m', id));
+    const table = into(el('table', 'posts'), into(el('thead'), titles, into(el('tr'), ...columns)), body);
     table.setAttribute('data-roving', '');
     const entry = (swatch, text) => into(el('li'), swatch, el('span', '', text));
     const legend = into(
@@ -928,7 +1242,9 @@
     );
     const made = [
       legend,
-      el('p', 'quiet', 'A cell that holds a record opens the log lines around it. Under unreadable stands the cause its installation gave. The arrow keys move between such cells, and Enter opens one.'),
+      el('p', 'quiet', at.folds
+        ? 'A cell counts the installations of one position by what became of the post on them, and under unreadable stands how many gave each cause. It opens to those installations under the post, and one of them that holds a record opens the log lines around it. The arrow keys move between the cells, and Enter opens one.'
+        : 'A cell that holds a record opens the log lines around it. Under unreadable stands the cause its installation gave. The arrow keys move between such cells, and Enter opens one.'),
     ];
     if (at.fold !== 'none') {
       const newest = `The newest ${convo.shown_messages} of ${convo.messages.length} posts are drawn, here and on the timeline`;
@@ -960,17 +1276,20 @@
         el('h3', '', `Branch ${branch.label}`),
         facts,
         el('h4', 'subhead', 'On it'),
-        chips(branch.installations, at, 'no installation'),
+        chips(branch.installations, at, 'no installation', `on branch ${branch.label}`),
         el('h4', 'subhead', 'Whom its roster lists'),
-        chips(newest ? newest.roster : [], at, 'nobody'),
+        chips(newest ? newest.roster : [], at, 'nobody', `in the roster of branch ${branch.label}`),
       ));
     }
     if (!convo.branches.length) made.append(el('p', 'quiet', 'No log holds a state of this conversation.'));
     return made;
   }
 
-  function chips(ids, at, none) {
+  function chips(ids, at, none, of) {
     if (!ids.length) return el('p', 'quiet', none);
+    /* Folded, more installations than a tile names are a count, and their names when it is asked. */
+    const asks = at.folds && ids.length > NAMED ? into(el('p', 'count'), el('span', '', counted(ids.length)), names(ids.length, of, at)) : null;
+    if (asks && !unfolded.has(of)) return asks;
     const made = el('ul', 'roster');
     for (const id of ids) {
       const seat = at.seats.get(id);
@@ -978,7 +1297,7 @@
       if (seat.branch !== null && at.split) stands.push(`on ${seat.branch}`);
       made.append(into(el('li', 'chip'), el('span', 'mono', id), el('em', '', stands.join(', '))));
     }
-    return made;
+    return asks ? into(el('div'), asks, made) : made;
   }
 
   /* ---- the log lines behind a mark ---- */
@@ -1052,8 +1371,8 @@
     const row = mark.closest('[data-row]');
     /* Along a row by where each mark stands: a timeline's are not drawn in the order of their times. */
     const middle = (each) => each.getBoundingClientRect().left + each.getBoundingClientRect().right;
-    const stands = new Map([...row.querySelectorAll('[data-m]')].map((each) => [each, middle(each)]));
-    const along = [...stands.keys()].sort((one, other) => stands.get(one) - stands.get(other));
+    const stands = new Map([...row.querySelectorAll(STOPS)].map((each) => [each, middle(each)]));
+    const along = row.hasAttribute('data-wraps') ? [...stands.keys()] : [...stands.keys()].sort((one, other) => stands.get(one) - stands.get(other));
     const index = along.indexOf(mark);
     if (key === 'ArrowLeft') return along[index - 1];
     if (key === 'ArrowRight') return along[index + 1];
@@ -1062,7 +1381,10 @@
     const next = { ArrowUp: 'previousElementSibling', ArrowDown: 'nextElementSibling' }[key];
     const left = mark.getBoundingClientRect().left;
     for (let other = next && row[next]; other; other = other[next]) {
-      const there = [...other.querySelectorAll('[data-m]')];
+      const there = [...other.querySelectorAll(STOPS)];
+      /* A row whose marks stand line under line is entered at the end it is come to: its first
+         mark from above, its last from below. */
+      if (there.length && other.hasAttribute('data-wraps')) return there[key === 'ArrowDown' ? 0 : there.length - 1];
       if (there.length) {
         return there.reduce((best, each) => (Math.abs(each.getBoundingClientRect().left - left) < Math.abs(best.getBoundingClientRect().left - left) ? each : best));
       }
@@ -1072,10 +1394,13 @@
 
   report.addEventListener('click', (event) => {
     const rest = event.target.closest('[data-rest]');
-    if (rest) {
+    const fold = event.target.closest('[data-unfolds]');
+    if (rest || fold) {
       const { view, text } = drawn.report;
-      whole = whole === view ? null : view;
-      redraw(report, 'report', view, text, () => conversation(JSON.parse(text), true), rest);
+      const key = fold && fold.getAttribute('data-unfolds');
+      if (rest) whole = whole === view ? null : view;
+      else if (!unfolded.delete(key)) unfolded.add(key);
+      redraw(report, 'report', view, text, () => conversation(told, Boolean(rest)), rest || fold);
       return;
     }
     const mark = event.target.closest('[data-m]');
@@ -1085,18 +1410,22 @@
   });
 
   report.addEventListener('keydown', (event) => {
-    const mark = event.target.closest('[data-m]');
+    const mark = event.target.closest(STOPS);
     if (!mark || event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === 'Enter' || event.key === ' ') {
+      /* A button answers the two keys of its own. */
+      if (!mark.hasAttribute('data-m')) return;
       event.preventDefault();
       showLines(mark);
       return;
     }
-    const next = toward(mark, event.key);
+    const next = mark.closest('[data-row]') && toward(mark, event.key);
     if (next) {
       event.preventDefault();
       hold(next);
       next.focus();
+      /* The focus alone brings into sight what is wholly out of it, and leaves a wide cell cut. */
+      next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
   });
 

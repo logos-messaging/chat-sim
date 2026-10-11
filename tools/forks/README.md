@@ -359,6 +359,38 @@ are given.
           "installations": ["e09a3f52"]
         }
       ],
+      "folds": [
+        {
+          "under": "branch",
+          "branch": "B",
+          "position": "tip",
+          "installations": ["e09a3f52"],
+          "kept": 0,
+          "logs": 1,
+          "epoch": {"low": 3, "high": 3},
+          "behind_by": null,
+          "listed_from": null,
+          "cells": [
+            {
+              "epoch": 1,
+              "wrote": 1,
+              "states": [
+                {
+                  "state": "77797f82b14f233d",
+                  "count": 1,
+                  "first": 1791466392.08,
+                  "last": 1791466392.08
+                }
+              ],
+              "left": 0,
+              "several": 0,
+              "unreached": 0,
+              "listed": 0
+            }
+          ]
+        }
+      ],
+      "folded": false,
       "installations": [
         {
           "id": "e09a3f52",
@@ -420,7 +452,8 @@ are given.
               "has_offset": true,
               "seconds": 1791466621.201
             }
-          }
+          },
+          "folds": [{"cells": {"unreadable": 1}, "why": {"decrypt": 1}}]
         }
       ],
       "shown_messages": 3,
@@ -486,6 +519,23 @@ The lists above, and `marks`, are cut to one entry each.
   under `one line` or `neither branch` when it is `shared`, and under `not placed` when it is
   `side` or `unknown` or the installation wrote no state. Under a heading they come by position,
   in the order of `positions`, and then by id, and a heading with no installation is left out.
+- `folds` are the `lanes` by position: under each heading a fold for each of its `positions`, in
+  their order, with the installations of the heading that are in that position, as `lanes` lists
+  them. `kept` counts those that go by a kept line, and `logs` those that wrote in a log that is
+  held. `epoch` and `behind_by` reach from the lowest to the highest that its installations say,
+  and `listed_from` does so for those without an epoch, by the first epoch of the `listed` of
+  each: each of the three is `null` where none of them says one. `cells` are their lanes laid
+  over one another, one for each epoch a lane of the fold holds something at. There `wrote`,
+  `unreached` and `listed` count the lanes whose cell is of that kind, `states` says for each
+  state one of them wrote at the epoch, by fingerprint, how many of them wrote it and the first
+  and the last stamp of those records, in seconds since 1970 in UTC, and `left` counts those
+  that wrote a leave. An installation counts once under each state it wrote at an epoch, however
+  often it wrote it, and once under a leave. `several` counts those that are under more than one
+  of them: where it is not 0, the counts of `states` and `left` come to more than `wrote`.
+- `folded` says whether a page starts with a row for each fold in place of a row for each
+  installation. It is `true` for more than 23 installations: 23 lanes of one run each are what
+  the box of the installations shows at once in a window 1080 pixels high, and a lane has a
+  line for each run of its installation.
 - `installations` are every seat, by id. `account` comes from the installation's `run` record
   or, without one, from a roster, and is `""` for an account of no bytes. `epoch` is the epoch of
   its last record, and `state` and `branch` are `null` when that record is a leave or the seat
@@ -518,7 +568,11 @@ The lists above, and `marks`, are cut to one entry each.
   it. `cells` says what became of the post on each seat, by the first row of the table below
   that holds for the seat, and `why` gives the cause for each `unreadable`. `marks` says where
   the record a cell stands for was written, as `at` says it of the post, for each seat whose
-  cell is `sent`, `read` or `unreadable`, and holds no other seat: the sender's is `at`.
+  cell is `sent`, `read` or `unreadable`, and holds no other seat: the sender's is `at`. `folds`
+  counts the cells of each fold of the conversation, in the order of its `folds`: `cells` how
+  many of the fold's installations each thing became of the post on, in the order of the table
+  below and without what became of it on none, and `why` how many of the unreadable gave each
+  cause, by the name of the cause.
 
   | Cell | When |
   |---|---|
@@ -539,7 +593,9 @@ The lists above, and `marks`, are cut to one entry each.
 - `shown_messages` is how many of the last entries of `messages` a page draws before it is asked
   for the rest: every post while their cells are 2000 or fewer, and else the rows that hold 2000
   cells between them, rounded down to a whole row and never less than one. 2000 cells, each with
-  its mark on a timeline, are what a browser draws in about a tenth of a second.
+  its mark on a timeline, are what a browser draws in about a tenth of a second. A row counts
+  here as a cell for each installation, whether or not the page starts folded: a folded page
+  draws a cell for each fold in it, and so fewer cells than the count is made for.
 - `unmatched_unreadable` counts the `unreadable` records that name a frame for which no shared
   log holds a `sent` record: records and not frames, so a frame an installation reported twice,
   or two installations reported, is counted twice. A vote or any other encrypted frame of the
@@ -679,9 +735,13 @@ later, with a line in the collector's log each time.
 
 ### The collector's JSON
 
-`GET /conversations/CID` answers the object that `--json` holds for a conversation, with three
+`GET /conversations/CID` answers the object that `--json` holds for a conversation, with four
 differences. Wherever it names a run, it gives the run's id. It ends with `lines`, the count of
-lines over the runs its report lists. And each entry of `runs` says more:
+lines over the runs its report lists. Before that stands `heard`, which says of each fold of
+`folds`, in their order, when the collector last heard from the runs its installations wrote
+in: `runs` counts those runs, each once, and `final` those of them that are final, and `first`
+and `last` are the earliest and the latest `heard` among them, each `null` where the fold's
+installations wrote in no run that is held. And each entry of `runs` says more:
 
 ```json
 {
@@ -736,6 +796,26 @@ the same address without the token, where the page stays. The page is the three 
 | The state each branch holds | The newest state of each branch: its epoch, its fingerprint, how many its roster lists, the installations on it and the seats its roster lists. |
 | Log | The line of a record in its run's log with the lines around it, when a cell of the installations, a mark of the timeline or a cell of the messages that stands for a record is clicked. The lines stay open while the page reads again, and close when their record is drawn no more. |
 
+A conversation of more than 23 installations is drawn folded, as its `folded` says: a row for
+each fold of `folds` where the table above has a row or a column for each installation.
+
+| Part | What it shows folded |
+|---|---|
+| The tiles | A position of more than three installations has a button, `Names of all N`, which gives their ids under the tiles and takes them away again. No tile moves for them, and the button stays where it is, as far as the window scrolls. |
+| Installations | A row for each fold, under the headings of `lanes`: the installations of one position, and how many they are. A cell for each epoch of its `cells` counts how many of them wrote each state there, each count in the colour of its state and with the letter of its branch, then how many wrote a leave, how many have not reached the epoch and how many are seats nobody shared a log of. Then come its position, the epochs its installations are at and how far they are behind, each from the lowest to the highest, and from when to when the collector last heard from their runs, with how many of the runs are final and of how many installations no log is held. An installation that wrote two states at one epoch, or a state and a leave, is counted under each, and the row then says in words at which epoch and how many. A row opens to the row of each of its installations, drawn as on a page that is not folded, and closes again. |
+| Timeline | The same rows, and a row opened here is open among the installations as well. For each state a band reaches from the first to the last stamp at which one of the fold's installations wrote it, with the letter of its branch, and a filled circle stands for each post one of them sent. Such a line leaves out the runs and when they were not online, the leaves, and the posts read or unreadable, which the words over the timeline say. The line of each installation draws them once the row is open. A fold none of whose installations wrote in a log that is held has a hatched line, which says of how many the log is gone and how many shared none. |
+| Messages | A row stays a post, and a column is a fold. A cell counts the fold's installations by what became of the post on them, in the words and signs of a cell of one installation, with how many gave each cause under `unreadable`. It opens, in a row under the post, to those installations by what became of the post on them, each with its cause, and one that holds a record of the post opens the log lines around it. Who could not read a post is one press away, and the log line of one of them two. |
+| The state each branch holds | A roster of more than three installations is their count, and a button that gives their chips and takes them away again. |
+
+What a reader opened stays open while the page reads on, with the log lines and the place they
+were reading at: a row, the installations under a count, names. A post with a count that is open
+stays drawn, as one whose log lines are open does. Log lines stay open as well when a read
+moves their record out of every row that is open, as when its installation changes position or
+the page turns folded: the row of its fold, or the count under its post, is then opened for
+it, and stays open afterwards as what a reader opened does. Another conversation starts closed. A
+press draws anew only the parts it changes: a row the installations and the timeline, a count the
+messages, and names neither.
+
 The page reads `GET conversations`, and `GET conversations/CID` for the conversation its address
 names after `#`, when it is opened and again every 30 seconds while its tab is visible. A read
 of the 30 seconds is left out while the one before it is under way, and a read gives the
@@ -744,8 +824,9 @@ collector up when 20 seconds pass without a byte of its answer. It reads
 it works under whatever path a proxy serves the collector at.
 
 The page decides nothing: every verdict, position, count, order and heading it shows is in the
-collector's JSON, and so are what became of a post on a seat and how many posts are drawn at
-first. What a run's name, an account, a frame or a log line says reaches the page as text and
+collector's JSON, and so are what became of a post on a seat, how many posts are drawn at
+first, whether the page starts folded, what each fold counts and when its runs were last heard
+from. What a run's name, an account, a frame or a log line says reaches the page as text and
 never as markup.
 
 When the collector answers 401, the page says that the share address must be opened again. When
@@ -775,7 +856,12 @@ once it is not. A conversation that is opened takes the focus at its title, and 
 lines gives it back to the mark that opened them. A position has its icon and its word, and a
 branch its letter as well as its hue. What became of a post has
 its word in its cell and in the name a screen reader is given, on the timeline as well, and a
-cell that stands for no record has that name and is no stop.
+cell that stands for no record has that name and is no stop. On a folded page a row of a fold, a
+count of a post and a button for names are buttons that say to a screen reader whether what
+they open is open, and Enter or Space presses the one that has the focus. Among the
+installations, on the timeline and in the messages the arrow keys reach them as they reach the
+cells and the marks, and under a post they go through its installations in the order read. A
+cell the arrow keys move to is brought into sight in its box.
 
 ## Sharing logs
 
@@ -951,20 +1037,29 @@ that named its log.
   and a click reaches the last drawn alone. The arrow keys reach each, and so do the cells of
   the messages.
 - `marks` is most of the JSON of a conversation with posts. With 8 installations and 50 posts it
-  is 97 kB, with 30 and 500 it is 2.9 MB, and with 100 and 2000 it is 36.8 MB, 30.6 MB of it
-  `marks`. The collector answered them in 0.01, 0.13 and 1.9 seconds when it drew the report and
-  in 1, 3 and 80 milliseconds from the one it kept.
+  is 103 kB, with 30 and 500 it is 2.9 MB, and with 100 and 2000 it is 37.0 MB, 30.6 MB of it
+  `marks` and 0.2 MB its `folds` and the `folds` of its posts. The collector answered them in
+  0.01, 0.13 and 1.9 seconds when it drew the report and in 1, 5 and 85 milliseconds from the
+  one it kept.
 - The messages start with the newest posts, as many as `shown_messages` says, and the timeline
   marks the same posts. Firefox drew them, 50, 66 and 20 rows of the three conversations above,
-  in 0.03 to 0.44, 0.12 to 0.48 and 0.10 to 0.11 seconds, over three runs of each from a browser
-  just started. Every post of the second, 500 rows, took 0.4 to 0.5 seconds. Every post of the
-  third, 2000 rows of 100 cells, held the page for 5.8 seconds and its tab took 2.0 GiB, and
-  each read that brings a change draws them all again.
-- A read of the 36.8 MB that finds nothing changed holds the page for 0.15 to 0.2 seconds.
-- Every installation has a row among the installations and a row on the timeline, and none is
-  folded away. The conversation of 300 members and 300 epochs below is 25 MB of JSON and 282,000
-  elements: over four runs Firefox built and laid it out in 1.7 to 2.0 seconds once it held the
-  JSON, and showed it 1.9 to 2.4 seconds after the conversation was asked for.
+  the second and the third folded, in 0.04 to 0.07, 0.04 to 0.42 and 0.03 seconds, over three
+  runs of the first two and two of the third from a browser just started. Every post of the
+  second, 500 rows, took 0.06 seconds. Every post of the third, 2000 rows of a cell for each of
+  its two folds, took 0.21 seconds and its tab 0.6 GiB, and each read that brings a change
+  draws them all again. With them all drawn, opening its fold of 50 installations puts every
+  post on the line of each of them: 136,000 elements, which held the page for 0.9 to 1.9 seconds
+  over three runs, in a tab of 0.9 GiB. Closing it held the page for 0.17 to 0.20 seconds, and
+  opening a count of a post for 0.17 to 0.35.
+- A read of the 37.0 MB that finds nothing changed holds the page for 0.15 to 0.2 seconds.
+- A fold that is opened has a row for each of its installations, among the installations and on
+  the timeline, and none of them is left out. The conversation of 300 members and 300 epochs
+  below is 25 MB of JSON. Folded it is 4,700 elements, which Firefox showed 0.14 to 0.19 seconds
+  after it held the answer, over three runs, in a tab of 0.5 GiB. With its one fold opened it is
+  283,000 elements, which took 1.5 to 1.8 seconds to draw in a tab of 1.0 GiB, and each read
+  that brings a change draws them again while the fold is open. A press leaves standing the
+  parts it does not change: with that fold open, the names of a tile held the page for 0.05 to
+  0.06 seconds over three runs, and closing the fold for 0.16 to 0.18.
 - The page gives the first three branches a hue each and any further branch one fill: there the
   letter alone tells the branches apart.
 - The timeline places a record by its stamp, and a stamp without an offset is read as UTC: logs
@@ -1036,8 +1131,9 @@ answers a collector never gives. The tests of the page come in as a browser does
 address and the cookie, and read the page's files for what they must not hold. Where `node` is
 on the machine they also run the page's script over what a collector answers, in `tests/dom.js`,
 a stand-in for a document that lays out no more than says where a reader is, the parts of a
-report one under another and the rows of a box that scrolls, and hold what it draws against the
-JSON; without `node` those tests are skipped. No test runs a browser.
+report one under another and the rows of a box that scrolls, and that counts the elements the
+script makes, and hold what it draws against the JSON; without `node` those tests are skipped.
+No test runs a browser.
 
 ## Layout
 
