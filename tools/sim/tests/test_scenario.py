@@ -1,12 +1,28 @@
+import dataclasses
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from sim import scenario
-from sim.scenario import ALL, LAST, Expect, Post, Refused, Scenario, Seat
+from sim.scenario import (
+    ALL,
+    LAST,
+    Cut,
+    Expect,
+    Heal,
+    Network,
+    Post,
+    Refused,
+    Scenario,
+    Seat,
+    Withhold,
+)
 
 TOOL = Path(__file__).resolve().parents[1]
+
+# The steps a scenario has, as a refusal names them.
+STEPS = "`seat`, `post`, `cut`, `heal` or `withhold`"
 
 # Ids a fork report would know five members by, in the order of the members.
 IDS = ["a3f91c07", "7b1e44d9", "e09a3f52", "19f6b0e3", "b54a9d10"]
@@ -23,6 +39,19 @@ def steps(*steps: dict, members: int = 5) -> dict:
     return {"members": members, "steps": list(steps)}
 
 
+def modelled(*steps: dict, **network) -> dict:
+    """A scenario of five members with a network model, which is of seed 7 and no more."""
+    return {"members": 5, "network": {"seed": 7, **network}, "steps": list(steps)}
+
+
+def withholding(*after: dict, **changed) -> dict:
+    """A scenario that seats three, withholds a candidate from pax, seats mira, and goes on."""
+    seat, withhold = {"step": "seat", "to": 3}, {"step": "withhold", "from": "pax"}
+    whole = modelled(seat, withhold, {"step": "seat", "to": 4}, *after)
+    whole.update(changed)
+    return whole
+
+
 class Reading(unittest.TestCase):
     def test_a_scenario_that_says_the_least_has_the_defaults(self):
         self.assertEqual(
@@ -33,7 +62,8 @@ class Reading(unittest.TestCase):
                 timers="fast",
                 max_message_kib=512,
                 budget=180.0,
-                expect=Expect(verdict="whole", positions={}, posts={}),
+                network=None,
+                expect=Expect(verdict="whole", positions={}, posts={}, applied=None),
             ),
         )
 
@@ -69,6 +99,90 @@ class Reading(unittest.TestCase):
                 expect=Expect("whole, members behind", {"peer7": "behind"}, {"raya": "unreadable"}),
             ),
         )
+
+    def test_a_network_model_that_says_its_seed_alone_has_no_loss_and_no_delay(self):
+        network = scenario.scenario(three(network={"seed": 7})).network
+
+        self.assertEqual(network, Network(seed=7, loss=0, welcome_loss=0, delay_ms=0))
+        self.assertEqual([network.delay_of(name) for name in ("saro", "pax")], [0, 0])
+
+    def test_each_field_of_a_network_model_is_read_as_it_is_said(self):
+        said = {"seed": 2**64 - 1, "loss": 0.05, "welcome_loss": 1, "delay_ms": 2**64 - 1}
+        network = scenario.scenario(three(network=said)).network
+
+        self.assertEqual(network, Network(2**64 - 1, 0.05, 1, 2**64 - 1))
+        self.assertEqual(network.delay_of("raya"), 2**64 - 1)
+        least = scenario.scenario(three(network={"seed": 0, "loss": 0.0, "welcome_loss": 1.0}))
+        self.assertEqual(least.network, Network(0, 0.0, 1.0, 0))
+
+    def test_a_delay_by_member_holds_the_frames_of_the_members_it_names_and_of_no_other(self):
+        said = {"seed": 7, "delay_ms": {"raya": 40, "pax": 0}}
+        network = scenario.scenario(three(network=said)).network
+
+        self.assertEqual(network.delay_ms, {"raya": 40, "pax": 0})
+        self.assertEqual([network.delay_of(name) for name in ("saro", "raya", "pax")], [0, 40, 0])
+
+    def test_the_steps_of_a_network_model_are_read_as_they_are_said(self):
+        held = scenario.scenario(
+            modelled(
+                {"step": "seat", "to": 4},
+                {"step": "cut", "between": [["saro", "mira"], ["raya"]]},
+                {"step": "post", "from": "pax"},
+                {"step": "heal"},
+                {"step": "cut", "between": [["pax"], ["saro"]]},
+            )
+        )
+
+        self.assertEqual(
+            held.steps,
+            (
+                Seat(4),
+                Cut((("saro", "mira"), ("raya",))),
+                Post("pax"),
+                Heal(),
+                Cut((("pax",), ("saro",))),
+            ),
+        )
+        self.assertIsNone(held.withheld_from)
+
+    def test_a_candidate_is_withheld_from_the_member_a_step_names(self):
+        held = scenario.scenario(withholding({"step": "post", "from": "mira"}))
+
+        self.assertEqual(held.steps, (Seat(3), Withhold("pax"), Seat(4), Post("mira")))
+        self.assertEqual(held.withheld_from, "pax")
+        self.assertEqual((held.seated, held.posts()), (4, [(3, 4)]))
+        self.assertIsNone(held.expect.applied)
+
+    def test_what_is_expected_once_the_group_applied_a_withheld_candidate_is_read(self):
+        applied = {
+            "verdict": "split at epoch 2",
+            "positions": {"mira": "behind"},
+            "posts": {"pax": "unreadable"},
+        }
+        expect = {"verdict": "whole, members behind", "applied": applied}
+
+        self.assertEqual(
+            scenario.scenario(withholding(expect=expect)).expect,
+            Expect(
+                "whole, members behind",
+                {},
+                {},
+                Expect("split at epoch 2", {"mira": "behind"}, {"pax": "unreadable"}),
+            ),
+        )
+        self.assertEqual(
+            scenario.scenario(withholding(expect={"applied": {}})).expect.applied, Expect()
+        )
+
+    def test_each_run_of_a_sweep_has_the_seed_after_that_of_the_run_before(self):
+        held = scenario.scenario(three(network={"seed": 7, "loss": 0.5}))
+
+        self.assertEqual(held.of_run(1), held)
+        self.assertEqual([held.of_run(number).network.seed for number in (1, 2, 10)], [7, 8, 16])
+        self.assertEqual(held.of_run(3).network, Network(9, 0.5, 0, 0))
+        self.assertEqual(dataclasses.replace(held.of_run(3), network=held.network), held)
+        unmodelled = scenario.scenario(three())
+        self.assertIs(unmodelled.of_run(3), unmodelled)
 
     def test_the_timers_are_a_set_or_durations_by_the_names_the_library_gives_them(self):
         for timers in ("fast", "default"):
@@ -196,11 +310,32 @@ class Reading(unittest.TestCase):
 
     def test_the_scenarios_the_repository_keeps_are_read(self):
         kept = sorted(file.name for file in (TOOL / "scenarios").glob("*.json"))
-        self.assertEqual(kept, ["fifty.json", "three.json", "twenty.json"])
+        self.assertEqual(
+            kept, ["fifty.json", "lossy.json", "lost-candidate.json", "three.json", "twenty.json"]
+        )
         for name, members in (("three.json", 3), ("twenty.json", 20), ("fifty.json", 50)):
             held = scenario.read(TOOL / "scenarios" / name)
             self.assertEqual((held.members, held.seated), (members, members), name)
             self.assertEqual(held.expect, Expect(), name)
+            self.assertIsNone(held.network, name)
+
+    def test_the_scenarios_of_the_network_model_seat_five_members_one_at_a_time(self):
+        one_at_a_time = Seat(to=5, batch=1)
+        lossy = scenario.read(TOOL / "scenarios" / "lossy.json")
+        self.assertEqual((lossy.members, lossy.steps[0], lossy.timers), (5, one_at_a_time, "fast"))
+        self.assertTrue(0 < lossy.network.loss < 1)
+        self.assertEqual((lossy.network.welcome_loss, lossy.network.delay_ms), (0, 0))
+        self.assertEqual(lossy.expect, Expect())
+
+        lost = scenario.read(TOOL / "scenarios" / "lost-candidate.json")
+        self.assertEqual(
+            lost.steps, (Seat(to=4, batch=1), Withhold("pax"), one_at_a_time, Post("kes"))
+        )
+        self.assertEqual((lost.members, lost.timers), (5, "fast"))
+        self.assertEqual(lost.network, Network(seed=lost.network.seed))
+        self.assertEqual(
+            lost.expect, Expect(applied=Expect("split at epoch 4", {}, {"pax": "unreadable"}))
+        )
 
 
 class Refusals(unittest.TestCase):
@@ -276,10 +411,10 @@ class Refusals(unittest.TestCase):
                 f"`retry_window` of `timers` is {2**64}, and {2**64 - 1} is the most",
                 three(timers={"retry_window": 2**64}),
             ),
-            ("steps[0] is not an object whose `step` is `seat` or `post`", steps("seat")),
-            ("steps[1] is not an object whose `step` is `seat` or `post`", steps(seat, {"to": 4})),
+            (f"steps[0] is not an object whose `step` is {STEPS}", steps("seat")),
+            (f"steps[1] is not an object whose `step` is {STEPS}", steps(seat, {"to": 4})),
             (
-                "steps[1] is not an object whose `step` is `seat` or `post`",
+                f"steps[1] is not an object whose `step` is {STEPS}",
                 steps(seat, {"step": "remove"}),
             ),
             ("steps[0] lacks `to`", steps({"step": "seat"})),
@@ -405,6 +540,243 @@ class Refusals(unittest.TestCase):
             with self.subTest(why=why, said=said):
                 self.assertEqual(self.refusal(said), why)
 
+    def test_each_thing_a_network_model_cannot_be_is_refused_by_name(self):
+        not_a_rate = "of `network` is not a number from 0 to 1"
+        refusals = [
+            ("`network` is not an object", 7),
+            ("`network` is not an object", [{"seed": 7}]),
+            ("`network` lacks `seed`", {}),
+            ("`network` lacks `seed`", {"loss": 0.1}),
+            ("`rate` is not a field of `network`", {"seed": 7, "rate": 0.1}),
+            ("`seed` of `network` is not a whole number", {"seed": "7"}),
+            ("`seed` of `network` is not a whole number", {"seed": 7.0}),
+            ("`seed` of `network` is not a whole number", {"seed": True}),
+            ("`seed` of `network` is not a whole number", {"seed": None}),
+            ("`seed` of `network` is -1, and 0 is the least", {"seed": -1}),
+            (
+                f"`seed` of `network` is {2**64}, and {2**64 - 1} is the most",
+                {"seed": 2**64},
+            ),
+            *(
+                (f"`{rate}` {not_a_rate}", {"seed": 7, rate: said})
+                for rate in ("loss", "welcome_loss")
+                for said in ("0.1", True, False, None, [0.1], -0.001, 1.001, 2, float("nan"))
+            ),
+            ("`delay_ms` of `network` is not a whole number", {"seed": 7, "delay_ms": 0.5}),
+            ("`delay_ms` of `network` is not a whole number", {"seed": 7, "delay_ms": "5"}),
+            ("`delay_ms` of `network` is not a whole number", {"seed": 7, "delay_ms": True}),
+            ("`delay_ms` of `network` is not a whole number", {"seed": 7, "delay_ms": [5]}),
+            ("`delay_ms` of `network` is -1, and 0 is the least", {"seed": 7, "delay_ms": -1}),
+            (
+                f"`delay_ms` of `network` is {2**64}, and {2**64 - 1} is the most",
+                {"seed": 7, "delay_ms": 2**64},
+            ),
+            (
+                "`delay_ms` of `network` names mira, who is not among the members",
+                {"seed": 7, "delay_ms": {"mira": 5}},
+            ),
+            (
+                "`delay_ms` of `network` names peer3, and no member has that name",
+                {"seed": 7, "delay_ms": {"peer3": 5}},
+            ),
+            (
+                "`raya` of `delay_ms` of `network` is not a whole number",
+                {"seed": 7, "delay_ms": {"raya": 1.5}},
+            ),
+            (
+                "`raya` of `delay_ms` of `network` is not a whole number",
+                {"seed": 7, "delay_ms": {"raya": True}},
+            ),
+            (
+                "`raya` of `delay_ms` of `network` is -1, and 0 is the least",
+                {"seed": 7, "delay_ms": {"raya": -1}},
+            ),
+            (
+                f"`raya` of `delay_ms` of `network` is {2**64}, and {2**64 - 1} is the most",
+                {"seed": 7, "delay_ms": {"raya": 2**64}},
+            ),
+        ]
+        for why, said in refusals:
+            with self.subTest(why=why, said=said):
+                self.assertEqual(self.refusal(three(network=said)), why)
+
+    def test_a_step_of_the_network_model_is_refused_in_a_scenario_without_one(self):
+        seat = {"step": "seat", "to": 3}
+        for step in (
+            {"step": "cut", "between": [["saro"], ["raya"]]},
+            {"step": "heal"},
+            {"step": "withhold", "from": "pax"},
+        ):
+            with self.subTest(step=step):
+                self.assertEqual(
+                    self.refusal(steps(seat, step)),
+                    f"steps[1] is a `{step['step']}` step, and the scenario has no `network`",
+                )
+
+    def test_each_cut_and_heal_a_run_could_not_do_is_refused_by_name(self):
+        seat, heal = {"step": "seat", "to": 3}, {"step": "heal"}
+
+        def cut(*sides: list) -> dict:
+            return {"step": "cut", "between": list(sides)}
+
+        no_sides = "`between` of steps[1] is not two lists of one name or more"
+        refusals = [
+            ("steps[1] lacks `between`", modelled(seat, {"step": "cut"})),
+            (
+                "`sides` is not a field of steps[1]",
+                modelled(seat, {"step": "cut", "between": [["saro"], ["raya"]], "sides": 2}),
+            ),
+            (no_sides, modelled(seat, {"step": "cut", "between": "saro"})),
+            (no_sides, modelled(seat, {"step": "cut", "between": {"saro": "raya"}})),
+            (no_sides, modelled(seat, cut(["saro"]))),
+            (no_sides, modelled(seat, cut(["saro"], ["raya"], ["pax"]))),
+            (no_sides, modelled(seat, cut(["saro"], []))),
+            (no_sides, modelled(seat, cut([], ["raya"]))),
+            (no_sides, modelled(seat, cut(["saro"], "raya"))),
+            (no_sides, modelled(seat, cut(["saro"], [3]))),
+            (
+                "`between` of steps[1] names mira, who is not seated by then",
+                modelled(seat, cut(["saro"], ["raya", "mira"])),
+            ),
+            (
+                "`between` of steps[1] names peer3, and no member has that name",
+                modelled(seat, cut(["peer3"], ["raya"])),
+            ),
+            (
+                "`between` of steps[1] names raya twice",
+                modelled(seat, cut(["saro", "raya"], ["pax", "raya"])),
+            ),
+            (
+                "`between` of steps[1] names pax twice",
+                modelled(seat, cut(["saro"], ["pax", "pax"])),
+            ),
+            (
+                "steps[2] cuts the group, and a cut is in force by then",
+                modelled(seat, cut(["saro"], ["raya"]), cut(["saro"], ["pax"])),
+            ),
+            ("`between` is not a field of steps[1]", modelled(seat, dict(heal, between=[]))),
+            ("steps[1] heals a cut, and no cut is in force by then", modelled(seat, heal)),
+            (
+                "steps[3] heals a cut, and no cut is in force by then",
+                modelled(seat, cut(["saro"], ["raya"]), heal, heal),
+            ),
+        ]
+        for why, said in refusals:
+            with self.subTest(why=why, said=said):
+                self.assertEqual(self.refusal(said), why)
+
+    def test_each_withheld_candidate_a_run_could_not_tell_the_outcome_of_is_refused_by_name(self):
+        seat = {"step": "seat", "to": 3}
+
+        def withhold(member: object = "pax") -> dict:
+            return {"step": "withhold", "from": member}
+
+        def post(sender: str) -> dict:
+            return {"step": "post", "from": sender}
+
+        cut, heal = {"step": "cut", "between": [["saro"], ["raya"]]}, {"step": "heal"}
+        it = "steps[1] is a `withhold` step"
+        refusals = [
+            ("steps[1] lacks `from`", modelled(seat, {"step": "withhold"})),
+            ("`to` is not a field of steps[1]", modelled(seat, dict(withhold(), to=4))),
+            ("`from` of steps[1] is not a name", modelled(seat, withhold(3))),
+            (
+                "`from` of steps[1] names mira, who is not seated by then",
+                modelled(seat, withhold("mira"), {"step": "seat", "to": 4}),
+            ),
+            (
+                "`from` of steps[1] names all, and no member has that name",
+                modelled(seat, withhold("all"), {"step": "seat", "to": 4}),
+            ),
+            (
+                "steps[3] is a second `withhold` step, and a run has one",
+                withholding(withhold("raya"), {"step": "seat", "to": 5}),
+            ),
+            (f"{it}, and the step after it is not a `seat` step", modelled(seat, withhold())),
+            (
+                f"{it}, and the step after it is not a `seat` step",
+                modelled(seat, withhold(), post("raya"), {"step": "seat", "to": 4}),
+            ),
+            (
+                f"{it}, and steps[2] seats more than one batch",
+                modelled(seat, withhold(), {"step": "seat", "to": 5, "batch": 1}),
+            ),
+            (
+                f"{it}, and steps[4] is a second `seat` step after it",
+                withholding(post("mira"), {"step": "seat", "to": 5}),
+            ),
+            (f"{it}, and steps[3] has pax post, whom it withholds from", withholding(post("pax"))),
+            (
+                f"{it}, and steps[4] has pax post, whom it withholds from",
+                withholding(post("mira"), post("all")),
+            ),
+            (
+                "steps[3] is a `withhold` step, and the scenario has a `cut` step",
+                modelled(seat, cut, heal, withhold(), {"step": "seat", "to": 4}),
+            ),
+            (f"{it}, and the scenario has a `cut` step", withholding(cut)),
+            (
+                f"{it}, and `loss` of `network` is above 0",
+                withholding(network={"seed": 7, "loss": 0.01}),
+            ),
+            (
+                f"{it}, and `welcome_loss` of `network` is above 0",
+                withholding(network={"seed": 7, "welcome_loss": 1}),
+            ),
+            (
+                f"{it}, and `positions` of `expect` gives pax `behind`, whom it withholds from "
+                "and the run then waits on",
+                withholding(expect={"positions": {"pax": "behind"}}),
+            ),
+            (
+                "`expect` holds `applied`, and no step is a `withhold` step",
+                dict(modelled(seat), expect={"applied": {}}),
+            ),
+        ]
+        for why, said in refusals:
+            with self.subTest(why=why, said=said):
+                self.assertEqual(self.refusal(said), why)
+
+    def test_what_is_expected_of_a_candidate_applied_is_checked_as_what_is_expected(self):
+        of = "of `applied` of `expect`"
+        refusals = [
+            ("`applied` of `expect` is not an object", "split at epoch 2"),
+            (f"`applied` is not a field {of}", {"applied": {}}),
+            (f"`position` is not a field {of}", {"position": {}}),
+            (f"`verdict` {of} is not a text", {"verdict": 2}),
+            (f"`verdict` {of} is `split`, which no fork report gives", {"verdict": "split"}),
+            (f"`positions` {of} is not an object", {"positions": ["tip"]}),
+            (
+                f"`positions` {of} names kes, who is seated by no step",
+                {"positions": {"kes": "no data"}},
+            ),
+            (
+                f"`posts` {of} names peer2, and no member has that name",
+                {"posts": {"peer2": "read"}},
+            ),
+            (
+                f"`positions` {of} gives pax `ended`, which is not among: tip, behind, "
+                "lineage unknown, removed, never joined, no data",
+                {"positions": {"pax": "ended"}},
+            ),
+            (
+                f"`posts` {of} gives pax `seen`, which is not among: read, unreadable, "
+                "not a member, no log, no record",
+                {"posts": {"pax": "seen"}},
+            ),
+        ]
+        for why, said in refusals:
+            with self.subTest(why=why, said=said):
+                self.assertEqual(self.refusal(withholding(expect={"applied": said})), why)
+
+    def test_the_member_a_candidate_is_withheld_from_may_be_expected_anywhere_once_applied(self):
+        expect = {"positions": {"pax": "tip"}, "applied": {"positions": {"pax": "behind"}}}
+
+        self.assertEqual(
+            scenario.scenario(withholding(expect=expect)).expect.applied.positions,
+            {"pax": "behind"},
+        )
+
     def test_a_name_with_a_number_no_reader_takes_is_refused(self):
         endless = "peer" + "7" * 5000
 
@@ -516,6 +888,65 @@ class Expecting(unittest.TestCase):
         self.assertEqual([post["sender"] for post in posts], IDS[:3])
         for post in posts:
             self.assertEqual(sorted(post["cells"].values()), ["read", "read", "sent"])
+
+    def test_a_run_whose_group_applied_the_withheld_candidate_is_held_to_what_applied_says(self):
+        saro, raya, pax, mira = IDS[:4]
+        held = scenario.scenario(
+            withholding(
+                {"step": "post", "from": "mira"},
+                expect={
+                    "posts": {"raya": "no record"},
+                    "applied": {
+                        "verdict": "split at epoch 2",
+                        "positions": {"mira": "behind"},
+                        "posts": {"pax": "unreadable"},
+                    },
+                },
+            )
+        )
+
+        not_applied = held.expectation("2a30d6a2c1", IDS)
+        self.assertEqual(not_applied, held.expectation("2a30d6a2c1", IDS, applied=False))
+        self.assertEqual(not_applied["verdict"], "whole")
+        self.assertEqual(
+            [seat["position"] for seat in not_applied["installations"].values()], ["tip"] * 4
+        )
+        self.assertEqual(
+            not_applied["posts"],
+            [
+                {
+                    "sender": mira,
+                    "cells": {saro: "read", raya: "no record", pax: "read", mira: "sent"},
+                }
+            ],
+        )
+        self.assertEqual(
+            held.expectation("2a30d6a2c1", IDS, applied=True),
+            {
+                "conversation": "2a30d6a2c1",
+                "verdict": "split at epoch 2",
+                "installations": {
+                    saro: {"name": "saro", "position": "tip"},
+                    raya: {"name": "raya", "position": "tip"},
+                    pax: {"name": "pax", "position": "tip"},
+                    mira: {"name": "mira", "position": "behind"},
+                },
+                "posts": [
+                    {
+                        "sender": mira,
+                        "cells": {saro: "read", raya: "read", pax: "unreadable", mira: "sent"},
+                    }
+                ],
+            },
+        )
+
+    def test_a_scenario_that_says_nothing_of_a_candidate_applied_expects_a_whole_group_of_it(self):
+        held = scenario.scenario(withholding(expect={"verdict": "whole, members behind"}))
+
+        self.assertEqual(
+            held.expectation("2a30d6a2c1", IDS, applied=True),
+            scenario.scenario(withholding()).expectation("2a30d6a2c1", IDS),
+        )
 
     def test_what_a_scenario_expects_changes_only_what_it_names(self):
         saro, raya, pax = IDS[:3]

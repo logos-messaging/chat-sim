@@ -73,6 +73,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
     except scenario.Refused as refused:
         parser.error(str(refused))
+    last = settings.scenario.of_run(getattr(args, "runs", 1)).network
+    if last is not None and last.seed > scenario.MOST_SEED:
+        parser.error(
+            f"--runs: run {args.runs} would have the seed {last.seed}, "
+            f"and {scenario.MOST_SEED} is the most"
+        )
     if settings.share is not None:
         refusal = judge.unreadable(settings, settings.share)
         if refusal is not None:

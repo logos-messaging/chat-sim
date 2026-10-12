@@ -6,6 +6,13 @@ told to dial and passes a frame on to every link but the one the frame came by, 
 post reaches the peers the wiring links and no other. Into the store it is given it writes
 `<name>.json`, with its process id and its arguments.
 
+Started with `--network-seed` it has a network model, of which it keeps the cut, the rule that
+withholds a commit candidate and the delay of a post: it loses no frame at a rate and holds no
+roster. A post it holds when it ends is abandoned, as a peer abandons a frame it holds. A
+roster stands for the commit candidates of its batch. So a peer whose rule is armed writes the
+line of a candidate withheld when a roster arrives, and holds that roster all the same, as a
+peer does by the candidate of another steward.
+
     standin.py [--fault NAME[=PEER]]... <what the tool gives chat-cli>
 
 A fault is what the peer named does wrong, or every peer when it names none.
@@ -34,10 +41,15 @@ FAULTS = {
     "mesh-of-four": "has no more than four of its links in its mesh",
     "refuses-add": "refuses an /add",
     "forgets-a-welcome": "logs one Welcome fewer than it added members",
+    "tells-no-app-id": "writes no app id on its `joined` line",
     "mute": "takes a roster and says nothing of it",
     "split": "holds a roster in a state of its own",
     "short-roster": "holds a roster without its last member, in a state of its own",
     "dies-at-roster": "ends when a roster reaches it",
+    "withholds-nothing": "arms its rule and withholds no candidate",
+    "withholds-early": "writes the line of a candidate withheld as its rule is armed",
+    "lone": "holds the roster a candidate was withheld from it at in a state of its own",
+    "says-applied": "says that the group applied the candidate withheld from it",
     "refuses-post": "refuses a /send",
     "deaf": "shows no post",
     "garbles": "cannot read a post: it shows none, and writes an `inbound_error` line of it",
@@ -99,6 +111,27 @@ class Peer:
         self.rosters = {}
         self.epochs = {}
         self.active = None
+        # What it stamps on the frames it publishes, and what the roster it holds was stamped.
+        self.app_id = secrets.token_hex(10)
+        self.minter = None
+        self.network = None
+        if args.network_seed is not None:
+            self.network = {
+                "seed": args.network_seed,
+                "loss": args.network_loss or 0.0,
+                "welcome_loss": args.network_welcome_loss or 0.0,
+                "delay_ms": args.network_delay_ms or 0,
+                "cut": [],
+                "own": [self.app_id],
+                "withheld": None,
+                "armed": False,
+                "frames": {
+                    "arrived": 0,
+                    "passed": 0,
+                    "held": 0,
+                    "dropped": {"loss": 0, "welcome_loss": 0, "cut": 0, "withheld": 0},
+                },
+            }
         self.inputs = 0
         # One input or one frame at a time.
         self.lock = threading.RLock()
@@ -151,11 +184,69 @@ class Peer:
             if source is None:
                 return
             if frame["kind"] == "roster" and self.address in frame["members"]:
-                self.hold(frame)
+                why = self.arrive(frame, len(raw))
+                if why != "cut":
+                    self.hold(frame, why == "withheld" and "lone" in self.faults)
             elif frame["kind"] == "post" and frame["convo"] in self.rosters:
-                self.show(frame)
+                if self.arrive(frame, len(raw)) is None:
+                    self.pass_on(frame)
 
-    def hold(self, roster: dict) -> None:
+    def arrive(self, frame: dict, size: int):
+        """Puts a frame through the network model: why the model drops it, or `None`."""
+        if self.network is None:
+            return None
+        counted = self.network["frames"]
+        counted["arrived"] += 1
+        candidate = frame["kind"] == "roster"
+        if frame["app_id"] in self.network["cut"]:
+            counted["dropped"]["cut"] += 1
+            self.drop("cut", "candidate" if candidate else "group", size, frame["app_id"])
+            return "cut"
+        if candidate and self.network["armed"] and "withholds-nothing" not in self.faults:
+            self.withhold(frame["app_id"], size)
+            return "withheld"
+        counted["held" if self.holds(frame) else "passed"] += 1
+        return None
+
+    def holds(self, frame: dict) -> bool:
+        """Whether the network model holds a frame for its delay."""
+        return self.network is not None and frame["kind"] == "post" and self.network["delay_ms"] > 0
+
+    def pass_on(self, post: dict) -> None:
+        """Shows a post, once its delay is over where the network model holds it."""
+        if not self.holds(post):
+            self.show(post)
+            return
+        # Not waited for when the peer ends: the post is then abandoned.
+        held = threading.Timer(self.network["delay_ms"] / 1000, self.release, [post])
+        held.daemon = True
+        held.start()
+
+    def release(self, post: dict) -> None:
+        """The delay of a post is over."""
+        with self.lock:
+            self.show(post)
+            counted = self.network["frames"]
+            counted["held"] -= 1
+            counted["passed"] += 1
+
+    def withhold(self, app_id, size: int) -> None:
+        """The rule takes a candidate, and is spent."""
+        self.network["armed"] = False
+        self.network["withheld"] = {
+            "app_id": app_id,
+            "seat": 0,
+            "applied": "says-applied" in self.faults,
+        }
+        self.network["frames"]["dropped"]["withheld"] += 1
+        self.drop("withheld", "candidate", size, app_id, seat=0)
+
+    def drop(self, why: str, kind: str, size: int, app_id, **more) -> None:
+        sender = {} if app_id is None else {"app_id": app_id}
+        arrived = self.network["frames"]["arrived"]
+        self.write(type="network_drop", n=arrived, why=why, kind=kind, bytes=size, **sender, **more)
+
+    def hold(self, roster: dict, alone: bool = False) -> None:
         if "dies-at-roster" in self.faults:
             os._exit(STATUS)
         if "mute" in self.faults:
@@ -167,10 +258,14 @@ class Peer:
         short = "short-roster" in self.faults
         self.rosters[convo] = roster["members"][:-1] if short else roster["members"]
         self.epochs[convo] = roster["epoch"]
-        state = secrets.token_hex(8) if short or "split" in self.faults else roster["state"]
+        self.minter = roster["app_id"]
+        own = short or alone or "split" in self.faults
+        state = secrets.token_hex(8) if own else roster["state"]
         self.record(convo, roster["epoch"], state)
-        if joined:
+        if joined and "tells-no-app-id" in self.faults:
             self.write(type="joined", convo=convo, kind="group")
+        elif joined:
+            self.write(type="joined", convo=convo, kind="group", app_id=self.app_id)
         else:
             self.write(type="members", convo=convo)
 
@@ -248,7 +343,7 @@ class Peer:
             self.rosters[self.active] = [self.address]
             self.epochs[self.active] = 0
             self.record(self.active, 0, secrets.token_hex(8))
-            self.result(text=f"Created {rest}", convo=self.active)
+            self.result(text=f"Created {rest}", convo=self.active, app_id=self.app_id)
         elif command == "/add" and "refuses-add" in self.faults:
             self.result(error="The stand-in refuses to add anybody.")
         elif command == "/add":
@@ -262,10 +357,40 @@ class Peer:
             self.report("sent", f"convo={convo} frame={frame} epoch={epoch}")
             self.result(text="Message sent", convo=convo)
             self.publish(
-                kind="post", id=frame, convo=convo, text=post, epoch=epoch, **{"from": self.address}
+                kind="post",
+                id=frame,
+                convo=convo,
+                text=post,
+                epoch=epoch,
+                app_id=self.app_id,
+                **{"from": self.address},
             )
+        elif command == "/network":
+            self.model(rest.split())
         else:
             self.result(error=f"Unknown command: {command}")
+
+    def model(self, words: list) -> None:
+        """Answers `/network`: sets the network model as the words say, and tells its state."""
+        network = self.network
+        if network is None:
+            self.result(error="The network model is off. Start with --network-seed to turn it on.")
+        elif not words:
+            self.result(text="Network model shown", network=network)
+        elif words[0] == "cut" and words[1:]:
+            network["cut"] = sorted(words[1:])
+            self.result(text="Cut set", network=network)
+        elif words == ["heal"]:
+            network["cut"] = []
+            self.result(text="Cut healed", network=network)
+        elif words == ["withhold", "candidate"]:
+            network["armed"] = True
+            if "withholds-early" in self.faults:
+                network["frames"]["arrived"] += 1
+                self.withhold(self.minter, 0)
+            self.result(text="The next commit candidate is withheld", network=network)
+        else:
+            self.result(error="Usage: /network [cut <app id>... | heal | withhold candidate]")
 
     def add(self, joiners: list) -> None:
         convo = self.active
@@ -276,7 +401,14 @@ class Peer:
         self.record(convo, epoch, state)
         for _ in joiners[1:] if "forgets-a-welcome" in self.faults else joiners:
             self.log("libchat::inbox_v2", f"Publish WelcomeMessage bytes={WELCOME * len(members)}")
-        self.publish(kind="roster", convo=convo, epoch=epoch, state=state, members=members)
+        self.publish(
+            kind="roster",
+            convo=convo,
+            epoch=epoch,
+            state=state,
+            members=members,
+            app_id=self.app_id,
+        )
         self.write(type="members", convo=convo)
 
 
@@ -294,12 +426,19 @@ def main() -> None:
         parser.add_argument(f"--group-{duration}-ms", type=int)
     parser.add_argument("--cluster-id", type=int, required=True)
     parser.add_argument("--max-message-kib", type=int, required=True)
+    parser.add_argument("--network-seed", type=int)
+    parser.add_argument("--network-loss", type=float)
+    parser.add_argument("--network-welcome-loss", type=float)
+    parser.add_argument("--network-delay-ms", type=int)
     parser.add_argument("--static-node", action="append", default=[])
     parser.add_argument("--log-file", required=True)
     args = parser.parse_args()
     for flag in args.fault:
         if flag.partition("=")[0] not in FAULTS:
             parser.error(f"--fault: no such fault: {flag}")
+    rules = (args.network_loss, args.network_welcome_loss, args.network_delay_ms)
+    if args.network_seed is None and rules != (None, None, None):
+        parser.error("a flag of the network model needs --network-seed")
 
     args.data.mkdir(parents=True, exist_ok=True)
     (args.data / f"{args.name}.json").write_text(

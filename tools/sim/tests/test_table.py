@@ -3,6 +3,14 @@ import unittest
 from sim import table
 
 PAGE = "http://127.0.0.1:8750/#2a30d6a2c1"
+NETWORK = {"seed": 7, "loss": 0.05, "welcome_loss": 0, "delay_ms": 0}
+
+
+def withheld(**changed) -> dict:
+    """What a run says was withheld: here from pax, the candidate of raya, which was applied."""
+    whole = {"from": "pax", "seat": 1, "app_id": "38306230", "minter": "raya", "applied": True}
+    whole.update(changed)
+    return whole
 
 
 def report(**changed) -> dict:
@@ -14,6 +22,7 @@ def report(**changed) -> dict:
         "steps_done": 2,
         "timers": "fast",
         "max_message_kib": 512,
+        "network": None,
         "load": {"start": [1.5, 1.25, 1.0], "end": [2.625, 2.25, 2.0]},
         "nodes": [
             {
@@ -60,6 +69,7 @@ def report(**changed) -> dict:
             }
         ],
         "conversation": "2a30d6a2c1",
+        "withheld": None,
         "check": {"as_expected": True, "differences": []},
         "unchecked": None,
         "verdict": "whole",
@@ -96,6 +106,76 @@ class Render(unittest.TestCase):
             "\n"
             "post  from  read by  median   worst  delivered   worst  lookup\n"
             "1      pax   2 of 2  0.062s  0.125s     0.031s  0.062s  0.047s\n",
+        )
+
+    def test_a_run_with_a_network_model_names_its_seed_its_rates_and_the_frames_each_lost(self):
+        modelled = report(network=NETWORK)
+        for node, dropped in zip(
+            modelled["nodes"], ({}, {"loss": 12, "cut": 1}, {"withheld": 1})
+        ):
+            node["network_dropped"] = dropped
+
+        self.assertEqual(
+            table.render(modelled).splitlines()[:9],
+            [
+                "3 members, fast group timers, largest message 512 KiB, network seed 7, "
+                "loss 0.05, welcome loss 0",
+                "whole: 3 of 3 members at the tip",
+                "the report is as expected",
+                "load average 1.50 at the start, 2.62 at the end",
+                "",
+                "node   ready   start  dials  wired  mesh  end  mesh  refused  dropped  lost  "
+                "errors  exit",
+                "saro  3.125s  3.125s      0     12    11   10     9        8        7     0  "
+                "     0     0",
+                "raya  6.250s  3.000s      1     22    21   20    19       18       17    13  "
+                "     0     0",
+                "pax   9.375s  2.875s      2     32    31   30    29       28       27     1  "
+                "     0     0",
+            ],
+        )
+        self.assertEqual(
+            table.render(modelled).splitlines()[9:], table.render(report()).splitlines()[9:]
+        )
+
+    def test_a_peer_of_a_network_model_that_did_not_end_has_no_count_of_frames_lost(self):
+        nodes = [{"name": "saro", "dials": [], "ready_s": 3.125, "start_s": 3.125}]
+        stopped = report(network=NETWORK, nodes=nodes, batches=[], posts=[])
+
+        self.assertEqual(
+            table.render(stopped).splitlines()[5:],
+            [
+                "node   ready   start  dials  wired  mesh  end  mesh  refused  dropped  lost  "
+                "errors  exit",
+                "saro  3.125s  3.125s      0      -     -    -     -        -        -     -  "
+                "     -     -",
+            ],
+        )
+
+    def test_what_was_withheld_from_whom_is_told_after_the_verdict(self):
+        text = table.render(
+            report(network=NETWORK, withheld=withheld(), verdict="split at epoch 4")
+        )
+
+        self.assertIn(
+            "\nsplit at epoch 4: 3 of 3 members at the tip\n"
+            "withheld from pax: the candidate of raya, applied\n"
+            "the report is as expected\n",
+            text,
+        )
+        self.assertIn(
+            "\nwhole: 3 of 3 members at the tip\n"
+            "withheld from pax: the candidate of saro, not applied\n"
+            "the report is as expected\n",
+            table.render(
+                report(network=NETWORK, withheld=withheld(minter="saro", applied=False))
+            ),
+        )
+
+    def test_a_withheld_candidate_whose_app_id_is_no_peers_is_said_so(self):
+        self.assertIn(
+            "\nwithheld from pax: the candidate of no peer of the run, applied\n",
+            table.render(report(network=NETWORK, withheld=withheld(minter=None))),
         )
 
     def test_a_run_that_stopped_while_its_peers_started(self):
@@ -334,6 +414,38 @@ class Row(unittest.TestCase):
             table.row(3, 7.25, unchecked),
             "  3      7.2      3 of 3  whole                   "
             "not checked: forks check ended with signal 9",
+        )
+
+    def test_a_run_with_a_network_model_names_its_seed_after_what_stopped_it(self):
+        self.assertEqual(
+            table.row(7, 41.26, report(network=NETWORK)),
+            "  7     41.3      3 of 3  whole                   as expected; seed 7",
+        )
+        stopped = differing(
+            "raya (7b1e44d9): never joined, expected tip",
+            stopped="raya: no line of a new roster within the budget",
+            network=dict(NETWORK, seed=2**64 - 1),
+        )
+        self.assertTrue(
+            table.row(2, 9.04, stopped).endswith(
+                "; stopped: raya: no line of a new roster within the budget; "
+                f"seed {2**64 - 1}"
+            )
+        )
+
+    def test_a_run_that_withheld_a_candidate_says_whose_and_whether_applied_before_its_page(self):
+        told = report(network=NETWORK, withheld=withheld(), page=PAGE)
+
+        self.assertTrue(
+            table.row(1, 1.0, told).endswith(
+                f"  as expected; seed 7; withheld from pax: the candidate of raya, applied; {PAGE}"
+            )
+        )
+        told["withheld"]["applied"] = False
+        self.assertTrue(
+            table.row(1, 1.0, dict(told, page=None)).endswith(
+                "  as expected; seed 7; withheld from pax: the candidate of raya, not applied"
+            )
         )
 
     def test_a_shared_run_ends_with_the_page_of_its_conversation(self):

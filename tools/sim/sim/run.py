@@ -8,13 +8,24 @@ import os
 import secrets
 import signal
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from . import judge, measure, table, wiring
-from .peers import GRACE, WATCH, Interrupted, OutOfBudget, Peer, Registry, Stopped, Watch, name_of
-from .scenario import Scenario, Seat, senders
+from .peers import (
+    GRACE,
+    WATCH,
+    Interrupted,
+    OutOfBudget,
+    Peer,
+    Registry,
+    Stopped,
+    Watch,
+    index_of,
+    name_of,
+)
+from .scenario import Cut, Heal, Post, Scenario, Seat, senders
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 
@@ -68,11 +79,14 @@ def run(settings: Settings, watch: Watch) -> dict:
         "cluster_id": CLUSTER_ID,
         "max_message_kib": scenario.max_message_kib,
         "budget": scenario.budget,
+        "network": None if scenario.network is None else asdict(scenario.network),
         "load": {"start": list(os.getloadavg()), "end": None},
         "nodes": [],
         "batches": [],
         "posts": [],
         "conversation": None,
+        "withheld": None,
+        "held_to": None,
         "check": None,
         "unchecked": None,
         "verdict": None,
@@ -93,13 +107,14 @@ def run(settings: Settings, watch: Watch) -> dict:
             report["stopped"] = str(stopped)
         # A process that has ended has no last word, and the others still have theirs.
         watch.processes.clear()
-        _last_words(peers, report)
+        _last_words(scenario, peers, report, watch)
     except Interrupted:
         pass
     finally:
         watch.close()
         _stop(peers, registry, report)
     report["load"]["end"] = list(os.getloadavg())
+    _withheld(scenario, report)
     if watch.signal is not None:
         report["stopped"] = f"interrupted by {signal.Signals(watch.signal).name}"
     elif report["conversation"] is not None:
@@ -133,6 +148,22 @@ def _timers(scenario: Scenario) -> List[str]:
     return flags
 
 
+def _network(scenario: Scenario, name: str) -> List[str]:
+    """The flags that put what the peer `name` receives through the scenario's network model."""
+    network = scenario.network
+    if network is None:
+        return []
+    return [
+        "--network-seed",
+        str(network.seed),
+        # A rate may be -0.0, which chat-cli takes for a flag when it is a word of its own.
+        f"--network-loss={network.loss}",
+        f"--network-welcome-loss={network.welcome_loss}",
+        "--network-delay-ms",
+        str(network.delay_of(name)),
+    ]
+
+
 def _group(
     settings: Settings, registry: Registry, peers: List[Peer], report: dict, watch: Watch
 ) -> None:
@@ -160,6 +191,7 @@ def _group(
             str(CLUSTER_ID),
             "--max-message-kib",
             str(scenario.max_message_kib),
+            *_network(scenario, name),
         ]
         for other in dialed:
             command += ["--static-node", peers[other].node_address]
@@ -179,18 +211,33 @@ def _group(
     convo = creator.run("/new sim", _deadline(settings))["convo"]
     report["conversation"] = convo
     seated = [creator]
+    # The sides of the cut in force, the member whose rule is armed for the next batch, and
+    # the members a withheld candidate left in a state of their own.
+    cut: List[List[Peer]] = []
+    armed: Optional[Peer] = None
+    apart: List[Peer] = []
     for step in scenario.steps:
         if isinstance(step, Seat):
             for joiners in measure.batches(peers[len(seated) : step.to], step.batch):
-                report["batches"].append(_seat(settings, convo, seated, joiners))
+                report["batches"].append(_seat(settings, convo, seated, joiners, armed, apart))
                 seated += joiners
-        else:
+                armed = None
+        elif isinstance(step, Post):
             for sender in senders(step, len(seated)):
-                post = _post(settings, registry, convo, peers[sender], seated)
+                post = _post(settings, registry, convo, peers[sender], seated, apart)
                 report["posts"].append(post)
                 if post["unread"]:
                     unread = ", ".join(post["unread"])
                     raise Stopped(f"the post was not read within the budget by: {unread}")
+        elif isinstance(step, Cut):
+            cut = [[peers[index_of(name)] for name in side] for side in step.sides]
+            _cut(settings, cut)
+        elif isinstance(step, Heal):
+            for member in cut[0] + cut[1]:
+                member.run("/network heal", _deadline(settings))
+        else:
+            armed = peers[index_of(step.member)]
+            armed.run("/network withhold candidate", _deadline(settings))
         report["steps_done"] += 1
 
 
@@ -236,13 +283,35 @@ def _expected(members: List[Peer], said: Dict[str, str], word: str) -> List[Peer
     return [member for member in members if said.get(member.name, word) == word]
 
 
-def _seat(settings: Settings, convo: str, seated: List[Peer], joiners: List[Peer]) -> dict:
+def _cut(settings: Settings, sides: List[List[Peer]]) -> None:
+    """Cuts each side off from the other: each member is given the app ids of the other side.
+
+    A member tells its app id as it joins, so one that has not told it yet is waited for.
+    """
+    deadline = _deadline(settings)
+    app_ids = [[member.read_app_id(deadline) for member in side] for side in sides]
+    for side, others in zip(sides, reversed(app_ids)):
+        for member in side:
+            member.run(f"/network cut {' '.join(others)}", deadline)
+
+
+def _seat(
+    settings: Settings,
+    convo: str,
+    seated: List[Peer],
+    joiners: List[Peer],
+    withheld: Optional[Peer],
+    apart: List[Peer],
+) -> dict:
     """The creator adds `joiners` in one input. Returns once the members hold the new roster.
 
     A joiner holds it by a Welcome for a group of that size, and the creator sends a joiner one
     Welcome. So the Welcomes it published meanwhile are those of this roster, one a joiner.
     The members waited on are the creator, in whose log the Welcomes are counted, and each one
     the scenario expects at the tip.
+
+    `withheld` is the member whose armed rule withholds a candidate of this batch, when there
+    is one. Where the batch leaves it in a state of its own it is added to `apart`.
     """
     deadline = _deadline(settings)
     creator = seated[0]
@@ -270,7 +339,9 @@ def _seat(settings: Settings, convo: str, seated: List[Peer], joiners: List[Peer
         epoch = reached[0].epoch
         held = [measure.held(_log(member), convo, epoch) for member in at_the_tip]
         states = {state for state in held if state is not None}
-        if len(states) > 1:
+        if _alone(withheld, at_the_tip, held):
+            apart.append(withheld)
+        elif len(states) > 1:
             raise Stopped(
                 f"the group split: {len(held) - held.count(None)} of its {members} members "
                 f"hold epoch {epoch}, in {len(states)} states"
@@ -284,6 +355,8 @@ def _seat(settings: Settings, convo: str, seated: List[Peer], joiners: List[Peer
             f"{creator.name}: its log holds {len(welcome_bytes)} Welcomes "
             f"for {len(joiners)} joiners"
         )
+    if withheld is not None:
+        _withheld_line(withheld, sent_at, deadline)
     return {
         "joiners": len(joiners),
         "members": members,
@@ -291,6 +364,36 @@ def _seat(settings: Settings, convo: str, seated: List[Peer], joiners: List[Peer
         "seated_s": seated_at - sent_at,
         "welcome_bytes": welcome_bytes,
     }
+
+
+def _alone(member: Optional[Peer], members: List[Peer], held: List[Optional[str]]) -> bool:
+    """Whether `member` holds an epoch in a state of its own, and the other `members` in one.
+
+    `held` is the state each of `members` holds the epoch in, or `None` where it holds none.
+    That is the split a candidate withheld from `member` makes when the group applies it.
+    """
+    if member is None:
+        return False
+    own = held[members.index(member)]
+    others = {
+        state for other, state in zip(members, held) if other is not member and state is not None
+    }
+    return own is not None and len(others) == 1 and own not in others
+
+
+def _withheld_line(member: Peer, added_at: float, deadline: float) -> None:
+    """Waits for the line by which `member` says that its rule withheld a candidate.
+
+    The rule takes the first candidate to arrive once it is armed. One it took before the
+    `/add` was written at `added_at` was of an earlier batch, and none of this one was withheld.
+    """
+    read_at, _ = member.wait_for(
+        "line of a withheld candidate",
+        lambda line: line.get("type") == "network_drop" and line.get("why") == "withheld",
+        deadline,
+    )
+    if read_at < added_at:
+        raise Stopped(f"{member.name}: a candidate was withheld before the /add was written")
 
 
 def _log(member: Peer) -> str:
@@ -325,16 +428,24 @@ def _reached(member: Peer, convo: str, members: int, deadline: float) -> measure
 
 
 def _post(
-    settings: Settings, registry: Registry, convo: str, poster: Peer, seated: List[Peer]
+    settings: Settings,
+    registry: Registry,
+    convo: str,
+    poster: Peer,
+    seated: List[Peer],
+    apart: List[Peer],
 ) -> dict:
-    """`poster` posts, and each other member the scenario expects to read the post waits for it."""
+    """`poster` posts, and each other member the scenario expects to read the post waits for it.
+
+    A member in `apart` holds the group in a state of its own, and is not waited on.
+    """
     deadline = _deadline(settings)
     text = f"sim {secrets.token_hex(8)}"
     sent_at, _, result = poster.input(f"/send {convo} {text}", deadline)
     if result.get("ok") is not True:
         raise Stopped(f"{poster.name}: the post was refused: {result.get('error')}")
 
-    others = [member for member in seated if member is not poster]
+    others = [member for member in seated if member is not poster and member not in apart]
     readers = _expected(others, settings.scenario.expect.posts, "read")
     read_at = []
     unread = []
@@ -360,14 +471,57 @@ def _post(
     return post
 
 
-def _last_words(peers: List[Peer], report: dict) -> None:
+def _last_words(scenario: Scenario, peers: List[Peer], report: dict, watch: Watch) -> None:
     """Asks every node still answering what it ends with."""
+    over_at = time.monotonic()
     for node, peer in zip(report["nodes"], peers):
         try:
+            if scenario.network is not None:
+                # A frame held when the steps are over is due within the member's delay, and
+                # no wait of a run is longer than its budget.
+                delay = scenario.network.delay_of(peer.name) / 1000
+                held_until = over_at + min(delay, scenario.budget)
+                node["network"] = _network_at_rest(peer, held_until, watch)
             node["end"] = peer.node(time.monotonic() + ANSWER)
         except Stopped:
             continue
         del node["end"]["address"]
+
+
+def _network_at_rest(peer: Peer, held_until: float, watch: Watch) -> dict:
+    """What the network model of `peer` answers once it holds no frame, or at `held_until`.
+
+    A peer abandons the frames its model holds when it ends, and its log then lacks what
+    became of them.
+    """
+    while True:
+        network = peer.run("/network", time.monotonic() + ANSWER)["network"]
+        if network["frames"]["held"] == 0 or time.monotonic() >= held_until:
+            return network
+        _pause(POLL, watch)
+
+
+def _withheld(scenario: Scenario, report: dict) -> None:
+    """Says what was withheld from a member, and which outcome the run is held to by it.
+
+    Both go by what the member's network model last answered: whether the steward that minted
+    the candidate has broadcast a Welcome since, which a steward does for a commit of its own
+    that it merged. One batch follows the step, so that commit is the candidate, and the group
+    applied it where its stewards merged one commit.
+    """
+    answers = {node["name"]: node.get("network") for node in report["nodes"]}
+    withheld = (answers.get(scenario.withheld_from) or {}).get("withheld")
+    if withheld is None:
+        return
+    minters = [node["name"] for node in report["nodes"] if node["app_id"] == withheld["app_id"]]
+    report["withheld"] = {
+        "from": scenario.withheld_from,
+        "seat": withheld["seat"],
+        "app_id": withheld["app_id"],
+        "minter": minters[0] if minters and withheld["app_id"] is not None else None,
+        "applied": withheld["applied"],
+    }
+    report["held_to"] = "applied" if withheld["applied"] else "not applied"
 
 
 def _stop(peers: List[Peer], registry: Optional[Registry], report: dict) -> None:
@@ -381,6 +535,9 @@ def _stop(peers: List[Peer], registry: Optional[Registry], report: dict) -> None
         node.update(_ending(peer.ended(), was_early, killed))
         node["inbound_errors"] = _inbound_errors(peer)
         node["unchecked_senders"] = measure.unchecked(_log(peer))
+        node["app_id"] = peer.app_id
+        if report["network"] is not None:
+            node["network_dropped"] = _network_dropped(peer)
     if registry is not None:
         registry.stop()
 
@@ -404,5 +561,13 @@ def _inbound_errors(peer: Peer) -> Dict[str, int]:
     """How many `inbound_error` lines a peer wrote, by their message."""
     counted = collections.Counter(
         str(line.get("message")) for line in peer.written() if line.get("type") == "inbound_error"
+    )
+    return dict(counted.most_common())
+
+
+def _network_dropped(peer: Peer) -> Dict[str, int]:
+    """How many `network_drop` lines a peer wrote, by their `why`."""
+    counted = collections.Counter(
+        str(line.get("why")) for line in peer.written() if line.get("type") == "network_drop"
     )
     return dict(counted.most_common())

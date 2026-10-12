@@ -169,6 +169,44 @@ class Lines(Scratch):
             peer.wait_for("roster", roster, time.monotonic() + 0.3)
         self.assertEqual(str(stopped.exception), "raya: no roster within the budget")
 
+    def telling(self, *lines: dict, name: str = "raya") -> Peer:
+        """A peer that writes its ready line and `lines`, and then nothing."""
+        written = [READY, *map(json.dumps, lines)]
+        peer = self.peer(
+            f"import sys; print(*{written!r}, sep='\\n', flush=True); sys.stdin.read()", name
+        )
+        peer.read_ready(soon())
+        return peer
+
+    def test_the_result_of_a_new_group_and_a_joined_line_tell_the_app_id_of_a_peer(self):
+        created = {"type": "result", "input": 1, "ok": True, "convo": "c1", "app_id": "3830"}
+        joined = {"type": "joined", "convo": "c1", "kind": "group", "app_id": "3864"}
+        for name, line in (("saro", created), ("raya", joined)):
+            peer = self.telling(line, name=name)
+
+            self.assertIsNone(peer.app_id)
+            self.assertEqual(peer.read_app_id(soon()), line["app_id"])
+            self.assertEqual(peer.app_id, line["app_id"])
+
+    def test_the_app_id_on_any_other_line_is_not_that_of_the_peer(self):
+        dropped = {"type": "network_drop", "n": 1, "why": "cut", "kind": "group", "app_id": "3830"}
+        peer = self.telling(dropped, {"type": "joined", "convo": "c1", "kind": "dm"})
+
+        with self.assertRaises(OutOfBudget) as stopped:
+            peer.read_app_id(time.monotonic() + 0.5)
+        self.assertEqual(str(stopped.exception), "raya: no app id within the budget")
+        self.assertIsNone(peer.app_id)
+
+    def test_the_lines_read_on_the_way_to_an_app_id_are_kept_for_the_waits_that_want_them(self):
+        roster = {"type": "members", "convo": "c1"}
+        joined = {"type": "joined", "convo": "c1", "kind": "group", "app_id": "3864"}
+        peer = self.telling(roster, joined)
+
+        self.assertEqual(peer.read_app_id(soon()), "3864")
+        for line in (joined, roster):
+            _, found = peer.wait_for("line", lambda held: held["type"] == line["type"], soon())
+            self.assertEqual(found, line)
+
     def test_an_input_that_was_refused_stops_the_run(self):
         peer = self.peer(ANSWERING)
         peer.read_ready(soon())

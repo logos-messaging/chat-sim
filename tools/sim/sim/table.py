@@ -10,9 +10,10 @@ _ROW = "{:>3}  {:>7}  {:>10}  {:<22}  "
 
 def render(report: dict) -> str:
     """The report as the tables a person reads."""
+    modelled = report["network"] is not None
     lines = [
         f"{report['members']} members, {_timers(report['timers'])}, "
-        f"largest message {report['max_message_kib']} KiB",
+        f"largest message {report['max_message_kib']} KiB{_network(report['network'])}",
         *_outcome(report),
         _load(report["load"]),
         "",
@@ -29,10 +30,11 @@ def render(report: dict) -> str:
             "mesh",
             "refused",
             "dropped",
+            *(("lost",) if modelled else ()),
             "errors",
             "exit",
         ),
-        [_node(node) for node in report["nodes"]],
+        [_node(node, modelled) for node in report["nodes"]],
     )
     errors = _errors(report["nodes"])
     if errors:
@@ -64,10 +66,17 @@ def render(report: dict) -> str:
 
 
 def row(number: int, seconds: float, report: dict) -> str:
-    """A sweep's row for a run: how its check went, and what stopped its steps if anything did."""
+    """A sweep's row for a run: how its check went, and what stopped its steps if anything did.
+
+    Then the seed of its network model and what was withheld, for a run that has them.
+    """
     said = [_check(report)]
     if report["stopped"] is not None:
         said.append(f"stopped: {report['stopped']}")
+    if report["network"] is not None:
+        said.append(f"seed {report['network']['seed']}")
+    if report["withheld"] is not None:
+        said.append(_withheld(report["withheld"]))
     if report["page"] is not None:
         said.append(report["page"])
     elif report["unshared"]:
@@ -100,6 +109,23 @@ def _timers(timers: Union[str, Dict[str, int]]) -> str:
     return f"group timers {given}" if given else "default group timers"
 
 
+def _network(network: Optional[dict]) -> str:
+    """The seed and the rates of a run's network model, as the head line ends with them."""
+    if network is None:
+        return ""
+    return (
+        f", network seed {network['seed']}, loss {network['loss']}, "
+        f"welcome loss {network['welcome_loss']}"
+    )
+
+
+def _withheld(withheld: dict) -> str:
+    """Whose candidate was withheld from whom, and whether the group applied it."""
+    minter = withheld["minter"] or "no peer of the run"
+    applied = "applied" if withheld["applied"] else "not applied"
+    return f"withheld from {withheld['from']}: the candidate of {minter}, {applied}"
+
+
 def _outcome(report: dict) -> List[str]:
     lines = []
     if report["stopped"] is not None:
@@ -115,6 +141,8 @@ def _outcome(report: dict) -> List[str]:
         f"{report['verdict'] or 'no report'}: "
         f"{report['at_tip'] or 0} of {report['seated']} members at the tip"
     )
+    if report["withheld"] is not None:
+        lines.append(_withheld(report["withheld"]))
     if check is None:
         lines.append(f"not checked: {report['unchecked']}")
     elif check["as_expected"]:
@@ -139,7 +167,7 @@ def _load(load: dict) -> str:
     return f"load average {start:.2f} at the start{at_the_end}"
 
 
-def _node(node: dict) -> Sequence[str]:
+def _node(node: dict, modelled: bool) -> Sequence[str]:
     wired = node.get("wired", {})
     end = node.get("end", {})
     return (
@@ -153,9 +181,17 @@ def _node(node: dict) -> Sequence[str]:
         _count(end.get("mesh_peers")),
         _count(end.get("publish_refused")),
         _count(end.get("inbound_dropped")),
+        *((_count(_lost(node)),) if modelled else ()),
         _count(sum(node["inbound_errors"].values()) if "inbound_errors" in node else None),
         _exit(node),
     )
+
+
+def _lost(node: dict) -> Optional[int]:
+    """How many frames a peer's network model dropped, once the peer has ended."""
+    if "network_dropped" not in node:
+        return None
+    return sum(node["network_dropped"].values())
 
 
 def _exit(node: dict) -> str:

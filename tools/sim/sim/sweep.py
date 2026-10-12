@@ -39,6 +39,8 @@ def sweep(
 ) -> dict:
     """Runs a scenario `runs` times, each in a directory of its own under `settings.out`.
 
+    A scenario with a network model gives each run the seed after that of the run before.
+
     Says the head of the rows, a row as each run ends, and how many went as expected. Returns
     the same, which it also writes under `settings.out` as `sweep.json` and `sweep.txt`, as
     each row is said and once more at the end.
@@ -73,7 +75,10 @@ def sweep(
             break
         directory = f"{number:0{len(str(runs))}d}"
         started = time.monotonic()
-        one = run(dataclasses.replace(settings, out=settings.out / directory), watch)
+        scenario = settings.scenario.of_run(number)
+        one = run(
+            dataclasses.replace(settings, out=settings.out / directory, scenario=scenario), watch
+        )
         if watch.signal is not None:
             break
         seconds = time.monotonic() - started
@@ -91,6 +96,8 @@ def sweep(
                 "at_tip": one["at_tip"],
                 "seated": one["seated"],
                 "seconds": seconds,
+                "seed": None if one["network"] is None else one["network"]["seed"],
+                "withheld": one["withheld"],
                 "page": one["page"],
             }
         )

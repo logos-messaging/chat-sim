@@ -17,7 +17,7 @@ from sim.run import Settings
 from sim.sweep import Interrupts, sweep
 
 from tests import STANDIN, forks_whose
-from tests.test_run import Driven, Scratch, said
+from tests.test_run import APPLIED, Driven, Scratch, given, said, withholding
 from tests.test_table import report as whole_run
 
 ROW = re.compile(r" *(\d+) +(\d+\.\d) +(\S+ of \S+|-) +(.*?)  +(\S.*)")
@@ -99,6 +99,8 @@ class Sweeping(Scratch):
                 "verdict": "whole",
                 "at_tip": 3,
                 "seated": 3,
+                "seed": None,
+                "withheld": None,
                 "page": None,
             },
         )
@@ -163,6 +165,43 @@ class Sweeping(Scratch):
 
         self.assertEqual(report["rows"][0]["page"], whole["page"])
         self.assertTrue(self.said[1].endswith(f"as expected; {whole['page']}"))
+
+    def test_each_run_has_the_seed_after_that_of_the_run_before_and_its_row_names_it(self):
+        report = self.sweep_of(3, {}, network={"seed": 7})
+
+        for number, seed in ((1, 7), (2, 8), (3, 9)):
+            run = self.out / str(number)
+            started = json.loads((run / "data" / "pax.json").read_text("utf-8"))["arguments"]
+            self.assertEqual(given(started, "--network-seed"), [str(seed)])
+            kept = json.loads((run / "run.json").read_text("utf-8"))
+            self.assertEqual(kept["network"]["seed"], seed)
+        self.assertEqual([row["seed"] for row in report["rows"]], [7, 8, 9])
+        self.assertEqual([row["withheld"] for row in report["rows"]], [None] * 3)
+        self.assertEqual(
+            [cells(row)[3] for row in self.said[1:4]],
+            ["as expected; seed 7", "as expected; seed 8", "as expected; seed 9"],
+        )
+
+    def test_the_row_of_a_run_that_withheld_a_candidate_says_whose_and_whether_applied(self):
+        applied = ["lone=pax", "says-applied=pax"]
+        report = self.sweep_of(2, {2: applied}, **withholding(expect={"applied": APPLIED}))
+
+        told = "withheld from pax: the candidate of saro"
+        self.assertEqual(
+            [cells(row) for row in self.said[1:3]],
+            [
+                ("1", "4 of 4", "whole", f"as expected; seed 7; {told}, not applied"),
+                ("2", "4 of 4", "split at epoch 2", f"as expected; seed 8; {told}, applied"),
+            ],
+        )
+        self.assertEqual(self.said[3:], ["2 of 2 runs went as expected"])
+        for row, applied in zip(report["rows"], (False, True)):
+            kept = json.loads((self.out / row["directory"] / "run.json").read_text("utf-8"))
+            self.assertEqual(row["withheld"], kept["withheld"])
+            self.assertEqual(
+                (row["withheld"]["from"], row["withheld"]["minter"], row["withheld"]["applied"]),
+                ("pax", "saro", applied),
+            )
 
     def test_a_signal_once_a_run_is_past_interrupting_keeps_its_row_and_starts_no_other(self):
         whole = whole_run()

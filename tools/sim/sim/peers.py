@@ -220,6 +220,8 @@ class Peer(_Process):
         self.installation = ""
         self.node_address = ""
         self.ready_at = 0.0
+        # What it stamps on the frames it publishes to the group, once a line of its told it.
+        self.app_id: Optional[str] = None
 
     def _next(self, what: str, deadline: float) -> Tuple[float, dict]:
         read_at, text = self._line(what, deadline)
@@ -229,6 +231,9 @@ class Peer(_Process):
             line = None
         if not isinstance(line, dict):
             raise Stopped(f"{self.name}: a line that is no JSON object: {text[:80]}")
+        # The result of `/new` tells it to the creator, and its `joined` line to a joiner.
+        if line.get("type") in ("result", "joined") and "app_id" in line:
+            self.app_id = line["app_id"]
         return read_at, line
 
     def wait_for(
@@ -253,6 +258,12 @@ class Peer(_Process):
         self.address = ready["address"]
         self.installation = ready["installation"][:INSTALLATION]
         self.node_address = ready["node_address"]
+
+    def read_app_id(self, deadline: float) -> str:
+        """Reads on until a line has told the peer's app id, and returns it."""
+        while self.app_id is None:
+            self._unclaimed.append(self._next("app id", deadline))
+        return self.app_id
 
     def input(self, text: str, deadline: float) -> Tuple[float, float, dict]:
         """Writes one input. Returns when it was written, when its result was read, the result."""

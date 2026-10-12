@@ -44,6 +44,21 @@ def said(members: int = 3, **changed) -> dict:
     return whole
 
 
+def withholding(*after: dict, **changed) -> dict:
+    """What makes `said` a scenario of four that withholds a candidate from pax.
+
+    Three members are seated, and the candidate is one of the batch that seats mira. The steps
+    `after` follow.
+    """
+    seat, withhold = {"step": "seat", "to": 3}, {"step": "withhold", "from": "pax"}
+    steps = [seat, withhold, {"step": "seat", "to": 4}, *after]
+    return dict(members=4, network={"seed": 7}, steps=steps, **changed)
+
+
+# What a stand-in comes to when the group applied the candidate withheld in `withholding`.
+APPLIED = {"verdict": "split at epoch 2"}
+
+
 class Scratch(unittest.TestCase):
     def setUp(self):
         scratch = tempfile.TemporaryDirectory()
@@ -87,6 +102,32 @@ def noting(method: str) -> Iterator[List[Tuple[float, float, tuple]]]:
 
     with mock.patch.object(Peer, method, call):
         yield noted
+
+
+@contextlib.contextmanager
+def inputs() -> Iterator[List[Tuple[str, str, float]]]:
+    """Notes each input written while entered, in order: its peer, its text, and when."""
+    noted: List[Tuple[str, str, float]] = []
+    unnoted = Peer.input
+
+    def write(peer: Peer, text: str, deadline: float):
+        noted.append((peer.name, text, time.monotonic()))
+        return unnoted(peer, text, deadline)
+
+    with mock.patch.object(Peer, "input", write):
+        yield noted
+
+
+def commands(written: List[Tuple[str, str, float]]) -> List[Tuple[str, str]]:
+    """Who was written which command, but for a node and a network model asked their state.
+
+    A command of the network model is whole, and any other is its first word.
+    """
+    return [
+        (name, text if text.startswith("/network ") else text.split(" ")[0])
+        for name, text, _ in written
+        if text not in ("/node", "/network")
+    ]
 
 
 def member(report: dict, name: str) -> str:
@@ -218,7 +259,8 @@ class Running(Scratch):
             self.assertEqual((lines[0]["type"], lines[0]["name"]), ("ready", name))
             self.assertIn("result", [line["type"] for line in lines])
             self.assertTrue((self.out / f"{name}.stderr").is_file())
-        self.assertIn({"type": "joined", "convo": mock.ANY, "kind": "group"}, self.lines("pax"))
+        joined = {"type": "joined", "convo": mock.ANY, "kind": "group", "app_id": mock.ANY}
+        self.assertIn(joined, self.lines("pax"))
 
     def test_seven_peers_are_a_ring_with_chords_seated_a_batch_at_a_time(self):
         steps = [{"step": "seat", "to": 7, "batch": 3}, {"step": "post"}]
@@ -652,6 +694,373 @@ class Running(Scratch):
             (None, signal.SIGKILL, "killed"),
         )
 
+    def told(self, name: str) -> str:
+        """The app id the peer `name` told of itself."""
+        (app_id,) = [
+            line["app_id"]
+            for line in self.lines(name)
+            if line["type"] in ("result", "joined") and "app_id" in line
+        ]
+        return app_id
+
+    def expected(self) -> dict:
+        """What the run had `forks check` hold the report against."""
+        return json.loads((self.out / "expect.json").read_text(encoding="utf-8"))
+
+    def test_a_scenario_without_a_network_model_gives_no_flag_and_no_input_of_one(self):
+        with inputs() as written:
+            report = self.run_of()
+
+        self.assertTrue(report["ok"], report["stopped"])
+        for name in ("saro", "raya", "pax"):
+            self.assertFalse(
+                [word for word in self.arguments(name) if word.startswith("--network")]
+            )
+        self.assertFalse([text for _, text, _ in written if text.startswith("/network")])
+        self.assertEqual(
+            (report["network"], report["withheld"], report["held_to"]), (None, None, None)
+        )
+        for node in report["nodes"]:
+            self.assertNotIn("network", node)
+            self.assertNotIn("network_dropped", node)
+
+    def test_each_peer_is_given_the_seed_the_rates_and_its_own_delay(self):
+        network = {"seed": 7, "loss": 0.25, "welcome_loss": 1, "delay_ms": {"raya": 40}}
+        report = self.run_of(network=network)
+
+        self.assertTrue(report["ok"], report["stopped"])
+        self.assertEqual(report["network"], network)
+        for name, delay in (("saro", "0"), ("raya", "40"), ("pax", "0")):
+            arguments = self.arguments(name)
+            self.assertEqual(given(arguments, "--network-seed"), ["7"])
+            self.assertIn("--network-loss=0.25", arguments)
+            self.assertIn("--network-welcome-loss=1", arguments)
+            self.assertEqual(given(arguments, "--network-delay-ms"), [delay])
+
+    def test_a_network_model_that_says_its_seed_alone_is_given_with_no_loss_and_no_delay(self):
+        report = self.run_of(network={"seed": 0})
+
+        self.assertEqual(
+            report["network"], {"seed": 0, "loss": 0, "welcome_loss": 0, "delay_ms": 0}
+        )
+        for name in ("saro", "raya", "pax"):
+            arguments = self.arguments(name)
+            self.assertEqual(
+                [given(arguments, f"--network-{flag}") for flag in ("seed", "delay-ms")],
+                [["0"], ["0"]],
+            )
+            self.assertIn("--network-loss=0", arguments)
+            self.assertIn("--network-welcome-loss=0", arguments)
+
+    def test_one_delay_is_given_to_every_peer(self):
+        self.run_of(network={"seed": 7, "delay_ms": 25})
+
+        for name in ("saro", "raya", "pax"):
+            self.assertEqual(given(self.arguments(name), "--network-delay-ms"), ["25"])
+
+    def test_a_rate_below_zero_in_its_sign_alone_is_given_in_one_word_with_its_flag(self):
+        # A word of its own that starts with a minus sign is a flag to chat-cli.
+        report = self.run_of(network={"seed": 7, "loss": -0.0, "welcome_loss": -0.0})
+
+        self.assertTrue(report["ok"], report["stopped"])
+        for name in ("saro", "raya", "pax"):
+            arguments = self.arguments(name)
+            self.assertIn("--network-loss=-0.0", arguments)
+            self.assertIn("--network-welcome-loss=-0.0", arguments)
+            self.assertNotIn("-0.0", arguments)
+
+    def test_a_peer_is_asked_again_until_its_network_model_holds_no_frame(self):
+        # Pax cannot read the post, so nobody waits for it there, and its model holds the
+        # post for half the time between two askings: the first finds it held, the second
+        # passed on.
+        with inputs() as written:
+            report = self.run_of(
+                "garbles=pax",
+                steps=[{"step": "seat", "to": 3}, {"step": "post", "from": "raya"}],
+                network={"seed": 7, "delay_ms": {"pax": 250}},
+                expect={"posts": {"pax": "unreadable"}},
+            )
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        self.assertEqual([node["network"]["frames"]["held"] for node in report["nodes"]], [0] * 3)
+        asked = [name for name, text, _ in written if text == "/network"]
+        self.assertEqual((asked.count("saro"), asked.count("raya")), (1, 1))
+        self.assertGreater(asked.count("pax"), 1)
+
+    def test_a_frame_held_for_longer_than_the_budget_is_not_waited_for(self):
+        # Ten seconds, of which the run waits two.
+        report = self.run_of(
+            steps=[{"step": "seat", "to": 3}, {"step": "post", "from": "raya"}],
+            network={"seed": 7, "delay_ms": {"pax": 10_000}},
+            expect={"posts": {"pax": "no record"}},
+            budget=2,
+        )
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        self.assertEqual([node["network"]["frames"]["held"] for node in report["nodes"]], [0, 0, 1])
+
+    def test_a_run_keeps_each_peers_app_id_and_what_its_network_model_last_answered(self):
+        with inputs() as written:
+            report = self.run_of(members=4, steps=[{"step": "seat", "to": 3}], network={"seed": 7})
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        seated, unseated = report["nodes"][:3], report["nodes"][3]
+        for node in seated:
+            self.assertEqual(node["app_id"], self.told(node["name"]))
+            self.assertEqual(node["network"]["own"], [node["app_id"]])
+        # The member no step seats told no app id, and has a network model like any other.
+        self.assertIsNone(unseated["app_id"])
+        self.assertEqual(len({node["app_id"] for node in seated}), 3)
+        for node in report["nodes"]:
+            self.assertEqual((node["network"]["seed"], node["network"]["cut"]), (7, []))
+            self.assertEqual(node["network_dropped"], {})
+        # Each is asked once, with its last words.
+        last_words = [(name, text) for name, text, _ in written][-8:]
+        self.assertEqual(
+            last_words,
+            [
+                (name, text)
+                for name in ("saro", "raya", "pax", "mira")
+                for text in ("/network", "/node")
+            ],
+        )
+        self.assertEqual([text for _, text, _ in written].count("/network"), 4)
+
+    def test_a_cut_gives_each_side_the_app_ids_of_the_other_and_a_heal_clears_them(self):
+        steps = [
+            {"step": "seat", "to": 3},
+            {"step": "cut", "between": [["saro", "raya"], ["pax"]]},
+            {"step": "post", "from": "saro"},
+            {"step": "heal"},
+            {"step": "post", "from": "pax"},
+        ]
+        with inputs() as written:
+            report = self.run_of(
+                steps=steps, network={"seed": 7}, expect={"posts": {"pax": "no record"}}
+            )
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        saro, raya, pax = (self.told(name) for name in ("saro", "raya", "pax"))
+        self.assertEqual(
+            commands(written),
+            [
+                ("saro", "/new"),
+                ("saro", "/add"),
+                ("saro", f"/network cut {pax}"),
+                ("raya", f"/network cut {pax}"),
+                ("pax", f"/network cut {saro} {raya}"),
+                ("saro", "/send"),
+                ("saro", "/network heal"),
+                ("raya", "/network heal"),
+                ("pax", "/network heal"),
+                ("pax", "/send"),
+            ],
+        )
+        # The post of saro did not cross the cut, and that of pax found it healed.
+        self.assertEqual(
+            [node["network_dropped"] for node in report["nodes"]], [{}, {}, {"cut": 1}]
+        )
+        self.assertEqual([node["network"]["cut"] for node in report["nodes"]], [[], [], []])
+        self.assertEqual([post["readers"] for post in report["posts"]], [1, 2])
+
+    def test_a_cut_left_in_force_is_in_what_each_network_model_last_answered(self):
+        steps = [
+            {"step": "seat", "to": 3},
+            {"step": "cut", "between": [["raya"], ["pax", "saro"]]},
+        ]
+        report = self.run_of(steps=steps, network={"seed": 7})
+
+        saro, raya, pax = (self.told(name) for name in ("saro", "raya", "pax"))
+        self.assertEqual(
+            [node["network"]["cut"] for node in report["nodes"]],
+            [[raya], sorted([pax, saro]), [raya]],
+        )
+        self.assertEqual((report["steps_done"], report["stopped"]), (2, None))
+
+    def test_a_cut_waits_for_a_member_that_has_yet_to_tell_its_app_id(self):
+        steps = [{"step": "seat", "to": 3}, {"step": "cut", "between": [["saro"], ["pax"]]}]
+        # Pax takes `ROSTER` to hold a roster, and a member expected behind is not waited on
+        # while it is seated.
+        with inputs() as written:
+            report = self.run_of(
+                "slow=pax",
+                steps=steps,
+                network={"seed": 7},
+                expect={"positions": {"pax": "behind"}},
+            )
+
+        self.assertEqual((report["steps_done"], report["stopped"]), (2, None))
+        at = {text.split(" ")[0]: at for _, text, at in written if text != "/network"}
+        self.assertGreaterEqual(at["/network"] - at["/add"], standin.ROSTER)
+        self.assertIn(("saro", f"/network cut {self.told('pax')}"), commands(written))
+
+    def test_a_cut_of_a_member_that_never_tells_its_app_id_stops_the_run(self):
+        steps = [{"step": "seat", "to": 3}, {"step": "cut", "between": [["saro"], ["pax"]]}]
+        with inputs() as written:
+            report = self.run_of(
+                "tells-no-app-id=pax", steps=steps, network={"seed": 7}, budget=2
+            )
+
+        self.assertEqual(report["stopped"], "pax: no app id within the budget")
+        self.assertEqual((report["ok"], report["steps_done"]), (False, 1))
+        self.assertIsNone(report["nodes"][2]["app_id"])
+        # Nobody is cut off from a side whose app ids are not all known.
+        self.assertFalse([text for _, text, _ in written if text.startswith("/network cut")])
+
+    def test_a_candidate_is_withheld_once_the_step_before_is_done_and_before_the_next_add(self):
+        with inputs() as written:
+            report = self.run_of("slow=raya", **withholding({"step": "post", "from": "mira"}))
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        self.assertEqual(
+            commands(written),
+            [
+                ("saro", "/new"),
+                ("saro", "/add"),
+                ("pax", "/network withhold candidate"),
+                ("saro", "/add"),
+                ("mira", "/send"),
+            ],
+        )
+        # Raya takes `ROSTER` to hold the roster of the batch before.
+        added, armed = [at for _, text, at in written if text[:5] in ("/add ", "/netw")][:2]
+        self.assertGreaterEqual(armed - added, standin.ROSTER)
+
+    def test_a_run_whose_group_did_not_apply_the_withheld_candidate_is_held_to_expect(self):
+        post = {"step": "post", "from": "mira"}
+        report = self.run_of(**withholding(post, expect={"applied": APPLIED}))
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        self.assertEqual(report["held_to"], "not applied")
+        self.assertEqual(
+            report["withheld"],
+            {
+                "from": "pax",
+                "seat": 0,
+                "app_id": self.told("saro"),
+                "minter": "saro",
+                "applied": False,
+            },
+        )
+        self.assertEqual((report["verdict"], self.expected()["verdict"]), ("whole", "whole"))
+        self.assertEqual(
+            [node["network_dropped"] for node in report["nodes"]], [{}, {}, {"withheld": 1}, {}]
+        )
+        self.assertEqual(report["posts"][0]["readers"], 3)
+
+    def test_a_run_whose_group_applied_the_withheld_candidate_is_held_to_what_applied_says(self):
+        post = {"step": "post", "from": "mira"}
+        report = self.run_of(
+            "lone=pax", "says-applied=pax", **withholding(post, expect={"applied": APPLIED})
+        )
+
+        # The split of the member alone does not stop the steps.
+        self.assertEqual((report["stopped"], report["steps_done"]), (None, 4))
+        self.assertTrue(report["ok"], report["check"])
+        self.assertEqual(report["held_to"], "applied")
+        self.assertEqual(
+            (report["withheld"]["from"], report["withheld"]["applied"]), ("pax", True)
+        )
+        self.assertEqual(
+            (report["verdict"], self.expected()["verdict"]),
+            ("split at epoch 2", "split at epoch 2"),
+        )
+        self.assertEqual(report["at_tip"], 4)
+
+    def test_a_post_is_not_waited_for_on_the_member_a_withheld_candidate_left_alone(self):
+        applied = dict(APPLIED, posts={"pax": "no record"})
+        report = self.run_of(
+            "lone=pax",
+            "says-applied=pax",
+            "deaf=pax",
+            **withholding({"step": "post", "from": "mira"}, expect={"applied": applied}, budget=3),
+        )
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        (post,) = report["posts"]
+        self.assertEqual((post["readers"], post["unread"]), (2, []))
+
+    def test_a_split_the_member_does_not_say_was_applied_is_one_difference_of_the_verdict(self):
+        report = self.run_of("lone=pax", **withholding(expect={"applied": APPLIED}))
+
+        self.assertEqual((report["held_to"], report["withheld"]["applied"]), ("not applied", False))
+        self.assertEqual((report["ok"], report["stopped"]), (False, None))
+        self.assertEqual(
+            report["check"]["differences"], ["verdict: split at epoch 2, expected whole"]
+        )
+
+    def test_a_whole_group_the_member_says_applied_it_is_one_difference_of_the_verdict(self):
+        report = self.run_of("says-applied=pax", **withholding(expect={"applied": APPLIED}))
+
+        self.assertEqual((report["held_to"], report["withheld"]["applied"]), ("applied", True))
+        self.assertEqual((report["ok"], report["stopped"]), (False, None))
+        self.assertEqual(
+            report["check"]["differences"], ["verdict: whole, expected split at epoch 2"]
+        )
+
+    def test_a_member_that_withholds_no_candidate_stops_the_run(self):
+        post = {"step": "post", "from": "mira"}
+        report = self.run_of("withholds-nothing=pax", **withholding(post, budget=2))
+
+        self.assertEqual(
+            report["stopped"], "pax: no line of a withheld candidate within the budget"
+        )
+        self.assertEqual((report["ok"], report["steps_done"]), (False, 2))
+        self.assertEqual((report["withheld"], report["held_to"]), (None, None))
+        self.assertEqual(self.expected()["verdict"], "whole")
+        self.assertTrue(report["nodes"][2]["network"]["armed"])
+
+    def test_a_candidate_withheld_before_the_add_was_written_stops_the_run(self):
+        post = {"step": "post", "from": "mira"}
+        report = self.run_of("withholds-early=pax", **withholding(post))
+
+        self.assertEqual(
+            report["stopped"], "pax: a candidate was withheld before the /add was written"
+        )
+        self.assertEqual((report["ok"], report["steps_done"]), (False, 2))
+        self.assertEqual(
+            (report["withheld"]["from"], report["withheld"]["minter"]), ("pax", "saro")
+        )
+
+    def test_a_split_that_leaves_another_member_alone_stops_the_steps(self):
+        self.assertEqual(
+            self.stop_of("split=mira", **withholding({"step": "post", "from": "mira"})),
+            "the group split: 4 of its 4 members hold epoch 2, in 2 states",
+        )
+
+    def test_a_split_in_three_states_stops_the_steps_though_the_member_is_alone(self):
+        self.assertEqual(
+            self.stop_of(
+                "lone=pax", "split=mira", **withholding({"step": "post", "from": "mira"})
+            ),
+            "the group split: 4 of its 4 members hold epoch 2, in 3 states",
+        )
+
+    def test_a_member_that_holds_no_state_of_the_epoch_is_no_side_of_a_split(self):
+        # Mira never holds the roster, and the others but pax hold it in one state.
+        self.assertEqual(
+            self.stop_of(
+                "lone=pax", "mute=mira", **withholding({"step": "post", "from": "saro"}, budget=2)
+            ),
+            "mira: no line of a new roster within the budget",
+        )
+
+    def test_a_candidate_stamped_with_no_app_id_has_no_minter(self):
+        # Saro withholds a candidate it gives no app id for, and kes, whom no step seats,
+        # told none either.
+        steps = [
+            {"step": "seat", "to": 3},
+            {"step": "withhold", "from": "saro"},
+            {"step": "seat", "to": 4},
+        ]
+        report = self.run_of("withholds-early=saro", members=5, network={"seed": 7}, steps=steps)
+
+        self.assertIsNone(report["nodes"][4]["app_id"])
+        self.assertEqual(
+            report["withheld"],
+            {"from": "saro", "seat": 0, "app_id": None, "minter": None, "applied": False},
+        )
+
 
 class Collector:
     """`forks serve` as a process of its own, on a port the system picked."""
@@ -771,6 +1180,18 @@ class CommandLine(Scratch):
             self.refused("run", scenario_file), f"sim: error: --out: {self.out} exists"
         )
         self.assertEqual(list(self.out.iterdir()), [])
+
+    def test_a_sweep_whose_last_run_would_have_a_seed_above_the_most_is_refused(self):
+        scenario_file = str(self.scenario(network={"seed": 2**64 - 2}))
+
+        self.assertEqual(
+            self.refused("sweep", scenario_file, "--runs", "3"),
+            f"sim: error: --runs: run 3 would have the seed {2**64}, and {2**64 - 1} is the most",
+        )
+        self.assertFalse(self.out.exists())
+        status, printed = self.sim("sweep", scenario_file, "--runs", "2")
+        self.assertEqual(status, 0, printed)
+        self.assertIn(f"as expected; seed {2**64 - 1}\n", printed)
 
     def test_a_chat_cli_that_is_no_file_is_refused(self):
         complained = io.StringIO()
