@@ -67,7 +67,7 @@ def sweep(
         "load": {"start": list(os.getloadavg()), "end": None},
         "rows": [],
     }
-    tell(table.head())
+    tell(table.head(settings.one_process is not None))
     for number in range(1, runs + 1):
         # The watch is made before the look: a signal taken from here on is in one of the two.
         watch = interrupts.watch()

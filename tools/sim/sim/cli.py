@@ -30,7 +30,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         prog="sim",
         description="Starts headless chat-cli peers on a delivery network of their own or on a "
         "fleet preset, has them do the steps of a scenario, and holds the fork report of their "
-        "logs against what the scenario expects.",
+        "logs against what the scenario expects. With --one-process the members are clients "
+        "in one process on a virtual clock, and no peer is started.",
     )
     commands = parser.add_subparsers(metavar="COMMAND", required=True)
     one = commands.add_parser(
@@ -56,23 +57,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     many.set_defaults(run=_sweep)
     args = parser.parse_args(argv)
 
-    if not args.chat_cli.is_file():
-        parser.error(f"--chat-cli: no such file: {args.chat_cli}")
-    if not os.access(args.chat_cli, os.X_OK):
-        parser.error(f"--chat-cli: not a file that can be run: {args.chat_cli}")
+    flag, program = "--chat-cli", args.chat_cli
+    if args.one_process is not None:
+        flag, program = "--one-process", args.one_process
+    if not program.is_file():
+        parser.error(f"{flag}: no such file: {program}")
+    if not os.access(program, os.X_OK):
+        parser.error(f"{flag}: not a file that can be run: {program}")
     if args.out.exists():
         parser.error(f"--out: {args.out} exists")
     if getattr(args, "runs", 1) < 1:
         parser.error("--runs: a sweep is 1 run or more")
     try:
         settings = Settings(
-            chat_cli=args.chat_cli.resolve(),
+            chat_cli=None if args.chat_cli is None else args.chat_cli.resolve(),
             scenario=scenario.read(args.scenario),
             out=args.out,
             share=args.share,
+            one_process=None if args.one_process is None else args.one_process.resolve(),
         )
     except scenario.Refused as refused:
         parser.error(str(refused))
+    if settings.one_process is not None and settings.scenario.preset is not None:
+        parser.error("--one-process: the scenario has `preset`, and one process joins no fleet")
     last = settings.scenario.of_run(getattr(args, "runs", 1)).network
     if last is not None and last.seed > scenario.MOST_SEED:
         parser.error(
@@ -93,8 +100,13 @@ def _add_arguments(command: argparse.ArgumentParser) -> None:
     command.add_argument(
         "scenario", metavar="SCENARIO", type=Path, help="the file that says what a run does"
     )
-    command.add_argument(
-        "--chat-cli", metavar="PATH", type=Path, required=True, help="the chat-cli binary to run"
+    rig = command.add_mutually_exclusive_group(required=True)
+    rig.add_argument("--chat-cli", metavar="PATH", type=Path, help="the chat-cli binary to run")
+    rig.add_argument(
+        "--one-process",
+        metavar="PATH",
+        type=Path,
+        help="the runner that does the scenario in one process, in place of --chat-cli",
     )
     command.add_argument(
         "--out", metavar="DIR", type=Path, required=True, help="the directory to make and write to"

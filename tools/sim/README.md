@@ -8,10 +8,13 @@ peer for each member, each with its embedded delivery node on a local network th
 run's nodes and no other. It links the nodes, has the peers do the scenario's steps, ends every
 process it started, and has [`forks`](../forks/README.md) hold the report of the peers' logs
 against what the scenario expects. A scenario that names a fleet preset has the nodes join that
-fleet instead (see [On a fleet preset](#on-a-fleet-preset)).
+fleet instead (see [On a fleet preset](#on-a-fleet-preset)). Given `--one-process`, it starts
+no peer and has a runner do the scenario with every member in one process, on a virtual clock
+(see [In one process](#in-one-process)).
 
 It needs Python 3.9 or newer and no package beyond the standard library, and a `chat-cli` built
-with the delivery library (see [chat-cli](../../bin/chat-cli/README.md#building)).
+with the delivery library (see [chat-cli](../../bin/chat-cli/README.md#building)). A run in one
+process needs the runner in its place.
 
 ## Running it
 
@@ -70,6 +73,7 @@ not made is never told as a difference of the report.
 | Flag | Sets |
 |------|------|
 | `--chat-cli PATH` | The binary every peer runs. A path that is no file, or a file that cannot be run, is refused |
+| `--one-process PATH` | The runner that does the scenario in one process, given in place of `--chat-cli`: a command line has one of the two and not both (see [In one process](#in-one-process)). A path that is no file, or a file that cannot be run, is refused |
 | `--out DIR` | The run's directory, which the run makes and which must not exist. One that cannot be made is refused |
 | `--share ADDRESS` | The share address of a `forks` collector, `...?token=TOKEN`: once the run is checked, every peer's log is sent there with `forks share`, and the run gives the address of the conversation's page on the collector |
 
@@ -284,7 +288,7 @@ run  seconds  at the tip  verdict                 check
 | Column | Says |
 |--------|------|
 | `run` | The run's number, which names its directory. |
-| `seconds` | How long the run took, from its start to its check. |
+| `seconds` | How long the run took, from its start to its check. For a run in one process, how far its virtual clock went, and the line above the rows says so. |
 | `at the tip` | How many of the members the steps seat the report has at the tip. |
 | `verdict` | The verdict of the report. |
 | `check` | `as expected`, or the first difference the check found and how many more there are, or `not checked`, with how `forks check` ended when it was run and gave no answer. Then, after `; stopped:`, what stopped the steps when something did. Then `seed` and the seed of the run's network model, and what was withheld from whom and whether the group applied it, for a run that has them. Then the address of the conversation's page when the logs were shared, or after `not shared:` why they were not. |
@@ -792,9 +796,322 @@ Why the `fast` set seats no third member at a delay of 200 ms was not traced. Th
 550 ms is longer than the freeze of 500 ms, and no frame was dropped in the 3 runs that split
 before the step.
 
+## In one process
+
+```sh
+python3 tools/sim run tools/sim/scenarios/three.json --one-process target/release/harness-run --out tmp/three
+```
+
+`--one-process` names `harness-run`, the runner of the core's integration tests (see
+[A plan on a virtual clock](../../core/integration_tests_core/README.md#a-plan-on-a-virtual-clock)),
+and stands in place of `--chat-cli`. The members are then clients in that one process, on a clock
+the runner moves, and no registry and no peer is started. `sim` writes the scenario as the
+runner's plan, runs the runner to its end, and holds what it left to the scenario as it holds a
+run of processes: by the same expectation, with `forks report` and `forks check`, with the two
+outcomes of a `withhold` step, and with `--share`. `sweep` takes the flag as `run` does.
+
+```console
+3 members, fast group timers, one process, 1.350s on a virtual clock in 0.004s of wall time
+whole: 3 of 3 members at the tip
+the report is as expected
+load average 0.65 at the start, 0.65 at the end
+
+member  installation  errors
+saro        6deba808       0
+raya        99fa5d5a       0
+pax         de26c5d7       0
+
+batch  joiners  members  seated
+1            2        3  1.250s
+
+post  from  read by  median   worst
+1      pax   2 of 2  0.000s  0.000s
+```
+
+A command line with both flags or with neither is refused. So is a scenario with `preset`, since
+one process joins no fleet:
+
+```console
+sim: error: --one-process: the scenario has `preset`, and one process joins no fleet
+```
+
+What differs from a run of processes:
+
+- Time is virtual. The runner moves its clock a step of 50 ms at a time and waits for nothing,
+  so a run takes the time its work takes and not the time its timers count. Every duration the run
+  gives is of that clock, but for the wall time on the first line, and `budget` is seconds of
+  that clock: what the waits of one batch or of one post may take together. The command waits
+  for the runner as long as it runs. A `hold` step moves the clock on by its seconds, and no
+  node is asked for its state.
+- No delivery node is between the members: no link, no mesh and no gossip, and no need for a
+  network namespace. A frame is lost or late where the network model makes it so and nowhere
+  else. `max_message_kib` has nothing to act on, and the first line says so when the scenario
+  sets one other than the default: `largest message 64 KiB not applied`.
+- A member is not handed the frames it published itself. A peer's node hands them back, and
+  the peer's model numbers the invites among them (see
+  [chat-cli](../../bin/chat-cli/README.md#the-network-model)). So the `n`-th frame of a member
+  is another frame here, and what the models count is not compared between the two.
+- There is one log. `group.log` holds the trace records of every member, stamped by the
+  virtual clock, which starts at the second the run began. The report takes it for one run that
+  holds every installation, and each member's installation id is taken from the runner's
+  result. `report.txt` and a shared page name every installation `group`, after the log, and
+  `run.txt` has each member's name beside its installation id.
+- An `/add` or a post that the group refuses is tried again after each step of the clock, until
+  the budget has run out. A run of processes stops at the refusal.
+- The reason a member rejected a frame is in the words of the core's error,
+  `DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))`, where the
+  `inbound_error` line of a peer has chat-cli's, `demls error: MLS error: An error occurred
+  during AEAD decryption.`
+
+The steps stop where the runner stops them, with its reason: a roster or a post that a member
+waited on did not come to hold or to read within the budget, a batch left the group split, or no
+candidate was withheld in the batch after a `withhold` step. The log is judged all the same. A
+runner that ends with a status other than 0, or by a signal, stops the run with how it ended and
+the last three lines it wrote to standard error, or that it said nothing there, and what it
+left for a result is not read. A result that lacks a field the run reads of it, or holds
+something else in its place, is not read either, and the run stops with the name of the field:
+`the runner left a result that cannot be read: members is missing`. A run that read no result
+is not checked. Here the library refuses a set of timers:
+
+```console
+3 members, group timers freeze_duration 0 ms, one process on a virtual clock
+stopped after 0 of 2 steps: the runner ended with status 2: harness-run: tmp/run/plan.json: timers: Invalid conversation config: freeze_duration must be non-zero
+not checked: no result of the runner was read
+```
+
+What a number of seconds may be beyond its form is the runner's to say, as a duration of
+`timers` is the library's. `sim` takes any number above 0 for `budget` and for the `seconds` of
+a `hold` step. The runner refuses a plan with 2^64 seconds or more for either, and one with a
+hold of less than half a nanosecond, and the run stops in the same way, with
+`budget_s is not a number of seconds, 0 or more` or
+`steps[1].seconds is not a number of seconds above 0` for the runner's reason.
+
+A signal that interrupts the command ends the runner, and the run is not checked.
+
+The seed of `network` fixes what a member's model does with the `n`-th frame to reach it, and
+nothing else. The ids of a group and of its members are drawn at random, and which commit a
+group applies follows from them, so a seed does not make a run again here either (see
+[The loss rate in one process](#the-loss-rate-in-one-process)).
+
+### What a run in one process writes
+
+The run's directory holds `plan.json`, the plan the runner was told, and `group.log` and
+`result.json`, which the runner leaves (see
+[What a run leaves](../../core/integration_tests_core/README.md#what-a-run-leaves)).
+`runner.stderr` and `runner.out` are what the runner wrote to standard error and to standard
+output. Beside them are `expect.json`, `report.txt`, `report.json`, `run.txt` and `run.json`, as
+a run of processes has them, and `.forks-share.json` in a run given `--share`. `run.json` has no
+`wired_s`, and differs in these fields:
+
+| Field | Holds |
+|-------|-------|
+| `rig` | `one process`. A run of processes has no such field |
+| `virtual_s`, `wall_s` | How far the runner moved its clock, and how long it took on the machine. `null` when no result was read |
+| `preset`, `cluster_id` | `null`, both |
+| `max_message_kib` | The scenario's, which nothing applied |
+| `nodes[]` | Each member as the runner's result has it: its `name`, `installation`, `account` and `app_id`, whether the steps `seated` it, and as `inbound_errors` how many frames it rejected, by the reason. With `network`, the state of its model as `network`, and as `network_dropped` how many frames the model dropped, by their `why`. Nothing a node answers is there, and nothing of how a peer started or ended |
+| `batches[]` | For each batch its `joiners`, the `members` the group then had, `seated_s` on the virtual clock, from the first try of the add to the last roster, and `wall_s`, what the batch took on the machine. No `joined_s` and no `welcome_bytes`: the log holds no line of a Welcome |
+| `posts[]` | For each post its `poster`, its `readers`, those that left it `unread`, and `read` on the virtual clock. Nothing of a registry |
+| `holds[]` | The `seconds` of each `hold` step that was done, and nothing else |
+
+The first line of `run.txt` says that the run was one process, how far the virtual clock went
+and how long that took. The table of the members has each one's installation id and the count of
+the frames it rejected. With `network` it has how many frames `arrived` at the member's model,
+and how many of them the model `passed`, `held` at the end and `lost`:
+
+```console
+5 members, fast group timers, one process, 3.650s on a virtual clock in 0.023s of wall time, network seed 1, loss 0, welcome loss 0
+split at epoch 4: 5 of 5 members at the tip
+withheld from pax: the candidate of saro, applied
+the report is as expected
+load average 0.70 at the start, 0.70 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        71dd1a00       20      20     0     0       1
+raya        7d327f86       23      23     0     0       1
+pax         4af4b4f5       22      21     0     1       1
+mira        4ff4ce8d       14      14     0     0       1
+kes         20168d35        4       4     0     0       1
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))       5        5
+
+batch  joiners  members  seated
+1            1        2  1.250s
+2            1        3  0.550s
+3            1        4  0.600s
+4            1        5  1.050s
+
+post  from  read by  median   worst
+1      kes   3 of 3  0.000s  0.000s
+```
+
+The `seconds` of a sweep's row are those of the run's virtual clock, and the line above the rows
+says so. `sweep.json` has under `seconds` what the run took on the machine, as it has for a run
+of processes:
+
+```console
+run  seconds  at the tip  verdict                 check (one process: seconds of its virtual clock)
+  1      1.4      3 of 3  whole                   as expected
+  2      1.4      3 of 3  whole                   as expected
+  3      1.4      3 of 3  whole                   as expected
+3 of 3 runs went as expected
+```
+
+### From three members to a hundred
+
+These are the numbers of the machine of [The floor on one machine](#the-floor-on-one-machine),
+taken on 2026-10-12 with a release build of `harness-run`, every run through `sim`. The load
+average over one minute was between 0.6 and 1.2.
+
+| Scenario | Runs | As expected | The virtual clock went, s | The runner took, s | The run took, s |
+|---|---|---|---|---|---|
+| `three.json` | 3 | 3 | 1.35 | 0.004 to 0.005 | 0.18 to 0.20 |
+| `twenty.json` | 3 | 3 | 1.95 | 0.34 to 0.35 | 0.55 to 0.56 |
+| A hundred members, the library's own timers | 2 | 2 | 770.9 | 70.54 and 70.89 | 70.96 and 71.31 |
+| A hundred members, the `fast` set | 2 | 2 | 7.3 | 71.50 and 70.80 | 71.95 and 71.21 |
+
+A run took what `sweep.json` has for it, from its start to its check, and a run of a hundred
+members what `/usr/bin/time -v` gave for the command.
+
+A hundred members are a scenario that `scenarios/` does not keep. It seats them ten at a time
+and has the last one post, here with the library's own timers:
+
+```json
+{
+  "members": 100,
+  "timers": "default",
+  "steps": [
+    {"step": "seat", "to": 100, "batch": 10},
+    {"step": "post"}
+  ]
+}
+```
+
+It is a size for one process and not for a network on one machine: of fifty peers with the
+library's own timers, 1 run of 3 went as expected there and took 358 s, and no run of a hundred
+peers is recorded here.
+
+All four runs were `whole` with 100 of 100 members at the tip, and the 99 other members read
+the post before the clock moved on. The timers set how far the clock goes, and not how long the
+runner takes. With the library's own, the first batch was seated after 120.0 s of the clock, the
+second after 70.0 s, the third after 90.0 s and each of the seven after that after 70.05 s. With
+the `fast` set the first was seated after 1.25 s, the second after 0.55 s, the third after
+0.75 s and each of the seven after that after 0.6 s. On the machine the first batch took 0.02 s
+with either set, the fifth 3.5 to 3.9 s, and the last, which seats nine at ninety-one members,
+19.8 to 20.1 s. The largest resident set `/usr/bin/time -v` gave for the command was 269604 to
+270396 kB, which is 263 to 264 MiB.
+
+A batch of ten took 0.3 s where it left twenty-one members and 15.7 to 15.9 s where it left
+ninety-one, and over the eight batches from the one to the other its time grew as the size of
+the group to the power of 2.7.
+
+Three hundred members, seated the same way, were given 30 minutes with each set of timers, the
+two runs at once, at a load average of 1.0 at the start and 2.1 at the end. Neither run was over
+by then. Each was ended by a SIGTERM to `sim`, which ends the runner, so there is no result and
+the run is not checked:
+
+```console
+300 members, fast group timers, one process on a virtual clock
+stopped after 0 of 2 steps: interrupted by SIGTERM
+not checked: no result of the runner was read
+```
+
+What each got to is in the `group.log` it left, by `forks report`. With either set the log
+held 24 batches: 241 installations, every one at the tip at epoch 24, and the verdict `whole`.
+Its last record was stamped 1752.15 s after the start of the clock with the library's own
+timers, and 16.30 s after it with the `fast` set. The largest resident set of the command was
+2500172 and 2503736 kB, which is 2.4 GiB.
+
+### The lost candidate in one process
+
+`lost-candidate.json` and the three copies of
+[A candidate that does not arrive](#a-candidate-that-does-not-arrive) were swept 10 times each,
+at a load average of 0.7. The last column is what the sweeps of processes of that section came
+to:
+
+| Withheld from | As expected | The group applied it | It did not | The candidate was that of | With processes: applied, not |
+|---|---|---|---|---|---|
+| saro | 10 of 10 | 8 | 2 | raya, 10 times | 4, 6 |
+| raya | 10 of 10 | 6 | 4 | saro, 10 times | 5, 5 |
+| pax | 10 of 10 | 9 | 1 | saro, 10 times | 2, 8 |
+| mira | 10 of 10 | 5 | 5 | saro, 10 times | 6, 4 |
+
+In each of the 40 runs the models dropped one frame between them: the member's, `withheld`, a
+candidate that another member made. The report read `split at epoch 4` in the 28 runs whose
+member's model answered that the group applied the candidate, with that member alone on a branch
+of that epoch, and `whole` in the other 12, where no member was alone. So one process comes to
+the two outcomes a run of processes comes to, and to no third. Whose candidate reaches a member
+first differs: here it was saro's in every run that does not withhold from saro, and with
+processes pax lost saro's 5 times and raya's 5, and mira raya's 6 times and saro's 4.
+
+A run moved the clock 3.6 to 3.7 s and took the runner 0.019 to 0.025 s. The batch after the
+step was seated in 1.05 s of the clock whichever way the run went, the first batch in 1.25 s,
+the second in 0.55 s and the third in 0.55 or 0.6 s. Where the group applied the candidate, the
+post was waited for on the three other members and every member rejected one frame, as in the
+run above, but for the member itself in the 14 such runs that withhold from saro or from raya,
+which rejected two. Where it did not, the post was read by all four and no member rejected a
+frame.
+
+One more run of `lost-candidate.json` was given `--share`, to a collector started for it in a
+network namespace. It printed `shared: http://127.0.0.1:41391/#f7d8ed6b83`, and the report the
+collector gave for that conversation had the run's verdict, `whole`.
+
+### The loss rate in one process
+
+`lossy.json` was swept 20 times over the seeds 1 to 20, which the 20 runs of
+[A loss rate](#a-loss-rate) had, and then once more over the same seeds. The load average was
+0.7. The last column is what those 20 runs of processes came to:
+
+| Outcome | One process | The same seeds again | With processes |
+|---|---|---|---|
+| `whole`, as expected | 12 | 11 | 10 |
+| Split | 2: at epoch 3 once, at epoch 4 once | 3: at epoch 3 twice, at epoch 4 once | 3, at epoch 4 |
+| `whole, members behind` | 3 | 4 | 1 |
+| `whole`, a post that was not read | 2 | 1 | 3 |
+| `whole`, a batch that did not come about | 1 | 1 | 3 |
+
+One process came to every outcome the runs of processes came to, and the counts need not agree.
+One process gives the group under the model alone, with the frames arriving in the order the
+runner hands them over. Processes give it over nodes that gossip, each of which also hands its
+peer the frames that peer published. Twenty runs are few on either side.
+
+In the first sweep, the member alone on a branch had lost a commit candidate: saro, at epoch 3
+in one run and at epoch 4 in the other. The runner stops the steps at a batch that leaves the
+group split, so those runs ended after 2.95 and 3.55 s of the clock. A member behind had lost
+one frame or more and stayed one epoch back, raya twice and pax once. The post was not read by
+saro both times, which had lost three frames in one run and two in the other. In the run whose
+batch did not come about, raya lost the second frame to reach it, and no member came to hold
+the roster of three. A run as expected moved the clock 3.2 to 3.65 s, and one that waited out
+its budget of 33 s moved it 34.3 to 36.15 s. No run took the runner more than 0.03 s. The
+models dropped 51 of the 1343 frames that arrived, which is 0.038 of them, and 48 of 1286 in
+the second sweep.
+
+Of the 20 seeds, 17 came to one row of the table in both sweeps. Under seed 19 the model of raya
+lost the eighth frame to reach it both times, a commit candidate: the run went as expected in
+the first sweep, and in the second the group split at epoch 3 with raya alone. Under seed 6 it
+lost that frame both times as well, and both runs went as expected. Under seed 15 saro did not
+read the post in the first sweep and the run went as expected in the second, and under seed 18
+the run went as expected in the first and raya stayed behind in the second.
+
+### A delay in one process
+
+`lost-candidate.json` with a delay of 300 ms on pax and a budget of 33 s, the first copy of
+[A delay](#a-delay), was swept 20 times in one process at a load average of 0.2. All 20 went as
+expected, 14 with the candidate applied. No step waits for the post on pax where pax is alone
+on its branch, so the steps were over while the model of pax held the frame of the post. The
+runner then lets its clock go on until no model holds a frame, for the largest delay of the
+scenario at most and no longer than the budget, as a run of processes waits for each peer's
+model before it asks its last answer (see [What a run does](#what-a-run-does)). The row of pax
+has 0 under `held` in every run, and where the candidate was applied pax rejected one frame, as
+each of the other four did. With processes all 8 runs of that file went as expected.
+
+Three members with that delay on pax and a post of saro that the scenario does not wait for on
+pax: pax read it in 5 runs of 5 in one process, and in 3 of 3 with processes.
+
 ## What it does not do
 
-- It does not build `chat-cli`, and it runs whatever binary it is given.
+- It does not build `chat-cli` or the runner, and it runs whatever binary it is given.
 - It runs no fleet: a scenario with `preset` joins one that is there, and a run without it
   reaches no node outside the run.
 - It does not put itself into a network namespace.
@@ -823,3 +1140,8 @@ python3 -m unittest discover -s tools/sim
 They run the tool against `tests/standin.py`, a stand-in for chat-cli that needs no delivery
 library and writes the trace records a peer writes, against the repository's mock registry, and
 against `forks` as the repository has it.
+
+The runs in one process are against `tests/standin_runner.py`, a stand-in for the runner that
+runs no group and leaves the log and the result a runner leaves. `tests/fixtures/result.json` is
+a result the runner left. What the stand-in leaves is held against its fields, and a run is
+given it whole and with each field the run reads taken out in turn.

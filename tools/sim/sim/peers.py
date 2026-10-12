@@ -1,4 +1,7 @@
-"""The processes of a run: the mock registry and headless chat-cli peers, read a line at a time."""
+"""The processes of a run: the mock registry and headless chat-cli peers, read a line at a time.
+
+A run in one process has the runner of its plan in their place.
+"""
 
 from __future__ import annotations
 
@@ -207,6 +210,34 @@ class Registry(_Process):
         """Every request served so far, in the order they arrived."""
         with open(self.requests, encoding="utf-8") as lines:
             return [json.loads(line) for line in lines if line.strip()]
+
+    def stop(self) -> None:
+        self._process.terminate()
+        _end(self._process, time.monotonic() + GRACE)
+
+
+class Runner(_Process):
+    """The runner of a plan: one process that does the plan and leaves a log and a result."""
+
+    def __init__(self, program: Path, plan: Path, directory: Path, watch: Watch):
+        command = [str(program), str(plan), str(directory)]
+        super().__init__("the runner", "runner", command, directory, watch, subprocess.DEVNULL)
+
+    def _why(self) -> str:
+        """Why the runner ended: the last three lines of its standard error, or that it has none."""
+        complained = self.stderr.read_text(encoding="utf-8", errors="replace").splitlines()
+        said = [line for line in complained if line.strip()]
+        return " / ".join(said[-3:]) if said else "it said nothing on standard error"
+
+    def wait(self) -> None:
+        """Waits until the runner has ended. Its budget is of its own clock, and bounds no wait."""
+        while True:
+            self._watch()
+            try:
+                self._process.wait(timeout=WATCH)
+                return
+            except subprocess.TimeoutExpired:
+                pass
 
     def stop(self) -> None:
         self._process.terminate()

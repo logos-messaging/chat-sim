@@ -1,0 +1,236 @@
+{
+  "batches": [
+    {
+      "joiners": 1,
+      "members": 2,
+      "seated_s": 1.25,
+      "wall_s": 0.001844668
+    },
+    {
+      "joiners": 1,
+      "members": 3,
+      "seated_s": 0.55,
+      "wall_s": 0.002996357
+    },
+    {
+      "joiners": 1,
+      "members": 4,
+      "seated_s": 0.65,
+      "wall_s": 0.004966584
+    },
+    {
+      "joiners": 1,
+      "members": 5,
+      "seated_s": 1.05,
+      "wall_s": 0.011314807
+    }
+  ],
+  "conversation": "bdf4ea04c5",
+  "members": [
+    {
+      "account": "7361726f",
+      "app_id": "65636438663435323135",
+      "dropped": [],
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 1
+      },
+      "installation": "435167d3",
+      "name": "saro",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 0,
+        "frames": {
+          "arrived": 19,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 19
+        },
+        "loss": 0.0,
+        "own": [],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": null
+      },
+      "seated": true
+    },
+    {
+      "account": "72617961",
+      "app_id": "63623963663961316639",
+      "dropped": [],
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 1
+      },
+      "installation": "11b82ffd",
+      "name": "raya",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 0,
+        "frames": {
+          "arrived": 24,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 24
+        },
+        "loss": 0.0,
+        "own": [],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": null
+      },
+      "seated": true
+    },
+    {
+      "account": "706178",
+      "app_id": "36646333313232643566",
+      "dropped": [
+        {
+          "app_id": "65636438663435323135",
+          "bytes": 352,
+          "kind": "group",
+          "n": 8,
+          "why": "cut"
+        },
+        {
+          "app_id": "65636438663435323135",
+          "bytes": 3063,
+          "kind": "candidate",
+          "n": 12,
+          "seat": 0,
+          "why": "withheld"
+        }
+      ],
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 1
+      },
+      "installation": "08c8b2aa",
+      "name": "pax",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 0,
+        "frames": {
+          "arrived": 23,
+          "dropped": {
+            "cut": 1,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 1
+          },
+          "held": 0,
+          "passed": 21
+        },
+        "loss": 0.0,
+        "own": [],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": {
+          "app_id": "65636438663435323135",
+          "applied": true,
+          "seat": 0
+        }
+      },
+      "seated": true
+    },
+    {
+      "account": "6d697261",
+      "app_id": "36666565333639356363",
+      "dropped": [],
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 1
+      },
+      "installation": "6c0f6182",
+      "name": "mira",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 40,
+        "frames": {
+          "arrived": 16,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 16
+        },
+        "loss": 0.0,
+        "own": [],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": null
+      },
+      "seated": true
+    },
+    {
+      "account": "6b6573",
+      "app_id": "63303837613633353735",
+      "dropped": [],
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 1
+      },
+      "installation": "8386e95a",
+      "name": "kes",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 0,
+        "frames": {
+          "arrived": 6,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 6
+        },
+        "loss": 0.0,
+        "own": [],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": null
+      },
+      "seated": true
+    }
+  ],
+  "posts": [
+    {
+      "poster": "saro",
+      "read_s": [
+        0.0,
+        0.05
+      ],
+      "readers": 2,
+      "unread": []
+    },
+    {
+      "poster": "kes",
+      "read_s": [
+        0.0,
+        0.0,
+        0.05
+      ],
+      "readers": 3,
+      "unread": []
+    }
+  ],
+  "steps_done": 7,
+  "stopped": null,
+  "virtual_s": 3.85,
+  "wall_s": 0.023898544
+}

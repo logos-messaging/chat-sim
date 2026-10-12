@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Sequence, Union
 
+from .scenario import Scenario
+
+# What `rig` of a report says of a run whose members were clients in one process.
+ONE_PROCESS = "one process"
+
 # A sweep's row up to what its check found, which is as long as it is.
 _ROW = "{:>3}  {:>7}  {:>10}  {:<22}  "
 
 
 def render(report: dict) -> str:
     """The report as the tables a person reads."""
+    if _one_process(report):
+        return _virtual(report)
     modelled = report["network"] is not None
     preset = report["preset"] is not None
     lines = [
@@ -76,6 +83,7 @@ def row(number: int, seconds: float, report: dict) -> str:
     """A sweep's row for a run: how its check went, and what stopped its steps if anything did.
 
     Then the seed of its network model and what was withheld, for a run that has them.
+    The seconds of a run in one process are those of its virtual clock, whatever `seconds`.
     """
     said = [_check(report)]
     if report["stopped"] is not None:
@@ -89,12 +97,110 @@ def row(number: int, seconds: float, report: dict) -> str:
     elif report["unshared"]:
         said.append(f"not shared: {report['unshared'][0]}")
     at_tip = "-" if report["at_tip"] is None else f"{report['at_tip']} of {report['seated']}"
-    return _ROW.format(number, f"{seconds:.1f}", at_tip, report["verdict"] or "-") + "; ".join(said)
+    if _one_process(report):
+        seconds = report["virtual_s"]
+    took = "-" if seconds is None else f"{seconds:.1f}"
+    return _ROW.format(number, took, at_tip, report["verdict"] or "-") + "; ".join(said)
 
 
-def head() -> str:
-    """The line above a sweep's rows."""
-    return _ROW.format("run", "seconds", "at the tip", "verdict") + "check"
+def head(one_process: bool = False) -> str:
+    """The line above a sweep's rows, which says so when its runs are in one process."""
+    columns = _ROW.format("run", "seconds", "at the tip", "verdict") + "check"
+    return f"{columns} (one process: seconds of its virtual clock)" if one_process else columns
+
+
+def _one_process(report: dict) -> bool:
+    """Whether a report is of a run in one process: a run of processes names no rig."""
+    return report.get("rig") == ONE_PROCESS
+
+
+def _virtual(report: dict) -> str:
+    """The report of a run in one process: every duration under its first line is virtual."""
+    modelled = report["network"] is not None
+    lines = [
+        f"{_members(report['members'])}, {_timers(report['timers'])}, "
+        f"{_clock(report)}{_network(report['network'])}",
+        *_outcome(report),
+        _load(report["load"]),
+        "",
+    ]
+    lines += _columns(
+        (
+            "member",
+            "installation",
+            *(("arrived", "passed", "held", "lost") if modelled else ()),
+            "errors",
+        ),
+        [_member(node, modelled) for node in report["nodes"]],
+    )
+    errors = _errors(report["nodes"])
+    if errors:
+        lines.append("")
+        lines += _columns(("inbound error", "frames", "members"), errors)
+    if report["batches"]:
+        lines.append("")
+        lines += _columns(
+            ("batch", "joiners", "members", "seated"),
+            [
+                (
+                    str(number),
+                    str(batch["joiners"]),
+                    str(batch["members"]),
+                    _seconds(batch["seated_s"]),
+                )
+                for number, batch in enumerate(report["batches"], 1)
+            ],
+        )
+    if report["posts"]:
+        lines.append("")
+        lines += _columns(
+            ("post", "from", "read by", "median", "worst"),
+            [_read(number, post) for number, post in enumerate(report["posts"], 1)],
+        )
+    if report["holds"]:
+        lines.append("")
+        lines += [_hold(number, hold) for number, hold in enumerate(report["holds"], 1)]
+    return "\n".join(lines) + "\n"
+
+
+def _clock(report: dict) -> str:
+    """What the first line says of the one process: how far its clock went, in how long."""
+    said = "one process on a virtual clock"
+    if report["wall_s"] is not None:
+        said = (
+            f"one process, {_seconds(report['virtual_s'])} on a virtual clock "
+            f"in {_seconds(report['wall_s'])} of wall time"
+        )
+    # One process has no node to take a largest message.
+    if report["max_message_kib"] != Scenario.max_message_kib:
+        said += f", largest message {report['max_message_kib']} KiB not applied"
+    return said
+
+
+def _member(node: dict, modelled: bool) -> Sequence[str]:
+    """A member of a run in one process, with what became of the frames its model was handed."""
+    frames: List[Optional[int]] = []
+    if modelled:
+        counted = node["network"]["frames"]
+        frames = [counted["arrived"], counted["passed"], counted["held"], _lost(node)]
+    return (
+        node["name"],
+        node["installation"],
+        *map(_count, frames),
+        _count(sum(node["inbound_errors"].values())),
+    )
+
+
+def _read(number: int, post: dict) -> Sequence[str]:
+    """A post of a run in one process, where no registry is asked for its sender."""
+    read = post["read"] or {}
+    return (
+        str(number),
+        post["poster"],
+        f"{post['readers'] - len(post['unread'])} of {post['readers']}",
+        _seconds(read.get("median")),
+        _seconds(read.get("worst")),
+    )
 
 
 def _check(report: dict) -> str:
@@ -174,6 +280,8 @@ def _outcome(report: dict) -> List[str]:
 
 
 def _unchecked(report: dict) -> str:
+    if report["conversation"] is None and _one_process(report):
+        return "no result of the runner was read"
     if report["conversation"] is None:
         return "the run made no conversation"
     return "the run was interrupted"

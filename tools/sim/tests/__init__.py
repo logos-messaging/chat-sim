@@ -7,6 +7,7 @@ from pathlib import Path
 
 FIXTURES = Path(__file__).parent / "fixtures"
 STANDIN = Path(__file__).parent / "standin.py"
+STANDIN_RUNNER = Path(__file__).parent / "standin_runner.py"
 FORKS = Path(__file__).resolve().parents[2] / "forks"
 
 
@@ -14,6 +15,17 @@ def stand_in(directory: Path, *faults: str) -> Path:
     """Writes into `directory` a program that is the stand-in for chat-cli with `faults`."""
     program = directory / "chat-cli"
     command = [sys.executable, "-B", str(STANDIN)]
+    for fault in faults:
+        command += ["--fault", fault]
+    program.write_text(f'#!/bin/sh\nexec {shlex.join(command)} "$@"\n', encoding="utf-8")
+    program.chmod(0o755)
+    return program
+
+
+def stand_in_runner(directory: Path, *faults: str) -> Path:
+    """Writes into `directory` a program that is the stand-in for the runner with `faults`."""
+    program = directory / "runner"
+    command = [sys.executable, "-B", str(STANDIN_RUNNER)]
     for fault in faults:
         command += ["--fault", fault]
     program.write_text(f'#!/bin/sh\nexec {shlex.join(command)} "$@"\n', encoding="utf-8")

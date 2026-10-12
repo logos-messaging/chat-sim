@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from . import judge, measure, table, wiring
+from . import judge, measure, one_process, table, wiring
 from .peers import (
     GRACE,
     WATCH,
@@ -51,11 +51,13 @@ class NoDirectory(Exception):
 class Settings:
     """What a run is given."""
 
-    chat_cli: Path
+    chat_cli: Optional[Path]
     scenario: Scenario
     out: Path
     # The share address of a collector the run's logs go to.
     share: Optional[str] = None
+    # The runner that does the scenario in one process, where no peer runs `chat_cli`.
+    one_process: Optional[Path] = None
     registry: Path = REPOSITORY / ".github" / "scripts" / "mock-registry.py"
     forks: Path = REPOSITORY / "tools" / "forks"
 
@@ -97,6 +99,10 @@ def run(settings: Settings, watch: Watch) -> dict:
         "page": None,
         "unshared": [],
     }
+    if settings.one_process is not None:
+        one_process.run(settings, report, watch)
+        installations = [node["installation"] for node in report["nodes"]]
+        return _judged(settings, installations, report, watch)
     peers: List[Peer] = []
     registry: Optional[Registry] = None
     try:
@@ -115,12 +121,21 @@ def run(settings: Settings, watch: Watch) -> dict:
     finally:
         watch.close()
         _stop(peers, registry, report)
+    return _judged(settings, [peer.installation for peer in peers], report, watch)
+
+
+def _judged(settings: Settings, installations: List[str], report: dict, watch: Watch) -> dict:
+    """Has the logs of a run that is over judged, and writes the report it returns.
+
+    `installations` are the ids the logs know the members by, in the order of the members.
+    A run a signal interrupted is not judged.
+    """
     report["load"]["end"] = list(os.getloadavg())
-    _withheld(scenario, report)
+    _withheld(settings.scenario, report)
     if watch.signal is not None:
         report["stopped"] = f"interrupted by {signal.Signals(watch.signal).name}"
     elif report["conversation"] is not None:
-        judge.judge(settings, [peer.installation for peer in peers], report)
+        judge.judge(settings, installations, report)
     check = report["check"]
     report["ok"] = report["stopped"] is None and check is not None and check["as_expected"]
     (settings.out / "run.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
