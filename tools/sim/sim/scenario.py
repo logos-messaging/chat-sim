@@ -26,7 +26,7 @@ DURATIONS = (
     "recovery_auto_commit_delay",
 )
 
-# The most each number may be. Every node listens on a TCP port of loopback, and the registry
+# The most each number may be. Every node listens on a TCP port of its own, and the registry
 # on one more. The others are the most chat-cli's flags hold.
 MOST_MEMBERS = 65534
 MOST_KIB = 2**32 - 1
@@ -67,6 +67,13 @@ class Post:
 
 
 @dataclass(frozen=True)
+class Hold:
+    """The run stands still for `seconds`, and every node is asked its state before and after."""
+
+    seconds: float
+
+
+@dataclass(frozen=True)
 class Cut:
     """The members of each side are cut off from the frames of the other side's members."""
 
@@ -85,10 +92,10 @@ class Withhold:
     member: str
 
 
-Step = Union[Seat, Post, Cut, Heal, Withhold]
+Step = Union[Seat, Post, Hold, Cut, Heal, Withhold]
 
 # The steps by the name a file gives them.
-STEPS = ("seat", "post", "cut", "heal", "withhold")
+STEPS = ("seat", "post", "hold", "cut", "heal", "withhold")
 
 
 @dataclass(frozen=True)
@@ -133,13 +140,16 @@ class Scenario:
     """What a run is told to do.
 
     `timers` names a set, or gives durations in milliseconds over the library's own. `budget`
-    is the seconds each wait may take: a peer's start, the wiring, a batch, a post.
+    is the seconds each wait may take: a peer's start, the wiring, a batch, a post. `preset`
+    names the fleet preset every node joins, in place of a network of the run's own with
+    `max_message_kib` for its largest message.
     """
 
     members: int
     steps: Tuple[Step, ...]
     timers: Union[str, Dict[str, int]] = "fast"
     max_message_kib: int = 512
+    preset: Optional[str] = None
     budget: float = 180.0
     network: Optional[Network] = None
     expect: Expect = Expect()
@@ -258,9 +268,18 @@ def scenario(said: object) -> Scenario:
         said,
         "the scenario",
         ("members", "steps"),
-        ("members", "timers", "max_message_kib", "budget", "network", "steps", "expect"),
+        (
+            "members",
+            "timers",
+            "max_message_kib",
+            "preset",
+            "budget",
+            "network",
+            "steps",
+            "expect",
+        ),
     )
-    members = _whole(whole, "members", "the scenario", least=2, most=MOST_MEMBERS)
+    members = _whole(whole, "members", "the scenario", least=1, most=MOST_MEMBERS)
     if not isinstance(whole["steps"], list) or not whole["steps"]:
         raise Refused("`steps` is not a list of one step or more")
     network = _network(whole["network"], members) if "network" in whole else None
@@ -285,7 +304,8 @@ def scenario(said: object) -> Scenario:
             most=MOST_KIB,
             unsaid=Scenario.max_message_kib,
         ),
-        budget=_budget(whole.get("budget", Scenario.budget)),
+        preset=_preset(whole),
+        budget=_seconds(whole.get("budget", Scenario.budget), "`budget`"),
         network=network,
         expect=expect,
     )
@@ -320,9 +340,10 @@ def _whole(said: dict, name: str, what: str, least: int, most: int, unsaid: int 
 def _step(said: object, what: str, seated: int, members: int, modelled: bool) -> Step:
     if not isinstance(said, dict) or said.get("step") not in STEPS:
         raise Refused(
-            f"{what} is not an object whose `step` is `seat`, `post`, `cut`, `heal` or `withhold`"
+            f"{what} is not an object whose `step` is "
+            "`seat`, `post`, `hold`, `cut`, `heal` or `withhold`"
         )
-    if said["step"] not in ("seat", "post") and not modelled:
+    if said["step"] not in ("seat", "post", "hold") and not modelled:
         raise Refused(f"{what} is a `{said['step']}` step, and the scenario has no `network`")
     if said["step"] == "seat":
         step = _fields(said, what, ("step", "to"), ("step", "to", "batch"))
@@ -332,6 +353,9 @@ def _step(said: object, what: str, seated: int, members: int, modelled: bool) ->
         if to <= seated:
             raise Refused(f"{what} seats {to} members, and {seated} are seated by then")
         return Seat(to, _whole(step, "batch", what, 1, MOST_MEMBERS, unsaid=Seat.batch))
+    if said["step"] == "hold":
+        step = _fields(said, what, ("step", "seconds"), ("step", "seconds"))
+        return Hold(_seconds(step["seconds"], f"`seconds` of {what}"))
     if said["step"] == "cut":
         step = _fields(said, what, ("step", "between"), ("step", "between"))
         return Cut(_sides(step["between"], what, seated))
@@ -443,6 +467,25 @@ def _timers(said: object) -> Union[str, Dict[str, int]]:
     return {name: _whole(said, name, "`timers`", 0, MOST_MILLISECONDS) for name in said}
 
 
+def _preset(said: dict) -> Optional[str]:
+    """The fleet preset a scenario names, or `None` when it names none.
+
+    Which names there are is the delivery library's to say.
+    """
+    if "preset" not in said:
+        return None
+    if not isinstance(said["preset"], str) or not said["preset"]:
+        raise Refused("`preset` is not the name of a preset")
+    # The name is a word of every peer's command line and stands in the first line a run prints.
+    if not said["preset"].isprintable():
+        raise Refused("`preset` holds a character that cannot be printed")
+    if "max_message_kib" in said:
+        raise Refused(
+            "`max_message_kib` is said with `preset`, and a preset fixes the largest message"
+        )
+    return said["preset"]
+
+
 def _network(said: object, members: int) -> Network:
     network = _fields(said, "`network`", ("seed",), ("seed", "loss", "welcome_loss", "delay_ms"))
     delay = network.get("delay_ms", Network.delay_ms)
@@ -472,15 +515,16 @@ def _rate(said: dict, name: str) -> Union[int, float]:
     return rate
 
 
-def _budget(said: object) -> float:
+def _seconds(said: object, what: str) -> float:
+    """`said` as the seconds `what` lasts: a budget, or a hold."""
     if type(said) not in (int, float) or not said > 0:
-        raise Refused("`budget` is not a number of seconds above 0")
+        raise Refused(f"{what} is not a number of seconds above 0")
     try:
         seconds = float(said)
     except OverflowError:
         seconds = math.inf
     if not math.isfinite(seconds):
-        raise Refused("`budget` is more seconds than a wait can be told to last")
+        raise Refused(f"{what} is more seconds than a wait can be told to last")
     return seconds
 
 

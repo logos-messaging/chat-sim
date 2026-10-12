@@ -246,11 +246,47 @@ class Lines(Scratch):
             str(stopped), f"raya ended with status 3: see {self.directory / 'raya.stderr'}"
         )
 
+    def test_a_peer_that_ended_before_its_ready_line_is_named_with_the_last_it_complained_of(self):
+        complaint = "print('Starting the node...\\n\\nno such preset\\n', file=sys.stderr)"
+        stopped = self.stop_of(f"import sys; {complaint}; sys.exit(1)")
+
+        self.assertEqual(str(stopped), "raya ended with status 1: no such preset")
+
+    def test_a_peer_that_ended_once_ready_is_named_with_its_standard_error_and_not_its_end(self):
+        complaint = "print('lost its node', file=sys.stderr)"
+        peer = self.peer(f"import sys; print({READY!r}, flush=True); {complaint}; sys.exit(3)")
+        peer.read_ready(soon())
+
+        with self.assertRaises(Stopped) as stopped:
+            peer.wait_for("a roster", lambda line: True, soon())
+        self.assertEqual(
+            str(stopped.exception),
+            f"raya ended with status 3: see {self.directory / 'raya.stderr'}",
+        )
+
     def test_a_peer_a_signal_ended_is_named_with_the_signal(self):
         stopped = self.stop_of("import os, signal; os.kill(os.getpid(), signal.SIGKILL)")
 
         self.assertEqual(
             str(stopped), f"raya ended with signal 9: see {self.directory / 'raya.stderr'}"
+        )
+
+    def test_a_peer_a_signal_ended_before_its_ready_line_is_not_named_with_what_it_wrote(self):
+        started = "print('Starting the node...', file=sys.stderr, flush=True)"
+        stopped = self.stop_of(
+            f"import os, signal, sys; {started}; os.kill(os.getpid(), signal.SIGKILL)"
+        )
+
+        self.assertEqual(
+            str(stopped), f"raya ended with signal 9: see {self.directory / 'raya.stderr'}"
+        )
+
+    def test_a_peer_whose_command_line_was_refused_is_not_named_with_what_it_last_wrote(self):
+        usage = "print('error: unexpected argument\\n\\nUsage: chat-cli', file=sys.stderr)"
+        stopped = self.stop_of(f"import sys; {usage}; sys.exit(2)")
+
+        self.assertEqual(
+            str(stopped), f"raya ended with status 2: see {self.directory / 'raya.stderr'}"
         )
 
     def test_a_peer_that_closed_its_output_and_runs_on_is_told_from_one_that_ended(self):

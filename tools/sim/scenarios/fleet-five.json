@@ -1,0 +1,11 @@
+{
+  "members": 5,
+  "timers": "default",
+  "preset": "logos.test",
+  "budget": 400,
+  "steps": [
+    {"step": "seat", "to": 5, "batch": 1},
+    {"step": "post"},
+    {"step": "hold", "seconds": 300}
+  ]
+}

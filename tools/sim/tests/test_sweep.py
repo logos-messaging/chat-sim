@@ -182,6 +182,17 @@ class Sweeping(Scratch):
             ["as expected; seed 7", "as expected; seed 8", "as expected; seed 9"],
         )
 
+    def test_a_scenario_on_a_preset_is_swept_as_any_other(self):
+        report = self.sweep_of(2, {}, preset="logos.test")
+
+        self.assertEqual((report["done"], report["as_expected"]), (2, 2))
+        for number in (1, 2):
+            run = self.out / str(number)
+            started = json.loads((run / "data" / "pax.json").read_text("utf-8"))["arguments"]
+            self.assertIn("--preset=logos.test", started)
+            kept = json.loads((run / "run.json").read_text("utf-8"))
+            self.assertEqual((kept["preset"], kept["cluster_id"]), ("logos.test", None))
+
     def test_the_row_of_a_run_that_withheld_a_candidate_says_whose_and_whether_applied(self):
         applied = ["lone=pax", "says-applied=pax"]
         report = self.sweep_of(2, {2: applied}, **withholding(expect={"applied": APPLIED}))

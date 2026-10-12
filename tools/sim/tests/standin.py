@@ -13,6 +13,13 @@ roster stands for the commit candidates of its batch. So a peer whose rule is ar
 line of a candidate withheld when a roster arrives, and holds that roster all the same, as a
 peer does by the candidate of another steward.
 
+Started with `--preset` its node is on a fleet: it says that it holds a link to each of the
+six entry nodes of the preset, each of them one it dialed, and that it has no mesh. The fleet
+is the stand-ins on the preset that share its store: it dials every one started before it, so
+a frame reaches every peer of the run. The preset `NO_PRESET` ends it at its start as the
+delivery library ends chat-cli on a name it does not know: with status 1 and the reason as the
+last line of its standard error.
+
     standin.py [--fault NAME[=PEER]]... <what the tool gives chat-cli>
 
 A fault is what the peer named does wrong, or every peer when it names none.
@@ -39,6 +46,11 @@ FAULTS = {
     "drops-a-dial": "dials every node it is told to but the first",
     "mesh-of-three": "has no more than three of its links in its mesh",
     "mesh-of-four": "has no more than four of its links in its mesh",
+    "links-late": "holds no link of a preset until LINK after its start",
+    "links-never": "holds no link of a preset",
+    "redials": "loses a link of a preset and dials it again between two answers of its node",
+    "drops-a-link": "loses a link of a preset between two answers of its node and dials none",
+    "tells-no-dials": "does not say how many dials its node made",
     "refuses-add": "refuses an /add",
     "forgets-a-welcome": "logs one Welcome fewer than it added members",
     "tells-no-app-id": "writes no app id on its `joined` line",
@@ -65,11 +77,19 @@ FAULTS = {
 STATUS = 3
 LINGER = 1.5
 START, ROSTER, DELIVERY, LOOKUP = 0.3, 0.4, 0.2, 0.3
+LINK = 1.0
 
 # The bytes of a Welcome, for each member of the group it seats.
 WELCOME = 1000
 
 MESH = {"mesh-of-three": 3, "mesh-of-four": 4}
+
+# The nodes of a preset that a node dials at its start.
+ENTRY_NODES = 6
+
+# The preset the stand-in ends on, and what the delivery library says of one it does not know.
+NO_PRESET = "nosuch.preset"
+UNKNOWN = "Invalid --preset value passed"
 
 # The durations of the group's settings, as chat-cli's flags name them.
 DURATIONS = (
@@ -133,6 +153,11 @@ class Peer:
                 },
             }
         self.inputs = 0
+        self.preset = args.preset
+        self.started = time.monotonic()
+        # The dials that came up, and how often the node was asked its state.
+        self.dialed = 0
+        self.asked = 0
         # One input or one frame at a time.
         self.lock = threading.RLock()
         self.links = []
@@ -149,6 +174,28 @@ class Peer:
 
     def dial(self, node_address: str) -> None:
         self.link(socket.create_connection(("127.0.0.1", int(node_address.split("/")[4]))))
+        self.dialed += 1
+
+    def join(self, fleet: Path) -> None:
+        """Dials every stand-in that `fleet` lists, and adds this one to the list."""
+        if fleet.exists():
+            for node_address in fleet.read_text(encoding="utf-8").split():
+                self.dial(node_address)
+        with open(fleet, "a", encoding="utf-8") as listed:
+            listed.write(f"{self.node_address}\n")
+
+    def entry_links(self) -> tuple:
+        """What the node of a preset says of its links, which are those to the entry nodes.
+
+        How many it holds, how many of them are in its mesh, and how many dials it made.
+        """
+        self.asked += 1
+        late = "links-late" in self.faults and time.monotonic() < self.started + LINK
+        if late or "links-never" in self.faults:
+            return 0, 0, 0
+        again = self.asked - 1 if "redials" in self.faults else 0
+        gone = self.asked - 1 if "drops-a-link" in self.faults else 0
+        return ENTRY_NODES - gone, 0, ENTRY_NODES + again
 
     def link(self, link: socket.socket) -> None:
         link.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -329,11 +376,18 @@ class Peer:
         if command == "/node":
             links = len(self.links)
             mesh = min([links] + [most for fault, most in MESH.items() if fault in self.faults])
+            dialed, failed = self.dialed, 0
+            if self.preset is not None:
+                links, mesh, dialed = self.entry_links()
+            if "tells-no-dials" in self.faults:
+                dialed = failed = None
             self.result(
                 node={
                     "address": self.node_address,
                     "peers": links,
                     "mesh_peers": mesh,
+                    "dials_ok": dialed,
+                    "dials_failed": failed,
                     "publish_refused": 0,
                     "inbound_dropped": 0,
                 }
@@ -424,8 +478,9 @@ def main() -> None:
     parser.add_argument("--group-commit", choices=["fast", "default"], required=True)
     for duration in DURATIONS:
         parser.add_argument(f"--group-{duration}-ms", type=int)
-    parser.add_argument("--cluster-id", type=int, required=True)
-    parser.add_argument("--max-message-kib", type=int, required=True)
+    parser.add_argument("--preset")
+    parser.add_argument("--cluster-id", type=int)
+    parser.add_argument("--max-message-kib", type=int)
     parser.add_argument("--network-seed", type=int)
     parser.add_argument("--network-loss", type=float)
     parser.add_argument("--network-welcome-loss", type=float)
@@ -439,11 +494,22 @@ def main() -> None:
     rules = (args.network_loss, args.network_welcome_loss, args.network_delay_ms)
     if args.network_seed is None and rules != (None, None, None):
         parser.error("a flag of the network model needs --network-seed")
+    local = (
+        ("--cluster-id", args.cluster_id),
+        ("--max-message-kib", args.max_message_kib),
+        ("--static-node", args.static_node or None),
+    )
+    for flag, given in local:
+        if args.preset is not None and given is not None:
+            parser.error(f"the argument '--preset' cannot be used with '{flag}'")
 
     args.data.mkdir(parents=True, exist_ok=True)
     (args.data / f"{args.name}.json").write_text(
         json.dumps({"pid": os.getpid(), "arguments": sys.argv[1:]}), encoding="utf-8"
     )
+    if args.preset == NO_PRESET:
+        print(f"Starting logos-delivery node (preset={args.preset})...", file=sys.stderr)
+        sys.exit(f"chat-cli: failed to start the delivery node: {UNKNOWN}: {args.preset}")
     peer = Peer(args)
     peer.report("run", f"account={peer.address[:8]}")
     if "dies-at-start" in peer.faults:
@@ -455,6 +521,8 @@ def main() -> None:
     dialed = args.static_node[1:] if "drops-a-dial" in peer.faults else args.static_node
     for node_address in [] if "unlinked" in peer.faults else dialed:
         peer.dial(node_address)
+    if args.preset is not None:
+        peer.join(args.data / f"{args.preset}.fleet")
     peer.ask("POST", f"/v1/account/{peer.address}", b"{}")
     if "silent" not in peer.faults:
         peer.write(

@@ -21,6 +21,7 @@ def report(**changed) -> dict:
         "steps": 2,
         "steps_done": 2,
         "timers": "fast",
+        "preset": None,
         "max_message_kib": 512,
         "network": None,
         "load": {"start": [1.5, 1.25, 1.0], "end": [2.625, 2.25, 2.0]},
@@ -34,6 +35,8 @@ def report(**changed) -> dict:
                 "end": {
                     "peers": end,
                     "mesh_peers": end_mesh,
+                    "dials_ok": len(dials) + 3,
+                    "dials_failed": len(dials),
                     "publish_refused": refused,
                     "inbound_dropped": dropped,
                 },
@@ -68,6 +71,7 @@ def report(**changed) -> dict:
                 "lookups": 2,
             }
         ],
+        "holds": [],
         "conversation": "2a30d6a2c1",
         "withheld": None,
         "check": {"as_expected": True, "differences": []},
@@ -96,10 +100,14 @@ class Render(unittest.TestCase):
             "the report is as expected\n"
             "load average 1.50 at the start, 2.62 at the end\n"
             "\n"
-            "node   ready   start  dials  wired  mesh  end  mesh  refused  dropped  errors  exit\n"
-            "saro  3.125s  3.125s      0     12    11   10     9        8        7       0     0\n"
-            "raya  6.250s  3.000s      1     22    21   20    19       18       17       0     0\n"
-            "pax   9.375s  2.875s      2     32    31   30    29       28       27       0     0\n"
+            "node   ready   start  dials  wired  mesh  end  mesh  dialed  failed  refused  dropped"
+            "  errors  exit\n"
+            "saro  3.125s  3.125s      0     12    11   10     9       3       0        8        7"
+            "       0     0\n"
+            "raya  6.250s  3.000s      1     22    21   20    19       4       1       18       17"
+            "       0     0\n"
+            "pax   9.375s  2.875s      2     32    31   30    29       5       2       28       27"
+            "       0     0\n"
             "\n"
             "batch  joiners  members  joined  seated  Welcome bytes\n"
             "1            2        3  0.750s  0.875s       2 x 7121\n"
@@ -124,14 +132,14 @@ class Render(unittest.TestCase):
                 "the report is as expected",
                 "load average 1.50 at the start, 2.62 at the end",
                 "",
-                "node   ready   start  dials  wired  mesh  end  mesh  refused  dropped  lost  "
-                "errors  exit",
-                "saro  3.125s  3.125s      0     12    11   10     9        8        7     0  "
-                "     0     0",
-                "raya  6.250s  3.000s      1     22    21   20    19       18       17    13  "
-                "     0     0",
-                "pax   9.375s  2.875s      2     32    31   30    29       28       27     1  "
-                "     0     0",
+                "node   ready   start  dials  wired  mesh  end  mesh  dialed  failed  refused  "
+                "dropped  lost  errors  exit",
+                "saro  3.125s  3.125s      0     12    11   10     9       3       0        8  "
+                "      7     0       0     0",
+                "raya  6.250s  3.000s      1     22    21   20    19       4       1       18  "
+                "     17    13       0     0",
+                "pax   9.375s  2.875s      2     32    31   30    29       5       2       28  "
+                "     27     1       0     0",
             ],
         )
         self.assertEqual(
@@ -145,11 +153,97 @@ class Render(unittest.TestCase):
         self.assertEqual(
             table.render(stopped).splitlines()[5:],
             [
-                "node   ready   start  dials  wired  mesh  end  mesh  refused  dropped  lost  "
-                "errors  exit",
-                "saro  3.125s  3.125s      0      -     -    -     -        -        -     -  "
-                "     -     -",
+                "node   ready   start  dials  wired  mesh  end  mesh  dialed  failed  refused  "
+                "dropped  lost  errors  exit",
+                "saro  3.125s  3.125s      0      -     -    -     -       -       -        -  "
+                "      -     -       -     -",
             ],
+        )
+
+    def test_a_run_on_a_preset_names_it_and_the_links_each_node_no_longer_holds(self):
+        fleet = report(preset="logos.test", max_message_kib=None)
+        for node, unheld in zip(fleet["nodes"], (0, 14, None)):
+            node["unheld"] = unheld
+
+        self.assertEqual(
+            table.render(fleet).splitlines()[:9],
+            [
+                "3 members, fast group timers, preset logos.test",
+                "whole: 3 of 3 members at the tip",
+                "the report is as expected",
+                "load average 1.50 at the start, 2.62 at the end",
+                "",
+                "node   ready   start  dials  wired  mesh  end  mesh  dialed  failed  unheld  "
+                "refused  dropped  errors  exit",
+                "saro  3.125s  3.125s      0     12    11   10     9       3       0       0  "
+                "      8        7       0     0",
+                "raya  6.250s  3.000s      1     22    21   20    19       4       1      14  "
+                "     18       17       0     0",
+                "pax   9.375s  2.875s      2     32    31   30    29       5       2       -  "
+                "     28       27       0     0",
+            ],
+        )
+        self.assertEqual(
+            table.render(fleet).splitlines()[9:], table.render(report()).splitlines()[9:]
+        )
+
+    def test_a_run_on_a_preset_with_a_network_model_names_both(self):
+        both = report(preset="logos.dev", max_message_kib=None, network=NETWORK)
+
+        self.assertEqual(
+            table.render(both).splitlines()[0],
+            "3 members, fast group timers, preset logos.dev, network seed 7, loss 0.05, "
+            "welcome loss 0",
+        )
+        self.assertEqual(
+            table.render(both).splitlines()[5].split()[8:],
+            ["dialed", "failed", "unheld", "refused", "dropped", "lost", "errors", "exit"],
+        )
+
+    def test_a_run_of_one_member_says_so(self):
+        self.assertEqual(
+            table.render(report(members=1)).splitlines()[0],
+            "1 member, fast group timers, largest message 512 KiB",
+        )
+
+    def test_each_hold_is_a_line_of_its_seconds_after_the_tables(self):
+        holds = [{"seconds": 60.0, "nodes": []}, {"seconds": 0.5, "nodes": []}]
+
+        self.assertEqual(
+            table.render(report(holds=holds)).splitlines()[-4:],
+            [
+                "1      pax   2 of 2  0.062s  0.125s     0.031s  0.062s  0.047s",
+                "",
+                "hold 1: 60.000s",
+                "hold 2: 0.500s",
+            ],
+        )
+
+    def test_a_hold_on_a_preset_says_the_links_a_node_no_longer_held_a_minute(self):
+        holds = [
+            {"seconds": 300.0, "nodes": [], "rate": 0.4},
+            {"seconds": 90.0, "nodes": [], "rate": None},
+            {"seconds": 300.0, "nodes": [], "rate": -0.25},
+        ]
+        fleet = report(preset="logos.test", holds=holds, batches=[], posts=[])
+
+        self.assertEqual(
+            table.render(fleet).splitlines()[-4:],
+            [
+                "",
+                "hold 1: 300.000s, unheld 0.40 a node a minute",
+                "hold 2: 90.000s, unheld - a node a minute",
+                "hold 3: 300.000s, unheld -0.25 a node a minute",
+            ],
+        )
+
+    def test_a_rate_of_a_hold_that_rounds_to_nothing_has_no_sign(self):
+        # One link not dialed, of ten nodes, in half an hour.
+        holds = [{"seconds": 1800.0, "nodes": [], "rate": -1 / 300}]
+        fleet = report(preset="logos.test", holds=holds, batches=[], posts=[])
+
+        self.assertEqual(
+            table.render(fleet).splitlines()[-1], "hold 1: 1800.000s, unheld 0.00 a node a minute"
         )
 
     def test_what_was_withheld_from_whom_is_told_after_the_verdict(self):
@@ -204,9 +298,12 @@ class Render(unittest.TestCase):
             "not checked: the run made no conversation\n"
             "load average 1.50 at the start\n"
             "\n"
-            "node   ready   start  dials  wired  mesh  end  mesh  refused  dropped  errors  exit\n"
-            "saro  3.125s  3.125s      0      -     -    -     -        -        -       -     -\n"
-            "raya       -       -      1      -     -    -     -        -        -       -     -\n",
+            "node   ready   start  dials  wired  mesh  end  mesh  dialed  failed  refused  dropped"
+            "  errors  exit\n"
+            "saro  3.125s  3.125s      0      -     -    -     -       -       -        -        -"
+            "       -     -\n"
+            "raya       -       -      1      -     -    -     -       -       -        -        -"
+            "       -     -\n",
         )
 
     def test_a_run_that_stopped_is_told_with_what_its_check_found(self):

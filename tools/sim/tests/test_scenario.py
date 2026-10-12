@@ -11,6 +11,7 @@ from sim.scenario import (
     Cut,
     Expect,
     Heal,
+    Hold,
     Network,
     Post,
     Refused,
@@ -22,7 +23,7 @@ from sim.scenario import (
 TOOL = Path(__file__).resolve().parents[1]
 
 # The steps a scenario has, as a refusal names them.
-STEPS = "`seat`, `post`, `cut`, `heal` or `withhold`"
+STEPS = "`seat`, `post`, `hold`, `cut`, `heal` or `withhold`"
 
 # Ids a fork report would know five members by, in the order of the members.
 IDS = ["a3f91c07", "7b1e44d9", "e09a3f52", "19f6b0e3", "b54a9d10"]
@@ -61,6 +62,7 @@ class Reading(unittest.TestCase):
                 steps=(Seat(to=3, batch=10), Post(sender=LAST)),
                 timers="fast",
                 max_message_kib=512,
+                preset=None,
                 budget=180.0,
                 network=None,
                 expect=Expect(verdict="whole", positions={}, posts={}, applied=None),
@@ -99,6 +101,30 @@ class Reading(unittest.TestCase):
                 expect=Expect("whole, members behind", {"peer7": "behind"}, {"raya": "unreadable"}),
             ),
         )
+
+    def test_a_preset_is_read_by_its_name_whatever_the_name(self):
+        for name in ("logos.test", "no preset of any library", "-x"):
+            with self.subTest(name=name):
+                self.assertEqual(scenario.scenario(three(preset=name)).preset, name)
+
+    def test_a_network_model_and_its_steps_are_read_on_a_preset(self):
+        held = scenario.scenario(withholding(preset="logos.test"))
+
+        self.assertEqual((held.preset, held.network.seed), ("logos.test", 7))
+        self.assertEqual(held.withheld_from, "pax")
+
+    def test_a_hold_is_read_with_its_seconds_before_and_after_any_other_step(self):
+        seat, post = {"step": "seat", "to": 3}, {"step": "post"}
+        long, short = {"step": "hold", "seconds": 300}, {"step": "hold", "seconds": 0.5}
+        held = scenario.scenario(steps(long, seat, short, post, long))
+
+        self.assertEqual(held.steps, (Hold(300.0), Seat(3), Hold(0.5), Post(LAST), Hold(300.0)))
+        self.assertEqual(held.seated, 3)
+
+    def test_a_scenario_of_one_member_is_its_creator_alone(self):
+        alone = scenario.scenario({"members": 1, "steps": [{"step": "hold", "seconds": 60}]})
+
+        self.assertEqual((alone.members, alone.seated, alone.steps), (1, 1, (Hold(60.0),)))
 
     def test_a_network_model_that_says_its_seed_alone_has_no_loss_and_no_delay(self):
         network = scenario.scenario(three(network={"seed": 7})).network
@@ -311,13 +337,22 @@ class Reading(unittest.TestCase):
     def test_the_scenarios_the_repository_keeps_are_read(self):
         kept = sorted(file.name for file in (TOOL / "scenarios").glob("*.json"))
         self.assertEqual(
-            kept, ["fifty.json", "lossy.json", "lost-candidate.json", "three.json", "twenty.json"]
+            kept,
+            [
+                "fifty.json",
+                "fleet-five.json",
+                "lossy.json",
+                "lost-candidate.json",
+                "three.json",
+                "twenty.json",
+            ],
         )
         for name, members in (("three.json", 3), ("twenty.json", 20), ("fifty.json", 50)):
             held = scenario.read(TOOL / "scenarios" / name)
             self.assertEqual((held.members, held.seated), (members, members), name)
             self.assertEqual(held.expect, Expect(), name)
             self.assertIsNone(held.network, name)
+            self.assertIsNone(held.preset, name)
 
     def test_the_scenarios_of_the_network_model_seat_five_members_one_at_a_time(self):
         one_at_a_time = Seat(to=5, batch=1)
@@ -337,6 +372,13 @@ class Reading(unittest.TestCase):
             lost.expect, Expect(applied=Expect("split at epoch 4", {}, {"pax": "unreadable"}))
         )
 
+    def test_the_scenario_of_a_fleet_seats_five_one_at_a_time_and_holds_five_minutes(self):
+        fleet = scenario.read(TOOL / "scenarios" / "fleet-five.json")
+
+        self.assertEqual((fleet.members, fleet.preset, fleet.timers), (5, "logos.test", "default"))
+        self.assertEqual(fleet.steps, (Seat(to=5, batch=1), Post(LAST), Hold(300.0)))
+        self.assertEqual((fleet.budget, fleet.network, fleet.expect), (400.0, None, Expect()))
+
 
 class Refusals(unittest.TestCase):
     def refusal(self, said: object) -> str:
@@ -355,7 +397,7 @@ class Refusals(unittest.TestCase):
             ("`members` of the scenario is not a whole number", three(members="3")),
             ("`members` of the scenario is not a whole number", three(members=3.0)),
             ("`members` of the scenario is not a whole number", three(members=True)),
-            ("`members` of the scenario is 1, and 2 is the least", three(members=1)),
+            ("`members` of the scenario is 0, and 1 is the least", three(members=0)),
             ("`members` of the scenario is 65535, and 65534 is the most", three(members=65535)),
             (
                 f"`members` of the scenario is {10**30}, and 65534 is the most",
@@ -382,6 +424,16 @@ class Refusals(unittest.TestCase):
                 three(budget=float("inf")),
             ),
             ("`budget` is more seconds than a wait can be told to last", three(budget=10**400)),
+            ("`preset` is not the name of a preset", three(preset="")),
+            ("`preset` is not the name of a preset", three(preset=None)),
+            ("`preset` is not the name of a preset", three(preset=["logos.test"])),
+            ("`preset` holds a character that cannot be printed", three(preset="logos.test\n")),
+            ("`preset` holds a character that cannot be printed", three(preset="logos\0test")),
+            ("`preset` holds a character that cannot be printed", three(preset="\ud800")),
+            (
+                "`max_message_kib` is said with `preset`, and a preset fixes the largest message",
+                three(preset="logos.test", max_message_kib=512),
+            ),
             (
                 "`timers` names the set quick, and the sets are fast and default",
                 three(timers="quick"),
@@ -448,6 +500,27 @@ class Refusals(unittest.TestCase):
             (
                 "steps[1] seats 2 members, and 3 are seated by then",
                 steps(seat, {"step": "seat", "to": 2}),
+            ),
+            ("steps[1] lacks `seconds`", steps(seat, {"step": "hold"})),
+            (
+                "`budget` is not a field of steps[1]",
+                steps(seat, {"step": "hold", "seconds": 5, "budget": 9}),
+            ),
+            (
+                "`seconds` of steps[1] is not a number of seconds above 0",
+                steps(seat, {"step": "hold", "seconds": 0}),
+            ),
+            (
+                "`seconds` of steps[0] is not a number of seconds above 0",
+                steps({"step": "hold", "seconds": "60"}),
+            ),
+            (
+                "`seconds` of steps[0] is not a number of seconds above 0",
+                steps({"step": "hold", "seconds": True}),
+            ),
+            (
+                "`seconds` of steps[0] is more seconds than a wait can be told to last",
+                steps({"step": "hold", "seconds": 10**400}),
             ),
             ("`to` is not a field of steps[1]", steps(seat, {"step": "post", "to": "pax"})),
             (

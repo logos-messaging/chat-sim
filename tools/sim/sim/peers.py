@@ -22,6 +22,9 @@ WATCH = 0.2
 # A fork report names an installation by the first four bytes of its key, in hex.
 INSTALLATION = 8
 
+# The status chat-cli ends with when it could not start: it has then written why, last.
+COULD_NOT_START = 1
+
 
 class Stopped(Exception):
     """A step of the run did not come about: a wait ran out of budget, or a process ended."""
@@ -159,7 +162,11 @@ class _Process:
         """Why the run stops once the process has ended."""
         status = self._process.returncode
         how = f"status {status}" if status >= 0 else f"signal {-status}"
-        return Stopped(f"{self.name} ended with {how}: see {self.stderr}")
+        return Stopped(f"{self.name} ended with {how}: {self._why()}")
+
+    def _why(self) -> str:
+        """Where to read why the process ended."""
+        return f"see {self.stderr}"
 
     def _line(self, what: str, deadline: float) -> Tuple[float, str]:
         """The next line and when it was read. `what` names the line in the reason there is none."""
@@ -235,6 +242,14 @@ class Peer(_Process):
         if line.get("type") in ("result", "joined") and "app_id" in line:
             self.app_id = line["app_id"]
         return read_at, line
+
+    def _why(self) -> str:
+        """Why the peer ended: the last line of its standard error, when it could not start."""
+        if self.ready_at or self._process.returncode != COULD_NOT_START:
+            return super()._why()
+        complained = self.stderr.read_text(encoding="utf-8", errors="replace").splitlines()
+        said = [line for line in complained if line.strip()]
+        return said[-1] if said else super()._why()
 
     def wait_for(
         self, what: str, wanted: Callable[[dict], bool], deadline: float

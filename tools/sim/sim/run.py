@@ -1,4 +1,4 @@
-"""One run: a registry, peers on a network of their own, and the steps of a scenario."""
+"""One run: a registry, peers on a network of their own or on a preset, and a scenario's steps."""
 
 from __future__ import annotations
 
@@ -25,11 +25,11 @@ from .peers import (
     index_of,
     name_of,
 )
-from .scenario import Cut, Heal, Post, Scenario, Seat, senders
+from .scenario import Cut, Heal, Hold, Post, Scenario, Seat, senders
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 
-# No preset holds this cluster id, and every node of a run is given it.
+# No preset holds this cluster id, and every node of a network of the run's own is given it.
 CLUSTER_ID = 77
 
 # Between two rounds of asking every node for its state.
@@ -76,14 +76,16 @@ def run(settings: Settings, watch: Watch) -> dict:
         "steps": len(scenario.steps),
         "steps_done": 0,
         "timers": scenario.timers,
-        "cluster_id": CLUSTER_ID,
-        "max_message_kib": scenario.max_message_kib,
+        "preset": scenario.preset,
+        "cluster_id": CLUSTER_ID if scenario.preset is None else None,
+        "max_message_kib": scenario.max_message_kib if scenario.preset is None else None,
         "budget": scenario.budget,
         "network": None if scenario.network is None else asdict(scenario.network),
         "load": {"start": list(os.getloadavg()), "end": None},
         "nodes": [],
         "batches": [],
         "posts": [],
+        "holds": [],
         "conversation": None,
         "withheld": None,
         "held_to": None,
@@ -148,6 +150,15 @@ def _timers(scenario: Scenario) -> List[str]:
     return flags
 
 
+def _delivery(scenario: Scenario) -> List[str]:
+    """The flags that say which network a peer's node joins: the preset, or one of the run's own."""
+    if scenario.preset is not None:
+        # A name may begin with a dash, which chat-cli takes for a flag when it is a word of
+        # its own.
+        return [f"--preset={scenario.preset}"]
+    return ["--cluster-id", str(CLUSTER_ID), "--max-message-kib", str(scenario.max_message_kib)]
+
+
 def _network(scenario: Scenario, name: str) -> List[str]:
     """The flags that put what the peer `name` receives through the scenario's network model."""
     network = scenario.network
@@ -169,7 +180,11 @@ def _group(
 ) -> None:
     scenario = settings.scenario
     started_at = time.time()
-    dialing = wiring.dials(scenario.members)
+    if scenario.preset is None:
+        dialing = wiring.dials(scenario.members)
+    else:
+        # Which nodes a node of a preset dials is the preset's to say.
+        dialing = [[] for _ in range(scenario.members)]
     env = dict(os.environ, RUST_LOG=measure.LOG_FILTER)
     for index, dialed in enumerate(dialing):
         name = name_of(index)
@@ -187,10 +202,7 @@ def _group(
             "--registry-url",
             registry.url,
             *_timers(scenario),
-            "--cluster-id",
-            str(CLUSTER_ID),
-            "--max-message-kib",
-            str(scenario.max_message_kib),
+            *_delivery(scenario),
             *_network(scenario, name),
         ]
         for other in dialed:
@@ -204,7 +216,10 @@ def _group(
         report["nodes"][index]["ready_s"] = peer.ready_at - started_at
         report["nodes"][index]["start_s"] = peer.ready_at - peer.started_at
 
-    _wire(settings, peers, wiring.links(dialing), report, watch)
+    if scenario.preset is None:
+        _wire(settings, peers, wiring.links(dialing), report, watch)
+    else:
+        _link(settings, peers, report, watch)
     report["wired_s"] = time.time() - started_at
 
     creator = peers[0]
@@ -229,6 +244,8 @@ def _group(
                 if post["unread"]:
                     unread = ", ".join(post["unread"])
                     raise Stopped(f"the post was not read within the budget by: {unread}")
+        elif isinstance(step, Hold):
+            report["holds"].append(_hold(settings, peers, step.seconds, watch))
         elif isinstance(step, Cut):
             cut = [[peers[index_of(name)] for name in side] for side in step.sides]
             _cut(settings, cut)
@@ -267,6 +284,25 @@ def _wire(
         _pause(POLL, watch)
 
 
+def _link(settings: Settings, peers: List[Peer], report: dict, watch: Watch) -> None:
+    """Waits until every node of a preset holds a link.
+
+    A mesh is not waited for: an idle node of a preset has none.
+    """
+    deadline = _deadline(settings)
+    while True:
+        alone = []
+        for node, peer in zip(report["nodes"], peers):
+            node["wired"] = _links(peer.node(time.monotonic() + ANSWER))
+            if node["wired"]["peers"] < 1:
+                alone.append(peer.name)
+        if not alone:
+            return
+        if time.monotonic() + POLL >= deadline:
+            raise OutOfBudget(f"no link within the budget: {', '.join(alone)}")
+        _pause(POLL, watch)
+
+
 def _pause(seconds: float, watch: Watch) -> None:
     """Waits `seconds`, looking at `watch` every `WATCH` of them."""
     until = time.monotonic() + seconds
@@ -276,6 +312,44 @@ def _pause(seconds: float, watch: Watch) -> None:
         if left <= 0:
             return
         time.sleep(min(left, WATCH))
+
+
+def _hold(settings: Settings, peers: List[Peer], seconds: float, watch: Watch) -> dict:
+    """Asks every node its state, does nothing for `seconds`, and asks every node again.
+
+    Returns the seconds and the two answers of each node. On a preset it tells of each node
+    what `_unheld` rose by from the one answer to the other, and as the rate how much that is
+    a node a minute.
+    """
+    before = [peer.node(time.monotonic() + ANSWER) for peer in peers]
+    _pause(seconds, watch)
+    after = [peer.node(time.monotonic() + ANSWER) for peer in peers]
+    for answer in before + after:
+        del answer["address"]
+    nodes = [
+        {"name": peer.name, "before": first, "after": second}
+        for peer, first, second in zip(peers, before, after)
+    ]
+    hold = {"seconds": seconds, "nodes": nodes}
+    if settings.scenario.preset is not None:
+        for node in nodes:
+            first, second = _unheld(node["before"]), _unheld(node["after"])
+            node["unheld"] = None if None in (first, second) else second - first
+        unheld = [node["unheld"] for node in nodes]
+        hold["rate"] = None if None in unheld else sum(unheld) / (len(nodes) * seconds / 60)
+    return hold
+
+
+def _unheld(state: dict) -> Optional[int]:
+    """The dials a node of a preset made less the links it holds, or `None` when it does not say.
+
+    Every link of such a node is taken for one it dialed, so these are the connections it
+    opened that are not links it holds: a link it lost, a connection that never became a
+    link, a dial back to a node that asked for one. A link it did not dial lowers the count,
+    which may then be below 0.
+    """
+    dialed, held = state.get("dials_ok"), state["peers"]
+    return None if dialed is None or held is None else dialed - held
 
 
 def _expected(members: List[Peer], said: Dict[str, str], word: str) -> List[Peer]:
@@ -486,6 +560,8 @@ def _last_words(scenario: Scenario, peers: List[Peer], report: dict, watch: Watc
         except Stopped:
             continue
         del node["end"]["address"]
+        if scenario.preset is not None:
+            node["unheld"] = _unheld(node["end"])
 
 
 def _network_at_rest(peer: Peer, held_until: float, watch: Watch) -> dict:

@@ -11,9 +11,10 @@ _ROW = "{:>3}  {:>7}  {:>10}  {:<22}  "
 def render(report: dict) -> str:
     """The report as the tables a person reads."""
     modelled = report["network"] is not None
+    preset = report["preset"] is not None
     lines = [
-        f"{report['members']} members, {_timers(report['timers'])}, "
-        f"largest message {report['max_message_kib']} KiB{_network(report['network'])}",
+        f"{_members(report['members'])}, {_timers(report['timers'])}, "
+        f"{_delivery(report)}{_network(report['network'])}",
         *_outcome(report),
         _load(report["load"]),
         "",
@@ -28,13 +29,16 @@ def render(report: dict) -> str:
             "mesh",
             "end",
             "mesh",
+            "dialed",
+            "failed",
+            *(("unheld",) if preset else ()),
             "refused",
             "dropped",
             *(("lost",) if modelled else ()),
             "errors",
             "exit",
         ),
-        [_node(node, modelled) for node in report["nodes"]],
+        [_node(node, preset, modelled) for node in report["nodes"]],
     )
     errors = _errors(report["nodes"])
     if errors:
@@ -62,6 +66,9 @@ def render(report: dict) -> str:
             ("post", "from", "read by", "median", "worst", "delivered", "worst", "lookup"),
             [_post(number, post) for number, post in enumerate(report["posts"], 1)],
         )
+    if report["holds"]:
+        lines.append("")
+        lines += [_hold(number, hold) for number, hold in enumerate(report["holds"], 1)]
     return "\n".join(lines) + "\n"
 
 
@@ -100,6 +107,17 @@ def _check(report: dict) -> str:
         return "as expected"
     first, more = check["differences"][0], len(check["differences"]) - 1
     return f"{first}, and {more} more" if more else first
+
+
+def _members(members: int) -> str:
+    return "1 member" if members == 1 else f"{members} members"
+
+
+def _delivery(report: dict) -> str:
+    """The network a run's nodes were on: a preset, or their own by its largest message."""
+    if report["preset"] is not None:
+        return f"preset {report['preset']}"
+    return f"largest message {report['max_message_kib']} KiB"
 
 
 def _timers(timers: Union[str, Dict[str, int]]) -> str:
@@ -167,7 +185,7 @@ def _load(load: dict) -> str:
     return f"load average {start:.2f} at the start{at_the_end}"
 
 
-def _node(node: dict, modelled: bool) -> Sequence[str]:
+def _node(node: dict, preset: bool, modelled: bool) -> Sequence[str]:
     wired = node.get("wired", {})
     end = node.get("end", {})
     return (
@@ -179,6 +197,9 @@ def _node(node: dict, modelled: bool) -> Sequence[str]:
         _count(wired.get("mesh_peers")),
         _count(end.get("peers")),
         _count(end.get("mesh_peers")),
+        _count(end.get("dials_ok")),
+        _count(end.get("dials_failed")),
+        *((_count(node.get("unheld")),) if preset else ()),
         _count(end.get("publish_refused")),
         _count(end.get("inbound_dropped")),
         *((_count(_lost(node)),) if modelled else ()),
@@ -232,6 +253,16 @@ def _post(number: int, post: dict) -> Sequence[str]:
         _seconds(delivered.get("worst")),
         _seconds(post["lookup_mean"]),
     )
+
+
+def _hold(number: int, hold: dict) -> str:
+    """The line of a hold: its seconds, and on a preset what `unheld` rose by, a node a minute."""
+    said = f"hold {number}: {_seconds(hold['seconds'])}"
+    if "rate" not in hold:
+        return said
+    # A rate that rounds to 0 from below is printed without its sign.
+    rate = "-" if hold["rate"] is None else f"{round(hold['rate'], 2) + 0.0:.2f}"
+    return f"{said}, unheld {rate} a node a minute"
 
 
 def _welcomes(welcome_bytes: List[int]) -> str:

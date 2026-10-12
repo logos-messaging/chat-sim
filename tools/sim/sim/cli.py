@@ -28,9 +28,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     """
     parser = _Parser(
         prog="sim",
-        description="Starts headless chat-cli peers on a delivery network of their own, has "
-        "them do the steps of a scenario, and holds the fork report of their logs against what "
-        "the scenario expects.",
+        description="Starts headless chat-cli peers on a delivery network of their own or on a "
+        "fleet preset, has them do the steps of a scenario, and holds the fork report of their "
+        "logs against what the scenario expects.",
     )
     commands = parser.add_subparsers(metavar="COMMAND", required=True)
     one = commands.add_parser(

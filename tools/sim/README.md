@@ -7,7 +7,8 @@ group is expected to come to. It starts the repository's mock registry and a hea
 peer for each member, each with its embedded delivery node on a local network that holds the
 run's nodes and no other. It links the nodes, has the peers do the scenario's steps, ends every
 process it started, and has [`forks`](../forks/README.md) hold the report of the peers' logs
-against what the scenario expects.
+against what the scenario expects. A scenario that names a fleet preset has the nodes join that
+fleet instead (see [On a fleet preset](#on-a-fleet-preset)).
 
 It needs Python 3.9 or newer and no package beyond the standard library, and a `chat-cli` built
 with the delivery library (see [chat-cli](../../bin/chat-cli/README.md#building)).
@@ -24,18 +25,18 @@ python3 tools/sim run tools/sim/scenarios/three.json --chat-cli target/release/c
 3 members, fast group timers, largest message 512 KiB
 whole: 3 of 3 members at the tip
 the report is as expected
-load average 0.74 at the start, 0.74 at the end
+load average 1.71 at the start, 1.71 at the end
 
-node   ready   start  dials  wired  mesh  end  mesh  refused  dropped  errors  exit
-saro  0.125s  0.125s      0      2     2    2     2        0        0       0     0
-raya  0.245s  0.120s      1      2     2    2     2        0        0       0     0
-pax   0.368s  0.122s      2      2     2    2     2        0        0       0     0
+node   ready   start  dials  wired  mesh  end  mesh  dialed  failed  refused  dropped  errors  exit
+saro  0.095s  0.094s      0      2     2    2     2       0       0        0        0       0     0
+raya  0.190s  0.095s      1      2     2    2     2       1       0        0        0       0     0
+pax   0.287s  0.097s      2      2     2    2     2       2       0        0        0       0     0
 
 batch  joiners  members  joined  seated  Welcome bytes
-1            2        3  0.537s  0.537s       2 x 7121
+1            2        3  0.536s  0.535s       2 x 7121
 
 post  from  read by  median   worst  delivered   worst  lookup
-1      pax   2 of 2  0.006s  0.006s     0.005s  0.005s  0.001s
+1      pax   2 of 2  0.005s  0.006s     0.004s  0.005s  0.000s
 ```
 
 | Status | Meaning |
@@ -86,6 +87,9 @@ unshare -rn sh -c 'ip link set lo up && exec "$@"' sim \
   python3 tools/sim run tools/sim/scenarios/fifty.json --chat-cli target/release/chat-cli --out tmp/fifty
 ```
 
+A scenario with `preset` is not started this way: its nodes have to reach the fleet (see
+[On a fleet preset](#on-a-fleet-preset)).
+
 ## The scenario
 
 A scenario is a JSON object. This one seats five members in two steps and has posts sent between
@@ -108,20 +112,22 @@ them:
 
 | Field | Default | Holds |
 |-------|---------|-------|
-| `members` | | How many peers the run starts, 2 to 65534: every node listens on a TCP port of loopback, and the registry on one more. They are named `saro`, `raya`, `pax`, `mira`, `kes` and `tomo`, written in lower case, and from the seventh on `peer7`, `peer8` and so on, in the order they start. `saro` creates the group. |
+| `members` | | How many peers the run starts, 1 to 65534: every node listens on a TCP port of its own, and the registry on one more. They are named `saro`, `raya`, `pax`, `mira`, `kes` and `tomo`, written in lower case, and from the seventh on `peer7`, `peer8` and so on, in the order they start. `saro` creates the group. |
 | `steps` | | What the members do, in order: one step or more. A later step is named by its place in the list, from 0: a refusal says `steps[2]`. |
 | `timers` | `fast` | The group timers of every peer: `fast` or `default`, a set of chat-cli's `--group-commit`, or an object of durations in milliseconds by the names the group library gives them, each of which stands over that of the `default` set (see [chat-cli](../../bin/chat-cli/README.md#group-timers)). A duration is a whole number up to 2^64 - 1, the most its flag holds. |
-| `max_message_kib` | `512` | The largest message a node takes, as chat-cli's `--max-message-kib`: 1 to 2^32 - 1, the most the flag holds. |
+| `max_message_kib` | `512` | The largest message a node takes, as chat-cli's `--max-message-kib`: 1 to 2^32 - 1, the most the flag holds. Refused with `preset`, which fixes the largest message. |
+| `preset` | | The fleet preset every node joins, by its name, as chat-cli's `--preset`: `logos.test`. Without it the nodes are a network of the run's own (see [On a fleet preset](#on-a-fleet-preset)). A name that is no text, an empty one, or one that holds a character that cannot be printed, as a line break is, is refused. Which names there are is the delivery library's to say. |
 | `budget` | `180` | How many seconds each wait may take: a peer's start, the wiring, a batch, a post. A number above 0. |
 | `network` | | A model of a lossy network that every peer puts what it receives through (see [The network model](#the-network-model)). Without it no peer has one. |
 | `expect` | | How the outcome differs from a whole group, as below. |
 
-A step is one of five, and the last three are refused in a scenario without `network`:
+A step is one of six, and the last three are refused in a scenario without `network`:
 
 | Step | Fields | Does |
 |------|--------|------|
 | `seat` | `to`, and `batch` (default `10`) | The creator adds the members not yet seated, in the order they started, until the group holds `to`, `batch` of them with one `/add`. It is done when the log of each member holds the epoch record of the new roster. `to` is above what is seated by then and at most `members`. |
 | `post` | `from` (default `last`) | A member posts and the others seated wait for the post. `from` is the name of a member seated by then, `last` for the last one seated, or `all` for every member seated, one after another in the order they started. |
+| `hold` | `seconds` | The run does nothing for `seconds`, a number above 0, and asks every node for its state before and after (see `holds[]` in [What it writes](#what-it-writes)). |
 | `cut` | `between` | Two sides of the group are cut off from each other. `between` holds the two sides, each a list of the names of one or more members seated by then, and a member is named once. Each member of both sides is told to drop what the members of the other side publish to the group. No cut is made while one is in force. |
 | `heal` | | The cut in force ends: each member of its two sides is told to drop nothing of the other side's any longer. |
 | `withhold` | `from` | The member `from`, seated by then, is told to drop the next commit candidate that reaches it, which is one of the batch the next step seats (see [A withheld candidate](#a-withheld-candidate)). |
@@ -166,13 +172,21 @@ twice, a number above the most its field takes, and a file that is JSON to Pytho
 `NaN` or `Infinity` in it.
 
 What a duration may be is the library's to say: chat-cli refuses a set of timers the library
-does not take, the first peer then ends at its start, and its standard error holds the library's
-reason.
+does not take, the first peer then ends at its start, and the run stops with the last line of
+its standard error, which is the library's reason:
+
+```console
+stopped after 0 of 2 steps: saro ended with status 1: chat-cli: Invalid conversation config: freeze_duration must be non-zero
+```
+
+The same goes for a `preset` the delivery library does not know.
 
 `scenarios/` holds the scenarios the repository keeps: `three.json`, which CI runs,
 `twenty.json` and `fifty.json`, the two larger sizes runs have been measured at (see
 [The floor on one machine](#the-floor-on-one-machine)), and `lost-candidate.json` and
 `lossy.json`, the two with a network model (see [What a lost frame does](#what-a-lost-frame-does)).
+`fleet-five.json` needs the `logos.test` fleet and is no part of CI (see
+[On a fleet preset](#on-a-fleet-preset)).
 
 ### The network model
 
@@ -297,9 +311,14 @@ short has left the rows of the runs that ended:
 2. It starts the peers one after another. Each node is told which nodes to dial, all of them
    started before it, and the next peer starts once this one has written its `ready` line. A
    scenario with `network` starts each peer with a network model: the seed, the two rates and
-   the delay of that member.
+   the delay of that member. A scenario with `preset` starts each peer on the preset, and no
+   node is told a node to dial. A peer that ends before its `ready` line stops the run. One
+   that ended with status 1, as chat-cli does when it cannot start, has the last line of its
+   standard error for the reason (see [chat-cli](../../bin/chat-cli/README.md#how-it-ends)).
+   Any other, as one that a signal ended, has the path of that file.
 3. It asks every node for its state until each holds its links and has at least four of them, or
-   all of them when it has fewer, in its gossip mesh.
+   all of them when it has fewer, in its gossip mesh. On a preset it asks until each node holds
+   one link or more, and waits for no mesh.
 4. The first peer creates a group, and the steps are done in order. A batch of a `seat` step is
    seated when the log of every member waited on holds the epoch record of the new roster, and
    the steps stop when the members' records of that epoch do not name one state. A `post` step
@@ -311,7 +330,8 @@ short has left the rows of the runs that ended:
    within the budget stops the steps, and so does one written before the `/add`, a candidate of
    an earlier round. The steps do not stop at that batch when the member alone holds a state of
    its own and every other member waited on holds one: the steps go on without the member, and
-   no post is waited for on it.
+   no post is waited for on it. A `hold` step asks every node for its state, does nothing for
+   its seconds, which no budget bounds, and asks every node again.
 5. It asks every peer for the state of its network model, when the scenario has one. A peer
    abandons the frames its model holds when it ends, so a model that holds one is asked again
    every 0.5 s: until it holds none, or until the member's delay has passed since the steps
@@ -363,7 +383,7 @@ token, and is there also when nothing could be sent. `run.txt` is what the run p
 
 | Field | Holds |
 |-------|-------|
-| `members`, `timers`, `max_message_kib`, `budget`, `cluster_id` | What the run was given |
+| `members`, `timers`, `max_message_kib`, `budget`, `preset`, `cluster_id` | What the run was given. Of `preset` and `cluster_id` the one that does not apply is `null`, and so is `max_message_kib` on a preset |
 | `network` | The `network` of the scenario with the seed this run had, or `null` |
 | `ok` | Whether every step was done and the report is as expected |
 | `stopped` | What stopped the steps, when something did |
@@ -381,16 +401,17 @@ token, and is there also when nothing could be sent. `run.txt` is what the run p
 | `nodes[].app_id` | The app id the peer told as it created or joined the group, or `null` |
 | `nodes[].ready_s` | When the peer wrote its `ready` line, in seconds from the run's start |
 | `nodes[].start_s` | How long the peer took from its own start to that line |
-| `nodes[].dials` | The nodes it was told to dial |
-| `nodes[].wired` | Its `peers` and `mesh_peers` once every node was linked |
-| `nodes[].end` | Its `peers`, `mesh_peers`, `publish_refused` and `inbound_dropped` after the steps |
+| `nodes[].dials` | The nodes it was told to dial: none on a preset |
+| `nodes[].wired` | Its `peers` and `mesh_peers` once every node held the links the run waits for |
+| `nodes[].end` | Its `peers`, `mesh_peers`, `dials_ok`, `dials_failed`, `publish_refused` and `inbound_dropped` after the steps |
+| `nodes[].unheld` | `dials_ok` less `peers` of `nodes[].end`: the connections the node opened that are not links it holds, or `null` when it did not say one of the two (see [On a fleet preset](#on-a-fleet-preset)). Only in a run with `preset` |
 | `nodes[].exit_status`, `nodes[].exit_signal` | The status the peer exited with, or the signal that ended it |
 | `nodes[].ended` | `asked` when it exited with status 0 once its input had ended, `in its stop` when it then exited with another status or by a signal, `killed` when it had not exited after 30 seconds, and `early` when it ended before the run asked it to |
 | `nodes[].inbound_errors` | How many `inbound_error` lines the peer wrote, by their message |
 | `nodes[].unchecked_senders` | How many frames the peer's log says it decrypted and could not read because the registry gave it no answer for the sender's account: its `unreadable` records with `why=sender`. They tell of the registry and not of the group |
 | `nodes[].network` | What the peer's network model answered after the steps, as chat-cli's `/network` gives it. Only in a run with `network` |
 | `nodes[].network_dropped` | How many `network_drop` lines the peer wrote, by their `why`. Only in a run with `network` |
-| `wired_s` | When every node was linked, in seconds from the run's start |
+| `wired_s` | When every node held the links the run waits for, in seconds from the run's start |
 | `batches[]` | For each batch its `joiners`, the `members` the group then had, `joined_s` from the `/add` to the last joiner's `joined` line, `seated_s` from the `/add` to the last member's epoch record, and as `welcome_bytes` the bytes of each Welcome the creator published for it |
 | `posts[].poster`, `posts[].readers` | Who sent the post, and how many members were waited on to read it |
 | `posts[].read` | From the post's input to each reader's `message` line: `count`, `median` and `worst` |
@@ -398,28 +419,39 @@ token, and is there also when nothing could be sent. `run.txt` is what the run p
 | `posts[].lookup_mean` | The mean time a reader spent on that lookup |
 | `posts[].lookups` | How many lookups of the poster the registry served while the post was read |
 | `posts[].unread` | The members that did not read the post within the budget |
+| `holds[]` | For each `hold` step that was done its `seconds`, and under `nodes[]` each node by its `name` with what it answered `before` the hold and `after` it, as `nodes[].end` holds an answer. In a run with `preset` each node has `unheld` as well: what `dials_ok` rose by from the one answer to the other, less what `peers` rose by. A link the node lost in the hold is counted in it whenever the node had opened it. The hold then has `rate`, the sum of them divided by the nodes and by the minutes of the hold. Either is `null` when a node did not say one of the two |
 
-Times are in seconds, and `peers`, `mesh_peers`, `publish_refused` and `inbound_dropped` are what
-chat-cli's `/node` answers. The table of the peers has the count of `inbound_error` lines under
+Times are in seconds, and `peers`, `mesh_peers`, `dials_ok`, `dials_failed`, `publish_refused`
+and `inbound_dropped` are what chat-cli's `/node` answers: the table of the peers has the two
+counts of dials under `dialed` and `failed`. It has the count of `inbound_error` lines under
 `errors` and how the peer ended under `exit`, and a table of the messages of those lines follows
 it when there are any. In a run with `network` the first line names the seed and the two rates,
 the table of the peers has under `lost` how many frames each peer's model dropped, and a line
 after the verdict says what a `withhold` step withheld:
 
 ```console
-5 members, fast group timers, largest message 512 KiB, network seed 2, loss 0, welcome loss 0
+5 members, fast group timers, largest message 512 KiB, network seed 1, loss 0, welcome loss 0
 split at epoch 4: 5 of 5 members at the tip
-withheld from pax: the candidate of saro, applied
+withheld from pax: the candidate of raya, applied
 the report is as expected
-load average 1.03 at the start, 0.95 at the end
+load average 3.00 at the start, 2.92 at the end
 
-node   ready   start  dials  wired  mesh  end  mesh  refused  dropped  lost  errors  exit
-saro  0.122s  0.122s      0      4     4    4     4        0        0     0       1     0
-raya  0.240s  0.118s      1      4     4    4     4        0        0     0       1     0
-pax   0.360s  0.119s      2      4     4    4     4        0        0     1       1     0
-mira  0.484s  0.125s      3      4     4    4     4        0        0     0       1     0
-kes   0.614s  0.129s      4      4     4    4     4        0        0     0       1     0
+node   ready   start  dials  wired  mesh  end  mesh  dialed  failed  refused  dropped  lost  errors  exit
+saro  0.107s  0.107s      0      4     4    4     4       0       0        0        0     0       1     0
+raya  0.226s  0.119s      1      4     4    4     4       1       0        0        0     0       1     0
+pax   0.349s  0.122s      2      4     4    4     4       2       0        0        0     1       1     0
+mira  0.468s  0.119s      3      4     4    4     4       3       0        0        0     0       1     0
+kes   0.591s  0.123s      4      4     4    4     4       4       0        0        0     0       1     0
 ```
+
+Each `hold` step has a line of its own after the tables, with its seconds: `hold 1: 60.000s`.
+
+On a local network the two counts of a node that others dialed rise while its links stay as
+they are: a node asks nodes it dialed to dial it back, and a dial made for that is counted and
+leaves no link. So a run on a network of its own writes the counts and derives nothing of them.
+Over a `hold` of 60 seconds, in a run of five members that all link to each other, the node
+four others had dialed went from 0 made and 0 failed to 8 and 8, and in another such run to 7
+and 7, and the node that had dialed the four others and was dialed by none stayed at 4 and 0.
 
 A member that gets a post asks the registry for the account of its sender before it shows the
 post. The registry stamps each request as it arrives, so the time up to the stamp is delivery and
@@ -430,6 +462,128 @@ not, `delivered` and `lookup_mean` are `null`.
 The bytes of a Welcome are those of the envelope the creator handed its node, which libchat
 writes to its log. The node adds the content topic and a timestamp before it compares the
 message with its limit.
+
+## On a fleet preset
+
+A scenario with `preset` has every node join that fleet, where a scenario without it makes a
+network of the run's own. Its nodes have to reach the fleet, so the run is started outside any
+network namespace:
+
+```sh
+python3 tools/sim run tools/sim/scenarios/fleet-five.json --chat-cli target/release/chat-cli --out tmp/fleet
+```
+
+`scenarios/fleet-five.json` seats five members one at a time on `logos.test` with the library's
+own timers, has the last one post, and holds for five minutes. Its budget is 400 seconds. One
+machine put no more than five nodes on that fleet with every link kept (see
+[The nodes of one machine](#the-nodes-of-one-machine)).
+
+What differs from a run on a network of its own:
+
+- Each peer is started with chat-cli's `--preset`, and without `--cluster-id`, `--static-node`
+  and `--max-message-kib`. The registry stays the run's own, on loopback, so a run leaves
+  nothing on a shared service but the frames its group publishes.
+- Nothing is wired: each node dials the entry nodes the preset names, of which `logos.test` has
+  six. The run waits until every node holds one link or more, and for no mesh. A node that
+  holds none within the budget stops the run, which names it.
+- The first line names the preset in place of the largest message, and the table of the peers
+  has `unheld` after `failed`: the dials a node made less the links it holds. A node of a
+  preset dialed every link it held, as far as one node on `logos.test` showed, so that is how
+  many connections it opened that are not links it holds. A link it lost is one. So is a
+  connection that never became a link, since a dial is counted as made once its connection is
+  open: a node of a local network told to dial a port that took the connection and closed it
+  answered one dial made and no link. So is a dial back to a node that asked for one. A count
+  below 0, or more links than the preset has entry nodes, says that the node held a link it
+  did not dial, and the run writes both as they are.
+- The line of a `hold` step ends with what `unheld` rose by over the hold, by the node and by
+  the minute of the hold.
+
+Here the scenario ran on 2026-10-12, on the machine of
+[The floor on one machine](#the-floor-on-one-machine):
+
+```console
+5 members, default group timers, preset logos.test
+whole: 5 of 5 members at the tip
+the report is as expected
+load average 0.60 at the start, 2.39 at the end
+
+node    ready   start  dials  wired  mesh  end  mesh  dialed  failed  unheld  refused  dropped  errors                   exit
+saro   9.499s  9.499s      0      6    18    6    21       6       0       0        0        0       0  signal 11 in its stop
+raya  18.252s  8.753s      0      6     1    6     1       6       0       0        0        0       0                      0
+pax   26.937s  8.685s      0      6     0    6     0       6       0       0        0        0       0                      0
+mira  35.555s  8.619s      0      6     1    6     5       6       0       0        0        0       0                      0
+kes   44.645s  9.090s      0      6     0    6     7       6       0       0        0        0       0                      0
+
+batch  joiners  members   joined   seated  Welcome bytes
+1            1        2  62.067s  62.066s       1 x 4487
+2            1        3  71.229s  71.903s       1 x 5884
+3            1        4  70.980s  73.318s       1 x 7291
+4            1        5  64.550s  64.549s       1 x 8687
+
+post  from  read by  median   worst  delivered   worst  lookup
+1      kes   4 of 4  0.619s  0.950s     0.618s  0.949s  0.001s
+
+hold 1: 300.000s, unheld 0.00 a node a minute
+```
+
+Each node held its six links when its peer was ready, about 9 s after its start, and had made
+six dials and no more at the end of the hold. `mesh` is counted over every shard a node is on
+(see [chat-cli](../../bin/chat-cli/README.md#headless-mode)), so it may be above the links, as
+it is for the creator.
+
+Of three runs of the scenario that day two went so. The third stopped at its fourth batch,
+`split at epoch 4`: four members held the epoch in one state and one member alone in another,
+and every node held six links when it was ready and at its end. So a group of five may split
+on a fleet with nothing wrong in its links, and the run then exits 1 as any run that is not as
+expected.
+
+The delivery library hands a node of a preset, five minutes after its start, the frames its
+topics held since then that it did not get while subscribed to them, which for a member are
+its group's frames from before it joined. In the run that split, the second member wrote an
+`unreadable` record of a frame of epoch 0 298 s after its first log line, 5 ms before it moved
+to epoch 4, and the creator moved there 63 ms later, into another state.
+
+A run on a preset has three limits:
+
+- It cannot be made again: the fleet's other traffic, the state of its nodes and the route to it
+  are not the run's.
+- The nodes of a run share one address, and a fleet scores and limits peers by address, so the
+  nodes of one machine are not as many people, and past five they do not stay linked (see
+  [The nodes of one machine](#the-nodes-of-one-machine)).
+- The largest message is the preset's, and the Welcome of a group past it does not arrive: the
+  wait for the roster runs out, and the run says so.
+
+The run does not look at where it is started. One that cannot reach the fleet, as in a network
+namespace with loopback alone, waits its budget for a first link and names every node. Three
+members on a budget of 20 seconds:
+
+```console
+3 members, fast group timers, preset logos.test
+stopped after 0 of 2 steps: no link within the budget: saro, raya, pax
+not checked: the run made no conversation
+```
+
+### The nodes of one machine
+
+How many nodes can one machine put on `logos.test`? One run a row but for the third, on
+2026-10-12, each with a `hold` of 300 seconds after its post where it got that far:
+
+| Nodes | Seated | Links of a node at the end | Dials made by a node | `unheld` rose in the hold, by all | The group |
+|---|---|---|---|---|---|
+| 1 | | 6 | 6 | 0 | |
+| 5 | in one batch | 6 | 6 or 7 | 2 | whole, seated in 62 s |
+| 5 | one at a time, three runs | 6 | 6 or 7 | 3 and 0, and no hold in the third | two whole, 62 to 73 s a member; one split |
+| 6 | in one batch | 4 to 6 | 87 to 92 | 402, 65 to 69 a node | whole, seated in 63 s |
+| 9 | one at a time | 1 to 6 | 399 to 433 in 12 minutes | no hold | the second member seated after 232 s, the third not within 400 |
+
+No dial failed in any of them. Up to five nodes each kept the six links it began with. With a
+sixth, every node of the run lost links and dialed again for as long as the run went, 13 times
+a minute over the hold; with nine, a node held as few as one link and the group did not get
+past two members. The delivery library's own default is five peers to an address: when a peer
+past that joins, a node closes its links to the peers of that address it has held longest. The
+rows agree with a fleet that runs with it. So a run of more than five nodes from one address
+measures that limit and not a group of that size, and at nine it had a fleet that others use
+take 300 connections a minute.
 
 ## The timers of fifty members
 
@@ -641,7 +795,8 @@ before the step.
 ## What it does not do
 
 - It does not build `chat-cli`, and it runs whatever binary it is given.
-- It runs no preset network and reaches no node outside the run.
+- It runs no fleet: a scenario with `preset` joins one that is there, and a run without it
+  reaches no node outside the run.
 - It does not put itself into a network namespace.
 - It forms one group, and its steps seat members, send posts and set the rules of the network
   model: it removes nobody and restarts no peer.

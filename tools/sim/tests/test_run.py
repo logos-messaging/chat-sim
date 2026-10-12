@@ -175,7 +175,14 @@ class Running(Scratch):
             self.assertEqual(node["wired"], {"peers": 2, "mesh_peers": 2}, node["name"])
             self.assertEqual(
                 node["end"],
-                {"peers": 2, "mesh_peers": 2, "publish_refused": 0, "inbound_dropped": 0},
+                {
+                    "peers": 2,
+                    "mesh_peers": 2,
+                    "dials_ok": len(node["dials"]),
+                    "dials_failed": 0,
+                    "publish_refused": 0,
+                    "inbound_dropped": 0,
+                },
                 node["name"],
             )
         (batch,) = report["batches"]
@@ -231,7 +238,34 @@ class Running(Scratch):
             self.assertEqual(given(arguments, "--max-message-kib"), ["64"])
             self.assertEqual(given(arguments, "--log-file"), [str(self.out / f"{name}.log")])
             self.assertFalse([word for word in arguments if word.endswith("-ms")])
+            self.assertFalse([word for word in arguments if word.startswith("--preset")])
         self.assertEqual((report["timers"], report["max_message_kib"]), ("default", 64))
+        self.assertEqual((report["preset"], report["cluster_id"]), (None, CLUSTER_ID))
+
+    def test_each_peer_of_a_preset_is_given_its_name_and_no_network_of_the_runs_own(self):
+        report = self.run_of(preset="logos.test", timers="default")
+
+        self.assertTrue(report["ok"], report["stopped"])
+        local = ("--cluster-id", "--max-message-kib", "--static-node")
+        for name in ("saro", "raya", "pax"):
+            arguments = self.arguments(name)
+            self.assertIn("--preset=logos.test", arguments)
+            self.assertFalse([word for word in arguments if word.startswith(local)], name)
+            self.assertEqual(given(arguments, "--group-commit"), ["default"])
+            (registry,) = given(arguments, "--registry-url")
+            self.assertTrue(registry.startswith("http://127.0.0.1:"), registry)
+        self.assertEqual(
+            (report["preset"], report["cluster_id"], report["max_message_kib"]),
+            ("logos.test", None, None),
+        )
+        self.assertEqual([node["dials"] for node in report["nodes"]], [[], [], []])
+
+    def test_a_preset_whose_name_starts_with_a_dash_is_given_in_one_word_with_its_flag(self):
+        # A word of its own that starts with a dash is a flag to chat-cli.
+        self.run_of(preset="-x")
+
+        self.assertIn("--preset=-x", self.arguments("saro"))
+        self.assertNotIn("-x", self.arguments("saro"))
 
     def test_the_timers_are_the_fast_ones_unless_the_scenario_says_otherwise(self):
         report = self.run_of()
@@ -346,6 +380,17 @@ class Running(Scratch):
             f"raya ended with status {standin.STATUS}: see {self.out / 'raya.stderr'}",
         )
 
+    def test_a_peer_that_ends_before_its_ready_line_is_named_with_its_last_complaint(self):
+        report = self.run_of(preset=standin.NO_PRESET)
+
+        self.assertEqual(
+            report["stopped"],
+            "saro ended with status 1: chat-cli: failed to start the delivery node: "
+            f"{standin.UNKNOWN}: {standin.NO_PRESET}",
+        )
+        self.assertEqual([node["name"] for node in report["nodes"]], ["saro"])
+        self.assertEqual((report["ok"], report["steps_done"], report["check"]), (False, 0, None))
+
     def test_a_line_that_is_not_json_stops_the_run_with_a_report(self):
         self.assertEqual(
             self.stop_of("stray-line=raya"), "raya: a line that is no JSON object: starting"
@@ -421,6 +466,173 @@ class Running(Scratch):
         self.assertTrue(report["ok"], report["stopped"])
         for node in report["nodes"]:
             self.assertEqual(node["wired"], {"peers": 6, "mesh_peers": 4}, node["name"])
+
+    def test_a_run_on_a_preset_waits_for_a_first_link_of_every_node_and_for_no_mesh(self):
+        report = self.run_of("links-late=raya", preset="logos.test")
+
+        self.assertTrue(report["ok"], report["stopped"])
+        for node in report["nodes"]:
+            self.assertEqual(
+                node["wired"], {"peers": standin.ENTRY_NODES, "mesh_peers": 0}, node["name"]
+            )
+        # Raya holds no link until `LINK` after its start.
+        self.assertGreater(report["wired_s"], standin.LINK)
+
+    def test_a_node_of_a_preset_with_no_link_within_the_budget_stops_the_run_and_is_named(self):
+        self.assertEqual(
+            self.stop_of("links-never=saro", "links-never=pax", preset="logos.test", budget=2),
+            "no link within the budget: saro, pax",
+        )
+
+    def test_a_first_link_is_waited_for_until_its_budget_and_no_longer(self):
+        budget = 2
+        with noting("input") as inputs:
+            self.stop_of("links-never", preset="logos.test", budget=budget)
+
+        # Nothing but its state is asked of a node that holds no link.
+        asked = [began for began, _, _ in inputs]
+        self.assertTrue(budget / 2 < asked[-1] - asked[0] < 2 * budget, asked[-1] - asked[0])
+
+    def test_a_network_model_and_its_steps_run_on_a_preset(self):
+        report = self.run_of(**withholding(preset="logos.test"))
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        self.assertEqual((report["withheld"]["from"], report["held_to"]), ("pax", "not applied"))
+        for name in ("saro", "pax"):
+            self.assertIn("--preset=logos.test", self.arguments(name))
+            self.assertEqual(given(self.arguments(name), "--network-seed"), ["7"])
+
+    def test_a_hold_asks_every_node_its_state_before_it_and_after_and_keeps_both(self):
+        hold = {"step": "hold", "seconds": 0.5}
+        with inputs() as written:
+            report = self.run_of(steps=[{"step": "seat", "to": 3}, hold, {"step": "post"}])
+
+        self.assertTrue(report["ok"], report["stopped"])
+        self.assertEqual((report["steps_done"], report["steps"]), (3, 3))
+        (held,) = report["holds"]
+        self.assertEqual(held["seconds"], 0.5)
+        # Each node dialed the nodes started before it.
+        for dialed, (node, name) in enumerate(zip(held["nodes"], ("saro", "raya", "pax"))):
+            state = {
+                "peers": 2,
+                "mesh_peers": 2,
+                "dials_ok": dialed,
+                "dials_failed": 0,
+                "publish_refused": 0,
+                "inbound_dropped": 0,
+            }
+            self.assertEqual(node, {"name": name, "before": state, "after": state})
+        asked = [text.split(" ")[0] for _, text, _ in written]
+        add, post = asked.index("/add"), asked.index("/send")
+        self.assertEqual(
+            [(name, text) for name, text, _ in written[add + 1 : post]],
+            [(name, "/node") for name in ("saro", "raya", "pax")] * 2,
+        )
+        self.assertGreaterEqual(written[add + 4][2] - written[add + 3][2], 0.5)
+
+    def test_a_hold_on_a_network_of_the_runs_own_derives_nothing_of_the_dials(self):
+        steps = [{"step": "seat", "to": 3}, {"step": "hold", "seconds": 0.5}]
+        report = self.run_of(steps=steps)
+
+        self.assertEqual(sorted(report["holds"][0]), ["nodes", "seconds"])
+        for node in report["holds"][0]["nodes"] + report["nodes"]:
+            self.assertNotIn("unheld", node)
+
+    def test_a_hold_lasts_its_seconds_though_they_are_more_than_the_budget(self):
+        budget, seconds = 2, 2.5
+        steps = [{"step": "hold", "seconds": seconds}, {"step": "seat", "to": 3}]
+        with inputs() as written:
+            report = self.run_of(budget=budget, steps=steps)
+
+        self.assertTrue(report["ok"], report["stopped"])
+        created = [text.split(" ")[0] for _, text, _ in written].index("/new")
+        self.assertGreaterEqual(written[created + 4][2] - written[created + 3][2], seconds)
+
+    def test_a_hold_on_a_preset_tells_the_links_each_node_no_longer_holds_and_their_rate(self):
+        steps = [{"step": "seat", "to": 3}, {"step": "hold", "seconds": 0.5}]
+        report = self.run_of("redials=raya", preset="logos.test", steps=steps)
+
+        self.assertTrue(report["ok"], report["stopped"])
+        (held,) = report["holds"]
+        raya = held["nodes"][1]
+        # Each answer of raya's node has one dial more than the one before, and its six links.
+        self.assertEqual((raya["before"]["dials_ok"], raya["after"]["dials_ok"]), (7, 8))
+        self.assertEqual((raya["before"]["peers"], raya["after"]["peers"]), (6, 6))
+        self.assertEqual([node["unheld"] for node in held["nodes"]], [0, 1, 0])
+        # One link, of three nodes, in half a second.
+        self.assertAlmostEqual(held["rate"], 40.0)
+        self.assertEqual([node["unheld"] for node in report["nodes"]], [0, 3, 0])
+
+    def test_a_link_lost_in_a_hold_and_not_dialed_again_is_one_no_longer_held(self):
+        steps = [{"step": "seat", "to": 3}, {"step": "hold", "seconds": 0.5}]
+        report = self.run_of("drops-a-link=raya", preset="logos.test", steps=steps)
+
+        self.assertTrue(report["ok"], report["stopped"])
+        (held,) = report["holds"]
+        raya = held["nodes"][1]
+        # Each answer of raya's node has one link fewer than the one before, and its six dials.
+        self.assertEqual((raya["before"]["peers"], raya["after"]["peers"]), (5, 4))
+        self.assertEqual((raya["before"]["dials_ok"], raya["after"]["dials_ok"]), (6, 6))
+        self.assertEqual([node["unheld"] for node in held["nodes"]], [0, 1, 0])
+        self.assertEqual([node["unheld"] for node in report["nodes"]], [0, 3, 0])
+
+    def test_a_node_that_does_not_tell_its_dials_has_no_count_of_links_no_longer_held(self):
+        steps = [{"step": "seat", "to": 3}, {"step": "hold", "seconds": 0.5}]
+        report = self.run_of("tells-no-dials=pax", preset="logos.test", steps=steps)
+
+        self.assertTrue(report["ok"], report["stopped"])
+        (held,) = report["holds"]
+        self.assertEqual([node["unheld"] for node in held["nodes"]], [0, 0, None])
+        self.assertIsNone(held["rate"])
+        self.assertEqual([node["unheld"] for node in report["nodes"]], [0, 0, None])
+
+    def test_what_a_run_on_a_preset_prints_names_it_the_dials_and_the_rate_of_its_hold(self):
+        steps = [{"step": "seat", "to": 3}, {"step": "post"}, {"step": "hold", "seconds": 0.5}]
+        self.run_of("redials=raya", preset="logos.test", steps=steps)
+
+        printed = (self.out / "run.txt").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(printed[0], "3 members, fast group timers, preset logos.test")
+        self.assertEqual(
+            printed[5].split()[3:],
+            "dials wired mesh end mesh dialed failed unheld refused dropped errors exit".split(),
+        )
+        self.assertEqual(
+            [line.split()[3:11] for line in printed[6:9]],
+            [
+                ["0", "6", "0", "6", "0", "6", "0", "0"],
+                ["0", "6", "0", "6", "0", "9", "0", "3"],
+                ["0", "6", "0", "6", "0", "6", "0", "0"],
+            ],
+        )
+        self.assertEqual(printed[-1], "hold 1: 0.500s, unheld 40.00 a node a minute")
+
+    def test_what_a_run_on_a_network_of_its_own_prints_names_the_dials_of_each_node(self):
+        steps = [{"step": "seat", "to": 3}, {"step": "post"}, {"step": "hold", "seconds": 0.5}]
+        self.run_of(steps=steps)
+
+        printed = (self.out / "run.txt").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(printed[0], "3 members, fast group timers, largest message 512 KiB")
+        self.assertEqual(
+            printed[5].split()[3:],
+            "dials wired mesh end mesh dialed failed refused dropped errors exit".split(),
+        )
+        self.assertEqual(
+            [line.split()[3:10] for line in printed[6:9]],
+            [
+                ["0", "2", "2", "2", "2", "0", "0"],
+                ["1", "2", "2", "2", "2", "1", "0"],
+                ["2", "2", "2", "2", "2", "2", "0"],
+            ],
+        )
+        self.assertEqual(printed[-1], "hold 1: 0.500s")
+
+    def test_a_scenario_of_one_member_runs_its_creator_alone(self):
+        expect = {"verdict": "not enough data"}
+        report = self.run_of(members=1, steps=[{"step": "post"}], expect=expect)
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        self.assertEqual([node["name"] for node in report["nodes"]], ["saro"])
+        self.assertEqual(report["nodes"][0]["wired"], {"peers": 0, "mesh_peers": 0})
 
     def test_an_add_the_creator_refuses_stops_the_run(self):
         self.assertEqual(
