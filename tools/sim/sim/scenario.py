@@ -120,6 +120,28 @@ class Network:
 
 
 @dataclass(frozen=True)
+class Wire:
+    """The conditions on the wire of a network of containers, on what each member's node sends.
+
+    Each member's interface delays each packet it sends by `delay_ms`, give or take `jitter_ms`,
+    and loses `loss` of them, drawn from `seed` and the member's name. TCP sends a lost packet
+    again, so a frame arrives late and not lost while its link holds. `delay_ms` is one duration
+    for every member, or one by the name of a member, where a member it does not name has none.
+    """
+
+    seed: int
+    delay_ms: Union[int, Dict[str, int]] = 0
+    jitter_ms: int = 0
+    loss: Union[int, float] = 0
+
+    def delay_of(self, name: str) -> int:
+        """How many milliseconds the packets the member `name` sends are delayed."""
+        if isinstance(self.delay_ms, dict):
+            return self.delay_ms.get(name, 0)
+        return self.delay_ms
+
+
+@dataclass(frozen=True)
 class Expect:
     """How the outcome differs from a whole group at the tip in which every post was read.
 
@@ -152,6 +174,7 @@ class Scenario:
     preset: Optional[str] = None
     budget: float = 180.0
     network: Optional[Network] = None
+    wire: Optional[Wire] = None
     expect: Expect = Expect()
 
     @property
@@ -165,10 +188,15 @@ class Scenario:
         return next((step.member for step in self.steps if isinstance(step, Withhold)), None)
 
     def of_run(self, number: int) -> Scenario:
-        """The scenario as run `number` of a sweep does it, from 1: each has the next seed."""
-        if self.network is None:
+        """The scenario as run `number` of a sweep does it, from 1: each has the next seeds."""
+        network, wire = self.network, self.wire
+        if network is None and wire is None:
             return self
-        return replace(self, network=replace(self.network, seed=self.network.seed + number - 1))
+        if network is not None:
+            network = replace(network, seed=network.seed + number - 1)
+        if wire is not None:
+            wire = replace(wire, seed=wire.seed + number - 1)
+        return replace(self, network=network, wire=wire)
 
     def posts(self) -> List[Tuple[int, int]]:
         """Each post of the steps in the order sent: who sends it, and how many are seated then."""
@@ -275,6 +303,7 @@ def scenario(said: object) -> Scenario:
             "preset",
             "budget",
             "network",
+            "wire",
             "steps",
             "expect",
         ),
@@ -283,6 +312,7 @@ def scenario(said: object) -> Scenario:
     if not isinstance(whole["steps"], list) or not whole["steps"]:
         raise Refused("`steps` is not a list of one step or more")
     network = _network(whole["network"], members) if "network" in whole else None
+    wire = _wire(whole["wire"], members) if "wire" in whole else None
     steps: List[Step] = []
     seated = 1
     for at, step in enumerate(whole["steps"]):
@@ -307,6 +337,7 @@ def scenario(said: object) -> Scenario:
         preset=_preset(whole),
         budget=_seconds(whole.get("budget", Scenario.budget), "`budget`"),
         network=network,
+        wire=wire,
         expect=expect,
     )
 
@@ -488,30 +519,42 @@ def _preset(said: dict) -> Optional[str]:
 
 def _network(said: object, members: int) -> Network:
     network = _fields(said, "`network`", ("seed",), ("seed", "loss", "welcome_loss", "delay_ms"))
-    delay = network.get("delay_ms", Network.delay_ms)
-    if isinstance(delay, dict):
-        for name in delay:
-            _member(name, "`delay_ms` of `network`", members, "is not among the members")
-        delay = {
-            name: _whole(delay, name, "`delay_ms` of `network`", 0, MOST_MILLISECONDS)
-            for name in delay
-        }
-    else:
-        delay = _whole(network, "delay_ms", "`network`", 0, MOST_MILLISECONDS)
     return Network(
         seed=_whole(network, "seed", "`network`", least=0, most=MOST_SEED),
-        loss=_rate(network, "loss"),
-        welcome_loss=_rate(network, "welcome_loss"),
-        delay_ms=delay,
+        loss=_rate(network, "loss", "`network`"),
+        welcome_loss=_rate(network, "welcome_loss", "`network`"),
+        delay_ms=_delay(network, "`network`", members),
     )
 
 
-def _rate(said: dict, name: str) -> Union[int, float]:
-    """A field of `network` that is a number from 0 to 1, or 0 when it is left out."""
+def _wire(said: object, members: int) -> Wire:
+    wire = _fields(said, "`wire`", ("seed",), ("seed", "delay_ms", "jitter_ms", "loss"))
+    return Wire(
+        seed=_whole(wire, "seed", "`wire`", least=0, most=MOST_SEED),
+        delay_ms=_delay(wire, "`wire`", members),
+        jitter_ms=_whole(wire, "jitter_ms", "`wire`", 0, MOST_MILLISECONDS),
+        loss=_rate(wire, "loss", "`wire`"),
+    )
+
+
+def _delay(said: dict, what: str, members: int) -> Union[int, Dict[str, int]]:
+    """`delay_ms` of `what`: one duration, or an object of them by the names of members."""
+    delay = said.get("delay_ms", 0)
+    if not isinstance(delay, dict):
+        return _whole(said, "delay_ms", what, 0, MOST_MILLISECONDS)
+    for name in delay:
+        _member(name, f"`delay_ms` of {what}", members, "is not among the members")
+    return {
+        name: _whole(delay, name, f"`delay_ms` of {what}", 0, MOST_MILLISECONDS) for name in delay
+    }
+
+
+def _rate(said: dict, name: str, what: str) -> Union[int, float]:
+    """A field of `what` that is a number from 0 to 1, or 0 when it is left out."""
     rate = said.get(name, 0)
     # A truth value is a number to Python and none to a reader.
     if type(rate) not in (int, float) or not 0 <= rate <= 1:
-        raise Refused(f"`{name}` of `network` is not a number from 0 to 1")
+        raise Refused(f"`{name}` of {what} is not a number from 0 to 1")
     return rate
 
 

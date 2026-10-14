@@ -1,0 +1,8 @@
+{
+  "members": 5,
+  "wire": {"seed": 1, "delay_ms": 40, "jitter_ms": 10, "loss": 0.02},
+  "steps": [
+    {"step": "seat", "to": 5, "batch": 2},
+    {"step": "post", "from": "all"}
+  ]
+}

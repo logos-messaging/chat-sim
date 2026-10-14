@@ -6,8 +6,10 @@ from typing import Dict, List, Optional, Sequence, Union
 
 from .scenario import Scenario
 
-# What `rig` of a report says of a run whose members were clients in one process.
+# What `rig` of a report says of a run whose members were clients in one process, and of one
+# whose peers each ran in a container.
 ONE_PROCESS = "one process"
+CONTAINERS = "containers"
 
 # A sweep's row up to what its check found, which is as long as it is.
 _ROW = "{:>3}  {:>7}  {:>10}  {:<22}  "
@@ -21,8 +23,10 @@ def render(report: dict) -> str:
     preset = report["preset"] is not None
     lines = [
         f"{_members(report['members'])}, {_timers(report['timers'])}, "
-        f"{_delivery(report)}{_network(report['network'])}",
+        f"{_delivery(report)}{_containers(report)}{_network(report['network'])}"
+        f"{_wire(report['wire'])}",
         *_outcome(report),
+        *([f"not removed: {report['unremoved']}"] if report.get("unremoved") else []),
         _load(report["load"]),
         "",
     ]
@@ -90,6 +94,8 @@ def row(number: int, seconds: float, report: dict) -> str:
         said.append(f"stopped: {report['stopped']}")
     if report["network"] is not None:
         said.append(f"seed {report['network']['seed']}")
+    if report["wire"] is not None:
+        said.append(f"wire seed {report['wire']['seed']}")
     if report["withheld"] is not None:
         said.append(_withheld(report["withheld"]))
     if report["page"] is not None:
@@ -240,6 +246,25 @@ def _network(network: Optional[dict]) -> str:
     return (
         f", network seed {network['seed']}, loss {network['loss']}, "
         f"welcome loss {network['welcome_loss']}"
+    )
+
+
+def _containers(report: dict) -> str:
+    """The image and the engine of a run whose peers ran in containers."""
+    if report.get("rig") != CONTAINERS:
+        return ""
+    return f", containers of {report['image']} on {report['engine']}"
+
+
+def _wire(wire: Optional[dict]) -> str:
+    """The seed and the conditions on the wire of a run in containers."""
+    if wire is None:
+        return ""
+    delay = wire["delay_ms"]
+    delay = "by member" if isinstance(delay, dict) else f"{delay} ms"
+    return (
+        f", wire seed {wire['seed']}, delay {delay}, jitter {wire['jitter_ms']} ms, "
+        f"loss {wire['loss']}"
     )
 
 

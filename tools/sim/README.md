@@ -8,13 +8,16 @@ peer for each member, each with its embedded delivery node on a local network th
 run's nodes and no other. It links the nodes, has the peers do the scenario's steps, ends every
 process it started, and has [`forks`](../forks/README.md) hold the report of the peers' logs
 against what the scenario expects. A scenario that names a fleet preset has the nodes join that
-fleet instead (see [On a fleet preset](#on-a-fleet-preset)). Given `--one-process`, it starts
-no peer and has a runner do the scenario with every member in one process, on a virtual clock
-(see [In one process](#in-one-process)).
+fleet instead (see [On a fleet preset](#on-a-fleet-preset)). Given `--image`, it runs the
+registry and each peer in a container of its own, on a network of containers whose wire can delay
+and lose what each member sends (see [In containers](#in-containers)). Given `--one-process`, it
+starts no peer and has a runner do the scenario with every member in one process, on a virtual
+clock (see [In one process](#in-one-process)).
 
 It needs Python 3.9 or newer and no package beyond the standard library, and a `chat-cli` built
-with the delivery library (see [chat-cli](../../bin/chat-cli/README.md#building)). A run in one
-process needs the runner in its place.
+with the delivery library (see [chat-cli](../../bin/chat-cli/README.md#building)). A run in
+containers needs the image in its place, and Docker or Podman. A run in one process
+needs the runner in its place.
 
 ## Running it
 
@@ -73,7 +76,9 @@ not made is never told as a difference of the report.
 | Flag | Sets |
 |------|------|
 | `--chat-cli PATH` | The binary every peer runs. A path that is no file, or a file that cannot be run, is refused |
-| `--one-process PATH` | The runner that does the scenario in one process, given in place of `--chat-cli`: a command line has one of the two and not both (see [In one process](#in-one-process)). A path that is no file, or a file that cannot be run, is refused |
+| `--one-process PATH` | The runner that does the scenario in one process, given in place of `--chat-cli`: a command line has one of `--chat-cli`, `--one-process` and `--image` (see [In one process](#in-one-process)). A path that is no file, or a file that cannot be run, is refused |
+| `--image IMAGE` | The image the registry and each peer run in, each in a container of its own, given in place of `--chat-cli` (see [In containers](#in-containers)) |
+| `--engine ENGINE` | The container engine that runs `--image`: `docker`, the default, or `podman`. One that is not on `PATH` is refused, and so is the flag without `--image` |
 | `--out DIR` | The run's directory, which the run makes and which must not exist. One that cannot be made is refused |
 | `--share ADDRESS` | The share address of a `forks` collector, `...?token=TOKEN`: once the run is checked, every peer's log is sent there with `forks share`, and the run gives the address of the conversation's page on the collector |
 
@@ -92,7 +97,8 @@ unshare -rn sh -c 'ip link set lo up && exec "$@"' sim \
 ```
 
 A scenario with `preset` is not started this way: its nodes have to reach the fleet (see
-[On a fleet preset](#on-a-fleet-preset)).
+[On a fleet preset](#on-a-fleet-preset)). Containers keep a run apart as well, and on a Mac
+too (see [In containers](#in-containers)).
 
 ## The scenario
 
@@ -123,6 +129,7 @@ them:
 | `preset` | | The fleet preset every node joins, by its name, as chat-cli's `--preset`: `logos.test`. Without it the nodes are a network of the run's own (see [On a fleet preset](#on-a-fleet-preset)). A name that is no text, an empty one, or one that holds a character that cannot be printed, as a line break is, is refused. Which names there are is the delivery library's to say. |
 | `budget` | `180` | How many seconds each wait may take: a peer's start, the wiring, a batch, a post. A number above 0. |
 | `network` | | A model of a lossy network that every peer puts what it receives through (see [The network model](#the-network-model)). Without it no peer has one. |
+| `wire` | | The delay, the jitter and the loss on what each member sends, in a run in containers (see [The wire](#the-wire)). Refused in a run without `--image`. |
 | `expect` | | How the outcome differs from a whole group, as below. |
 
 A step is one of six, and the last three are refused in a scenario without `network`:
@@ -189,8 +196,8 @@ The same goes for a `preset` the delivery library does not know.
 `twenty.json` and `fifty.json`, the two larger sizes runs have been measured at (see
 [The floor on one machine](#the-floor-on-one-machine)), and `lost-candidate.json` and
 `lossy.json`, the two with a network model (see [What a lost frame does](#what-a-lost-frame-does)).
-`fleet-five.json` needs the `logos.test` fleet and is no part of CI (see
-[On a fleet preset](#on-a-fleet-preset)).
+`lossy-wire.json` has a wire (see [In containers](#in-containers)). `fleet-five.json` needs the `logos.test` fleet and is no part
+of CI (see [On a fleet preset](#on-a-fleet-preset)).
 
 ### The network model
 
@@ -274,7 +281,8 @@ python3 tools/sim sweep tools/sim/scenarios/three.json --runs 3 --chat-cli targe
 A sweep does one scenario `--runs` times, one run after another, each in a directory of its own
 under `--out`, named by the run's number. A scenario with a network model gives each run the seed
 after that of the run before, so that run `k` has `seed + k - 1`, and a sweep whose last run
-would have a seed above 2^64 - 1 is refused. It prints a row as each run ends, and then how many
+would have a seed above 2^64 - 1 is refused. So does a scenario with a wire, with the seed of its
+wire. It prints a row as each run ends, and then how many
 runs went as expected:
 
 ```console
@@ -291,7 +299,7 @@ run  seconds  at the tip  verdict                 check
 | `seconds` | How long the run took, from its start to its check. For a run in one process, how far its virtual clock went, and the line above the rows says so. |
 | `at the tip` | How many of the members the steps seat the report has at the tip. |
 | `verdict` | The verdict of the report. |
-| `check` | `as expected`, or the first difference the check found and how many more there are, or `not checked`, with how `forks check` ended when it was run and gave no answer. Then, after `; stopped:`, what stopped the steps when something did. Then `seed` and the seed of the run's network model, and what was withheld from whom and whether the group applied it, for a run that has them. Then the address of the conversation's page when the logs were shared, or after `not shared:` why they were not. |
+| `check` | `as expected`, or the first difference the check found and how many more there are, or `not checked`, with how `forks check` ended when it was run and gave no answer. Then, after `; stopped:`, what stopped the steps when something did. Then `seed` and the seed of the run's network model, `wire seed` and the seed of its wire, and what was withheld from whom and whether the group applied it, for a run that has them. Then the address of the conversation's page when the logs were shared, or after `not shared:` why they were not. |
 
 It takes the flags of `run`, and `--share` sends the logs of every run. A sweep exits 0 when every
 run went as expected, 1 when one did not, and 2 when its command line or the scenario is refused.
@@ -307,7 +315,7 @@ short has left the rows of the runs that ended:
 | `runs`, `done`, `as_expected` | How many runs were asked for, how many ended, and how many of those went as expected |
 | `interrupted` | The name of the signal that interrupted the sweep, or `null` |
 | `load` | The load average of the machine at the `start` and at the `end` of the sweep |
-| `rows[]` | For each run that ended its `run` number and `directory`, whether it is `ok`, the `differences` its check found, or `null` when it was not checked, as `unchecked` how `forks check` ended when it gave no answer, what `stopped` its steps, the `verdict`, the members `at_tip` of those `seated`, its `seconds`, the `seed` of its network model and what was `withheld` as its `run.json` holds it, each `null` for a run without one, and the `page` its logs were shared at |
+| `rows[]` | For each run that ended its `run` number and `directory`, whether it is `ok`, the `differences` its check found, or `null` when it was not checked, as `unchecked` how `forks check` ended when it gave no answer, what `stopped` its steps, the `verdict`, the members `at_tip` of those `seated`, its `seconds`, the `seed` of its network model, the `wire_seed` of its wire and what was `withheld` as its `run.json` holds it, each `null` for a run without one, and the `page` its logs were shared at |
 
 ## What a run does
 
@@ -389,6 +397,7 @@ token, and is there also when nothing could be sent. `run.txt` is what the run p
 |-------|-------|
 | `members`, `timers`, `max_message_kib`, `budget`, `preset`, `cluster_id` | What the run was given. Of `preset` and `cluster_id` the one that does not apply is `null`, and so is `max_message_kib` on a preset |
 | `network` | The `network` of the scenario with the seed this run had, or `null` |
+| `wire` | The `wire` of the scenario with the seed this run had, or `null` |
 | `ok` | Whether every step was done and the report is as expected |
 | `stopped` | What stopped the steps, when something did |
 | `steps`, `steps_done` | How many steps the scenario has, and how many were done |
@@ -796,6 +805,131 @@ Why the `fast` set seats no third member at a delay of 200 ms was not traced. Th
 550 ms is longer than the freeze of 500 ms, and no frame was dropped in the 3 runs that split
 before the step.
 
+## In containers
+
+```sh
+nix build .#sim-image && ./result | docker load
+python3 tools/sim run tools/sim/scenarios/three.json --image logos-chat-sim:latest --out tmp/three
+```
+
+`.#sim-image` is an image of Linux with `chat-cli` built with the delivery library, Python for the
+registry, and `tc` for the wire. `./result` writes it for `docker load`, or for `podman load`.
+`--image` stands in place of `--chat-cli`, and `--engine podman` has Podman run it in place of
+Docker. `sweep` takes both flags as `run` does.
+
+The run makes a network of its own, `sim-<id>`, that reaches nothing outside it. Its subnet is
+the `/24` of `10.213.0.0/16` the id picks, or the next one the engine does not say is taken:
+Docker takes a container's address only on a network it was given the subnet of. On it the
+registry and then each peer run in a container of their own, the registry at the first address
+after the network's gateway and each peer at the next, which its node listens on and is dialed
+at (chat-cli's `--node-ip`). A container runs as the user who runs `sim`, with the run's
+directory mounted at the path it has on the machine, so a run in containers writes what a run of
+processes writes, where it writes it. The containers and the network carry the label
+`logos-chat-sim=<id>`, and the run removes them once its processes ended, as it does when a
+signal interrupts it. A run that was killed leaves them:
+
+```sh
+docker rm -f $(docker ps -aq --filter label=logos-chat-sim)
+docker network rm $(docker network ls -q --filter label=logos-chat-sim)
+```
+
+```console
+3 members, fast group timers, largest message 512 KiB, containers of logos-chat-sim:latest on podman
+whole: 3 of 3 members at the tip
+the report is as expected
+load average 0.24 at the start, 0.24 at the end
+
+node   ready   start  dials  wired  mesh  end  mesh  dialed  failed  refused  dropped  errors  exit
+saro  0.362s  0.362s      0      2     2    2     2       0       0        0        0       0     0
+raya  0.708s  0.346s      1      2     2    2     2       1       0        0        0       0     0
+pax   1.054s  0.346s      2      2     2    2     2       2       0        0        0       0     0
+
+batch  joiners  members  joined  seated  Welcome bytes
+1            2        3  0.540s  0.540s       2 x 7121
+
+post  from  read by  median   worst  delivered   worst  lookup
+1      pax   2 of 2  0.009s  0.009s     0.008s  0.008s  0.001s
+```
+
+The engine ends a container with 128 and the number of the signal that ended what ran in it,
+and the run tells a peer's container that ended so as the signal, as it tells a process. Beyond
+what [What it writes](#what-it-writes) lists, `run.json` holds:
+
+| Field | Holds |
+|-------|-------|
+| `rig` | `containers`. A run of processes has no such field |
+| `engine`, `image` | What ran the containers, and what they ran |
+| `nodes[].ip` | The address the peer's node listened on |
+| `unremoved` | What the engine refused as the run removed its containers and its network, or `null`. `run.txt` says it after `not removed:` |
+
+A scenario with `preset` is refused, since a network of containers reaches no fleet:
+
+```console
+sim: error: --image: the scenario has `preset`, and a network of containers reaches no fleet
+```
+
+On the machine of [The floor on one machine](#the-floor-on-one-machine), one run of
+`fifty.json` in Podman containers went as expected on 2026-10-14. A peer took 0.33 to 0.39 s to
+start, and the fifty were wired after 19.4 s. A batch was seated in 14.5 to 19.7 s, and the
+worst member read the post after 0.043 s. Nine peers ended by signal 11 in their stop.
+
+### The wire
+
+`wire` has every peer's container delay and lose what its node sends. Once a peer is ready, the
+run has `tc` put `netem` on the interface of its container, with the wire's delay, jitter and
+loss. A packet between two members is delayed by the wire of the one that sends it, so a round
+trip has the delays of both.
+
+```json
+"wire": {"seed": 1, "delay_ms": 40, "jitter_ms": 10, "loss": 0.02}
+```
+
+| Field of `wire` | Default | Holds |
+|-----------------|---------|-------|
+| `seed` | | What the loss and the jitter of each member's interface follow from, with the member's name: a whole number from 0 to 2^64 - 1. |
+| `delay_ms` | `0` | How long each packet a member sends is held, in milliseconds: one whole number for every member, or an object of them by the names of members, in which a member that is not named has 0. |
+| `jitter_ms` | `0` | How much more or less than its delay a packet is held, in milliseconds. |
+| `loss` | `0` | The share of the packets a member sends that are lost, from 0 to 1. |
+
+The nodes link over TCP, which sends a lost packet again, so a loss on the wire makes a frame
+late and not lost while its link holds. A frame the network model's `loss` takes is lost: the
+model drops what a node hands its client. A scenario may have both. A `tc` that refuses, as one
+does on a kernel without `netem`, stops the run with what it said.
+
+Five members on that wire, `lossy-wire.json`, read each post in about 0.09 s, where the same
+five on a bare wire read each in 0.003 to 0.012 s:
+
+```console
+5 members, fast group timers, largest message 512 KiB, containers of logos-chat-sim:latest on podman, wire seed 1, delay 40 ms, jitter 10 ms, loss 0.02
+whole: 5 of 5 members at the tip
+the report is as expected
+
+post  from  read by  median   worst  delivered   worst  lookup
+1     saro   4 of 4  0.094s  0.111s     0.093s  0.111s  0.001s
+2     raya   4 of 4  0.092s  0.110s     0.092s  0.110s  0.001s
+3      pax   4 of 4  0.096s  0.118s     0.095s  0.117s  0.001s
+4     mira   4 of 4  0.091s  0.107s     0.090s  0.106s  0.001s
+5      kes   4 of 4  0.087s  0.092s     0.087s  0.092s  0.001s
+```
+
+### On a Mac
+
+An engine on a Mac runs its containers in a Linux virtual machine, and the image is one of
+Linux, for the machine's architecture. It is built in a container of the `nixos/nix` image, from
+the repository root:
+
+```sh
+docker run --rm -v "$PWD":/src -w /src nixos/nix sh -c "
+  printf '[safe]\n\tdirectory = /src\n' > /root/.gitconfig &&
+  nix --extra-experimental-features 'nix-command flakes' --accept-flake-config \
+    build .#sim-image -o /tmp/image && /tmp/image" | docker load
+```
+
+Nix reads a checkout another user owns only when Git's `safe.directory` names it, and a mounted
+checkout can be another user's to the container. No cache holds the delivery library for arm64
+Linux, so on Apple silicon the first build builds it from its sources. The peers have the CPUs
+and the memory the engine's settings give its virtual machine.
+
 ## In one process
 
 ```sh
@@ -1111,7 +1245,7 @@ pax: pax read it in 5 runs of 5 in one process, and in 3 of 3 with processes.
 
 ## What it does not do
 
-- It does not build `chat-cli` or the runner, and it runs whatever binary it is given.
+- It does not build `chat-cli`, the runner or the image, and it runs whatever it is given.
 - It runs no fleet: a scenario with `preset` joins one that is there, and a run without it
   reaches no node outside the run.
 - It does not put itself into a network namespace.
@@ -1119,9 +1253,9 @@ pax: pax read it in 5 runs of 5 in one process, and in 3 of 3 with processes.
   model: it removes nobody and restarts no peer.
 - It checks a duration of `timers` for its name, its form and the most its flag holds: what
   the library takes is chat-cli's to refuse.
-- It shapes no traffic between the nodes. The network model is chat-cli's and drops what a
-  node hands its client, and `sim` checks a rate and a delay for their form and their range
-  alone.
+- It shapes no traffic between the nodes but on the wire of a run in containers. The network
+  model is chat-cli's and drops what a node hands its client, and `sim` checks a rate and a
+  delay for their form and their range alone.
 - It does not make a run with a loss rate again from its seed: the seed gives the same draw to
   the frame a peer receives as its `n`-th, and which frame that is differs from run to run.
 - It does not look at what a report holds beyond the verdict, the positions and the posts (see
@@ -1140,6 +1274,9 @@ python3 -m unittest discover -s tools/sim
 They run the tool against `tests/standin.py`, a stand-in for chat-cli that needs no delivery
 library and writes the trace records a peer writes, against the repository's mock registry, and
 against `forks` as the repository has it.
+
+The runs in containers are against `tests/standin_engine.py`, a stand-in for Docker and Podman
+whose containers are processes on addresses of loopback, so those tests run on Linux alone.
 
 The runs in one process are against `tests/standin_runner.py`, a stand-in for the runner that
 runs no group and leaves the log and the result a runner leaves. `tests/fixtures/result.json` is

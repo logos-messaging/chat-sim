@@ -1097,7 +1097,7 @@ class CommandLine(Scratch):
             self.assertEqual(
                 self.refused(*given),
                 f"sim {command[0]}: error: "
-                "one of the arguments --chat-cli --one-process is required",
+                "one of the arguments --chat-cli --one-process --image is required",
             )
 
     def test_a_runner_that_is_no_file_or_cannot_be_run_is_refused(self):

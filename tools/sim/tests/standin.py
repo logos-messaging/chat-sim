@@ -1,10 +1,10 @@
 """A stand-in for a headless chat-cli, for the tests that run the tool.
 
 It takes the command line the tool gives a peer and writes the lines a peer writes, and into its
-log the trace records a peer writes. Its node is a socket on loopback: it dials the nodes it is
-told to dial and passes a frame on to every link but the one the frame came by, so a roster or a
-post reaches the peers the wiring links and no other. Into the store it is given it writes
-`<name>.json`, with its process id and its arguments.
+log the trace records a peer writes. Its node is a socket on loopback, on `--node-ip` when it
+is given one: it dials the nodes it is told to dial and passes a frame on to every link but the
+one the frame came by, so a roster or a post reaches the peers the wiring links and no other.
+Into the store it is given it writes `<name>.json`, with its process id and its arguments.
 
 Started with `--network-seed` it has a network model, of which it keeps the cut, the rule that
 withholds a commit candidate and the delay of a post: it loses no frame at a rate and holds no
@@ -30,6 +30,7 @@ import http.client
 import json
 import os
 import secrets
+import signal
 import socket
 import sys
 import threading
@@ -68,6 +69,7 @@ FAULTS = {
     "unchecked": "gets no answer for the sender of a post: it shows none",
     "grumbles": "writes an `inbound_error` line of each post, whatever else it does with it",
     "dies-at-the-end": "ends with a status of its own once its input ended",
+    "signalled-at-the-end": "ends by SIGNAL once its input ended",
     "lingers": "runs on for LINGER seconds after its input ended, having written `<name>.eof`",
     "slow": "takes START to start, ROSTER to hold a roster, DELIVERY to get a post and LOOKUP "
     "to look its sender up",
@@ -75,6 +77,8 @@ FAULTS = {
 
 # The status a peer ends with when a fault has it end.
 STATUS = 3
+# The signal a peer with `signalled-at-the-end` ends by: one that ends it with no core.
+SIGNAL = signal.SIGUSR1
 LINGER = 1.5
 START, ROSTER, DELIVERY, LOOKUP = 0.3, 0.4, 0.2, 0.3
 LINK = 1.0
@@ -162,9 +166,10 @@ class Peer:
         self.lock = threading.RLock()
         self.links = []
         self.seen = set()
-        self.server = socket.create_server(("127.0.0.1", 0))
+        ip = args.node_ip or "127.0.0.1"
+        self.server = socket.create_server((ip, 0))
         peer_id = "".join(secrets.choice(BASE58) for _ in range(46))
-        self.node_address = f"/ip4/127.0.0.1/tcp/{self.server.getsockname()[1]}/p2p/{peer_id}"
+        self.node_address = f"/ip4/{ip}/tcp/{self.server.getsockname()[1]}/p2p/{peer_id}"
         threading.Thread(target=self.accept, daemon=True).start()
 
     def accept(self) -> None:
@@ -173,7 +178,8 @@ class Peer:
             self.link(link)
 
     def dial(self, node_address: str) -> None:
-        self.link(socket.create_connection(("127.0.0.1", int(node_address.split("/")[4]))))
+        _, _, ip, _, port, *_ = node_address.split("/")
+        self.link(socket.create_connection((ip, int(port))))
         self.dialed += 1
 
     def join(self, fleet: Path) -> None:
@@ -480,6 +486,7 @@ def main() -> None:
         parser.add_argument(f"--group-{duration}-ms", type=int)
     parser.add_argument("--preset")
     parser.add_argument("--cluster-id", type=int)
+    parser.add_argument("--node-ip")
     parser.add_argument("--max-message-kib", type=int)
     parser.add_argument("--network-seed", type=int)
     parser.add_argument("--network-loss", type=float)
@@ -498,6 +505,7 @@ def main() -> None:
         ("--cluster-id", args.cluster_id),
         ("--max-message-kib", args.max_message_kib),
         ("--static-node", args.static_node or None),
+        ("--node-ip", args.node_ip),
     )
     for flag, given in local:
         if args.preset is not None and given is not None:
@@ -540,6 +548,8 @@ def main() -> None:
         time.sleep(LINGER)
     if "dies-at-the-end" in peer.faults:
         sys.exit(STATUS)
+    if "signalled-at-the-end" in peer.faults:
+        os.kill(os.getpid(), SIGNAL)
 
 
 if __name__ == "__main__":

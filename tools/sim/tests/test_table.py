@@ -24,6 +24,7 @@ def report(**changed) -> dict:
         "preset": None,
         "max_message_kib": 512,
         "network": None,
+        "wire": None,
         "load": {"start": [1.5, 1.25, 1.0], "end": [2.625, 2.25, 2.0]},
         "nodes": [
             {
@@ -115,6 +116,26 @@ class Render(unittest.TestCase):
             "post  from  read by  median   worst  delivered   worst  lookup\n"
             "1      pax   2 of 2  0.062s  0.125s     0.031s  0.062s  0.047s\n",
         )
+
+    def test_a_run_in_containers_names_its_image_its_engine_and_its_wire(self):
+        wire = {"seed": 5, "delay_ms": 40, "jitter_ms": 3, "loss": 0.015}
+        rig = {"rig": "containers", "engine": "docker", "image": "logos-chat-sim:latest"}
+        rendered = table.render(report(wire=wire, unremoved=None, **rig)).splitlines()
+
+        self.assertEqual(
+            rendered[:2],
+            [
+                "3 members, fast group timers, largest message 512 KiB, containers of "
+                "logos-chat-sim:latest on docker, wire seed 5, delay 40 ms, jitter 3 ms, "
+                "loss 0.015",
+                "whole: 3 of 3 members at the tip",
+            ],
+        )
+        by_member = dict(wire, delay_ms={"raya": 40})
+        self.assertIn(", delay by member, ", table.render(report(wire=by_member, **rig)))
+        unremoved = "docker rm ended with status 1: Error: no such container"
+        rendered = table.render(report(unremoved=unremoved, **rig)).splitlines()
+        self.assertEqual(rendered[3], f"not removed: {unremoved}")
 
     def test_a_run_with_a_network_model_names_its_seed_its_rates_and_the_frames_each_lost(self):
         modelled = report(network=NETWORK)
@@ -528,6 +549,14 @@ class Row(unittest.TestCase):
                 "; stopped: raya: no line of a new roster within the budget; "
                 f"seed {2**64 - 1}"
             )
+        )
+
+    def test_a_run_on_a_wire_names_the_seed_of_its_wire_after_that_of_its_network_model(self):
+        wire = {"seed": 70, "delay_ms": 0, "jitter_ms": 0, "loss": 0.5}
+
+        self.assertEqual(
+            table.row(7, 41.26, report(network=NETWORK, wire=wire)),
+            "  7     41.3      3 of 3  whole                   as expected; seed 7; wire seed 70",
         )
 
     def test_a_run_that_withheld_a_candidate_says_whose_and_whether_applied_before_its_page(self):

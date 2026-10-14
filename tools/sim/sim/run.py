@@ -1,4 +1,7 @@
-"""One run: a registry, peers on a network of their own or on a preset, and a scenario's steps."""
+"""One run: a registry, peers on a network of their own or on a preset, and a scenario's steps.
+
+The registry and the peers are processes of this machine, or each in a container of its own.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +15,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from . import judge, measure, one_process, table, wiring
+from . import containers, judge, measure, one_process, table, wiring
 from .peers import (
     GRACE,
     WATCH,
@@ -58,6 +61,10 @@ class Settings:
     share: Optional[str] = None
     # The runner that does the scenario in one process, where no peer runs `chat_cli`.
     one_process: Optional[Path] = None
+    # The image whose chat-cli each peer runs in a container, where no peer runs `chat_cli`.
+    image: Optional[str] = None
+    # The container engine that runs the image: docker or podman.
+    engine: str = containers.ENGINES[0]
     registry: Path = REPOSITORY / ".github" / "scripts" / "mock-registry.py"
     forks: Path = REPOSITORY / "tools" / "forks"
 
@@ -83,6 +90,7 @@ def run(settings: Settings, watch: Watch) -> dict:
         "max_message_kib": scenario.max_message_kib if scenario.preset is None else None,
         "budget": scenario.budget,
         "network": None if scenario.network is None else asdict(scenario.network),
+        "wire": None if scenario.wire is None else asdict(scenario.wire),
         "load": {"start": list(os.getloadavg()), "end": None},
         "nodes": [],
         "batches": [],
@@ -105,12 +113,20 @@ def run(settings: Settings, watch: Watch) -> dict:
         return _judged(settings, installations, report, watch)
     peers: List[Peer] = []
     registry: Optional[Registry] = None
+    rig: Optional[containers.Rig] = None
+    if settings.image is not None:
+        rig = containers.Rig(settings.engine, settings.image, settings.out)
+        report.update(rig=table.CONTAINERS, engine=settings.engine, image=settings.image)
+        report["unremoved"] = None
     try:
         try:
-            registry = Registry(settings.registry, settings.out, watch)
+            if rig is not None:
+                rig.create(scenario.members)
+            contain = None if rig is None else rig.registry
+            registry = Registry(settings.registry, _directory(settings, rig), watch, contain)
             registry.read_url(_deadline(settings))
             watch.processes.append(registry)
-            _group(settings, registry, peers, report, watch)
+            _group(settings, rig, registry, peers, report, watch)
         except Stopped as stopped:
             report["stopped"] = str(stopped)
         # A process that has ended has no last word, and the others still have theirs.
@@ -121,7 +137,14 @@ def run(settings: Settings, watch: Watch) -> dict:
     finally:
         watch.close()
         _stop(peers, registry, report)
+        if rig is not None:
+            report["unremoved"] = rig.remove()
     return _judged(settings, [peer.installation for peer in peers], report, watch)
+
+
+def _directory(settings: Settings, rig: Optional[containers.Rig]) -> Path:
+    """The run's directory as its processes are given it: the path a container mounts it at."""
+    return settings.out if rig is None else rig.out
 
 
 def _judged(settings: Settings, installations: List[str], report: dict, watch: Watch) -> dict:
@@ -191,29 +214,34 @@ def _network(scenario: Scenario, name: str) -> List[str]:
 
 
 def _group(
-    settings: Settings, registry: Registry, peers: List[Peer], report: dict, watch: Watch
+    settings: Settings,
+    rig: Optional[containers.Rig],
+    registry: Registry,
+    peers: List[Peer],
+    report: dict,
+    watch: Watch,
 ) -> None:
     scenario = settings.scenario
+    directory = _directory(settings, rig)
     started_at = time.time()
     if scenario.preset is None:
         dialing = wiring.dials(scenario.members)
     else:
         # Which nodes a node of a preset dials is the preset's to say.
         dialing = [[] for _ in range(scenario.members)]
-    env = dict(os.environ, RUST_LOG=measure.LOG_FILTER)
+    log = {"RUST_LOG": measure.LOG_FILTER}
     for index, dialed in enumerate(dialing):
         name = name_of(index)
-        command = [
-            str(settings.chat_cli),
+        arguments = [
             "--headless",
             "--transport",
             "logos-delivery",
             "--name",
             name,
             "--data",
-            str(settings.out / "data"),
+            str(directory / "data"),
             "--keys",
-            str(settings.out / "keys"),
+            str(directory / "keys"),
             "--registry-url",
             registry.url,
             *_timers(scenario),
@@ -221,12 +249,20 @@ def _group(
             *_network(scenario, name),
         ]
         for other in dialed:
-            command += ["--static-node", peers[other].node_address]
-        peer = Peer(name, command, settings.out, env, watch)
+            arguments += ["--static-node", peers[other].node_address]
+        if rig is None:
+            command, env = [str(settings.chat_cli), *arguments], dict(os.environ, **log)
+        else:
+            command, env = rig.member(name, index, arguments, log), dict(os.environ)
+        peer = Peer(name, command, directory, env, watch, in_container=rig is not None)
         peers.append(peer)
         report["nodes"].append({"name": name, "dials": [name_of(other) for other in dialed]})
         peer.read_ready(_deadline(settings))
         watch.processes.append(peer)
+        if rig is not None:
+            report["nodes"][index]["ip"] = rig.address(index)
+            if scenario.wire is not None:
+                rig.shape(name, scenario.wire.delay_of(name), scenario.wire)
         report["nodes"][index]["installation"] = peer.installation
         report["nodes"][index]["ready_s"] = peer.ready_at - started_at
         report["nodes"][index]["start_s"] = peer.ready_at - peer.started_at

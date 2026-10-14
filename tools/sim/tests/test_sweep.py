@@ -100,6 +100,7 @@ class Sweeping(Scratch):
                 "at_tip": 3,
                 "seated": 3,
                 "seed": None,
+                "wire_seed": None,
                 "withheld": None,
                 "page": None,
             },

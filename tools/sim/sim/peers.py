@@ -1,6 +1,7 @@
 """The processes of a run: the mock registry and headless chat-cli peers, read a line at a time.
 
-A run in one process has the runner of its plan in their place.
+A run in one process has the runner of its plan in their place. A run in containers has each
+process run its container, and holds it as it holds any other.
 """
 
 from __future__ import annotations
@@ -66,6 +67,15 @@ class Watch:
         for process in self.processes:
             if process.ended() is not None:
                 raise process.gone()
+
+
+def contained(code: int) -> int:
+    """The status of what ran in a container, from that of the engine's `run` that ran it.
+
+    The engine ends with 128 and the signal's number when a signal ended the process, as a
+    shell does. This gives the signal as `subprocess` does, below 0.
+    """
+    return 128 - code if 128 < code < 160 else code
 
 
 def name_of(index: int) -> str:
@@ -143,8 +153,10 @@ class _Process:
         watch: Watch,
         stdin: int,
         env: Optional[dict] = None,
+        in_container: bool = False,
     ):
         self.name = name
+        self._in_container = in_container
         self.stderr = directory / f"{stem}.stderr"
         self.out = directory / f"{stem}.out"
         self._watch = watch
@@ -158,12 +170,13 @@ class _Process:
         self._lines = _Lines(self._process.stdout, self.out)
 
     def ended(self) -> Optional[int]:
-        """The status the process ended with, or `None` while it runs."""
-        return self._process.poll()
+        """The status the process ended with, or `None` while it runs. A signal is below 0."""
+        status = self._process.poll()
+        return contained(status) if self._in_container and status is not None else status
 
     def gone(self) -> Stopped:
         """Why the run stops once the process has ended."""
-        status = self._process.returncode
+        status = self.ended()
         how = f"status {status}" if status >= 0 else f"signal {-status}"
         return Stopped(f"{self.name} ended with {how}: {self._why()}")
 
@@ -188,18 +201,33 @@ class _Process:
 
 
 class Registry(_Process):
-    """The mock registry on a port the system picked, writing each request it serves to a file."""
+    """The mock registry on a port the system picked, writing each request it serves to a file.
 
-    def __init__(self, script: Path, directory: Path, watch: Watch):
+    `contain` gives the command line that runs the script with its arguments in a container.
+    """
+
+    def __init__(
+        self,
+        script: Path,
+        directory: Path,
+        watch: Watch,
+        contain: Optional[Callable[[Path, List[str]], List[str]]] = None,
+    ):
         self.requests = directory / "registry.requests"
         self.url = ""
+        arguments = ["--port", "0", "--requests", str(self.requests)]
+        if contain is None:
+            command = [sys.executable, "-B", str(script), *arguments]
+        else:
+            command = contain(script, arguments)
         super().__init__(
             "the registry",
             "registry",
-            [sys.executable, "-B", str(script), "--port", "0", "--requests", str(self.requests)],
+            command,
             directory,
             watch,
             subprocess.DEVNULL,
+            in_container=contain is not None,
         )
 
     def read_url(self, deadline: float) -> None:
@@ -247,11 +275,21 @@ class Runner(_Process):
 class Peer(_Process):
     """A headless chat-cli: its inputs, the lines it has written, and its log."""
 
-    def __init__(self, name: str, command: Sequence[str], directory: Path, env: dict, watch: Watch):
+    def __init__(
+        self,
+        name: str,
+        command: Sequence[str],
+        directory: Path,
+        env: dict,
+        watch: Watch,
+        in_container: bool = False,
+    ):
         self.log = directory / f"{name}.log"
         self.started_at = time.time()
         command = [*command, "--log-file", str(self.log)]
-        super().__init__(name, name, command, directory, watch, subprocess.PIPE, env)
+        super().__init__(
+            name, name, command, directory, watch, subprocess.PIPE, env, in_container
+        )
         self._unclaimed: List[Tuple[float, dict]] = []
         self._inputs = 0
         self.address = ""

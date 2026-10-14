@@ -6,13 +6,14 @@ import argparse
 import contextlib
 import os
 import re
+import shutil
 import signal
 import sys
 from pathlib import Path
 from typing import Callable, Iterator, NoReturn, Optional, Sequence
 from urllib.parse import unquote
 
-from . import judge, scenario, table
+from . import containers, judge, scenario, table
 from .peers import Watch
 from .run import NoDirectory, Settings, run
 from .sweep import Interrupts, sweep
@@ -30,8 +31,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         prog="sim",
         description="Starts headless chat-cli peers on a delivery network of their own or on a "
         "fleet preset, has them do the steps of a scenario, and holds the fork report of their "
-        "logs against what the scenario expects. With --one-process the members are clients "
-        "in one process on a virtual clock, and no peer is started.",
+        "logs against what the scenario expects. With --image each peer and the registry run "
+        "in a container of their own, on a network of containers. With --one-process the "
+        "members are clients in one process on a virtual clock, and no peer is started.",
     )
     commands = parser.add_subparsers(metavar="COMMAND", required=True)
     one = commands.add_parser(
@@ -57,13 +59,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     many.set_defaults(run=_sweep)
     args = parser.parse_args(argv)
 
-    flag, program = "--chat-cli", args.chat_cli
-    if args.one_process is not None:
-        flag, program = "--one-process", args.one_process
-    if not program.is_file():
-        parser.error(f"{flag}: no such file: {program}")
-    if not os.access(program, os.X_OK):
-        parser.error(f"{flag}: not a file that can be run: {program}")
+    engine = args.engine or containers.ENGINES[0]
+    if args.image is None:
+        if args.engine is not None:
+            parser.error("--engine: it runs --image, and none is given")
+        flag, program = "--chat-cli", args.chat_cli
+        if args.one_process is not None:
+            flag, program = "--one-process", args.one_process
+        if not program.is_file():
+            parser.error(f"{flag}: no such file: {program}")
+        if not os.access(program, os.X_OK):
+            parser.error(f"{flag}: not a file that can be run: {program}")
+    elif shutil.which(engine) is None:
+        parser.error(f"--engine: {engine} is not on PATH")
     if args.out.exists():
         parser.error(f"--out: {args.out} exists")
     if getattr(args, "runs", 1) < 1:
@@ -75,17 +83,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             out=args.out,
             share=args.share,
             one_process=None if args.one_process is None else args.one_process.resolve(),
+            image=args.image,
+            engine=engine,
         )
     except scenario.Refused as refused:
         parser.error(str(refused))
     if settings.one_process is not None and settings.scenario.preset is not None:
         parser.error("--one-process: the scenario has `preset`, and one process joins no fleet")
-    last = settings.scenario.of_run(getattr(args, "runs", 1)).network
-    if last is not None and last.seed > scenario.MOST_SEED:
+    if settings.image is not None and settings.scenario.preset is not None:
         parser.error(
-            f"--runs: run {args.runs} would have the seed {last.seed}, "
-            f"and {scenario.MOST_SEED} is the most"
+            "--image: the scenario has `preset`, and a network of containers reaches no fleet"
         )
+    if settings.image is None and settings.scenario.wire is not None:
+        parser.error("the scenario has `wire`, and only --image puts conditions on the wire")
+    last = settings.scenario.of_run(getattr(args, "runs", 1))
+    for seeded, said in ((last.network, "the seed"), (last.wire, "the wire seed")):
+        if seeded is not None and seeded.seed > scenario.MOST_SEED:
+            parser.error(
+                f"--runs: run {args.runs} would have {said} {seeded.seed}, "
+                f"and {scenario.MOST_SEED} is the most"
+            )
     if settings.share is not None:
         refusal = judge.unreadable(settings, settings.share)
         if refusal is not None:
@@ -107,6 +124,16 @@ def _add_arguments(command: argparse.ArgumentParser) -> None:
         metavar="PATH",
         type=Path,
         help="the runner that does the scenario in one process, in place of --chat-cli",
+    )
+    rig.add_argument(
+        "--image",
+        metavar="IMAGE",
+        help="the image whose chat-cli each peer runs in a container, in place of --chat-cli",
+    )
+    command.add_argument(
+        "--engine",
+        choices=containers.ENGINES,
+        help=f"the container engine that runs --image (default: {containers.ENGINES[0]})",
     )
     command.add_argument(
         "--out", metavar="DIR", type=Path, required=True, help="the directory to make and write to"
