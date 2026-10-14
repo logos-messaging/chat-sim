@@ -65,5 +65,31 @@ class Burst(unittest.TestCase):
         self.assertEqual(late, [])
 
 
+class Bind(unittest.TestCase):
+    """The address the registry serves on."""
+
+    def test_it_serves_on_the_address_it_is_given_and_says_so(self):
+        # Linux answers every address of 127.0.0.0/8 on loopback, and macOS 127.0.0.1 alone.
+        if not sys.platform.startswith("linux"):
+            self.skipTest("127.0.0.2 is on loopback on Linux alone")
+        registry = subprocess.Popen(
+            [sys.executable, "-B", str(REGISTRY), "--bind", "127.0.0.2", "--port", "0"],
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        self.addCleanup(registry.stdout.close)
+        self.addCleanup(registry.wait)
+        self.addCleanup(registry.terminate)
+        address = urlsplit(registry.stdout.readline().strip())
+        self.assertEqual(address.hostname, "127.0.0.2")
+
+        served = http.client.HTTPConnection("127.0.0.2", address.port, timeout=30)
+        self.addCleanup(served.close)
+        served.request("GET", ACCOUNT)
+        self.assertEqual(served.getresponse().status, 404)
+        with self.assertRaises(OSError):
+            http.client.HTTPConnection("127.0.0.1", address.port, timeout=30).connect()
+
+
 if __name__ == "__main__":
     unittest.main()
