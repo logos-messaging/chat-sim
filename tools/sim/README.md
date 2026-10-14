@@ -196,7 +196,8 @@ The same goes for a `preset` the delivery library does not know.
 `twenty.json` and `fifty.json`, the two larger sizes runs have been measured at (see
 [The floor on one machine](#the-floor-on-one-machine)), and `lost-candidate.json` and
 `lossy.json`, the two with a network model (see [What a lost frame does](#what-a-lost-frame-does)).
-`lossy-wire.json` has a wire (see [In containers](#in-containers)). `fleet-five.json` needs the `logos.test` fleet and is no part
+`lossy-wire.json` has a wire, and CI runs it and `three.json` in containers (see
+[In containers](#in-containers)). `fleet-five.json` needs the `logos.test` fleet and is no part
 of CI (see [On a fleet preset](#on-a-fleet-preset)).
 
 ### The network model
