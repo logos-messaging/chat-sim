@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from sim import scenario
+from sim.peers import name_of
 from sim.scenario import (
     ALL,
     LAST,
@@ -362,7 +363,10 @@ class Reading(unittest.TestCase):
         self.assertEqual(
             kept,
             [
-                "fifty.json",
+                "50-epochs-waku-loss.json",
+                "50-epochs-waku.json",
+                "50-epochs.json",
+                "fifty-sized.json",
                 "fleet-five.json",
                 "lossy-wire.json",
                 "lossy.json",
@@ -371,12 +375,39 @@ class Reading(unittest.TestCase):
                 "twenty.json",
             ],
         )
-        for name, members in (("three.json", 3), ("twenty.json", 20), ("fifty.json", 50)):
+        sizes = (
+            ("three.json", 3),
+            ("twenty.json", 20),
+            ("fifty-sized.json", 50),
+            ("50-epochs.json", 51),
+        )
+        for name, members in sizes:
             held = scenario.read(TOOL / "scenarios" / name)
             self.assertEqual((held.members, held.seated), (members, members), name)
             self.assertEqual(held.expect, Expect(), name)
             self.assertIsNone(held.network, name)
             self.assertIsNone(held.preset, name)
+
+    def test_fifty_epochs_are_on_the_librarys_own_timers_and_on_waku_held_and_not_lost(self):
+        lossless = scenario.read(TOOL / "scenarios" / "50-epochs.json")
+        waku = scenario.read(TOOL / "scenarios" / "50-epochs-waku.json")
+
+        self.assertEqual(lossless.steps[0], Seat(to=51, batch=1))
+        self.assertEqual(waku.steps, lossless.steps)
+        self.assertEqual((waku.timers, lossless.timers), ("default", "default"))
+        self.assertEqual((waku.network.loss, waku.network.welcome_loss), (0, 0))
+        delays = [waku.network.delay_of(name_of(seat)) for seat in range(51)]
+        self.assertEqual(len(set(delays)), 51)
+        self.assertEqual((min(delays), max(delays), delays[0]), (284, 644, 518))
+        self.assertEqual(round(sum(delays) / 51, 1), 507.6)
+
+    def test_fifty_epochs_on_waku_with_loss_lose_a_twentieth_and_are_otherwise_those_on_waku(self):
+        waku = scenario.read(TOOL / "scenarios" / "50-epochs-waku.json")
+        lossy = scenario.read(TOOL / "scenarios" / "50-epochs-waku-loss.json")
+
+        self.assertEqual((lossy.network.loss, lossy.network.welcome_loss), (0.05, 0.05))
+        held = dataclasses.replace(lossy.network, loss=0, welcome_loss=0)
+        self.assertEqual(dataclasses.replace(lossy, network=held), waku)
 
     def test_the_scenarios_of_the_network_model_seat_five_members_one_at_a_time(self):
         one_at_a_time = Seat(to=5, batch=1)

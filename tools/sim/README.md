@@ -93,7 +93,7 @@ share ports and loopback with nothing else on the machine and cannot reach any o
 
 ```sh
 unshare -rn sh -c 'ip link set lo up && exec "$@"' sim \
-  python3 tools/sim run tools/sim/scenarios/fifty.json --chat-cli target/release/chat-cli --out tmp/fifty
+  python3 tools/sim run tools/sim/scenarios/fifty-sized.json --chat-cli target/release/chat-cli --out tmp/fifty
 ```
 
 A scenario with `preset` is not started this way: its nodes have to reach the fleet (see
@@ -194,9 +194,12 @@ stopped after 0 of 2 steps: saro ended with status 1: chat-cli: Invalid conversa
 The same goes for a `preset` the delivery library does not know.
 
 `scenarios/` holds the scenarios the repository keeps: `three.json`, which CI runs,
-`twenty.json` and `fifty.json`, the two larger sizes runs have been measured at (see
+`50-epochs.json`, `50-epochs-waku.json` and `50-epochs-waku-loss.json`, fifty epochs as
+logos-chat-module runs a group (see
+[Fifty epochs as the module runs them](#fifty-epochs-as-the-module-runs-them)), `twenty.json`
+and `fifty-sized.json`, two sizes runs have been measured at (see
 [The floor on one machine](#the-floor-on-one-machine)), and `lost-candidate.json` and
-`lossy.json`, the two with a network model (see [What a lost frame does](#what-a-lost-frame-does)).
+`lossy.json`, five members on a network model (see [What a lost frame does](#what-a-lost-frame-does)).
 `lossy-wire.json` has a wire, and CI runs it and `three.json` in containers (see
 [In containers](#in-containers)). `fleet-five.json` needs the `logos.test` fleet and is no part
 of CI (see [On a fleet preset](#on-a-fleet-preset)).
@@ -600,9 +603,51 @@ rows agree with a fleet that runs with it. So a run of more than five nodes from
 measures that limit and not a group of that size, and at nine it had a fleet that others use
 take 300 connections a minute.
 
+## Fifty epochs as the module runs them
+
+`50-epochs.json` and `50-epochs-waku.json` seat fifty-one members one at a time, and then the last
+one posts. Each add is a commit the members have to agree on and opens an epoch of its own, and a
+group splits at a commit or holds through it: fifty members seated ten at a time make five epochs,
+and these make fifty. Both are on the library's own timers, as logos-chat-module runs a group: it
+sets no group timers. `50-epochs.json` loses and holds no frame. `50-epochs-waku.json` loses none
+either, and holds each frame a member receives for as long as a message of Waku relay took to reach
+a node in a simulation the Waku team made
+([waku-org/research#42](https://github.com/waku-org/research/issues/42)):
+
+| Of the simulation | |
+|---|---|
+| Nodes | 1000 `nwaku` nodes in Shadow, a mesh of 6 |
+| Each link | 100 ms, which the team measured as the average of the live network; 83 Mbit/s down and 38 Mbit/s up |
+| Packets lost | none, and the 10 messages it published reached all 999 other nodes |
+| RLN | 150 ms to make a proof, which it slept on the publisher, and 12 ms to check one on each node |
+| 10 KB messages, the first left out as the team does | 8991 arrivals: 263 ms the fastest, 507.6 ms the mean, 627 ms 95 of 100, 673 ms the slowest |
+
+The fifty-one delays are those arrivals' quantiles at the middles of 51 equal slices, 1/102,
+3/102, ..., 101/102, from 284 to 644 ms
+([`raw/latency_10kb.txt`](https://github.com/waku-org/research/blob/d7167bcedb1142e3d7462dcf24a30f65b1a3ef90/rln-delay-simulations/raw/latency_10kb.txt),
+with the config
+[`shadow.yaml`](https://github.com/waku-org/research/blob/d7167bcedb1142e3d7462dcf24a30f65b1a3ef90/rln-delay-simulations/shadow.yaml)
+of the same commit). The member that starts `k`-th, from 0, has the delay of rank
+`(19k + 25) mod 51` among them, from 0 for the shortest, so that saro, which creates the group,
+has the median, 518 ms, and the order of the seats is not that of the delays. Of the published
+runs these are the ones on the link latency of the live network: those of the paper that
+followed ([ePrint 2024/1073](https://eprint.iacr.org/2024/1073)) took 150 ms a link. No measured
+rate of loss on the live network was found, and the model's delay is one for every frame a
+member receives, where on Waku it differs from sender to sender and from message to message.
+
+`50-epochs-waku-loss.json` is `50-epochs-waku.json` with 0.05 of the frames each member receives
+lost, Welcomes as well. The rate is assumed, as none measured on the live network was found. A
+frame the model loses never comes to its member later (see
+[What a lost frame does](#what-a-lost-frame-does)), so a run of it stops at the first epoch the
+group does not come through, and that epoch is what it measures. CI runs the other two.
+
+The model is chat-cli's in a run of processes or containers, and the runner's in one process,
+so both files run in every rig. In one process a run of either is the same run whenever it is
+made (see [In one process](#in-one-process)), and so is one of `50-epochs.json`.
+
 ## The timers of fifty members
 
-`scenarios/fifty.json` gives five of the group's durations. Each is sized from what a group of
+`scenarios/fifty-sized.json` gives five of the group's durations. Each is sized from what a group of
 fifty needed on the machine of [The floor on one machine](#the-floor-on-one-machine). The needs
 were read from the logs of two runs of fifty whose peers also logged the group library's own
 lines: one with a consensus timeout, a batch window and a freeze of 5 s each, and one with 20 s
@@ -640,7 +685,7 @@ The ladder is three runs of fifty at each rung, from the `fast` set up to the li
 | The `fast` set | 250 | 500 | 500 | 4000 | 0 of 3 | 195, 194, 197 |
 | Half of what has to be covered | 5500 | 3500 | 2000 | 8000 | 0 of 3 | 38, 37, 38 |
 | What has to be covered | 9500 | 7000 | 3500 | 14000 | 3 of 3 | 58, 61, 62 |
-| Twice that, `fifty.json` | 17500 | 13500 | 6500 | 26000 | 2 of 3 | 87, 92, 76 |
+| Twice that, `fifty-sized.json` | 17500 | 13500 | 6500 | 26000 | 2 of 3 | 87, 92, 76 |
 | The library's own | 30000 | 60000 | 30000 | 600000 | 1 of 3 | 255, 358, 464 |
 
 The `fast` set has a voting delay of 50 ms, the library's own one of 10000 ms, and the rungs
@@ -660,8 +705,8 @@ load average over one minute stands beside each sweep, as it was when the sweep 
 | Sweep | Scenario | As expected | Seconds of a run as expected | Load average |
 |---|---|---|---|---|
 | 20 runs of 20 members, the `fast` set | `twenty.json` | 20 of 20 | 6.8 to 8.9 | 4.9, 10.3 |
-| 20 runs of 50 members, the sized timers, in two sweeps of 10 | `fifty.json` | 16 of 20 | 88 to 109 | 10.3, 18.4 and 7.1, 20.3 |
-| 3 runs of 50 members, the library's own timers | `fifty.json` with `"timers": "default"` | 1 of 3 | 358 | 18.4, 1.1 |
+| 20 runs of 50 members, the sized timers, in two sweeps of 10 | `fifty-sized.json` | 16 of 20 | 88 to 109 | 10.3, 18.4 and 7.1, 20.3 |
+| 3 runs of 50 members, the library's own timers | `fifty-sized.json` with `"timers": "default"` | 1 of 3 | 358 | 18.4, 1.1 |
 
 The four runs of fifty with the sized timers that did not go as expected stopped at a batch that
 3 to 10 of its members did not come to hold within the budget, and their report reads
@@ -871,7 +916,7 @@ sim: error: --image: the scenario has `preset`, and a network of containers reac
 ```
 
 On the machine of [The floor on one machine](#the-floor-on-one-machine), one run of
-`fifty.json` in Podman containers went as expected on 2026-10-14. A peer took 0.33 to 0.39 s to
+`fifty-sized.json` in Podman containers went as expected on 2026-10-14. A peer took 0.33 to 0.39 s to
 start, and the fifty were wired after 19.4 s. A batch was seated in 14.5 to 19.7 s, and the
 worst member read the post after 0.043 s. Nine peers ended by signal 11 in their stop.
 
