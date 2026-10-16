@@ -45,6 +45,21 @@ post  from  read by  median   worst  delivered   worst  lookup
 1      pax   2 of 2  0.005s  0.006s     0.004s  0.005s  0.000s
 ```
 
+With Nix, one command builds what a rig needs from the checkout and runs `sim` with it. What
+follows `--` is `sim`'s command line, less the flag the app gives:
+
+```sh
+nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out tmp/50-epochs
+nix run .#groupv2-simulation-processes -- run tools/sim/scenarios/three.json --out tmp/three
+nix run .#groupv2-simulation-containers -- run tools/sim/scenarios/three.json --engine podman --out tmp/three
+```
+
+| App | Gives `sim` |
+|---|---|
+| `groupv2-simulation` | `--one-process` and the runner: every member in one process (see [In one process](#in-one-process)) |
+| `groupv2-simulation-processes` | `--chat-cli` and chat-cli, built with the delivery library |
+| `groupv2-simulation-containers` | `--image logos-chat-sim:latest`, once it has loaded the flake's `sim-image` into the engine `--engine` names (see [In containers](#in-containers)). Linux only |
+
 | Status | Meaning |
 |---|---|
 | 0 | Every step was done, and the report of the logs is as the scenario expects. |
@@ -1291,7 +1306,8 @@ pax: pax read it in 5 runs of 5 in one process, and in 3 of 3 with processes.
 
 ## What it does not do
 
-- It does not build `chat-cli`, the runner or the image, and it runs whatever it is given.
+- It does not build `chat-cli`, the runner or the image, and it runs whatever it is given. The
+  flake's apps build them (see [Running it](#running-it)).
 - It runs no fleet: a scenario with `preset` joins one that is there, and a run without it
   reaches no node outside the run.
 - It does not put itself into a network namespace.
