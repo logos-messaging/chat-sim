@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import collections
 import json
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional
 
@@ -41,20 +40,24 @@ _MODELLED = {
 }
 _WITHHELD = {"app_id": (str, _NONE), "seat": (int, _NONE), "applied": (bool,)}
 
+# The second every run's clock starts at, 2026-01-01T00:00:00Z: a plan and its seed then give
+# one run whenever it is made.
+START = 1_767_225_600
 
-def plan(scenario: Scenario, start: int) -> dict:
+
+def plan(scenario: Scenario) -> dict:
     """What the runner is told: the scenario's steps one for one, with every name resolved.
 
-    `start` is the second its clock starts at. As in a run of processes, a roster is waited on
-    by the creator and by each other member the scenario expects at the tip, and a post by the
-    members it expects to read it.
+    As in a run of processes, a roster is waited on by the creator and by each other member the
+    scenario expects at the tip, and a post by the members it expects to read it.
     """
     names = [name_of(index) for index in range(scenario.members)]
     told: dict = {
         "members": names,
         "timers": scenario.timers,
         "budget_s": scenario.budget,
-        "start": start,
+        "start": START,
+        "seed": scenario.seed,
     }
     network = scenario.network
     if network is not None:
@@ -97,8 +100,14 @@ def run(settings: Settings, report: dict, watch: Watch) -> None:
     `group.log` and `result.json`. A signal `watch` takes while the runner runs ends it.
     """
     out = settings.out
-    report.update(rig=table.ONE_PROCESS, cluster_id=None, virtual_s=None, wall_s=None)
-    told = plan(settings.scenario, int(time.time()))
+    report.update(
+        rig=table.ONE_PROCESS,
+        cluster_id=None,
+        seed=settings.scenario.seed,
+        virtual_s=None,
+        wall_s=None,
+    )
+    told = plan(settings.scenario)
     (out / "plan.json").write_text(json.dumps(told, indent=2) + "\n", encoding="utf-8")
     runner: Optional[Runner] = None
     try:

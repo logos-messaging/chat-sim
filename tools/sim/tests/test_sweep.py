@@ -100,6 +100,7 @@ class Sweeping(Scratch):
                 "at_tip": 3,
                 "seated": 3,
                 "seed": None,
+                "network_seed": None,
                 "wire_seed": None,
                 "withheld": None,
                 "page": None,
@@ -176,11 +177,12 @@ class Sweeping(Scratch):
             self.assertEqual(given(started, "--network-seed"), [str(seed)])
             kept = json.loads((run / "run.json").read_text("utf-8"))
             self.assertEqual(kept["network"]["seed"], seed)
-        self.assertEqual([row["seed"] for row in report["rows"]], [7, 8, 9])
+        self.assertEqual([row["network_seed"] for row in report["rows"]], [7, 8, 9])
+        self.assertEqual([row["seed"] for row in report["rows"]], [None] * 3)
         self.assertEqual([row["withheld"] for row in report["rows"]], [None] * 3)
         self.assertEqual(
             [cells(row)[3] for row in self.said[1:4]],
-            ["as expected; seed 7", "as expected; seed 8", "as expected; seed 9"],
+            [f"as expected; network seed {seed}" for seed in (7, 8, 9)],
         )
 
     def test_a_scenario_on_a_preset_is_swept_as_any_other(self):
@@ -199,11 +201,12 @@ class Sweeping(Scratch):
         report = self.sweep_of(2, {2: applied}, **withholding(expect={"applied": APPLIED}))
 
         told = "withheld from pax: the candidate of saro"
+        split = "split at epoch 2"
         self.assertEqual(
             [cells(row) for row in self.said[1:3]],
             [
-                ("1", "4 of 4", "whole", f"as expected; seed 7; {told}, not applied"),
-                ("2", "4 of 4", "split at epoch 2", f"as expected; seed 8; {told}, applied"),
+                ("1", "4 of 4", "whole", f"as expected; network seed 7; {told}, not applied"),
+                ("2", "4 of 4", split, f"as expected; network seed 8; {told}, applied"),
             ],
         )
         self.assertEqual(self.said[3:], ["2 of 2 runs went as expected"])

@@ -65,6 +65,7 @@ class Reading(unittest.TestCase):
                 max_message_kib=512,
                 preset=None,
                 budget=180.0,
+                seed=0,
                 network=None,
                 expect=Expect(verdict="whole", positions={}, posts={}, applied=None),
             ),
@@ -76,6 +77,7 @@ class Reading(unittest.TestCase):
             "timers": {"consensus_timeout": 2000, "voting_delay": 0},
             "max_message_kib": 64,
             "budget": 12.5,
+            "seed": 2**64 - 1,
             "steps": [
                 {"step": "seat", "to": 4, "batch": 2},
                 {"step": "post", "from": "mira"},
@@ -99,6 +101,7 @@ class Reading(unittest.TestCase):
                 timers={"consensus_timeout": 2000, "voting_delay": 0},
                 max_message_kib=64,
                 budget=12.5,
+                seed=2**64 - 1,
                 expect=Expect("whole, members behind", {"peer7": "behind"}, {"raya": "unreadable"}),
             ),
         )
@@ -210,15 +213,18 @@ class Reading(unittest.TestCase):
             scenario.scenario(withholding(expect={"applied": {}})).expect.applied, Expect()
         )
 
-    def test_each_run_of_a_sweep_has_the_seed_after_that_of_the_run_before(self):
-        held = scenario.scenario(three(network={"seed": 7, "loss": 0.5}))
+    def test_each_run_of_a_sweep_has_the_seeds_after_those_of_the_run_before(self):
+        held = scenario.scenario(three(seed=4, network={"seed": 7, "loss": 0.5}))
 
         self.assertEqual(held.of_run(1), held)
+        self.assertEqual([held.of_run(number).seed for number in (1, 2, 10)], [4, 5, 13])
         self.assertEqual([held.of_run(number).network.seed for number in (1, 2, 10)], [7, 8, 16])
         self.assertEqual(held.of_run(3).network, Network(9, 0.5, 0, 0))
-        self.assertEqual(dataclasses.replace(held.of_run(3), network=held.network), held)
+        self.assertEqual(
+            dataclasses.replace(held.of_run(3), seed=held.seed, network=held.network), held
+        )
         unmodelled = scenario.scenario(three())
-        self.assertIs(unmodelled.of_run(3), unmodelled)
+        self.assertEqual(unmodelled.of_run(3), dataclasses.replace(unmodelled, seed=2))
 
         both = scenario.scenario(three(network={"seed": 7}, wire={"seed": 70, "loss": 0.5}))
         self.assertEqual(
@@ -440,6 +446,10 @@ class Refusals(unittest.TestCase):
                 f"`max_message_kib` of the scenario is {2**32}, and {2**32 - 1} is the most",
                 three(max_message_kib=2**32),
             ),
+            ("`seed` of the scenario is not a whole number", three(seed="1")),
+            ("`seed` of the scenario is not a whole number", three(seed=True)),
+            ("`seed` of the scenario is -1, and 0 is the least", three(seed=-1)),
+            (f"`seed` of the scenario is {2**64}, and {2**64 - 1} is the most", three(seed=2**64)),
             ("`budget` is not a number of seconds above 0", three(budget=0)),
             ("`budget` is not a number of seconds above 0", three(budget="180")),
             ("`budget` is not a number of seconds above 0", three(budget=False)),

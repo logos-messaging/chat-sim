@@ -73,8 +73,8 @@ READ = (
 
 
 def plan_of(**changed) -> dict:
-    """The plan of a scenario as a file says it, on a clock from `START`."""
-    return one_process.plan(scenario.scenario(said(**changed)), START)
+    """The plan of a scenario as a file says it."""
+    return one_process.plan(scenario.scenario(said(**changed)))
 
 
 def in_one_process(**changed) -> dict:
@@ -100,6 +100,7 @@ def in_one_process(**changed) -> dict:
     whole = whole_run(
         rig=table.ONE_PROCESS,
         cluster_id=None,
+        seed=1,
         virtual_s=1.35,
         wall_s=0.0625,
         nodes=nodes,
@@ -168,7 +169,8 @@ class Planning(unittest.TestCase):
                 "members": ["saro", "raya", "pax", "mira", "kes", "tomo", "peer7"],
                 "timers": "default",
                 "budget_s": 2.5,
-                "start": START,
+                "start": one_process.START,
+                "seed": 0,
                 "unwaited": {"rosters": [], "posts": []},
                 "steps": [
                     {"step": "seat", "to": 7, "batch": 10},
@@ -329,19 +331,18 @@ class Running(Scratch):
         (post,) = report["posts"]
         self.assertEqual((post["poster"], post["readers"], post["unread"]), ("pax", 2, []))
 
-    def test_the_runner_is_told_the_plan_the_run_keeps_on_a_clock_from_the_runs_start(self):
-        before = int(time.time())
-        self.run_of(members=4, timers="default", network={"seed": 7})
-        after = int(time.time())
+    def test_the_runner_is_told_the_plan_the_run_keeps_with_its_seed_on_a_clock_from_2026(self):
+        report = self.run_of(members=4, timers="default", seed=5, network={"seed": 7})
 
         plan = self.left("plan.json")
-        self.assertTrue(before <= plan["start"] <= after, plan["start"])
-        held = scenario.scenario(said(members=4, timers="default", network={"seed": 7}))
-        self.assertEqual(plan, one_process.plan(held, plan["start"]))
+        held = scenario.scenario(said(members=4, timers="default", seed=5, network={"seed": 7}))
+        self.assertEqual(plan, one_process.plan(held))
+        self.assertEqual((plan["start"], plan["seed"], report["seed"]), (1_767_225_600, 5, 5))
         # The stamps of the log are those of the plan's clock.
-        stamp = time.strftime("%Y-%m-%dT%H:%M:%S.000000Z", time.gmtime(plan["start"]))
         log = (self.out / "group.log").read_text(encoding="utf-8")
-        self.assertTrue(log.startswith(f"{stamp}  INFO libchat::groupv2trace: run installation="), log)
+        self.assertTrue(
+            log.startswith("2026-01-01T00:00:00.000000Z  INFO libchat::groupv2trace: run "), log
+        )
 
     def test_a_run_in_one_process_starts_no_registry_and_no_peer(self):
         self.run_of()
@@ -627,7 +628,7 @@ class Running(Scratch):
         self.assertRegex(
             lines[0],
             r"^3 members, fast group timers, one process, 0\.500s on a virtual clock "
-            r"in 0\.\d{3}s of wall time, network seed 7, loss 0, welcome loss 0$",
+            r"in 0\.\d{3}s of wall time, seed 0, network seed 7, loss 0, welcome loss 0$",
         )
         self.assertEqual(
             lines[1:3], ["whole: 3 of 3 members at the tip", "the report is as expected"]
@@ -832,7 +833,7 @@ class Render(unittest.TestCase):
         self.assertEqual(
             table.render(in_one_process()),
             "3 members, fast group timers, one process, 1.350s on a virtual clock in 0.062s "
-            "of wall time\n"
+            "of wall time, seed 1\n"
             "whole: 3 of 3 members at the tip\n"
             "the report is as expected\n"
             "load average 1.50 at the start, 2.62 at the end\n"
@@ -860,7 +861,7 @@ class Render(unittest.TestCase):
             table.render(modelled).splitlines()[:9],
             [
                 "3 members, fast group timers, one process, 1.350s on a virtual clock in 0.062s "
-                "of wall time, network seed 7, loss 0.05, welcome loss 0",
+                "of wall time, seed 1, network seed 7, loss 0.05, welcome loss 0",
                 "whole: 3 of 3 members at the tip",
                 "the report is as expected",
                 "load average 1.50 at the start, 2.62 at the end",
@@ -879,7 +880,7 @@ class Render(unittest.TestCase):
         self.assertEqual(
             table.render(in_one_process(max_message_kib=64)).splitlines()[0],
             "3 members, fast group timers, one process, 1.350s on a virtual clock in 0.062s "
-            "of wall time, largest message 64 KiB not applied",
+            "of wall time, seed 1, largest message 64 KiB not applied",
         )
         self.assertIn(
             ", largest message 1024 KiB not applied\n",
@@ -892,7 +893,7 @@ class Render(unittest.TestCase):
 
         self.assertEqual(
             table.render(stopped),
-            "3 members, fast group timers, one process on a virtual clock\n"
+            "3 members, fast group timers, one process on a virtual clock, seed 1\n"
             f"stopped after 0 of 2 steps: {KILLED}\n"
             "not checked: no result of the runner was read\n"
             "load average 1.50 at the start, 2.62 at the end\n"
@@ -964,7 +965,7 @@ class Row(unittest.TestCase):
     def test_a_row_gives_the_seconds_of_the_runs_virtual_clock(self):
         self.assertEqual(
             table.row(7, 41.26, in_one_process(network=NETWORK)),
-            "  7      1.4      3 of 3  whole                   as expected; seed 7",
+            "  7      1.4      3 of 3  whole                   as expected; seed 1; network seed 7",
         )
 
     def test_the_row_of_a_run_whose_runner_left_no_result_has_no_seconds(self):
@@ -973,7 +974,7 @@ class Row(unittest.TestCase):
         self.assertEqual(
             table.row(1, 0.52, stopped),
             "  1        -           -  -                       "
-            f"not checked; stopped: {KILLED}",
+            f"not checked; stopped: {KILLED}; seed 1",
         )
 
 
@@ -990,22 +991,27 @@ class Sweeping(Scratch):
         )
         return sweep(settings, runs, Interrupts(), self.said.append)
 
-    def test_each_run_is_told_the_seed_after_that_of_the_run_before_and_its_row_names_it(self):
-        report = self.sweep_of(3, network={"seed": 7})
+    def test_each_run_is_told_the_seeds_after_those_of_the_run_before_and_its_row_names_them(self):
+        report = self.sweep_of(3, seed=4, network={"seed": 7})
 
-        for number, seed in ((1, 7), (2, 8), (3, 9)):
+        runs = ((1, 4, 7), (2, 5, 8), (3, 6, 9))
+        for number, seed, network_seed in runs:
             run_of = self.out / str(number)
             plan = json.loads((run_of / "plan.json").read_text("utf-8"))
-            self.assertEqual(plan["network"]["seed"], seed)
+            self.assertEqual((plan["seed"], plan["network"]["seed"]), (seed, network_seed))
             kept = json.loads((run_of / "run.json").read_text("utf-8"))
-            self.assertEqual((kept["rig"], kept["network"]["seed"]), ("one process", seed))
-        self.assertEqual([row["seed"] for row in report["rows"]], [7, 8, 9])
+            self.assertEqual(
+                (kept["rig"], kept["seed"], kept["network"]["seed"]),
+                ("one process", seed, network_seed),
+            )
+        self.assertEqual([row["seed"] for row in report["rows"]], [4, 5, 6])
+        self.assertEqual([row["network_seed"] for row in report["rows"]], [7, 8, 9])
         self.assertEqual(self.said[0], table.head(one_process=True))
         self.assertEqual(
             [cells(row) for row in self.said[1:4]],
             [
-                (str(number), "3 of 3", "whole", f"as expected; seed {seed}")
-                for number, seed in ((1, 7), (2, 8), (3, 9))
+                (str(number), "3 of 3", "whole", f"as expected; seed {seed}; network seed {seeded}")
+                for number, seed, seeded in runs
             ],
         )
         self.assertEqual(self.said[4:], ["3 of 3 runs went as expected"])
@@ -1028,7 +1034,7 @@ class Sweeping(Scratch):
             self.assertRegex(
                 cells(row)[3],
                 r"^raya \([0-9a-f]{8}\): never joined, expected tip, and 1 more; "
-                f"stopped: {stopped}$",
+                f"stopped: {stopped}; seed [01]$",
             )
         self.assertEqual(self.said[3:], ["0 of 2 runs went as expected"])
         self.assertEqual([row["stopped"] for row in report["rows"]], [stopped] * 2)

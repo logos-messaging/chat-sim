@@ -89,6 +89,7 @@ def run(settings: Settings, watch: Watch) -> dict:
         "cluster_id": CLUSTER_ID if scenario.preset is None else None,
         "max_message_kib": scenario.max_message_kib if scenario.preset is None else None,
         "budget": scenario.budget,
+        "seed": None,
         "network": None if scenario.network is None else asdict(scenario.network),
         "wire": None if scenario.wire is None else asdict(scenario.wire),
         "load": {"start": list(os.getloadavg()), "end": None},

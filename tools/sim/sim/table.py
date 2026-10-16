@@ -86,14 +86,17 @@ def render(report: dict) -> str:
 def row(number: int, seconds: float, report: dict) -> str:
     """A sweep's row for a run: how its check went, and what stopped its steps if anything did.
 
-    Then the seed of its network model and what was withheld, for a run that has them.
+    Then the seeds of the run in one process, of its network model and of its wire, and what was
+    withheld, for a run that has them.
     The seconds of a run in one process are those of its virtual clock, whatever `seconds`.
     """
     said = [_check(report)]
     if report["stopped"] is not None:
         said.append(f"stopped: {report['stopped']}")
+    if report["seed"] is not None:
+        said.append(f"seed {report['seed']}")
     if report["network"] is not None:
-        said.append(f"seed {report['network']['seed']}")
+        said.append(f"network seed {report['network']['seed']}")
     if report["wire"] is not None:
         said.append(f"wire seed {report['wire']['seed']}")
     if report["withheld"] is not None:
@@ -177,6 +180,7 @@ def _clock(report: dict) -> str:
             f"one process, {_seconds(report['virtual_s'])} on a virtual clock "
             f"in {_seconds(report['wall_s'])} of wall time"
         )
+    said += f", seed {report['seed']}"
     # One process has no node to take a largest message.
     if report["max_message_kib"] != Scenario.max_message_kib:
         said += f", largest message {report['max_message_kib']} KiB not applied"

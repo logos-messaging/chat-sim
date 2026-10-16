@@ -97,7 +97,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if settings.image is None and settings.scenario.wire is not None:
         parser.error("the scenario has `wire`, and only --image puts conditions on the wire")
     last = settings.scenario.of_run(getattr(args, "runs", 1))
-    for seeded, said in ((last.network, "the seed"), (last.wire, "the wire seed")):
+    seeds = ((last, "the seed"), (last.network, "the network seed"), (last.wire, "the wire seed"))
+    for seeded, said in seeds:
         if seeded is not None and seeded.seed > scenario.MOST_SEED:
             parser.error(
                 f"--runs: run {args.runs} would have {said} {seeded.seed}, "

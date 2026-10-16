@@ -23,6 +23,7 @@ def report(**changed) -> dict:
         "timers": "fast",
         "preset": None,
         "max_message_kib": 512,
+        "seed": None,
         "network": None,
         "wire": None,
         "load": {"start": [1.5, 1.25, 1.0], "end": [2.625, 2.25, 2.0]},
@@ -537,7 +538,7 @@ class Row(unittest.TestCase):
     def test_a_run_with_a_network_model_names_its_seed_after_what_stopped_it(self):
         self.assertEqual(
             table.row(7, 41.26, report(network=NETWORK)),
-            "  7     41.3      3 of 3  whole                   as expected; seed 7",
+            "  7     41.3      3 of 3  whole                   as expected; network seed 7",
         )
         stopped = differing(
             "raya (7b1e44d9): never joined, expected tip",
@@ -547,7 +548,7 @@ class Row(unittest.TestCase):
         self.assertTrue(
             table.row(2, 9.04, stopped).endswith(
                 "; stopped: raya: no line of a new roster within the budget; "
-                f"seed {2**64 - 1}"
+                f"network seed {2**64 - 1}"
             )
         )
 
@@ -556,7 +557,8 @@ class Row(unittest.TestCase):
 
         self.assertEqual(
             table.row(7, 41.26, report(network=NETWORK, wire=wire)),
-            "  7     41.3      3 of 3  whole                   as expected; seed 7; wire seed 70",
+            "  7     41.3      3 of 3  whole                   "
+            "as expected; network seed 7; wire seed 70",
         )
 
     def test_a_run_that_withheld_a_candidate_says_whose_and_whether_applied_before_its_page(self):
@@ -564,13 +566,15 @@ class Row(unittest.TestCase):
 
         self.assertTrue(
             table.row(1, 1.0, told).endswith(
-                f"  as expected; seed 7; withheld from pax: the candidate of raya, applied; {PAGE}"
+                "  as expected; network seed 7; "
+                f"withheld from pax: the candidate of raya, applied; {PAGE}"
             )
         )
         told["withheld"]["applied"] = False
         self.assertTrue(
             table.row(1, 1.0, dict(told, page=None)).endswith(
-                "  as expected; seed 7; withheld from pax: the candidate of raya, not applied"
+                "  as expected; network seed 7; "
+                "withheld from pax: the candidate of raya, not applied"
             )
         )
 

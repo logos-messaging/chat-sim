@@ -128,6 +128,7 @@ them:
 | `max_message_kib` | `512` | The largest message a node takes, as chat-cli's `--max-message-kib`: 1 to 2^32 - 1, the most the flag holds. Refused with `preset`, which fixes the largest message. |
 | `preset` | | The fleet preset every node joins, by its name, as chat-cli's `--preset`: `logos.test`. Without it the nodes are a network of the run's own (see [On a fleet preset](#on-a-fleet-preset)). A name that is no text, an empty one, or one that holds a character that cannot be printed, as a line break is, is refused. Which names there are is the delivery library's to say. |
 | `budget` | `180` | How many seconds each wait may take: a peer's start, the wiring, a batch, a post. A number above 0. |
+| `seed` | `0` | What a run in one process draws every random number from: the ids of the group and of its members, their keys, and all else the core draws (see [In one process](#in-one-process)). A whole number from 0 to 2^64 - 1. A peer that is a process draws from its OS, so in any other run it has no part. |
 | `network` | | A model of a lossy network that every peer puts what it receives through (see [The network model](#the-network-model)). Without it no peer has one. |
 | `wire` | | The delay, the jitter and the loss on what each member sends, in a run in containers (see [The wire](#the-wire)). Refused in a run without `--image`. |
 | `expect` | | How the outcome differs from a whole group, as below. |
@@ -280,10 +281,10 @@ python3 tools/sim sweep tools/sim/scenarios/three.json --runs 3 --chat-cli targe
 ```
 
 A sweep does one scenario `--runs` times, one run after another, each in a directory of its own
-under `--out`, named by the run's number. A scenario with a network model gives each run the seed
-after that of the run before, so that run `k` has `seed + k - 1`, and a sweep whose last run
-would have a seed above 2^64 - 1 is refused. So does a scenario with a wire, with the seed of its
-wire. It prints a row as each run ends, and then how many
+under `--out`, named by the run's number. Each run has the scenario's `seed` after that of the
+run before, so that run `k` has `seed + k - 1`, and a sweep whose last run would have a seed above
+2^64 - 1 is refused. So does a scenario with a network model, with the seed of its model, and
+one with a wire, with the seed of its wire. It prints a row as each run ends, and then how many
 runs went as expected:
 
 ```console
@@ -300,7 +301,7 @@ run  seconds  at the tip  verdict                 check
 | `seconds` | How long the run took, from its start to its check. For a run in one process, how far its virtual clock went, and the line above the rows says so. |
 | `at the tip` | How many of the members the steps seat the report has at the tip. |
 | `verdict` | The verdict of the report. |
-| `check` | `as expected`, or the first difference the check found and how many more there are, or `not checked`, with how `forks check` ended when it was run and gave no answer. Then, after `; stopped:`, what stopped the steps when something did. Then `seed` and the seed of the run's network model, `wire seed` and the seed of its wire, and what was withheld from whom and whether the group applied it, for a run that has them. Then the address of the conversation's page when the logs were shared, or after `not shared:` why they were not. |
+| `check` | `as expected`, or the first difference the check found and how many more there are, or `not checked`, with how `forks check` ended when it was run and gave no answer. Then, after `; stopped:`, what stopped the steps when something did. Then `seed` and the seed of a run in one process, `network seed` and the seed of its network model, `wire seed` and the seed of its wire, and what was withheld from whom and whether the group applied it, for a run that has them. Then the address of the conversation's page when the logs were shared, or after `not shared:` why they were not. |
 
 It takes the flags of `run`, and `--share` sends the logs of every run. A sweep exits 0 when every
 run went as expected, 1 when one did not, and 2 when its command line or the scenario is refused.
@@ -316,7 +317,7 @@ short has left the rows of the runs that ended:
 | `runs`, `done`, `as_expected` | How many runs were asked for, how many ended, and how many of those went as expected |
 | `interrupted` | The name of the signal that interrupted the sweep, or `null` |
 | `load` | The load average of the machine at the `start` and at the `end` of the sweep |
-| `rows[]` | For each run that ended its `run` number and `directory`, whether it is `ok`, the `differences` its check found, or `null` when it was not checked, as `unchecked` how `forks check` ended when it gave no answer, what `stopped` its steps, the `verdict`, the members `at_tip` of those `seated`, its `seconds`, the `seed` of its network model, the `wire_seed` of its wire and what was `withheld` as its `run.json` holds it, each `null` for a run without one, and the `page` its logs were shared at |
+| `rows[]` | For each run that ended its `run` number and `directory`, whether it is `ok`, the `differences` its check found, or `null` when it was not checked, as `unchecked` how `forks check` ended when it gave no answer, what `stopped` its steps, the `verdict`, the members `at_tip` of those `seated`, its `seconds`, the `seed` of a run in one process, the `network_seed` of its network model, the `wire_seed` of its wire and what was `withheld` as its `run.json` holds it, each `null` for a run without one, and the `page` its logs were shared at |
 
 ## What a run does
 
@@ -946,15 +947,15 @@ run of processes: by the same expectation, with `forks report` and `forks check`
 outcomes of a `withhold` step, and with `--share`. `sweep` takes the flag as `run` does.
 
 ```console
-3 members, fast group timers, one process, 1.350s on a virtual clock in 0.004s of wall time
+3 members, fast group timers, one process, 1.350s on a virtual clock in 0.016s of wall time, seed 0
 whole: 3 of 3 members at the tip
 the report is as expected
-load average 0.65 at the start, 0.65 at the end
+load average 1.48 at the start, 1.48 at the end
 
 member  installation  errors
-saro        6deba808       0
-raya        99fa5d5a       0
-pax         de26c5d7       0
+saro        02680b98       0
+raya        fd24df45       0
+pax         530d0b04       0
 
 batch  joiners  members  seated
 1            2        3  1.250s
@@ -986,11 +987,11 @@ What differs from a run of processes:
   the peer's model numbers the invites among them (see
   [chat-cli](../../bin/chat-cli/README.md#the-network-model)). So the `n`-th frame of a member
   is another frame here, and what the models count is not compared between the two.
-- There is one log. `group.log` holds the trace records of every member, stamped by the
-  virtual clock, which starts at the second the run began. The report takes it for one run that
-  holds every installation, and each member's installation id is taken from the runner's
-  result. `report.txt` and a shared page name every installation `group`, after the log, and
-  `run.txt` has each member's name beside its installation id.
+- There is one log. `group.log` holds the trace records of every member, stamped by the virtual
+  clock, which starts at 2026-01-01T00:00:00Z in every run. The report takes it for one run that
+  holds every installation, and each member's installation id is taken from the runner's result.
+  `report.txt` and a shared page name every installation `group`, after the log, and `run.txt`
+  has each member's name beside its installation id.
 - An `/add` or a post that the group refuses is tried again after each step of the clock, until
   the budget has run out. A run of processes stops at the refusal.
 - The reason a member rejected a frame is in the words of the core's error,
@@ -1023,10 +1024,13 @@ hold of less than half a nanosecond, and the run stops in the same way, with
 
 A signal that interrupts the command ends the runner, and the run is not checked.
 
-The seed of `network` fixes what a member's model does with the `n`-th frame to reach it, and
-nothing else. The ids of a group and of its members are drawn at random, and which commit a
-group applies follows from them, so a seed does not make a run again here either (see
-[The loss rate in one process](#the-loss-rate-in-one-process)).
+A scenario and its seeds give one run, whenever it is made. The runner draws every random
+number of the run from the scenario's `seed`, the ids of the group and of its members among
+them, and which commit the group applies follows from those. The seed of `network` fixes what a
+member's model does with the `n`-th frame to reach it. Two runs of one scenario write the same
+`group.log`, and the same report but for the wall time and the load average (see
+[The loss rate in one process](#the-loss-rate-in-one-process)). A change to the core that
+changes a run shows as a difference between the logs of one scenario made before and after it.
 
 ### What a run in one process writes
 
@@ -1041,6 +1045,7 @@ a run of processes has them, and `.forks-share.json` in a run given `--share`. `
 | Field | Holds |
 |-------|-------|
 | `rig` | `one process`. A run of processes has no such field |
+| `seed` | The scenario's `seed`, as this run had it. `null` in a run of processes |
 | `virtual_s`, `wall_s` | How far the runner moved its clock, and how long it took on the machine. `null` when no result was read |
 | `preset`, `cluster_id` | `null`, both |
 | `max_message_kib` | The scenario's, which nothing applied |
@@ -1049,24 +1054,25 @@ a run of processes has them, and `.forks-share.json` in a run given `--share`. `
 | `posts[]` | For each post its `poster`, its `readers`, those that left it `unread`, and `read` on the virtual clock. Nothing of a registry |
 | `holds[]` | The `seconds` of each `hold` step that was done, and nothing else |
 
-The first line of `run.txt` says that the run was one process, how far the virtual clock went
-and how long that took. The table of the members has each one's installation id and the count of
-the frames it rejected. With `network` it has how many frames `arrived` at the member's model,
-and how many of them the model `passed`, `held` at the end and `lost`:
+The first line of `run.txt` says that the run was one process, how far the virtual clock went,
+how long that took, and the run's seed. The table of the members has each one's installation id
+and the count of the frames it rejected. With `network` it has how many frames `arrived` at the
+member's model, and how many of them the model `passed`, `held` at the end and `lost`. Here the
+fifth run of a sweep of `lost-candidate.json`:
 
 ```console
-5 members, fast group timers, one process, 3.650s on a virtual clock in 0.023s of wall time, network seed 1, loss 0, welcome loss 0
+5 members, fast group timers, one process, 3.650s on a virtual clock in 0.052s of wall time, seed 4, network seed 5, loss 0, welcome loss 0
 split at epoch 4: 5 of 5 members at the tip
 withheld from pax: the candidate of saro, applied
 the report is as expected
-load average 0.70 at the start, 0.70 at the end
+load average 1.11 at the start, 1.11 at the end
 
 member  installation  arrived  passed  held  lost  errors
-saro        71dd1a00       20      20     0     0       1
-raya        7d327f86       23      23     0     0       1
-pax         4af4b4f5       22      21     0     1       1
-mira        4ff4ce8d       14      14     0     0       1
-kes         20168d35        4       4     0     0       1
+saro        52c324a5       20      20     0     0       1
+raya        bd5a775e       22      22     0     0       1
+pax         f61b4185       22      21     0     1       1
+mira        b74e2dcb       15      15     0     0       1
+kes         314c9dfc        4       4     0     0       1
 
 inbound error                                                                 frames  members
 DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))       5        5
@@ -1087,9 +1093,9 @@ of processes:
 
 ```console
 run  seconds  at the tip  verdict                 check (one process: seconds of its virtual clock)
-  1      1.4      3 of 3  whole                   as expected
-  2      1.4      3 of 3  whole                   as expected
-  3      1.4      3 of 3  whole                   as expected
+  1      1.4      3 of 3  whole                   as expected; seed 0
+  2      1.4      3 of 3  whole                   as expected; seed 1
+  3      1.4      3 of 3  whole                   as expected; seed 2
 3 of 3 runs went as expected
 ```
 
@@ -1147,7 +1153,7 @@ by then. Each was ended by a SIGTERM to `sim`, which ends the runner, so there i
 the run is not checked:
 
 ```console
-300 members, fast group timers, one process on a virtual clock
+300 members, fast group timers, one process on a virtual clock, seed 0
 stopped after 0 of 2 steps: interrupted by SIGTERM
 not checked: no result of the runner was read
 ```
@@ -1194,40 +1200,34 @@ collector gave for that conversation had the run's verdict, `whole`.
 
 ### The loss rate in one process
 
-`lossy.json` was swept 20 times over the seeds 1 to 20, which the 20 runs of
-[A loss rate](#a-loss-rate) had, and then once more over the same seeds. The load average was
-0.7. The last column is what those 20 runs of processes came to:
+`lossy.json` was swept 20 times on 2026-10-16, over the network seeds 1 to 20, which the 20 runs
+of [A loss rate](#a-loss-rate) had, and the seeds 0 to 19, and then once more. The load average
+was 1.5. The last column is what those 20 runs of processes came to:
 
-| Outcome | One process | The same seeds again | With processes |
-|---|---|---|---|
-| `whole`, as expected | 12 | 11 | 10 |
-| Split | 2: at epoch 3 once, at epoch 4 once | 3: at epoch 3 twice, at epoch 4 once | 3, at epoch 4 |
-| `whole, members behind` | 3 | 4 | 1 |
-| `whole`, a post that was not read | 2 | 1 | 3 |
-| `whole`, a batch that did not come about | 1 | 1 | 3 |
+| Outcome | One process | With processes |
+|---|---|---|
+| `whole`, as expected | 11 | 10 |
+| Split | 2, at epoch 3 | 3, at epoch 4 |
+| `whole, members behind` | 4 | 1 |
+| `whole`, a post that was not read | 2 | 3 |
+| `whole`, a batch that did not come about | 1 | 3 |
+
+The second sweep printed the same 20 rows, byte for byte, installation ids and all.
 
 One process came to every outcome the runs of processes came to, and the counts need not agree.
 One process gives the group under the model alone, with the frames arriving in the order the
 runner hands them over. Processes give it over nodes that gossip, each of which also hands its
 peer the frames that peer published. Twenty runs are few on either side.
 
-In the first sweep, the member alone on a branch had lost a commit candidate: saro, at epoch 3
-in one run and at epoch 4 in the other. The runner stops the steps at a batch that leaves the
-group split, so those runs ended after 2.95 and 3.55 s of the clock. A member behind had lost
-one frame or more and stayed one epoch back, raya twice and pax once. The post was not read by
-saro both times, which had lost three frames in one run and two in the other. In the run whose
-batch did not come about, raya lost the second frame to reach it, and no member came to hold
-the roster of three. A run as expected moved the clock 3.2 to 3.65 s, and one that waited out
-its budget of 33 s moved it 34.3 to 36.15 s. No run took the runner more than 0.03 s. The
-models dropped 51 of the 1343 frames that arrived, which is 0.038 of them, and 48 of 1286 in
-the second sweep.
-
-Of the 20 seeds, 17 came to one row of the table in both sweeps. Under seed 19 the model of raya
-lost the eighth frame to reach it both times, a commit candidate: the run went as expected in
-the first sweep, and in the second the group split at epoch 3 with raya alone. Under seed 6 it
-lost that frame both times as well, and both runs went as expected. Under seed 15 saro did not
-read the post in the first sweep and the run went as expected in the second, and under seed 18
-the run went as expected in the first and raya stayed behind in the second.
+The member alone on a branch had lost a commit candidate: pax in one run and raya in the other. The
+runner stops the steps at a batch that leaves the group split, so those runs ended after 3.0 and
+2.95 s of the clock. A member behind had lost a frame of about 3 KB, once a commit candidate and
+else a group frame of that size, and stayed one epoch back: raya three times and pax once. The post
+was not read by mira both times, which had lost one frame in one run and two in the other. In the
+run whose batch did not come about, raya lost the second frame to reach it, and no member came to
+hold the roster of three. A run as expected moved the clock 3.2 to 3.65 s, and one that waited out
+its budget of 33 s moved it 34.3 to 36.15 s. No run took the runner more than 0.07 s. The models
+dropped 52 of the 1305 frames that arrived, which is 0.040 of them.
 
 ### A delay in one process
 
@@ -1257,8 +1257,9 @@ pax: pax read it in 5 runs of 5 in one process, and in 3 of 3 with processes.
 - It shapes no traffic between the nodes but on the wire of a run in containers. The network
   model is chat-cli's and drops what a node hands its client, and `sim` checks a rate and a
   delay for their form and their range alone.
-- It does not make a run with a loss rate again from its seed: the seed gives the same draw to
-  the frame a peer receives as its `n`-th, and which frame that is differs from run to run.
+- It does not make a run of processes or of containers again from its seeds: a seed gives the
+  same draw to the frame a peer receives as its `n`-th, and which frame that is differs from run
+  to run. Only a run in one process is made again.
 - It does not look at what a report holds beyond the verdict, the positions and the posts (see
   [forks](../forks/README.md#checking-a-report)), so a run that went as expected may hold
   `unreadable` records of frames that are no posts.

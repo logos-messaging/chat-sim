@@ -164,7 +164,8 @@ class Scenario:
     `timers` names a set, or gives durations in milliseconds over the library's own. `budget`
     is the seconds each wait may take: a peer's start, the wiring, a batch, a post. `preset`
     names the fleet preset every node joins, in place of a network of the run's own with
-    `max_message_kib` for its largest message.
+    `max_message_kib` for its largest message. `seed` is what a run in one process draws every
+    random number from; a peer that is a process draws from its OS.
     """
 
     members: int
@@ -173,6 +174,7 @@ class Scenario:
     max_message_kib: int = 512
     preset: Optional[str] = None
     budget: float = 180.0
+    seed: int = 0
     network: Optional[Network] = None
     wire: Optional[Wire] = None
     expect: Expect = Expect()
@@ -190,13 +192,11 @@ class Scenario:
     def of_run(self, number: int) -> Scenario:
         """The scenario as run `number` of a sweep does it, from 1: each has the next seeds."""
         network, wire = self.network, self.wire
-        if network is None and wire is None:
-            return self
         if network is not None:
             network = replace(network, seed=network.seed + number - 1)
         if wire is not None:
             wire = replace(wire, seed=wire.seed + number - 1)
-        return replace(self, network=network, wire=wire)
+        return replace(self, seed=self.seed + number - 1, network=network, wire=wire)
 
     def posts(self) -> List[Tuple[int, int]]:
         """Each post of the steps in the order sent: who sends it, and how many are seated then."""
@@ -302,6 +302,7 @@ def scenario(said: object) -> Scenario:
             "max_message_kib",
             "preset",
             "budget",
+            "seed",
             "network",
             "wire",
             "steps",
@@ -336,6 +337,7 @@ def scenario(said: object) -> Scenario:
         ),
         preset=_preset(whole),
         budget=_seconds(whole.get("budget", Scenario.budget), "`budget`"),
+        seed=_whole(whole, "seed", "the scenario", least=0, most=MOST_SEED),
         network=network,
         wire=wire,
         expect=expect,

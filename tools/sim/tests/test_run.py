@@ -1394,16 +1394,22 @@ class CommandLine(Scratch):
         self.assertEqual(list(self.out.iterdir()), [])
 
     def test_a_sweep_whose_last_run_would_have_a_seed_above_the_most_is_refused(self):
+        seeded = str(self.scenario(seed=2**64 - 2))
+        self.assertEqual(
+            self.refused("sweep", seeded, "--runs", "3"),
+            f"sim: error: --runs: run 3 would have the seed {2**64}, and {2**64 - 1} is the most",
+        )
         scenario_file = str(self.scenario(network={"seed": 2**64 - 2}))
 
         self.assertEqual(
             self.refused("sweep", scenario_file, "--runs", "3"),
-            f"sim: error: --runs: run 3 would have the seed {2**64}, and {2**64 - 1} is the most",
+            f"sim: error: --runs: run 3 would have the network seed {2**64}, "
+            f"and {2**64 - 1} is the most",
         )
         self.assertFalse(self.out.exists())
         status, printed = self.sim("sweep", scenario_file, "--runs", "2")
         self.assertEqual(status, 0, printed)
-        self.assertIn(f"as expected; seed {2**64 - 1}\n", printed)
+        self.assertIn(f"as expected; network seed {2**64 - 1}\n", printed)
 
     def test_a_chat_cli_that_is_no_file_is_refused(self):
         complained = io.StringIO()
