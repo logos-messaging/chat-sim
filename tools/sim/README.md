@@ -1043,6 +1043,14 @@ What differs from a run of processes:
   network namespace. A frame is lost or late where the network model makes it so and nowhere
   else. `max_message_kib` has nothing to act on, and the first line says so when the scenario
   sets one other than the default: `largest message 64 KiB not applied`.
+- A member answers a frame in the step that hands it over, where a peer answers over a second
+  or two. Of the 21 members of the epoch the second batch of ten makes, the ten older ones vote
+  on the steward election it opens in the step it opens, the ten that join in that step never
+  vote on it, and it is decided at its 30 s timeout: of fifty members seated ten at a time on the
+  library's own timers, the third batch is seated after 90 s. Over a network the joiners vote
+  within two seconds of the election opening, and the batch is seated after 73 to 75 s. How a
+  joiner comes to vote on a proposal made before it joined is not traced. Seated one at a time,
+  as `50-epochs.json` seats them, no epoch takes longer than 70.05 s.
 - There is one log. `group.log` holds the trace records of every member, stamped by the virtual
   clock, which starts at 2026-01-01T00:00:00Z in every run. The report takes it for one run that
   holds every installation, and each member's installation id is taken from the runner's result.
