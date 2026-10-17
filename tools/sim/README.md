@@ -1007,10 +1007,10 @@ run of processes: by the same expectation, with `forks report` and `forks check`
 outcomes of a `withhold` step, and with `--share`. `sweep` takes the flag as `run` does.
 
 ```console
-3 members, fast group timers, one process, 1.350s on a virtual clock in 0.016s of wall time, seed 0
+3 members, fast group timers, one process, 0.600s on a virtual clock in 0.011s of wall time, seed 0
 whole: 3 of 3 members at the tip
 the report is as expected
-load average 1.48 at the start, 1.48 at the end
+load average 0.40 at the start, 0.40 at the end
 
 member  installation  errors
 saro        02680b98       0
@@ -1018,7 +1018,7 @@ raya        fd24df45       0
 pax         530d0b04       0
 
 batch  joiners  members  seated
-1            2        3  1.250s
+1            2        3  0.500s
 
 post  from  read by  median   worst
 1      pax   2 of 2  0.000s  0.000s
@@ -1043,10 +1043,6 @@ What differs from a run of processes:
   network namespace. A frame is lost or late where the network model makes it so and nowhere
   else. `max_message_kib` has nothing to act on, and the first line says so when the scenario
   sets one other than the default: `largest message 64 KiB not applied`.
-- A member is not handed the frames it published itself. A peer's node hands them back, and
-  the peer's model numbers the invites among them (see
-  [chat-cli](../../bin/chat-cli/README.md#the-network-model)). So the `n`-th frame of a member
-  is another frame here, and what the models count is not compared between the two.
 - There is one log. `group.log` holds the trace records of every member, stamped by the virtual
   clock, which starts at 2026-01-01T00:00:00Z in every run. The report takes it for one run that
   holds every installation, and each member's installation id is taken from the runner's result.
@@ -1121,11 +1117,11 @@ member's model, and how many of them the model `passed`, `held` at the end and `
 fifth run of a sweep of `lost-candidate.json`:
 
 ```console
-5 members, fast group timers, one process, 3.650s on a virtual clock in 0.052s of wall time, seed 4, network seed 5, loss 0, welcome loss 0
+5 members, fast group timers, one process, 2.900s on a virtual clock in 0.054s of wall time, seed 4, network seed 5, loss 0, welcome loss 0
 split at epoch 4: 5 of 5 members at the tip
 withheld from pax: the candidate of saro, applied
 the report is as expected
-load average 1.11 at the start, 1.11 at the end
+load average 0.45 at the start, 0.45 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        52c324a5       20      20     0     0       1
@@ -1138,7 +1134,7 @@ inbound error                                                                 fr
 DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))       5        5
 
 batch  joiners  members  seated
-1            1        2  1.250s
+1            1        2  0.500s
 2            1        3  0.550s
 3            1        4  0.600s
 4            1        5  1.050s
@@ -1153,24 +1149,24 @@ of processes:
 
 ```console
 run  seconds  at the tip  verdict                 check (one process: seconds of its virtual clock)
-  1      1.4      3 of 3  whole                   as expected; seed 0
-  2      1.4      3 of 3  whole                   as expected; seed 1
-  3      1.4      3 of 3  whole                   as expected; seed 2
+  1      0.6      3 of 3  whole                   as expected; seed 0
+  2      0.6      3 of 3  whole                   as expected; seed 1
+  3      0.6      3 of 3  whole                   as expected; seed 2
 3 of 3 runs went as expected
 ```
 
 ### From three members to a hundred
 
 These are the numbers of the machine of [The floor on one machine](#the-floor-on-one-machine),
-taken on 2026-10-12 with a release build of `harness-run`, every run through `sim`. The load
-average over one minute was between 0.6 and 1.2.
+taken on 2026-10-17 with a release build of `harness-run`, every run through `sim`. The load
+average over one minute was between 0.4 and 1.1.
 
 | Scenario | Runs | As expected | The virtual clock went, s | The runner took, s | The run took, s |
 |---|---|---|---|---|---|
-| `three.json` | 3 | 3 | 1.35 | 0.004 to 0.005 | 0.18 to 0.20 |
-| `twenty.json` | 3 | 3 | 1.95 | 0.34 to 0.35 | 0.55 to 0.56 |
-| A hundred members, the library's own timers | 2 | 2 | 770.9 | 70.54 and 70.89 | 70.96 and 71.31 |
-| A hundred members, the `fast` set | 2 | 2 | 7.3 | 71.50 and 70.80 | 71.95 and 71.21 |
+| `three.json` | 3 | 3 | 0.6 | 0.010 to 0.035 | 0.45 to 0.49 |
+| `twenty.json` | 3 | 3 | 1.2 | 0.77 to 0.79 | 1.23 to 1.25 |
+| A hundred members, the library's own timers | 2 | 2 | 710.9 | 153.88 and 152.27 | 154.76 and 153.14 |
+| A hundred members, the `fast` set | 2 | 2 | 6.55 | 151.85 and 151.39 | 152.72 and 152.24 |
 
 A run took what `sweep.json` has for it, from its start to its check, and a run of a hundred
 members what `/usr/bin/time -v` gave for the command.
@@ -1195,20 +1191,24 @@ peers is recorded here.
 
 All four runs were `whole` with 100 of 100 members at the tip, and the 99 other members read
 the post before the clock moved on. The timers set how far the clock goes, and not how long the
-runner takes. With the library's own, the first batch was seated after 120.0 s of the clock, the
+runner takes. With the library's own, the first batch was seated after 60.0 s of the clock, the
 second after 70.0 s, the third after 90.0 s and each of the seven after that after 70.05 s. With
-the `fast` set the first was seated after 1.25 s, the second after 0.55 s, the third after
-0.75 s and each of the seven after that after 0.6 s. On the machine the first batch took 0.02 s
-with either set, the fifth 3.5 to 3.9 s, and the last, which seats nine at ninety-one members,
-19.8 to 20.1 s. The largest resident set `/usr/bin/time -v` gave for the command was 269604 to
-270396 kB, which is 263 to 264 MiB.
+the `fast` set the first was seated after 0.5 s, the second after 0.55 s, the third after
+0.75 s and each of the seven after that after 0.6 s. On the machine the first batch took 0.05 to
+0.06 s with either set, the fifth 7.8 to 7.9 s, and the last, which seats nine at ninety-one
+members, 42.9 to 43.1 s. The largest resident set `/usr/bin/time -v` gave for the command was
+271364 to 271608 kB, which is 265 MiB.
 
-A batch of ten took 0.3 s where it left twenty-one members and 15.7 to 15.9 s where it left
-ninety-one, and over the eight batches from the one to the other its time grew as the size of
-the group to the power of 2.7.
+A batch of ten took 0.66 to 0.69 s where it left twenty-one members and 33.9 to 34.2 s where it
+left ninety-one, and over the eight batches from the one to the other its time grew as the size
+of the group to the power of 2.7.
+
+The machine moves these times, and not those of the clock: one build of the runner took 70.5
+and 70.9 s for a hundred members on the library's own timers on 2026-10-12, and 151.7 s on
+2026-10-17.
 
 Three hundred members, seated the same way, were given 30 minutes with each set of timers, the
-two runs at once, at a load average of 1.0 at the start and 2.1 at the end. Neither run was over
+two runs at once, at a load average of 1.0 at the start and 2.0 at the end. Neither run was over
 by then. Each was ended by a SIGTERM to `sim`, which ends the runner, so there is no result and
 the run is not checked:
 
@@ -1219,40 +1219,40 @@ not checked: no result of the runner was read
 ```
 
 What each got to is in the `group.log` it left, by `forks report`. With either set the log
-held 24 batches: 241 installations, every one at the tip at epoch 24, and the verdict `whole`.
-Its last record was stamped 1752.15 s after the start of the clock with the library's own
-timers, and 16.30 s after it with the `fast` set. The largest resident set of the command was
-2500172 and 2503736 kB, which is 2.4 GiB.
+held 20 batches: 201 installations, every one at the tip at epoch 20, and the verdict `whole`.
+Its last record was stamped 1411.75 s after the start of the clock with the library's own
+timers, and 12.90 s after it with the `fast` set. The largest resident set of the command was
+1655616 and 1656928 kB, which is 1.6 GiB.
 
 ### The lost candidate in one process
 
 `lost-candidate.json` and the three copies of
 [A candidate that does not arrive](#a-candidate-that-does-not-arrive) were swept 10 times each,
-at a load average of 0.7. The last column is what the sweeps of processes of that section came
-to:
+over the seeds 0 to 9, at a load average of 0.5 to 0.7. The last column is what the sweeps of
+processes of that section came to:
 
 | Withheld from | As expected | The group applied it | It did not | The candidate was that of | With processes: applied, not |
 |---|---|---|---|---|---|
-| saro | 10 of 10 | 8 | 2 | raya, 10 times | 4, 6 |
-| raya | 10 of 10 | 6 | 4 | saro, 10 times | 5, 5 |
-| pax | 10 of 10 | 9 | 1 | saro, 10 times | 2, 8 |
-| mira | 10 of 10 | 5 | 5 | saro, 10 times | 6, 4 |
+| saro | 10 of 10 | 6 | 4 | raya, 10 times | 4, 6 |
+| raya | 10 of 10 | 4 | 6 | saro, 10 times | 5, 5 |
+| pax | 10 of 10 | 4 | 6 | saro, 10 times | 2, 8 |
+| mira | 10 of 10 | 4 | 6 | saro, 10 times | 6, 4 |
 
 In each of the 40 runs the models dropped one frame between them: the member's, `withheld`, a
-candidate that another member made. The report read `split at epoch 4` in the 28 runs whose
+candidate that another member made. The report read `split at epoch 4` in the 18 runs whose
 member's model answered that the group applied the candidate, with that member alone on a branch
-of that epoch, and `whole` in the other 12, where no member was alone. So one process comes to
-the two outcomes a run of processes comes to, and to no third. Whose candidate reaches a member
-first differs: here it was saro's in every run that does not withhold from saro, and with
-processes pax lost saro's 5 times and raya's 5, and mira raya's 6 times and saro's 4.
+of that epoch, and `whole` in the other 22, where no member was alone. So one process comes to
+the two outcomes a run of processes comes to, and to no third. Which candidate the group applies
+follows from the seed, whoever the other one is withheld from: saro's under the seeds 4, 5, 6
+and 9, and raya's under the other six. Whose candidate reaches a member first differs: here it
+was saro's in every run that does not withhold from saro, and with processes pax lost saro's 5
+times and raya's 5, and mira raya's 6 times and saro's 4.
 
-A run moved the clock 3.6 to 3.7 s and took the runner 0.019 to 0.025 s. The batch after the
-step was seated in 1.05 s of the clock whichever way the run went, the first batch in 1.25 s,
+A run moved the clock 2.85 to 2.95 s and took the runner 0.046 to 0.068 s. The batch after the
+step was seated in 1.05 s of the clock whichever way the run went, the first batch in 0.5 s,
 the second in 0.55 s and the third in 0.55 or 0.6 s. Where the group applied the candidate, the
 post was waited for on the three other members and every member rejected one frame, as in the
-run above, but for the member itself in the 14 such runs that withhold from saro or from raya,
-which rejected two. Where it did not, the post was read by all four and no member rejected a
-frame.
+run above. Where it did not, the post was read by all four and no member rejected a frame.
 
 One more run of `lost-candidate.json` was given `--share`, to a collector started for it in a
 network namespace. It printed `shared: http://127.0.0.1:41391/#f7d8ed6b83`, and the report the
@@ -1260,9 +1260,9 @@ collector gave for that conversation had the run's verdict, `whole`.
 
 ### The loss rate in one process
 
-`lossy.json` was swept 20 times on 2026-10-16, over the network seeds 1 to 20, which the 20 runs
+`lossy.json` was swept 20 times on 2026-10-17, over the network seeds 1 to 20, which the 20 runs
 of [A loss rate](#a-loss-rate) had, and the seeds 0 to 19, and then once more. The load average
-was 1.5. The last column is what those 20 runs of processes came to:
+was 0.7 to 0.8. The last column is what those 20 runs of processes came to:
 
 | Outcome | One process | With processes |
 |---|---|---|
@@ -1276,24 +1276,24 @@ The second sweep printed the same 20 rows, byte for byte, installation ids and a
 
 One process came to every outcome the runs of processes came to, and the counts need not agree.
 One process gives the group under the model alone, with the frames arriving in the order the
-runner hands them over. Processes give it over nodes that gossip, each of which also hands its
-peer the frames that peer published. Twenty runs are few on either side.
+runner hands them over. Processes give it over nodes that gossip. Twenty runs are few on either
+side.
 
 The member alone on a branch had lost a commit candidate: pax in one run and raya in the other. The
-runner stops the steps at a batch that leaves the group split, so those runs ended after 3.0 and
-2.95 s of the clock. A member behind had lost a frame of about 3 KB, once a commit candidate and
+runner stops the steps at a batch that leaves the group split, so those runs ended after 2.25 and
+2.2 s of the clock. A member behind had lost a frame of about 3 KB, once a commit candidate and
 else a group frame of that size, and stayed one epoch back: raya three times and pax once. The post
 was not read by mira both times, which had lost one frame in one run and two in the other. In the
 run whose batch did not come about, raya lost the second frame to reach it, and no member came to
-hold the roster of three. A run as expected moved the clock 3.2 to 3.65 s, and one that waited out
-its budget of 33 s moved it 34.3 to 36.15 s. No run took the runner more than 0.07 s. The models
-dropped 52 of the 1305 frames that arrived, which is 0.040 of them.
+hold the roster of three. A run as expected moved the clock 2.45 to 2.9 s, and one that waited out
+its budget of 33 s moved it 33.55 to 35.4 s. No run took the runner more than 0.07 s. The models
+dropped 55 of the 1352 frames that arrived, which is 0.041 of them.
 
 ### A delay in one process
 
 `lost-candidate.json` with a delay of 300 ms on pax and a budget of 33 s, the first copy of
-[A delay](#a-delay), was swept 20 times in one process at a load average of 0.2. All 20 went as
-expected, 14 with the candidate applied. No step waits for the post on pax where pax is alone
+[A delay](#a-delay), was swept 20 times in one process at a load average of 0.8. All 20 went as
+expected, 11 with the candidate applied. No step waits for the post on pax where pax is alone
 on its branch, so the steps were over while the model of pax held the frame of the post. The
 runner then lets its clock go on until no model holds a frame, for the largest delay of the
 scenario at most and no longer than the budget, as a run of processes waits for each peer's
