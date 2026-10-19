@@ -94,12 +94,14 @@ class Withhold:
 
 @dataclass(frozen=True)
 class Grow:
-    """Members add new ones in rounds, one to `adders` a round on any branch, until the trunk
-    holds `epochs` or `branches` main branches run side by side, the trunk among them."""
+    """Members add new ones in rounds, until the trunk holds `epochs` or `branches` main branches
+    run side by side, the trunk among them: one to `adders` a round on any branch, or with `by`
+    that member alone, one a round, the line it holds the trunk. One of the two is `None`."""
 
     epochs: int
-    adders: int
+    adders: Optional[int]
     branches: int
+    by: Optional[str] = None
 
 
 Step = Union[Seat, Post, Hold, Cut, Heal, Withhold, Grow]
@@ -422,14 +424,23 @@ def _step(said: object, what: str, seated: int, members: int, modelled: bool) ->
         _member(member, f"`from` of {what}", seated, "is not seated by then")
         return Withhold(member)
     if said["step"] == "grow":
-        named = ("step", "epochs", "adders", "branches")
-        step = _fields(said, what, named, named)
+        named = ("step", "epochs", "adders", "by", "branches")
+        step = _fields(said, what, ("step", "epochs", "branches"), named)
         if members < 2:
             raise Refused(f"{what} is a `grow` step, and the scenario has 1 member")
         epochs = _whole(step, "epochs", what, least=1, most=MOST_MEMBERS)
-        adders = _whole(step, "adders", what, least=1, most=MOST_MEMBERS)
         # The trunk alone is one main branch.
-        return Grow(epochs, adders, _whole(step, "branches", what, least=2, most=MOST_MEMBERS))
+        branches = _whole(step, "branches", what, least=2, most=MOST_MEMBERS)
+        if "adders" in step and "by" in step:
+            raise Refused(f"{what} says `adders` and `by`, and a `grow` step says one or the other")
+        if "by" not in step:
+            if "adders" not in step:
+                raise Refused(f"{what} lacks `adders` or `by`")
+            return Grow(epochs, _whole(step, "adders", what, least=1, most=MOST_MEMBERS), branches)
+        if not isinstance(step["by"], str):
+            raise Refused(f"`by` of {what} is not a name")
+        _member(step["by"], f"`by` of {what}", seated, "is not seated when a `grow` step begins")
+        return Grow(epochs, None, branches, by=step["by"])
     step = _fields(said, what, ("step",), ("step", "from"))
     sender = step.get("from", Post.sender)
     if not isinstance(sender, str):

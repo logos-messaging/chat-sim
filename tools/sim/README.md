@@ -159,7 +159,7 @@ and `grow` in a run that is not in one process:
 | `cut` | `between` | Two sides of the group are cut off from each other. `between` holds the two sides, each a list of the names of one or more members seated by then, and a member is named once. Each member of both sides is told to drop what the members of the other side publish to the group. No cut is made while one is in force. |
 | `heal` | | The cut in force ends: each member of its two sides is told to drop nothing of the other side's any longer. |
 | `withhold` | `from` | The member `from`, seated by then, is told to drop the next commit candidate that reaches it, which is one of the batch the next step seats (see [A withheld candidate](#a-withheld-candidate)). |
-| `grow` | `epochs`, `adders`, `branches` | Members add the members not yet seated in rounds, until the trunk holds `epochs` or `branches` main branches run side by side, the trunk among them. Each round one to `adders` members, drawn from the `seed`, each add one at once, on whatever branch each is on. `epochs` and `adders` are 1 or more, and `branches` 2 or more. It is the scenario's only step, and the scenario says nothing of what to expect (see [A group that grows](#a-group-that-grows)). |
+| `grow` | `epochs`, `adders` or `by`, `branches` | Members add the members not yet seated in rounds, until the trunk holds `epochs` or `branches` main branches run side by side, the trunk among them. With `adders`, each round one to `adders` members, drawn from the `seed`, each add one at once, on whatever branch each is on. With `by`, the name of the first member, that member alone adds one each round, and the line it holds is the trunk. `epochs` and `adders` are 1 or more, and `branches` 2 or more. It is the scenario's only step, and the scenario says nothing of what to expect (see [A group that grows](#a-group-that-grows)). |
 
 A member no step seats runs its node and is in no group.
 
@@ -218,7 +218,9 @@ and `fifty-sized.json`, two sizes runs have been measured at (see
 [The floor on one machine](#the-floor-on-one-machine)), and `lost-candidate.json` and
 `lossy.json`, five members on a network model (see [What a lost frame does](#what-a-lost-frame-does)).
 `grow-waku-loss-1.json`, `grow-waku-loss-5.json` and `grow-waku-loss-10.json` grow a group of up to
-200 on Waku's delays at three rates of loss (see [A group that grows](#a-group-that-grows)).
+200 on Waku's delays at three rates of loss, and `grow-by-saro-waku-loss-1.json`,
+`grow-by-saro-waku-loss-5.json` and `grow-by-saro-waku-loss-10.json` grow it by saro alone (see
+[A group that grows](#a-group-that-grows)).
 `lossy-wire.json` has a wire, and CI runs it and `three.json` in containers (see
 [In containers](#in-containers)). `fleet-five.json` needs the `logos.test` fleet and is no part
 of CI (see [On a fleet preset](#on-a-fleet-preset)).
@@ -1385,6 +1387,24 @@ are of a member whose model lost a commit candidate in the run, as the member al
 had in [The lost candidate in one process](#the-lost-candidate-in-one-process). The other 21
 lost none, and how they came to a state of their own is not traced. A run moved the clock 818 to
 6121 s and took the runner 0.3 to 141.5 s, the most for the run that seated 78.
+
+`grow-by-saro-waku-loss-1.json`, `grow-by-saro-waku-loss-5.json` and
+`grow-by-saro-waku-loss-10.json` are those three with `"by": "saro"` in place of `"adders": 3`:
+saro alone adds, one member a round, and no member on a branch off saro's line is drawn to add.
+Each was swept 5 times on 2026-10-19 as above, and a second sweep wrote the same 15 logs:
+
+| Loss | The trunk's epoch at the end | First split, epoch | Seated | Ended at five main branches or six | Saro fell behind | Branches off the trunk of one member |
+|---|---|---|---|---|---|---|
+| 0.01 | 15 to 34 | 7 to 17 | 17 to 35 | 3 of 5 | 1 of 5 | 12 of 14 |
+| 0.05 | 9 to 23 | 3 to 9 | 14 to 24 | 3 of 5 | 2 of 5 | 14 of 16 |
+| 0.1 | 7 to 21 | 3 to 7 | 8 to 23 | 3 of 5 | 2 of 5 | 12 of 15 |
+
+Each branch off the trunk holds the state it forked at and no other, and no run has a
+sub-branch. A run that did not end at five main branches ended when saro could add no more. In
+five saro fell behind, and how is not traced. In the fifth run of `grow-by-saro-waku-loss-1.json`
+the other 14 members went on at epoch 15 in a state of their own, saro was left on the trunk
+with kes, who had fallen behind at epoch 10, and saro's next add was refused for the whole
+budget. A run moved the clock 759 to 3381 s and took the runner 0.3 to 17.3 s.
 
 ## What it does not do
 

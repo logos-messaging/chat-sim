@@ -139,6 +139,10 @@ class Reading(unittest.TestCase):
         self.assertFalse(scenario.scenario(three()).grows)
         # How many it seats is the run's to say.
         self.assertEqual((held.seated, held.expect, held.network), (1, Expect(), None))
+        by = {"step": "grow", "epochs": 3, "by": "saro", "branches": 5}
+        self.assertEqual(
+            scenario.scenario(steps(by)).steps, (Grow(epochs=3, adders=None, branches=5, by="saro"),)
+        )
 
     def test_a_scenario_of_one_member_is_its_creator_alone(self):
         alone = scenario.scenario({"members": 1, "steps": [{"step": "hold", "seconds": 60}]})
@@ -382,6 +386,9 @@ class Reading(unittest.TestCase):
                 "50-epochs.json",
                 "fifty-sized.json",
                 "fleet-five.json",
+                "grow-by-saro-waku-loss-1.json",
+                "grow-by-saro-waku-loss-10.json",
+                "grow-by-saro-waku-loss-5.json",
                 "grow-waku-loss-1.json",
                 "grow-waku-loss-10.json",
                 "grow-waku-loss-5.json",
@@ -442,6 +449,13 @@ class Reading(unittest.TestCase):
             self.assertEqual((held.network.loss, held.network.welcome_loss), (rate, rate))
             rated = dataclasses.replace(held.network, loss=0.01, welcome_loss=0.01)
             self.assertEqual(dataclasses.replace(held, network=rated), first)
+
+    def test_a_grow_by_saro_on_waku_is_the_grow_on_waku_of_its_rate_with_saro_alone_adding(self):
+        alone = Grow(epochs=50, adders=None, branches=5, by="saro")
+        for percent in (1, 5, 10):
+            drawn = scenario.read(TOOL / "scenarios" / f"grow-waku-loss-{percent}.json")
+            by = scenario.read(TOOL / "scenarios" / f"grow-by-saro-waku-loss-{percent}.json")
+            self.assertEqual(by, dataclasses.replace(drawn, steps=(alone,)), percent)
 
     def test_the_scenarios_of_the_network_model_seat_five_members_one_at_a_time(self):
         one_at_a_time = Seat(to=5, batch=1)
@@ -711,6 +725,7 @@ class Refusals(unittest.TestCase):
             ),
         ]
         grow = dict(GROW)
+        unsaid = {name: held for name, held in grow.items() if name != "adders"}
         refusals += [
             (
                 "steps[1] is a `grow` step, and a `grow` step is the only step",
@@ -735,6 +750,23 @@ class Refusals(unittest.TestCase):
             ("`from` is not a field of steps[0]", three(steps=[dict(grow, **{"from": "saro"})])),
             ("`epochs` of steps[0] is 0, and 1 is the least", three(steps=[dict(grow, epochs=0)])),
             ("`adders` of steps[0] is 0, and 1 is the least", three(steps=[dict(grow, adders=0)])),
+            (
+                "steps[0] says `adders` and `by`, and a `grow` step says one or the other",
+                three(steps=[dict(grow, by="saro")]),
+            ),
+            (
+                "steps[0] lacks `adders` or `by`",
+                three(steps=[unsaid]),
+            ),
+            (
+                "`by` of steps[0] names raya, who is not seated when a `grow` step begins",
+                three(steps=[dict(unsaid, by="raya")]),
+            ),
+            (
+                "`by` of steps[0] names nobody, and no member has that name",
+                three(steps=[dict(unsaid, by="nobody")]),
+            ),
+            ("`by` of steps[0] is not a name", three(steps=[dict(unsaid, by=0)])),
             (
                 "`branches` of steps[0] is 1, and 2 is the least",
                 three(steps=[dict(grow, branches=1)]),

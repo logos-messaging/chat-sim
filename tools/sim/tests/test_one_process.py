@@ -247,6 +247,8 @@ class Planning(unittest.TestCase):
 
     def test_a_grow_step_is_told_with_its_fields(self):
         self.assertEqual(plan_of(members=5, steps=[GROW])["steps"], [GROW])
+        by = {"step": "grow", "epochs": 3, "by": "saro", "branches": 5}
+        self.assertEqual(plan_of(members=5, steps=[by])["steps"], [by])
 
     def test_a_candidate_is_withheld_from_the_member_the_step_names(self):
         self.assertEqual(

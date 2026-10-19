@@ -107,13 +107,9 @@ def plan(scenario: Scenario) -> dict:
         elif isinstance(step, Heal):
             steps.append({"step": "heal"})
         elif isinstance(step, Grow):
+            adders = {"adders": step.adders} if step.by is None else {"by": step.by}
             steps.append(
-                {
-                    "step": "grow",
-                    "epochs": step.epochs,
-                    "adders": step.adders,
-                    "branches": step.branches,
-                }
+                {"step": "grow", "epochs": step.epochs, **adders, "branches": step.branches}
             )
         else:
             steps.append({"step": "withhold", "from": step.member})
