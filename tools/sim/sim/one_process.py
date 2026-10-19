@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 from . import measure, table
 from .peers import Interrupted, Runner, Stopped, Watch, name_of
-from .scenario import Cut, Heal, Hold, Post, Scenario, Seat, senders
+from .scenario import Cut, Grow, Heal, Hold, Post, Scenario, Seat, senders
 
 if TYPE_CHECKING:
     from .run import Settings
@@ -39,6 +39,25 @@ _MODELLED = {
     "dropped": [{"why": _TEXT}],
 }
 _WITHHELD = {"app_id": (str, _NONE), "seat": (int, _NONE), "applied": (bool,)}
+# What it reads besides of a run of a `grow` step.
+_GROWN = {
+    "ended": _TEXT,
+    "trunk_epoch": _WHOLE,
+    "main": _WHOLE,
+    "lines": [
+        {
+            "kind": _TEXT,
+            "from": (int, _NONE),
+            "forked_at": (int, _NONE),
+            "epoch": _WHOLE,
+            "members": [_TEXT],
+        }
+    ],
+    "fell_behind": [{"name": _TEXT, "epoch": _WHOLE}],
+    "behind": [_TEXT],
+    "never_joined": [_TEXT],
+    "rounds": [{"adders": [_TEXT], "joiners": [_TEXT], "refused": [_TEXT], "settled_s": _NUMBER}],
+}
 
 # The second every run's clock starts at, 2026-01-01T00:00:00Z: a plan and its seed then give
 # one run whenever it is made.
@@ -87,6 +106,15 @@ def plan(scenario: Scenario) -> dict:
             steps.append({"step": "cut", "sides": [list(side) for side in step.sides]})
         elif isinstance(step, Heal):
             steps.append({"step": "heal"})
+        elif isinstance(step, Grow):
+            steps.append(
+                {
+                    "step": "grow",
+                    "epochs": step.epochs,
+                    "adders": step.adders,
+                    "branches": step.branches,
+                }
+            )
         else:
             steps.append({"step": "withhold", "from": step.member})
     told["steps"] = steps
@@ -143,6 +171,9 @@ def run(settings: Settings, report: dict, watch: Watch) -> None:
     report["posts"] = [_post(post) for post in result["posts"]]
     done = settings.scenario.steps[: result["steps_done"]]
     report["holds"] = [{"seconds": step.seconds} for step in done if isinstance(step, Hold)]
+    if settings.scenario.grows:
+        report["grow"] = result["grow"]
+        report["seated"] = sum(member["seated"] for member in result["members"])
 
 
 def _result(file: Path) -> Optional[dict]:
@@ -164,10 +195,17 @@ def _amiss(result: dict, told: dict) -> Optional[str]:
         return amiss
     if [member["name"] for member in result["members"]] != told["members"]:
         return "members are not those of the plan, in its order"
+    grows = told["steps"][0]["step"] == "grow"
+    if grows:
+        amiss = _unlike(result, {"grow": _GROWN}, "")
+        if amiss is not None:
+            return amiss
     modelled = "network" in told
     for at, member in enumerate(result["members"]):
         # A member rejects frames for whatever reasons, and each has a count.
         shape = {"inbound_errors": {reason: _WHOLE for reason in member["inbound_errors"]}}
+        if grows:
+            shape["seated"] = (bool,)
         amiss = _unlike(member, dict(shape, **_MODELLED) if modelled else shape, f"members[{at}]")
         if amiss is None and modelled and member["network"]["withheld"] is not None:
             withheld = member["network"]["withheld"]

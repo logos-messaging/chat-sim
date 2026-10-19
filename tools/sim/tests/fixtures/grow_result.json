@@ -1,0 +1,228 @@
+{
+  "batches": [],
+  "conversation": "037ccedfab",
+  "grow": {
+    "behind": [],
+    "ended": "the trunk reached epoch 3",
+    "fell_behind": [],
+    "lines": [
+      {
+        "epoch": 3,
+        "forked_at": null,
+        "from": null,
+        "kind": "trunk",
+        "members": [
+          "saro",
+          "raya",
+          "pax",
+          "mira",
+          "kes"
+        ]
+      }
+    ],
+    "main": 1,
+    "never_joined": [],
+    "rounds": [
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "raya"
+        ],
+        "refused": [],
+        "settled_s": 0.55
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "pax"
+        ],
+        "refused": [],
+        "settled_s": 0.6
+      },
+      {
+        "adders": [
+          "saro",
+          "raya"
+        ],
+        "joiners": [
+          "mira",
+          "kes"
+        ],
+        "refused": [],
+        "settled_s": 0.65
+      }
+    ],
+    "trunk_epoch": 3
+  },
+  "members": [
+    {
+      "account": "7361726f",
+      "app_id": "63356633356365643566",
+      "dropped": [],
+      "inbound_errors": {},
+      "installation": "02680b98",
+      "name": "saro",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 0,
+        "frames": {
+          "arrived": 10,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 10
+        },
+        "loss": 0.0,
+        "own": [
+          "63356633356365643566"
+        ],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": null
+      },
+      "seated": true
+    },
+    {
+      "account": "72617961",
+      "app_id": "62386131366238356465",
+      "dropped": [],
+      "inbound_errors": {},
+      "installation": "fd24df45",
+      "name": "raya",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 0,
+        "frames": {
+          "arrived": 13,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 13
+        },
+        "loss": 0.0,
+        "own": [
+          "62386131366238356465"
+        ],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": null
+      },
+      "seated": true
+    },
+    {
+      "account": "706178",
+      "app_id": "36326333613939646532",
+      "dropped": [],
+      "inbound_errors": {},
+      "installation": "530d0b04",
+      "name": "pax",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 0,
+        "frames": {
+          "arrived": 10,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 10
+        },
+        "loss": 0.0,
+        "own": [
+          "36326333613939646532"
+        ],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": null
+      },
+      "seated": true
+    },
+    {
+      "account": "6d697261",
+      "app_id": "37366662323431333363",
+      "dropped": [],
+      "inbound_errors": {},
+      "installation": "afe3fa0b",
+      "name": "mira",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 40,
+        "frames": {
+          "arrived": 1,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 1
+        },
+        "loss": 0.0,
+        "own": [
+          "37366662323431333363"
+        ],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": null
+      },
+      "seated": true
+    },
+    {
+      "account": "6b6573",
+      "app_id": "65373462636635663431",
+      "dropped": [],
+      "inbound_errors": {},
+      "installation": "b4264b4e",
+      "name": "kes",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 0,
+        "frames": {
+          "arrived": 2,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 2
+        },
+        "loss": 0.0,
+        "own": [
+          "65373462636635663431"
+        ],
+        "seed": 7,
+        "welcome_loss": 0.0,
+        "withheld": null
+      },
+      "seated": true
+    }
+  ],
+  "posts": [],
+  "steps_done": 1,
+  "stopped": null,
+  "virtual_s": 1.8399999999999999,
+  "wall_s": 0.034884407
+}

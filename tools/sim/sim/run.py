@@ -105,6 +105,7 @@ def run(settings: Settings, watch: Watch) -> dict:
         "verdict": None,
         "at_tip": None,
         "seated": scenario.seated,
+        "grow": None,
         "page": None,
         "unshared": [],
     }
@@ -161,7 +162,9 @@ def _judged(settings: Settings, installations: List[str], report: dict, watch: W
     elif report["conversation"] is not None:
         judge.judge(settings, installations, report)
     check = report["check"]
-    report["ok"] = report["stopped"] is None and check is not None and check["as_expected"]
+    # A grow expects no outcome: it is as expected once it ends as it may.
+    checked = report["grow"] is not None or (check is not None and check["as_expected"])
+    report["ok"] = report["stopped"] is None and checked
     (settings.out / "run.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     (settings.out / "run.txt").write_text(table.render(report), encoding="utf-8")
     return report

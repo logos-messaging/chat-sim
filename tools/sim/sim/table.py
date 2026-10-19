@@ -88,9 +88,10 @@ def row(number: int, seconds: float, report: dict) -> str:
 
     Then the seeds of the run in one process, of its network model and of its wire, and what was
     withheld, for a run that has them.
-    The seconds of a run in one process are those of its virtual clock, whatever `seconds`.
+    The seconds of a run in one process are those of its virtual clock, whatever `seconds`. A run
+    of a `grow` step says how it ended in place of its check.
     """
-    said = [_check(report)]
+    said = [_check(report) if report["grow"] is None else _grew(report["grow"])]
     if report["stopped"] is not None:
         said.append(f"stopped: {report['stopped']}")
     if report["seed"] is not None:
@@ -169,7 +170,55 @@ def _virtual(report: dict) -> str:
     if report["holds"]:
         lines.append("")
         lines += [_hold(number, hold) for number, hold in enumerate(report["holds"], 1)]
+    if report["grow"] is not None:
+        lines += ["", *_grow(report["grow"])]
     return "\n".join(lines) + "\n"
+
+
+def _grew(grow: dict) -> str:
+    """How a `grow` step ended, in a few words: its lines, and the members not on one."""
+    subs = sum(line["kind"] == "sub" for line in grow["lines"])
+    fell = len({held["name"] for held in grow["fell_behind"]})
+    return (
+        f"{grow['ended']}: trunk at epoch {grow['trunk_epoch']}, {grow['main']} main, {subs} sub, "
+        f"{fell} fell behind, {len(grow['behind'])} behind at the end, "
+        f"{len(grow['never_joined'])} never joined"
+    )
+
+
+def _grow(grow: dict) -> List[str]:
+    """What a `grow` step came to: each line, who fell behind, and its rounds."""
+    rounds = grow["rounds"]
+    lines = [
+        _grew(grow),
+        f"{len(rounds)} rounds, {sum(len(held['joiners']) for held in rounds)} joiners, "
+        f"{sum(len(held['refused']) for held in rounds)} of the adders refused a whole round, "
+        f"the longest {_seconds(max((held['settled_s'] for held in rounds), default=None))}",
+        "",
+    ]
+    lines += _columns(
+        ("line", "kind", "from", "forked at", "epoch", "members"),
+        [
+            (
+                str(number),
+                line["kind"],
+                _count(line["from"]),
+                _count(line["forked_at"]),
+                str(line["epoch"]),
+                str(len(line["members"])),
+            )
+            for number, line in enumerate(grow["lines"])
+        ],
+    )
+    fell = [f"{held['name']} at epoch {held['epoch']}" for held in grow["fell_behind"]]
+    for said, names in (
+        ("fell behind", fell),
+        ("behind at the end", grow["behind"]),
+        ("never joined", grow["never_joined"]),
+    ):
+        if names:
+            lines.append(f"{said}: {', '.join(names)}")
+    return lines
 
 
 def _clock(report: dict) -> str:

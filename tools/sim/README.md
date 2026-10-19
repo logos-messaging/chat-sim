@@ -148,7 +148,8 @@ them:
 | `wire` | | The delay, the jitter and the loss on what each member sends, in a run in containers (see [The wire](#the-wire)). Refused in a run without `--image`. |
 | `expect` | | How the outcome differs from a whole group, as below. |
 
-A step is one of six, and the last three are refused in a scenario without `network`:
+A step is one of seven. `cut`, `heal` and `withhold` are refused in a scenario without `network`,
+and `grow` in a run that is not in one process:
 
 | Step | Fields | Does |
 |------|--------|------|
@@ -158,6 +159,7 @@ A step is one of six, and the last three are refused in a scenario without `netw
 | `cut` | `between` | Two sides of the group are cut off from each other. `between` holds the two sides, each a list of the names of one or more members seated by then, and a member is named once. Each member of both sides is told to drop what the members of the other side publish to the group. No cut is made while one is in force. |
 | `heal` | | The cut in force ends: each member of its two sides is told to drop nothing of the other side's any longer. |
 | `withhold` | `from` | The member `from`, seated by then, is told to drop the next commit candidate that reaches it, which is one of the batch the next step seats (see [A withheld candidate](#a-withheld-candidate)). |
+| `grow` | `epochs`, `adders`, `branches` | Members add the members not yet seated in rounds, until the trunk holds `epochs` or `branches` main branches run side by side, the trunk among them. Each round one to `adders` members, drawn from the `seed`, each add one at once, on whatever branch each is on. `epochs` and `adders` are 1 or more, and `branches` 2 or more. It is the scenario's only step, and the scenario says nothing of what to expect (see [A group that grows](#a-group-that-grows)). |
 
 A member no step seats runs its node and is in no group.
 
@@ -215,6 +217,8 @@ logos-chat-module runs a group (see
 and `fifty-sized.json`, two sizes runs have been measured at (see
 [The floor on one machine](#the-floor-on-one-machine)), and `lost-candidate.json` and
 `lossy.json`, five members on a network model (see [What a lost frame does](#what-a-lost-frame-does)).
+`grow-waku-loss-1.json`, `grow-waku-loss-5.json` and `grow-waku-loss-10.json` grow a group of up to
+200 on Waku's delays at three rates of loss (see [A group that grows](#a-group-that-grows)).
 `lossy-wire.json` has a wire, and CI runs it and `three.json` in containers (see
 [In containers](#in-containers)). `fleet-five.json` needs the `logos.test` fleet and is no part
 of CI (see [On a fleet preset](#on-a-fleet-preset)).
@@ -1117,6 +1121,7 @@ a run of processes has them, and `.forks-share.json` in a run given `--share`. `
 | `batches[]` | For each batch its `joiners`, the `members` the group then had, `seated_s` on the virtual clock, from the first try of the add to the last roster, and `wall_s`, what the batch took on the machine. No `joined_s` and no `welcome_bytes`: the log holds no line of a Welcome |
 | `posts[]` | For each post its `poster`, its `readers`, those that left it `unread`, and `read` on the virtual clock. Nothing of a registry |
 | `holds[]` | The `seconds` of each `hold` step that was done, and nothing else |
+| `grow` | What the runner's result says of a `grow` step (see `grow` in [What a run leaves](../../core/integration_tests_core/README.md#what-a-run-leaves)). `null` in a run of other steps |
 
 The first line of `run.txt` says that the run was one process, how far the virtual clock went,
 how long that took, and the run's seed. The table of the members has each one's installation id
@@ -1311,6 +1316,75 @@ each of the other four did. With processes all 8 runs of that file went as expec
 
 Three members with that delay on pax and a post of saro that the scenario does not wait for on
 pax: pax read it in 5 runs of 5 in one process, and in 3 of 3 with processes.
+
+### A group that grows
+
+```sh
+python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-5.json --runs 5 --one-process target/release/harness-run --out tmp/grow-5
+```
+
+A `grow` step has the runner add members from any member on any branch, until the trunk holds
+`epochs` or `branches` main branches run side by side (see
+[A group that grows](../../core/integration_tests_core/README.md#a-group-that-grows)). Only the
+runner does it:
+
+```console
+sim: error: the scenario has a `grow` step, and only --one-process does one
+```
+
+A grow expects no outcome: how far the group gets before it parts is what it measures. Its run
+is reported on and not checked, writes no `expect.json`, and goes as expected when the runner
+did the step. `seated` is how many members the run seated, and `at_tip` how many of the members
+the report knows it has at the `tip` of a branch. After the tables `run.txt` says how the grow
+ended, what its rounds came to, and each line, and a sweep's row says how it ended in place of
+the check. Here the end of the third run of `grow-waku-loss-1.json`:
+
+```console
+5 main branches ran side by side: trunk at epoch 18, 5 main, 5 sub, 7 fell behind, 4 behind at the end, 2 never joined
+22 rounds, 47 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     18       20
+1      main     0          4     11        9
+2      main     0          6     12        5
+3      main     0         10     12        3
+4       sub     2         12     12        1
+5       sub     2         12     14        3
+6       sub     2         12     15        2
+7       sub     6         15     15        1
+8       sub     6         15     15        1
+9      main     0         17     17        1
+fell behind: raya at epoch 5, peer17 at epoch 8, peer12 at epoch 9, peer18 at epoch 9, peer21 at epoch 10, peer7 at epoch 8, peer33 at epoch 16
+behind at the end: peer7, peer12, peer17, peer21
+never joined: peer47, peer48
+```
+
+`grow-waku-loss-1.json`, `grow-waku-loss-5.json` and `grow-waku-loss-10.json` are 200 members on
+the library's own timers, with Waku's delays as `50-epochs-waku.json` has them (see
+[Fifty epochs as the module runs them](#fifty-epochs-as-the-module-runs-them)), here at the middles
+of 200 equal slices: 268 to 659 ms, the member that starts `k`-th the rank `(19k + 100) mod 200`,
+so that saro again has 518 ms. Each loses its rate of the frames each member receives, Welcomes
+too: 0.01, 0.05 and 0.1. Each grows the group toward epoch 50, one to three adders a round, and
+stops at five main branches. No run seats all 200.
+
+Each was swept 5 times on 2026-10-19, seeds 0 to 4 and network seeds 1 to 5. A second sweep
+wrote the same 15 logs:
+
+| Loss | The trunk's epoch at the end | First split, epoch | Seated | Branches off the trunk of one member | Sub-branches | Fell behind | Never joined |
+|---|---|---|---|---|---|---|---|
+| 0.01 | 15 to 22 | 4 to 16 | 27 to 49 | 14 of 21 | 5, in one run | 2 to 8 | 0 to 2 |
+| 0.05 | 7 to 10 | 3 to 6 | 15 to 78 | 11 of 21 | 21, in one run | 3 to 16 | 0 to 6 |
+| 0.1 | 7 to 17 | 3 to 5 | 11 to 46 | 14 of 21 | 17, in three runs | 3 to 13 | 0 to 5 |
+
+No run took the trunk to epoch 50. Each ended at five main branches, or at six where two forked
+off the trunk in one round. The trunk went furthest at 0.01. At 0.05 and 0.1 the runs overlap,
+and five runs a rate are too few to order them. Most branches off the trunk are one member alone
+on a state of its own, 39 of 63, and no run had more than three of two members or more. 23 of
+the 39 had fallen behind in an earlier round. Of the 64 lines of one member, main and sub, 43
+are of a member whose model lost a commit candidate in the run, as the member alone on a branch
+had in [The lost candidate in one process](#the-lost-candidate-in-one-process). The other 21
+lost none, and how they came to a state of their own is not traced. A run moved the clock 818 to
+6121 s and took the runner 0.3 to 141.5 s, the most for the run that seated 78.
 
 ## What it does not do
 

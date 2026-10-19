@@ -34,6 +34,28 @@ START = 1791817445
 # What the stand-in comes to when the group applied the candidate withheld in `withholding`.
 ALONE = dict(APPLIED, posts={"pax": "unreadable"})
 
+# A step that grows the group to the third epoch, two adders a round at most.
+GROW = {"step": "grow", "epochs": 3, "adders": 2, "branches": 5}
+
+# A grow that came to a main branch and a sub-branch off it, and left pax behind.
+GROWN = {
+    "ended": "2 main branches ran side by side",
+    "trunk_epoch": 7,
+    "main": 2,
+    "lines": [
+        {"kind": "trunk", "from": None, "forked_at": None, "epoch": 7, "members": ["saro", "raya"]},
+        {"kind": "main", "from": 0, "forked_at": 3, "epoch": 12, "members": ["kes"]},
+        {"kind": "sub", "from": 1, "forked_at": 5, "epoch": 5, "members": ["pax"]},
+    ],
+    "fell_behind": [{"name": "pax", "epoch": 3}, {"name": "pax", "epoch": 5}],
+    "behind": ["pax"],
+    "never_joined": ["mira"],
+    "rounds": [
+        {"adders": ["saro"], "joiners": ["raya"], "refused": [], "settled_s": 0.5},
+        {"adders": ["saro", "raya"], "joiners": ["pax"], "refused": ["raya"], "settled_s": 180},
+    ],
+}
+
 # What stops a run whose runner a signal ended.
 KILLED = "the runner ended with signal 9: it said nothing on standard error"
 
@@ -146,6 +168,15 @@ def led_to(held: object, path: str) -> Tuple[object, object]:
     return held, last
 
 
+def kinds(held: object) -> object:
+    """The shape of a value of JSON with each list down to its first item."""
+    if isinstance(held, dict):
+        return {name: kinds(inner) for name, inner in held.items()}
+    if isinstance(held, list):
+        return [kinds(inner) for inner in held[:1]]
+    return type(held).__name__
+
+
 def runner_leaving(directory: Path, result: object, status: int = 0) -> Path:
     """Writes into `directory` a program that leaves `result` for its result, and no log."""
     left = directory / "left.json"
@@ -213,6 +244,9 @@ class Planning(unittest.TestCase):
                 {"step": "heal"},
             ],
         )
+
+    def test_a_grow_step_is_told_with_its_fields(self):
+        self.assertEqual(plan_of(members=5, steps=[GROW])["steps"], [GROW])
 
     def test_a_candidate_is_withheld_from_the_member_the_step_names(self):
         self.assertEqual(
@@ -330,6 +364,26 @@ class Running(Scratch):
         )
         (post,) = report["posts"]
         self.assertEqual((post["poster"], post["readers"], post["unread"]), ("pax", 2, []))
+
+    def test_a_grow_is_reported_on_and_not_checked_and_counts_the_members_it_seated(self):
+        report = self.run_of(members=5, steps=[GROW])
+
+        self.assertTrue(report["ok"], report["stopped"])
+        self.assertEqual(
+            (report["check"], report["unchecked"]), (None, "a `grow` step expects no outcome")
+        )
+        self.assertFalse((self.out / "expect.json").exists())
+        self.assertTrue((self.out / "report.txt").exists())
+        self.assertEqual((report["verdict"], report["at_tip"], report["seated"]), ("whole", 4, 4))
+        self.assertEqual(report["grow"]["ended"], "the trunk reached epoch 3")
+        self.assertEqual(report["batches"], [])
+        self.assertIn("\nnot checked: a `grow` step expects no outcome\n", table.render(report))
+
+    def test_a_grow_that_seats_every_member_of_the_plan_ends_there(self):
+        report = self.run_of(members=3, steps=[dict(GROW, epochs=50)])
+
+        self.assertEqual(report["grow"]["ended"], "every member of the plan was seated")
+        self.assertEqual((report["at_tip"], report["seated"]), (3, 3))
 
     def test_the_runner_is_told_the_plan_the_run_keeps_with_its_seed_on_a_clock_from_2026(self):
         report = self.run_of(members=4, timers="default", seed=5, network={"seed": 7})
@@ -716,12 +770,27 @@ class TheResult(Scratch):
             self.assertEqual((held["steps_done"], held["stopped"]), (7, None))
             self.assertEqual(held["members"][2]["network"]["withheld"]["applied"], True)
 
-    def report_leaving(self, result: object, status: int = 0) -> dict:
+    def test_the_stand_in_leaves_a_grow_of_the_fields_the_runner_leaves(self):
+        kept = json.loads((FIXTURES / "grow_result.json").read_text(encoding="utf-8"))
+        plan = self.scratch / "plan.json"
+        unwaited = {"rosters": [], "posts": []}
+        plan.write_text(json.dumps(dict(self.PLAN, unwaited=unwaited, steps=[GROW])), "utf-8")
+        subprocess.run([sys.executable, "-B", str(STANDIN_RUNNER), plan, self.out], check=True)
+        left = json.loads((self.out / "result.json").read_text(encoding="utf-8"))
+
+        # The kept members rejected frames and published under the conversation's app id, and
+        # the stand-in's do neither.
+        for member in kept["members"] + left["members"]:
+            member["inbound_errors"], member["network"]["own"] = {}, []
+        self.assertEqual(kinds(left), kinds(kept))
+        self.assertEqual(left["grow"]["ended"], kept["grow"]["ended"])
+
+    def report_leaving(self, result: object, status: int = 0, **changed) -> dict:
         """What a run of five with a network model reports whose runner leaves `result`."""
         scratch = Path(tempfile.mkdtemp(dir=self.scratch))
         settings = Settings(
             chat_cli=None,
-            scenario=scenario.scenario(said(members=5, network={"seed": 7})),
+            scenario=scenario.scenario(said(members=5, network={"seed": 7}, **changed)),
             out=scratch / "run",
             one_process=runner_leaving(scratch, result, status),
         )
@@ -731,9 +800,9 @@ class TheResult(Scratch):
         self.assertEqual((settings.out / "run.txt").read_text("utf-8"), table.render(report))
         return report
 
-    def stop_leaving(self, result: object, status: int = 0) -> str:
+    def stop_leaving(self, result: object, status: int = 0, **changed) -> str:
         """What stopped a run that read nothing of the `result` its runner left."""
-        report = self.report_leaving(result, status)
+        report = self.report_leaving(result, status, **changed)
         self.assertEqual((report["ok"], report["steps_done"], report["check"]), (False, 0, None))
         self.assertEqual((report["conversation"], report["nodes"]), (None, []))
         self.assertEqual((report["virtual_s"], report["wall_s"]), (None, None))
@@ -762,6 +831,35 @@ class TheResult(Scratch):
 
                 self.assertEqual(
                     self.stop_leaving(result),
+                    f"the runner left a result that cannot be read: {path} is missing",
+                )
+
+    def test_a_run_reads_the_kept_grow_and_counts_the_members_seated(self):
+        kept = json.loads((FIXTURES / "grow_result.json").read_text(encoding="utf-8"))
+
+        report = self.report_leaving(kept, steps=[GROW])
+
+        self.assertEqual((report["stopped"], report["grow"]), (None, kept["grow"]))
+        self.assertEqual(report["seated"], 5)
+
+    def test_a_grow_without_a_field_a_run_reads_stops_the_run_and_names_the_field(self):
+        kept = json.loads((FIXTURES / "grow_result.json").read_text(encoding="utf-8"))
+        for path in (
+            "grow",
+            "grow.ended",
+            "grow.lines[0].from",
+            "grow.lines[0].members",
+            "grow.rounds[2].settled_s",
+            "grow.never_joined",
+            "members[1].seated",
+        ):
+            with self.subTest(path):
+                result = copy.deepcopy(kept)
+                holder, name = led_to(result, path)
+                del holder[name]
+
+                self.assertEqual(
+                    self.stop_leaving(result, steps=[GROW]),
                     f"the runner left a result that cannot be read: {path} is missing",
                 )
 
@@ -943,6 +1041,28 @@ class Render(unittest.TestCase):
             ],
         )
 
+    def test_a_grow_says_how_it_ended_and_each_line_after_the_tables(self):
+        grown = in_one_process(grow=GROWN, check=None, unchecked="a `grow` step expects no outcome")
+
+        self.assertTrue(
+            table.render(grown).endswith(
+                "1      pax   2 of 2  0.000s  0.050s\n"
+                "\n"
+                "2 main branches ran side by side: trunk at epoch 7, 2 main, 1 sub, 1 fell behind, "
+                "1 behind at the end, 1 never joined\n"
+                "2 rounds, 2 joiners, 1 of the adders refused a whole round, the longest 180.000s\n"
+                "\n"
+                "line   kind  from  forked at  epoch  members\n"
+                "0     trunk     -          -      7        2\n"
+                "1      main     0          3     12        1\n"
+                "2       sub     1          5      5        1\n"
+                "fell behind: pax at epoch 3, pax at epoch 5\n"
+                "behind at the end: pax\n"
+                "never joined: mira\n"
+            ),
+            table.render(grown),
+        )
+
     def test_each_hold_is_a_line_of_its_seconds_after_the_tables(self):
         holds = [{"seconds": 60.0}, {"seconds": 0.5}]
 
@@ -966,6 +1086,16 @@ class Row(unittest.TestCase):
         self.assertEqual(
             table.row(7, 41.26, in_one_process(network=NETWORK)),
             "  7      1.4      3 of 3  whole                   as expected; seed 1; network seed 7",
+        )
+
+    def test_the_row_of_a_grow_says_how_it_ended_in_place_of_a_check(self):
+        grown = in_one_process(grow=GROWN, check=None, verdict="split at epoch 3", at_tip=2)
+
+        self.assertEqual(
+            table.row(2, 41.26, grown),
+            "  2      1.4      2 of 3  split at epoch 3        2 main branches ran side by side: "
+            "trunk at epoch 7, 2 main, 1 sub, 1 fell behind, 1 behind at the end, "
+            "1 never joined; seed 1",
         )
 
     def test_the_row_of_a_run_whose_runner_left_no_result_has_no_seconds(self):
@@ -1132,6 +1262,13 @@ class CommandLine(Scratch):
 
         self.assertEqual(status, 0, printed.getvalue())
         self.assertIn("\nthe report is as expected\n", printed.getvalue())
+
+    def test_a_grow_is_refused_but_in_one_process(self):
+        chat_cli = str(stand_in(self.scratch))
+        self.assertEqual(
+            self.refused("run", str(self.scenario(steps=[GROW])), "--chat-cli", chat_cli),
+            "sim: error: the scenario has a `grow` step, and only --one-process does one",
+        )
 
     def test_a_scenario_on_a_preset_is_refused_in_one_process_and_nothing_is_started(self):
         scenario_file = str(self.scenario(preset="logos.test"))

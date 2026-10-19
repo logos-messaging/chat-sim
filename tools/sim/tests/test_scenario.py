@@ -11,6 +11,7 @@ from sim.scenario import (
     LAST,
     Cut,
     Expect,
+    Grow,
     Heal,
     Hold,
     Network,
@@ -25,7 +26,7 @@ from sim.scenario import (
 TOOL = Path(__file__).resolve().parents[1]
 
 # The steps a scenario has, as a refusal names them.
-STEPS = "`seat`, `post`, `hold`, `cut`, `heal` or `withhold`"
+STEPS = "`seat`, `post`, `hold`, `cut`, `heal`, `withhold` or `grow`"
 
 # Ids a fork report would know five members by, in the order of the members.
 IDS = ["a3f91c07", "7b1e44d9", "e09a3f52", "19f6b0e3", "b54a9d10"]
@@ -36,6 +37,10 @@ def three(**changed) -> dict:
     whole = {"members": 3, "steps": [{"step": "seat", "to": 3}, {"step": "post"}]}
     whole.update(changed)
     return whole
+
+
+# A step that grows the group to the third epoch, two adders a round at most.
+GROW = {"step": "grow", "epochs": 3, "adders": 2, "branches": 5}
 
 
 def steps(*steps: dict, members: int = 5) -> dict:
@@ -125,6 +130,15 @@ class Reading(unittest.TestCase):
 
         self.assertEqual(held.steps, (Hold(300.0), Seat(3), Hold(0.5), Post(LAST), Hold(300.0)))
         self.assertEqual(held.seated, 3)
+
+    def test_a_grow_step_is_read_with_its_fields_and_needs_no_network_model(self):
+        held = scenario.scenario(steps(GROW))
+
+        self.assertEqual(held.steps, (Grow(epochs=3, adders=2, branches=5),))
+        self.assertTrue(held.grows)
+        self.assertFalse(scenario.scenario(three()).grows)
+        # How many it seats is the run's to say.
+        self.assertEqual((held.seated, held.expect, held.network), (1, Expect(), None))
 
     def test_a_scenario_of_one_member_is_its_creator_alone(self):
         alone = scenario.scenario({"members": 1, "steps": [{"step": "hold", "seconds": 60}]})
@@ -368,6 +382,9 @@ class Reading(unittest.TestCase):
                 "50-epochs.json",
                 "fifty-sized.json",
                 "fleet-five.json",
+                "grow-waku-loss-1.json",
+                "grow-waku-loss-10.json",
+                "grow-waku-loss-5.json",
                 "lossy-wire.json",
                 "lossy.json",
                 "lost-candidate.json",
@@ -408,6 +425,23 @@ class Reading(unittest.TestCase):
         self.assertEqual((lossy.network.loss, lossy.network.welcome_loss), (0.05, 0.05))
         held = dataclasses.replace(lossy.network, loss=0, welcome_loss=0)
         self.assertEqual(dataclasses.replace(lossy, network=held), waku)
+
+    def test_a_grow_on_waku_has_two_hundred_delays_of_its_arrivals_and_differs_by_its_rate(self):
+        grows = {
+            rate: scenario.read(TOOL / "scenarios" / f"grow-waku-loss-{percent}.json")
+            for percent, rate in ((1, 0.01), (5, 0.05), (10, 0.1))
+        }
+        first = grows[0.01]
+
+        self.assertEqual(first.steps, (Grow(epochs=50, adders=3, branches=5),))
+        self.assertEqual((first.members, first.timers, first.network.seed), (200, "default", 1))
+        delays = [first.network.delay_of(name_of(seat)) for seat in range(200)]
+        self.assertEqual((min(delays), max(delays), delays[0]), (268, 659, 518))
+        self.assertEqual(round(sum(delays) / 200, 1), 507.6)
+        for rate, held in grows.items():
+            self.assertEqual((held.network.loss, held.network.welcome_loss), (rate, rate))
+            rated = dataclasses.replace(held.network, loss=0.01, welcome_loss=0.01)
+            self.assertEqual(dataclasses.replace(held, network=rated), first)
 
     def test_the_scenarios_of_the_network_model_seat_five_members_one_at_a_time(self):
         one_at_a_time = Seat(to=5, batch=1)
@@ -674,6 +708,40 @@ class Refusals(unittest.TestCase):
                 "`posts` of `expect` gives raya `sent`, which is not among: read, "
                 "unreadable, not a member, no log, no record",
                 three(expect={"posts": {"raya": "sent"}}),
+            ),
+        ]
+        grow = dict(GROW)
+        refusals += [
+            (
+                "steps[1] is a `grow` step, and a `grow` step is the only step",
+                three(steps=[seat, grow]),
+            ),
+            (
+                "steps[0] is a `grow` step, and a `grow` step is the only step",
+                three(steps=[grow, post]),
+            ),
+            (
+                "`expect` is said with a `grow` step, which expects no outcome",
+                three(steps=[grow], expect={}),
+            ),
+            (
+                "steps[0] is a `grow` step, and the scenario has 1 member",
+                three(members=1, steps=[grow]),
+            ),
+            (
+                "steps[0] lacks `branches`",
+                three(steps=[{name: held for name, held in grow.items() if name != "branches"}]),
+            ),
+            ("`from` is not a field of steps[0]", three(steps=[dict(grow, **{"from": "saro"})])),
+            ("`epochs` of steps[0] is 0, and 1 is the least", three(steps=[dict(grow, epochs=0)])),
+            ("`adders` of steps[0] is 0, and 1 is the least", three(steps=[dict(grow, adders=0)])),
+            (
+                "`branches` of steps[0] is 1, and 2 is the least",
+                three(steps=[dict(grow, branches=1)]),
+            ),
+            (
+                "`epochs` of steps[0] is not a whole number",
+                three(steps=[dict(grow, epochs=50.0)]),
             ),
         ]
         for why, said in refusals:

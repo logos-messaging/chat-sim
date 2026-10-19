@@ -92,10 +92,20 @@ class Withhold:
     member: str
 
 
-Step = Union[Seat, Post, Hold, Cut, Heal, Withhold]
+@dataclass(frozen=True)
+class Grow:
+    """Members add new ones in rounds, one to `adders` a round on any branch, until the trunk
+    holds `epochs` or `branches` main branches run side by side, the trunk among them."""
+
+    epochs: int
+    adders: int
+    branches: int
+
+
+Step = Union[Seat, Post, Hold, Cut, Heal, Withhold, Grow]
 
 # The steps by the name a file gives them.
-STEPS = ("seat", "post", "hold", "cut", "heal", "withhold")
+STEPS = ("seat", "post", "hold", "cut", "heal", "withhold", "grow")
 
 
 @dataclass(frozen=True)
@@ -183,6 +193,11 @@ class Scenario:
     def seated(self) -> int:
         """How many members the steps seat, the creator among them."""
         return max([step.to for step in self.steps if isinstance(step, Seat)], default=1)
+
+    @property
+    def grows(self) -> bool:
+        """Whether the scenario is a `grow` step, which seats as many as its run comes to."""
+        return isinstance(self.steps[0], Grow)
 
     @property
     def withheld_from(self) -> Optional[str]:
@@ -320,6 +335,11 @@ def scenario(said: object) -> Scenario:
         steps.append(_step(step, f"steps[{at}]", seated, members, network is not None))
         if isinstance(steps[-1], Seat):
             seated = steps[-1].to
+    grown = [at for at, step in enumerate(steps) if isinstance(step, Grow)]
+    if grown and len(steps) > 1:
+        raise Refused(f"steps[{grown[0]}] is a `grow` step, and a `grow` step is the only step")
+    if grown and "expect" in whole:
+        raise Refused("`expect` is said with a `grow` step, which expects no outcome")
     expect = _expect(whole.get("expect", {}), seated)
     _cuts(steps)
     _two_outcomes(steps, network, expect)
@@ -374,9 +394,9 @@ def _step(said: object, what: str, seated: int, members: int, modelled: bool) ->
     if not isinstance(said, dict) or said.get("step") not in STEPS:
         raise Refused(
             f"{what} is not an object whose `step` is "
-            "`seat`, `post`, `hold`, `cut`, `heal` or `withhold`"
+            "`seat`, `post`, `hold`, `cut`, `heal`, `withhold` or `grow`"
         )
-    if said["step"] not in ("seat", "post", "hold") and not modelled:
+    if said["step"] not in ("seat", "post", "hold", "grow") and not modelled:
         raise Refused(f"{what} is a `{said['step']}` step, and the scenario has no `network`")
     if said["step"] == "seat":
         step = _fields(said, what, ("step", "to"), ("step", "to", "batch"))
@@ -401,6 +421,15 @@ def _step(said: object, what: str, seated: int, members: int, modelled: bool) ->
             raise Refused(f"`from` of {what} is not a name")
         _member(member, f"`from` of {what}", seated, "is not seated by then")
         return Withhold(member)
+    if said["step"] == "grow":
+        named = ("step", "epochs", "adders", "branches")
+        step = _fields(said, what, named, named)
+        if members < 2:
+            raise Refused(f"{what} is a `grow` step, and the scenario has 1 member")
+        epochs = _whole(step, "epochs", what, least=1, most=MOST_MEMBERS)
+        adders = _whole(step, "adders", what, least=1, most=MOST_MEMBERS)
+        # The trunk alone is one main branch.
+        return Grow(epochs, adders, _whole(step, "branches", what, least=2, most=MOST_MEMBERS))
     step = _fields(said, what, ("step",), ("step", "from"))
     sender = step.get("from", Post.sender)
     if not isinstance(sender, str):

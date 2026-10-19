@@ -81,6 +81,7 @@ def report(**changed) -> dict:
         "verdict": "whole",
         "at_tip": 3,
         "seated": 3,
+        "grow": None,
         "page": None,
         "unshared": [],
     }

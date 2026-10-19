@@ -46,13 +46,17 @@ def judge(settings: Settings, installations: List[str], report: dict) -> None:
     `installations` are the ids of the peers in the order they started. The report gains
     `verdict` and `at_tip`, `check` or why there is none as `unchecked`, and `page` or `unshared`
     when the logs were to be shared. Its `held_to` says which outcome is expected of a run
-    that withheld a candidate.
+    that withheld a candidate. A run of a `grow` step is reported on and not checked, and each
+    member the report knows is counted at the tip or not.
     """
     out: Path = settings.out
     convo = report["conversation"]
     applied = report["held_to"] == "applied"
-    expectation = settings.scenario.expectation(convo, installations, applied)
-    (out / "expect.json").write_text(json.dumps(expectation, indent=2) + "\n", encoding="utf-8")
+    expectation = None
+    if not settings.scenario.grows:
+        expectation = settings.scenario.expectation(convo, installations, applied)
+        held = json.dumps(expectation, indent=2) + "\n"
+        (out / "expect.json").write_text(held, encoding="utf-8")
 
     _, drawn, _ = _forks(settings, "report", "--json", str(out / "report.json"), str(out))
     (out / "report.txt").write_text(drawn, encoding="utf-8")
@@ -60,11 +64,15 @@ def judge(settings: Settings, installations: List[str], report: dict) -> None:
     if conversation is not None:
         seats = {seat["id"]: seat["position"] for seat in conversation["installations"]}
         report["verdict"] = conversation["verdict"]
-        report["at_tip"] = sum(seats.get(seat) == "tip" for seat in expectation["installations"])
+        counted = seats if expectation is None else expectation["installations"]
+        report["at_tip"] = sum(seats.get(seat) == "tip" for seat in counted)
 
-    report["check"], report["unchecked"] = _checked(
-        *_forks(settings, "check", "--expect", str(out / "expect.json"), str(out))
-    )
+    if expectation is None:
+        report["unchecked"] = "a `grow` step expects no outcome"
+    else:
+        report["check"], report["unchecked"] = _checked(
+            *_forks(settings, "check", "--expect", str(out / "expect.json"), str(out))
+        )
 
     if settings.share is not None:
         status, _, complained = _forks(settings, "share", "--to", settings.share, str(out))

@@ -94,6 +94,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         parser.error(
             "--image: the scenario has `preset`, and a network of containers reaches no fleet"
         )
+    if settings.one_process is None and settings.scenario.grows:
+        parser.error("the scenario has a `grow` step, and only --one-process does one")
     if settings.image is None and settings.scenario.wire is not None:
         parser.error("the scenario has `wire`, and only --image puts conditions on the wire")
     last = settings.scenario.of_run(getattr(args, "runs", 1))

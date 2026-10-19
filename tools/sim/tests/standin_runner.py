@@ -8,6 +8,7 @@ the cut and the rule that withholds a commit candidate: it loses no frame at a r
 none. A roster stands for the commit candidates of its batch, which the creator made. So a
 member whose rule is armed drops a candidate as the next roster arrives, and holds that roster
 all the same, as a member does by the candidate of another steward.
+A grow is the creator adding one member a round, and it never forks.
 
     standin_runner.py [--fault NAME[=MEMBER]]... PLAN.json OUT_DIR
 
@@ -83,6 +84,7 @@ class Run:
         self.apart = []
         self.batches = []
         self.posts = []
+        self.grown = None
         for name in self.names:
             self.record(name, "run", f"account={self.account[name]}")
         self.app_id[self.names[0]] = secrets.token_hex(10)
@@ -255,6 +257,33 @@ class Run:
         self.armed = step["from"]
         self.network[self.armed]["armed"] = True
 
+    def grow(self, step: dict):
+        rounds = []
+        while self.epoch < step["epochs"] and self.seated < len(self.names):
+            joiner = self.names[self.seated]
+            stopped = self.add(self.seated + 1)
+            if stopped is not None:
+                return stopped
+            # A round is no batch of the result.
+            seated_s = self.batches.pop()["seated_s"]
+            rounds.append({"adders": [self.names[0]], "joiners": [joiner], "refused": []})
+            rounds[-1]["settled_s"] = seated_s
+        members = self.names[: self.seated]
+        trunk = {"kind": "trunk", "from": None, "forked_at": None, "epoch": self.epoch}
+        self.grown = {
+            "ended": f"the trunk reached epoch {step['epochs']}"
+            if self.epoch >= step["epochs"]
+            else "every member of the plan was seated",
+            "trunk_epoch": self.epoch,
+            "main": 1,
+            "lines": [dict(trunk, members=members)],
+            "fell_behind": [],
+            "behind": [],
+            "never_joined": [],
+            "rounds": rounds,
+        }
+        return None
+
     def member(self, name: str) -> dict:
         said = {
             "name": name,
@@ -269,7 +298,9 @@ class Run:
         return said
 
     def result(self, steps_done: int, stopped) -> dict:
+        grown = {} if self.grown is None else {"grow": self.grown}
         return {
+            **grown,
             "steps_done": steps_done,
             "stopped": stopped,
             "conversation": self.convo,
