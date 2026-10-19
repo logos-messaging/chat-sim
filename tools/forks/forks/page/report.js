@@ -551,7 +551,7 @@
       into(el('div', 'head'), into(el('div'), back, titleOf(convo.id), heard)),
       verdict(convo),
       tiles(convo, at),
-      section('Lineage of states', 'a circle is a state and holds how many installations reported it, a line is a link a log proves', lineage(convo, at)),
+      section('Lineage of states', 'a circle is a state and holds how many installations reported it, a ring marks where some of them stay behind, a line is a link a log proves', lineage(convo, at)),
       asDrawn('Installations', '', convo, at, () => section('Installations', at.folds ? 'a row is the installations of one position, a column an epoch, a cell how many of them reported a state there; a row opens to a row for each' : 'a row is an installation, a column an epoch, a cell the state it reported there', ...lanes(convo, at))),
       asDrawn('Timeline', ofPosts, convo, at, () => section('Timeline', at.folds ? 'a line is the installations of one position: a band from the first to the last of them reaching an epoch, with the letter of its branch; times are UTC' : 'a line is a run, a mark where its installation reached an epoch with the letter of its branch, dots where its delivery was not online; times are UTC', ...timeline(convo, at))),
       asDrawn('Messages', ofPosts, convo, at, () => section('Messages', at.folds ? 'a row is a post, a column the installations of one position, a cell how many of them each thing became of the post on' : 'a row is a post, a column an installation, a cell what became of the post there', ...messages(convo, at))),
@@ -726,22 +726,37 @@
       drawing.append(svg('line', { class: 'cut', x1: cut, x2: cut, y1: AXIS - 8, y2: height }));
       drawing.append(svg('text', { class: 'ep', x: cut + 6, y: height + 12 }, 'the first epoch with two states'));
     }
+    /* An installation behind stays at its newest state. */
+    const behind = new Map();
+    for (const seat of convo.installations.filter((each) => each.position === 'behind')) {
+      const key = `${seat.epoch}:${seat.state}`;
+      behind.set(key, (behind.get(key) || 0) + 1);
+    }
     const nodes = [];
     for (const state of convo.states) {
       const here = placed.get(`${state.epoch}:${state.state}`);
       const { cls, word } = look(state, at);
+      const stay = behind.get(`${state.epoch}:${state.state}`) || 0;
       for (const parent of state.after) {
         const from = placed.get(`${parent.epoch}:${parent.state}`);
         const bend = (from.x + here.x) / 2;
         drawing.append(svg('path', { class: `link ${cls}`, d: `M${from.x + NODE} ${from.y}C${bend} ${from.y} ${bend} ${here.y} ${here.x - NODE} ${here.y}` }));
       }
-      nodes.push(into(
+      const stays = stay ? `, ${stay} of them behind` : '';
+      const node = into(
         svg('g'),
-        svg('title', {}, `epoch ${state.epoch}, state ${state.state}, ${word}, reported by ${state.holders}, ${state.members} in its roster`),
+        svg('title', {}, `epoch ${state.epoch}, state ${state.state}, ${word}, reported by ${state.holders}${stays}, ${state.members} in its roster`),
         svg('circle', { class: cls, cx: here.x, cy: here.y, r: NODE }),
         svg('text', { class: 'n', x: here.x, y: here.y + 4, 'text-anchor': 'middle' }, state.holders),
         svg('text', { class: 'fp', x: here.x, y: here.y - NODE - 6, 'text-anchor': 'middle' }, state.state.slice(0, 8)),
-      ));
+      );
+      if (stay) {
+        node.append(
+          svg('circle', { class: 'stay', cx: here.x, cy: here.y, r: NODE + 4 }),
+          svg('text', { class: 'stay', x: here.x, y: here.y + NODE + 14, 'text-anchor': 'middle' }, `${stay} behind`),
+        );
+      }
+      nodes.push(node);
     }
     drawing.append(...nodes);
     if (at.split) {

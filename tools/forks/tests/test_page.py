@@ -1171,6 +1171,35 @@ class Drawn(Collecting):
         titles = [made for made in within(table["kids"][0]) if made["tag"] == "th"]
         self.assertEqual({made["attrs"]["scope"] for made in titles}, {"col"})
 
+    def test_a_ring_says_how_many_installations_behind_stay_at_a_state(self):
+        # Saro and Raya go on to epoch 3, Pax and Mira stay at epoch 2 and Kes at epoch 1.
+        five = "saro raya pax mira kes"
+        self.served = self.elsewhere()
+        for name, epochs in (("saro", 3), ("raya", 3), ("pax", 2), ("mira", 2), ("kes", 1)):
+            self.served.share(logged(member(name, epochs, five)), name)
+        answers = self.answers()
+        report = json.loads(answers[f"conversations/{CONVO}"]["text"])
+        self.assertEqual(
+            positions(report, five.split()),
+            dict(saro="tip", raya="tip", pax="behind", mira="behind", kes="behind"),
+        )
+        (state,) = self.draw(answers)
+        lineage = keyed(state["report"], "Lineage of states")
+        drawn = {}
+        for node in (made for made in within(lineage) if made["tag"] == "g"):
+            (title,) = [words(made) for made in node["kids"] if made["tag"] == "title"]
+            rings = [made for made in node["kids"] if made["tag"] == "circle"][1:]
+            said = [words(made) for made in classed(node, "stay") if made["tag"] == "text"]
+            drawn[title.split(",")[0]] = (title.split(", ")[3:5], len(rings), said)
+        self.assertEqual(
+            drawn,
+            {
+                "epoch 1": (["reported by 5", "1 of them behind"], 1, ["1 behind"]),
+                "epoch 2": (["reported by 4", "2 of them behind"], 1, ["2 behind"]),
+                "epoch 3": (["reported by 2", "5 in its roster"], 0, []),
+            },
+        )
+
     def test_a_conversation_of_few_installations_is_drawn_a_lane_for_each_and_nothing_unfolds(self):
         answers = self.answers()
         report = json.loads(answers[f"conversations/{CONVO}"]["text"])

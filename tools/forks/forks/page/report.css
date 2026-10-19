@@ -243,6 +243,8 @@ svg.m { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: rou
 .lineage .side { stroke-width: 1.5; }
 .lineage .unknown { stroke: var(--warning); }
 .lineage circle.unknown { stroke-dasharray: 4 3; }
+.lineage circle.stay { fill: none; stroke: var(--warning); stroke-width: 1.5; }
+.lineage text.stay { fill: var(--warning); font-size: 10px; }
 
 /* ---- lanes --------------------------------------------------------------- */
 
