@@ -386,9 +386,17 @@ class Reading(unittest.TestCase):
                 "50-epochs.json",
                 "fifty-sized.json",
                 "fleet-five.json",
+                "grow-by-saro-waku-loss-0.01.json",
+                "grow-by-saro-waku-loss-0.1.json",
+                "grow-by-saro-waku-loss-0.5.json",
+                "grow-by-saro-waku-loss-0.75.json",
                 "grow-by-saro-waku-loss-1.json",
                 "grow-by-saro-waku-loss-10.json",
                 "grow-by-saro-waku-loss-5.json",
+                "grow-waku-loss-0.01.json",
+                "grow-waku-loss-0.1.json",
+                "grow-waku-loss-0.5.json",
+                "grow-waku-loss-0.75.json",
                 "grow-waku-loss-1.json",
                 "grow-waku-loss-10.json",
                 "grow-waku-loss-5.json",
@@ -436,7 +444,15 @@ class Reading(unittest.TestCase):
     def test_a_grow_on_waku_has_two_hundred_delays_of_its_arrivals_and_differs_by_its_rate(self):
         grows = {
             rate: scenario.read(TOOL / "scenarios" / f"grow-waku-loss-{percent}.json")
-            for percent, rate in ((1, 0.01), (5, 0.05), (10, 0.1))
+            for percent, rate in (
+                (0.01, 0.0001),
+                (0.1, 0.001),
+                (0.5, 0.005),
+                (0.75, 0.0075),
+                (1, 0.01),
+                (5, 0.05),
+                (10, 0.1),
+            )
         }
         first = grows[0.01]
 
@@ -452,7 +468,7 @@ class Reading(unittest.TestCase):
 
     def test_a_grow_by_saro_on_waku_is_the_grow_on_waku_of_its_rate_with_saro_alone_adding(self):
         alone = Grow(epochs=50, adders=None, branches=5, by="saro")
-        for percent in (1, 5, 10):
+        for percent in (0.01, 0.1, 0.5, 0.75, 1, 5, 10):
             drawn = scenario.read(TOOL / "scenarios" / f"grow-waku-loss-{percent}.json")
             by = scenario.read(TOOL / "scenarios" / f"grow-by-saro-waku-loss-{percent}.json")
             self.assertEqual(by, dataclasses.replace(drawn, steps=(alone,)), percent)

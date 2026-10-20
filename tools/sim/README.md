@@ -1406,6 +1406,30 @@ the other 14 members went on at epoch 15 in a state of their own, saro was left 
 with kes, who had fallen behind at epoch 10, and saro's next add was refused for the whole
 budget. A run moved the clock 759 to 3381 s and took the runner 0.3 to 17.3 s.
 
+The six files have siblings at lower rates, `grow-waku-loss-0.01.json`, `-0.1`, `-0.5` and `-0.75`
+and the `grow-by-saro-waku-loss-` files of the same names, which lose 0.0001, 0.001, 0.005 and
+0.0075 of the frames each member receives, Welcomes too, and are otherwise those of 0.01. Each was
+swept 5 times on 2026-10-20 as above:
+
+| Loss | Saro alone: runs that did not split | The trunk's epoch at the end | First split, epoch | Any member: runs that did not split | The trunk's epoch at the end | First split, epoch |
+|---|---|---|---|---|---|---|
+| 0.0001 | 5 of 5 | 50 | - | 1 of 5 | 50 | 39 to 49 |
+| 0.001 | 1 of 5 | 50 | 20 to 37 | 0 of 5 | 37 to 50 | 16 to 39 |
+| 0.005 | 0 of 5 | 33 to 50 | 13 to 41 | 0 of 5 | 14 to 29 | 6 to 18 |
+| 0.0075 | 0 of 5 | 20 to 44 | 7 to 17 | 0 of 5 | 15 to 23 | 4 to 15 |
+
+Only saro alone at 0.0001 took the group to epoch 50 without a split. At 0.001 saro's trunk
+reached epoch 50 in every run, and four runs split all the same, each leaving two members alone
+on branches of their own. With any member adding, four runs split even at 0.0001, at epochs 39
+to 49 and one member each time, and the run that did not split had a member behind at the end. A run moved the
+clock 1337 to 4982 s and took the runner 1.8 to 309.2 s.
+
+The rates of one seed share their draws: a member's model draws for every frame that arrives,
+from a stream of the network seed, and loses the frame when the draw is under the rate. A lower
+rate so loses a subset of the frames a higher one loses until the runs part, and runs can end
+alike: saro alone with seed 0 split at epoch 7 and ended at epoch 20 at both 0.0075 and 0.01.
+Two rates of one seed are a pair, not two samples.
+
 ## What it does not do
 
 - It does not build `chat-cli`, the runner or the image, and it runs whatever it is given. The
