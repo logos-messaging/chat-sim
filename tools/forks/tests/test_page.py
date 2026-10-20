@@ -1200,6 +1200,54 @@ class Drawn(Collecting):
             },
         )
 
+    def test_the_lineage_draws_a_state_in_its_row_and_names_a_row_for_its_newest_state(self):
+        # Pax leaves Saro's and Raya's line at T2; Mira and Kes leave it at X1, and each other
+        # at L3.
+        five = "saro raya pax mira kes"
+        wrote = {
+            "saro": ["X1", "T2", "T3", "T4"],
+            "raya": ["X1", "T2", "T3", "T4"],
+            "pax": ["X1", "T2", "P3"],
+            "mira": ["X1", "L2", "L3", "M4"],
+            "kes": ["X1", "L2", "L3", "K4"],
+        }
+        self.served = self.elsewhere()
+        for name, states in wrote.items():
+            log = Log(name)
+            log.start(name)
+            for epoch, held in enumerate(states, 1):
+                log.epoch(name, epoch, held, five)
+            self.served.share(logged(log), name)
+        answers = self.answers()
+        report = json.loads(answers[f"conversations/{CONVO}"]["text"])
+        (state,) = self.draw(answers)
+        lineage = keyed(state["report"], "Lineage of states")
+        height = {}
+        for drawn in (made for made in within(lineage) if made["tag"] == "g"):
+            (title,) = [words(made) for made in drawn["kids"] if made["tag"] == "title"]
+            circle = next(made for made in drawn["kids"] if made["tag"] == "circle")
+            height[title.split(", ")[1].removeprefix("state ")] = float(circle["attrs"]["cy"])
+        rows: Dict[int, List[dict]] = {}
+        for held in report["states"]:
+            rows.setdefault(held["row"], []).append(held)
+        self.assertEqual(sorted(rows), [0, 1, 2, 3])
+        at = [{height[held["state"]] for held in rows[row]} for row in sorted(rows)]
+        self.assertTrue(all(len(heights) == 1 for heights in at), at)
+        self.assertEqual(at, sorted(at, key=min))
+        self.assertEqual(len({min(heights) for heights in at}), len(at))
+        names = [
+            (float(made["attrs"]["y"]), words(made))
+            for made in within(lineage)
+            if made["tag"] == "text"
+            and made["attrs"].get("x") == "8"
+            and "class" not in made["attrs"]
+        ]
+        newest = [rows[row][-1] for row in sorted(rows)]
+        self.assertEqual(
+            names,
+            [(min(heights) + 4, f"Branch {held['branch']}") for heights, held in zip(at, newest)],
+        )
+
     def test_a_conversation_of_few_installations_is_drawn_a_lane_for_each_and_nothing_unfolds(self):
         answers = self.answers()
         report = json.loads(answers[f"conversations/{CONVO}"]["text"])
