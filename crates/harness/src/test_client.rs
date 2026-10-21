@@ -228,12 +228,6 @@ impl DerefMut for TestClient {
 }
 
 #[allow(unused)]
-pub struct Observation {
-    ident: SignerKey,
-    outcome: PayloadOutcome,
-}
-
-#[allow(unused)]
 pub struct Harness {
     addresses: HashMap<usize, SignerKey>,
     /// Each client, `None` once it is retired.
@@ -241,8 +235,6 @@ pub struct Harness {
     auth: AcceptAllAuth,
     wakeup_service: WS,
     cb: Box<OnMessageCallback>,
-    // List of outcomes that were detected across all clients.
-    pub observed_outcomes: Vec<Observation>,
 }
 
 /// A [`Harness`] of `N` clients under the tests' names and fast settings, on
@@ -327,7 +319,6 @@ impl Harness {
             auth,
             wakeup_service: ws,
             cb: Box::new(cb),
-            observed_outcomes: vec![],
         }
     }
 
@@ -414,11 +405,6 @@ impl Harness {
         let now = self.wakeup_service.clock().now();
         for client in self.clients.iter_mut().flatten() {
             for outcome in client.drain_outcomes(now) {
-                info!(id = ?client.signer_key(), ?outcome, "Process drain");
-                self.observed_outcomes.push(Observation {
-                    ident: client.signer_key().clone(),
-                    outcome: outcome.clone(),
-                });
                 info!(id = ?client.signer_key(), ?outcome, "Process drain");
                 (self.cb)(client, outcome)
             }
