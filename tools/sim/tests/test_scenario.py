@@ -404,6 +404,7 @@ class Reading(unittest.TestCase):
                 "grow-waku-loss-1.json",
                 "grow-waku-loss-10.json",
                 "grow-waku-loss-5.json",
+                "grow-waku-size-50.json",
                 "lossy-wire.json",
                 "lossy.json",
                 "lost-candidate.json",
@@ -470,6 +471,20 @@ class Reading(unittest.TestCase):
             self.assertEqual((held.network.loss, held.network.welcome_loss), (rate, rate))
             rated = dataclasses.replace(held.network, loss=0.01, welcome_loss=0.01)
             self.assertEqual(dataclasses.replace(held, network=rated), first)
+
+    def test_a_grow_of_fifty_on_waku_goes_toward_epoch_1000_with_any_fifty_in_a_row_spread(self):
+        sized = scenario.read(TOOL / "scenarios" / "grow-waku-size-50.json")
+
+        self.assertEqual(sized.steps, (Grow(epochs=1000, adders=3, branches=2, size=50),))
+        self.assertEqual((sized.members, sized.timers, sized.network.seed), (3001, "default", 1))
+        self.assertEqual((sized.network.loss, sized.network.welcome_loss), (0, 0))
+        delays = [sized.network.delay_of(name_of(seat)) for seat in range(3001)]
+        self.assertEqual((min(delays), max(delays), delays[0]), (263, 673, 518))
+        self.assertEqual(round(sum(delays) / 3001, 1), 507.6)
+        spans = [
+            max(delays[seat : seat + 50]) - min(delays[seat : seat + 50]) for seat in range(3001 - 49)
+        ]
+        self.assertEqual((min(spans), max(spans)), (318, 376))
 
     def test_a_grow_by_saro_on_waku_is_the_grow_on_waku_of_its_rate_with_saro_alone_adding(self):
         alone = Grow(epochs=50, adders=None, branches=5, by="saro")

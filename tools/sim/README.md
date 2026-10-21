@@ -224,8 +224,9 @@ and `fifty-sized.json`, two sizes runs have been measured at (see
 [The floor on one machine](#the-floor-on-one-machine)), and `lost-candidate.json` and
 `lossy.json`, five members on a network model (see [What a lost frame does](#what-a-lost-frame-does)).
 `grow-waku-loss-1.json`, `grow-waku-loss-5.json` and `grow-waku-loss-10.json` grow a group of up to
-200 on Waku's delays at three rates of loss, and `grow-by-saro-waku-loss-1.json`,
-`grow-by-saro-waku-loss-5.json` and `grow-by-saro-waku-loss-10.json` grow it by saro alone (see
+200 on Waku's delays at three rates of loss, `grow-by-saro-waku-loss-1.json`,
+`grow-by-saro-waku-loss-5.json` and `grow-by-saro-waku-loss-10.json` grow it by saro alone, and
+`grow-waku-size-50.json` holds one of fifty toward epoch 1000 (see
 [A group that grows](#a-group-that-grows)).
 `lossy-wire.json` has a wire, and CI on that branch runs it and `three.json` in containers (see
 [In containers](#in-containers)). `fleet-five.json` needs the `logos.test` fleet and is no part
@@ -388,9 +389,11 @@ process. `--write` writes the outcomes of the sweep to the file instead: a revis
 that changes how a run comes out has its outcomes written, and the file's diff shows the change.
 
 `expected/` holds the outcomes of the scenarios CI sweeps, three runs each, at the revision of
-logos-chat that `Cargo.toml` pins. Each has 200 members on the library's own timers and Waku's
-delays, any member adding up to three a round, until the trunk holds epoch 50 or five main
-branches run side by side (see [A group that grows](#a-group-that-grows)):
+logos-chat that `Cargo.toml` pins. Each is on the library's own timers and Waku's delays, any
+member adding up to three a round. The `grow-waku-loss-` ones have 200 members and go until the
+trunk holds epoch 50 or five main branches run side by side, and `grow-waku-size-50.json` holds
+fifty until the trunk holds epoch 1000 or a main branch forks off it (see
+[A group that grows](#a-group-that-grows)):
 
 | Scenario | Loss |
 |---|---|
@@ -399,6 +402,7 @@ branches run side by side (see [A group that grows](#a-group-that-grows)):
 | `grow-waku-loss-0.5.json` | 0.5% |
 | `grow-waku-loss-1.json` | 1% |
 | `grow-waku-loss-5.json` | 5% |
+| `grow-waku-size-50.json` | none |
 
 ## What a run does
 
@@ -1488,6 +1492,42 @@ from a stream of the network seed, and loses the frame when the draw is under th
 rate so loses a subset of the frames a higher one loses until the runs part, and runs can end
 alike: saro alone with seed 0 split at epoch 7 and ended at epoch 20 at both 0.0075 and 0.01.
 Two rates of one seed are a pair, not two samples.
+
+`grow-waku-size-50.json` holds a group at fifty members toward epoch 1000, at no loss, on the
+library's own timers, any member adding up to three a round. Its plan has 3001 members, so that
+each round up to epoch 1000 can seat three, with Waku's delays at the middles of 3001 equal
+slices: 263 to 673 ms, the member that starts `k`-th the rank `(1855k + 1500) mod 3001`, so that
+saro again has 518 ms. 1855 is the nearest whole number to 3001 over the golden ratio, so that
+any fifty seated one after another, as the group holds at its size, span 318 to 376 ms with a
+mean of 500 to 516 ms. The 19 of the files of 200 would put them within as little as 38 ms of
+one another. Once the group holds fifty, each adder first removes the member seated longest ago
+(see [A group that grows](../../crates/harness/README.md#a-group-that-grows)), and the run stops
+at the start of the round after a branch forks off the trunk.
+
+It was swept 3 times on 2026-10-21, seeds 0 to 2 and network seeds 1 to 3, and each run ended
+with 50 seated:
+
+| Seed | First split, epoch | The trunk's epoch at the end | Joiners | Removed | Members off the trunk | Fell behind | Runner |
+|---|---|---|---|---|---|---|---|
+| 0 | 256 | 258 | 509 | 460 | 2, on 2 branches | 1 | 656 s |
+| 1 | 39 | 47 | 97 | 48 | 5, on 3 branches | 47 | 76 s |
+| 2 | 424 | 426 | 858 | 809 | 3, on 2 branches | 3 | 1480 s |
+
+No run took the trunk to epoch 1000. Each run of `grow-waku-loss-0.json`, 200 members at no loss
+and none removed, took it to epoch 50 whole. Here the first split of each run was of members one
+commit had seated one or two epochs before it: they missed the trunk's commit at the epoch they
+forked at, and 5 to 17 minutes of the clock after they came to the state before it, came to
+states off the trunk's at that epoch. How is not traced. Two of seed 1's came to theirs by
+commits that also seated a new member, so that each of their branches holds two. The step saw the
+branches once they held those states, and each run ended 2 to 8 epochs past its first split, in
+seeds 0 and 1 with one more member off the trunk at its last epoch. Of seed 1's 47 that fell
+behind, 45 at epoch 37 and those two at 38, all but the two came back to the trunk: every
+member held its states at epochs 37 and 38, the second reaching them over 12 seconds.
+
+A run moved the clock 3872 to 35157 s and took the runner 1.6 s an epoch at 47 epochs, 2.5 s at
+258 and 3.5 s at 426: an epoch costs more the more epochs came before it, how is not traced, and
+a run to epoch 1000 at that rate takes the runner close to two hours here. The runner of seed 2
+held 286 MiB at epoch 313.
 
 ## What it does not do
 

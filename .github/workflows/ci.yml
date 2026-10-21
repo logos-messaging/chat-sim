@@ -88,6 +88,7 @@ jobs:
           - grow-waku-loss-0.5
           - grow-waku-loss-1
           - grow-waku-loss-5
+          - grow-waku-size-50
     steps:
       - uses: actions/checkout@v4
       - uses: logos-co/setup-nix-cache-action@v1
