@@ -726,35 +726,6 @@ class TheResult(Scratch):
         super().setUp()
         self.result = json.loads((FIXTURES / "result.json").read_text(encoding="utf-8"))
 
-    def examples(self, kind: str) -> List[dict]:
-        """The lines of a kind that chat-cli's README gives for examples."""
-        readme = (REPOSITORY / "crates" / "chat-cli" / "README.md").read_text(encoding="utf-8")
-        start = f'{{"type":"{kind}"'
-        return [json.loads(line) for line in readme.splitlines() if line.startswith(start)]
-
-    def test_the_network_model_of_a_member_has_the_fields_chat_cli_answers_with(self):
-        answers = [line["network"] for line in self.examples("result") if "network" in line]
-        (withheld,) = [answer for answer in answers if answer["withheld"] is not None]
-
-        self.assertEqual(len(self.result["members"]), 5)
-        for member in self.result["members"]:
-            # Pax is the member a candidate was withheld from.
-            answer = withheld if member["name"] == "pax" else answers[0]
-            self.assertEqual(shape(member["network"]), shape(dict(answer, cut=[], own=[])))
-
-    def test_a_frame_a_model_dropped_has_the_fields_and_the_words_of_chat_clis_line(self):
-        lines = self.examples("network_drop")
-        for line in lines:
-            del line["type"]
-        pax = self.result["members"][2]
-
-        # A frame of the group that a cut dropped, and a commit candidate withheld.
-        self.assertEqual([shape(drop) for drop in pax["dropped"]], [shape(line) for line in lines])
-        self.assertEqual(
-            [(drop["why"], drop["kind"]) for drop in pax["dropped"]],
-            [(line["why"], line["kind"]) for line in lines],
-        )
-
     def test_the_stand_in_leaves_a_result_of_the_fields_the_runner_leaves(self):
         plan = self.scratch / "plan.json"
         plan.write_text(json.dumps(self.PLAN), encoding="utf-8")

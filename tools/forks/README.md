@@ -28,7 +28,7 @@ python3 tools/forks report OUT_DIR/group.log
 ```
 
 `chat-cli` writes the records into the log `--log-file` names, unless `RUST_LOG` sets another
-filter (see [The log](../../crates/chat-cli/README.md#the-log)). `tools/sim` has the tool read
+filter (see [The log](https://github.com/logos-messaging/chat-sim/blob/local-network/crates/chat-cli/README.md#the-log)). `tools/sim` has the tool read
 the logs of every member it ran, whichever of the two ran them.
 
 logos-chat's scale test writes them with `LOG=info`, run in a logos-chat checkout:

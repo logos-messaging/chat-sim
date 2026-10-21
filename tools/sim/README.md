@@ -15,9 +15,9 @@ starts no peer and has a runner do the scenario with every member in one process
 clock (see [In one process](#in-one-process)).
 
 It needs Python 3.9 or newer and no package beyond the standard library, and a `chat-cli` built
-with the delivery library (see [chat-cli](../../crates/chat-cli/README.md#building)). A run in
-containers needs the image in its place, and Docker or Podman. A run in one process
-needs the runner in its place.
+with the delivery library (see [chat-cli](https://github.com/logos-messaging/chat-sim/blob/local-network/crates/chat-cli/README.md#building)),
+which is on the `local-network` branch. A run in containers needs the image in its place, built on
+that branch, and Docker or Podman. A run in one process needs the runner in its place.
 
 ## Running it
 
@@ -50,6 +50,11 @@ follows `--` is `sim`'s command line, less the flag the app gives:
 
 ```sh
 nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out tmp/50-epochs
+```
+
+On the `local-network` branch, the flake also has the apps of the other two rigs:
+
+```sh
 nix run .#groupv2-simulation-processes -- run tools/sim/scenarios/three.json --out tmp/three
 nix run .#groupv2-simulation-containers -- run tools/sim/scenarios/three.json --engine podman --out tmp/three
 ```
@@ -139,7 +144,7 @@ them:
 |-------|---------|-------|
 | `members` | | How many peers the run starts, 1 to 65534: every node listens on a TCP port of its own, and the registry on one more. They are named `saro`, `raya`, `pax`, `mira`, `kes` and `tomo`, written in lower case, and from the seventh on `peer7`, `peer8` and so on, in the order they start. `saro` creates the group. |
 | `steps` | | What the members do, in order: one step or more. A later step is named by its place in the list, from 0: a refusal says `steps[2]`. |
-| `timers` | `fast` | The group timers of every peer: `fast` or `default`, a set of chat-cli's `--group-commit`, or an object of durations in milliseconds by the names the group library gives them, each of which stands over that of the `default` set (see [chat-cli](../../crates/chat-cli/README.md#group-timers)). A duration is a whole number up to 2^64 - 1, the most its flag holds. |
+| `timers` | `fast` | The group timers of every peer: `fast` or `default`, a set of chat-cli's `--group-commit`, or an object of durations in milliseconds by the names the group library gives them, each of which stands over that of the `default` set (see [chat-cli](https://github.com/logos-messaging/chat-sim/blob/local-network/crates/chat-cli/README.md#group-timers)). A duration is a whole number up to 2^64 - 1, the most its flag holds. |
 | `max_message_kib` | `512` | The largest message a node takes, as chat-cli's `--max-message-kib`: 1 to 2^32 - 1, the most the flag holds. Refused with `preset`, which fixes the largest message. |
 | `preset` | | The fleet preset every node joins, by its name, as chat-cli's `--preset`: `logos.test`. Without it the nodes are a network of the run's own (see [On a fleet preset](#on-a-fleet-preset)). A name that is no text, an empty one, or one that holds a character that cannot be printed, as a line break is, is refused. Which names there are is the delivery library's to say. |
 | `budget` | `180` | How many seconds each wait may take: a peer's start, the wiring, a batch, a post. A number above 0. |
@@ -228,7 +233,7 @@ of CI (see [On a fleet preset](#on-a-fleet-preset)).
 ### The network model
 
 `network` has every peer put what it receives through chat-cli's model of a lossy network (see
-[chat-cli](../../crates/chat-cli/README.md#the-network-model)). The model stands between a peer's
+[chat-cli](https://github.com/logos-messaging/chat-sim/blob/local-network/crates/chat-cli/README.md#the-network-model)). The model stands between a peer's
 node and its client: the nodes of a run hand each other every frame, and a frame a model drops
 is one its node took.
 
@@ -352,7 +357,7 @@ short has left the rows of the runs that ended:
    the delay of that member. A scenario with `preset` starts each peer on the preset, and no
    node is told a node to dial. A peer that ends before its `ready` line stops the run. One
    that ended with status 1, as chat-cli does when it cannot start, has the last line of its
-   standard error for the reason (see [chat-cli](../../crates/chat-cli/README.md#how-it-ends)).
+   standard error for the reason (see [chat-cli](https://github.com/logos-messaging/chat-sim/blob/local-network/crates/chat-cli/README.md#how-it-ends)).
    Any other, as one that a signal ended, has the path of that file.
 3. It asks every node for its state until each holds its links and has at least four of them, or
    all of them when it has fewer, in its gossip mesh. On a preset it asks until each node holds
@@ -567,7 +572,7 @@ hold 1: 300.000s, unheld 0.00 a node a minute
 
 Each node held its six links when its peer was ready, about 9 s after its start, and had made
 six dials and no more at the end of the hold. `mesh` is counted over every shard a node is on
-(see [chat-cli](../../crates/chat-cli/README.md#driving-it)), so it may be above the links, as
+(see [chat-cli](https://github.com/logos-messaging/chat-sim/blob/local-network/crates/chat-cli/README.md#driving-it)), so it may be above the links, as
 it is for the creator.
 
 Of three runs of the scenario that day two went so. The third stopped at its fourth batch,
@@ -874,6 +879,8 @@ Why the `fast` set seats no third member at a delay of 200 ms was not traced. Th
 before the step.
 
 ## In containers
+
+On the `local-network` branch, whose flake builds the image:
 
 ```sh
 nix build .#sim-image && ./result | docker load
