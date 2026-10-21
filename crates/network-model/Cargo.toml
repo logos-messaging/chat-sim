@@ -1,0 +1,15 @@
+[package]
+name = "network-model"
+version = "0.1.0"
+edition = "2024"
+license.workspace = true
+description = "A seeded model of a lossy network on the frames one client receives"
+
+[dependencies]
+# Workspace dependencies (sorted)
+chat-proto = { workspace = true }
+de-mls = { workspace = true }
+libchat = { workspace = true }
+
+# External dependencies (sorted)
+prost = "0.14.1"

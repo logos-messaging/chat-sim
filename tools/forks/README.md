@@ -19,23 +19,24 @@ beyond the standard library.
 libchat writes its records at the `info` level, so a log holds them only when its writer lets the
 target `libchat::groupv2trace` through at `info`.
 
-The scale test runs a whole group in one process. With `LOG=info` its output holds a record for
-every epoch each member reaches, and this is how the CI job captures and reads it:
+`harness-run` runs a whole group in one process, and its `group.log` holds a record for every
+epoch each member reaches (see
+[What a run leaves](../../crates/harness/README.md#what-a-run-leaves)):
+
+```sh
+python3 tools/forks report OUT_DIR/group.log
+```
+
+`chat-cli` writes the records into the log `--log-file` names, unless `RUST_LOG` sets another
+filter (see [The log](../../crates/chat-cli/README.md#the-log)). `tools/sim` has the tool read
+the logs of every member it ran, whichever of the two ran them.
+
+logos-chat's scale test writes them with `LOG=info`, run in a logos-chat checkout:
 
 ```sh
 LOG=info cargo test -p integration_tests_core --test test_group_v2_scale -- \
   --nocapture --test-threads=1 > scale.log 2>&1
-python3 tools/forks report scale.log
 ```
-
-`chat-cli` writes no log unless it is given `--log-file`, and then it filters at `warn` unless
-`RUST_LOG` sets another filter. A member who runs it sets both:
-
-```sh
-RUST_LOG=warn,libchat::groupv2trace=info cargo run -p chat-cli -- --name saro --log-file saro.log
-```
-
-With `--headless` its filter lets the records through, and `RUST_LOG` is not needed.
 
 logos-chat-module, the Logos module that wraps libchat, writes a log file of its own, in a line
 shape of its own. The tool reads both shapes: see [The lines it reads](#the-lines-it-reads).

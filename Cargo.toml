@@ -1,0 +1,31 @@
+[workspace]
+resolver = "3"
+
+members = [
+    "crates/chat-cli",
+    "crates/harness",
+    "crates/network-model",
+]
+
+[workspace.package]
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+# logos-chat at the revision the simulation runs.
+components = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
+crypto = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
+libchat = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
+logos-chat = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
+message-types = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
+
+# Spelled as logos-chat spells them: cargo tells git sources apart by their URL and rev as written,
+# and a second spelling would link a second de-mls whose types are not libchat's.
+chat-proto = { git = "https://github.com/logos-messaging/chat_proto", rev = "948f4ad6dedb01b44e279204d8eb30a1eda5a330" }
+de-mls = { git = "https://github.com/vacp2p/de-mls", rev = "14b4218" }
+
+network-model = { path = "crates/network-model" }
+
+crossbeam-channel = "0.5"
+
+[profile.release]
+panic = "abort"

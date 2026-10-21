@@ -237,7 +237,6 @@ def _group(
     for index, dialed in enumerate(dialing):
         name = name_of(index)
         arguments = [
-            "--headless",
             "--transport",
             "logos-delivery",
             "--name",

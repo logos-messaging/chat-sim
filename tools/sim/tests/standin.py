@@ -475,7 +475,6 @@ class Peer:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--fault", action="append", default=[], metavar="NAME[=PEER]")
-    parser.add_argument("--headless", action="store_true", required=True)
     parser.add_argument("--transport", choices=["logos-delivery"], required=True)
     parser.add_argument("--name", required=True)
     parser.add_argument("--data", type=Path, required=True)

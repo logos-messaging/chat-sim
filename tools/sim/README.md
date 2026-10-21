@@ -15,7 +15,7 @@ starts no peer and has a runner do the scenario with every member in one process
 clock (see [In one process](#in-one-process)).
 
 It needs Python 3.9 or newer and no package beyond the standard library, and a `chat-cli` built
-with the delivery library (see [chat-cli](../../bin/chat-cli/README.md#building)). A run in
+with the delivery library (see [chat-cli](../../crates/chat-cli/README.md#building)). A run in
 containers needs the image in its place, and Docker or Podman. A run in one process
 needs the runner in its place.
 
@@ -139,7 +139,7 @@ them:
 |-------|---------|-------|
 | `members` | | How many peers the run starts, 1 to 65534: every node listens on a TCP port of its own, and the registry on one more. They are named `saro`, `raya`, `pax`, `mira`, `kes` and `tomo`, written in lower case, and from the seventh on `peer7`, `peer8` and so on, in the order they start. `saro` creates the group. |
 | `steps` | | What the members do, in order: one step or more. A later step is named by its place in the list, from 0: a refusal says `steps[2]`. |
-| `timers` | `fast` | The group timers of every peer: `fast` or `default`, a set of chat-cli's `--group-commit`, or an object of durations in milliseconds by the names the group library gives them, each of which stands over that of the `default` set (see [chat-cli](../../bin/chat-cli/README.md#group-timers)). A duration is a whole number up to 2^64 - 1, the most its flag holds. |
+| `timers` | `fast` | The group timers of every peer: `fast` or `default`, a set of chat-cli's `--group-commit`, or an object of durations in milliseconds by the names the group library gives them, each of which stands over that of the `default` set (see [chat-cli](../../crates/chat-cli/README.md#group-timers)). A duration is a whole number up to 2^64 - 1, the most its flag holds. |
 | `max_message_kib` | `512` | The largest message a node takes, as chat-cli's `--max-message-kib`: 1 to 2^32 - 1, the most the flag holds. Refused with `preset`, which fixes the largest message. |
 | `preset` | | The fleet preset every node joins, by its name, as chat-cli's `--preset`: `logos.test`. Without it the nodes are a network of the run's own (see [On a fleet preset](#on-a-fleet-preset)). A name that is no text, an empty one, or one that holds a character that cannot be printed, as a line break is, is refused. Which names there are is the delivery library's to say. |
 | `budget` | `180` | How many seconds each wait may take: a peer's start, the wiring, a batch, a post. A number above 0. |
@@ -228,7 +228,7 @@ of CI (see [On a fleet preset](#on-a-fleet-preset)).
 ### The network model
 
 `network` has every peer put what it receives through chat-cli's model of a lossy network (see
-[chat-cli](../../bin/chat-cli/README.md#the-network-model)). The model stands between a peer's
+[chat-cli](../../crates/chat-cli/README.md#the-network-model)). The model stands between a peer's
 node and its client: the nodes of a run hand each other every frame, and a frame a model drops
 is one its node took.
 
@@ -352,7 +352,7 @@ short has left the rows of the runs that ended:
    the delay of that member. A scenario with `preset` starts each peer on the preset, and no
    node is told a node to dial. A peer that ends before its `ready` line stops the run. One
    that ended with status 1, as chat-cli does when it cannot start, has the last line of its
-   standard error for the reason (see [chat-cli](../../bin/chat-cli/README.md#how-it-ends)).
+   standard error for the reason (see [chat-cli](../../crates/chat-cli/README.md#how-it-ends)).
    Any other, as one that a signal ended, has the path of that file.
 3. It asks every node for its state until each holds its links and has at least four of them, or
    all of them when it has fewer, in its gossip mesh. On a preset it asks until each node holds
@@ -567,7 +567,7 @@ hold 1: 300.000s, unheld 0.00 a node a minute
 
 Each node held its six links when its peer was ready, about 9 s after its start, and had made
 six dials and no more at the end of the hold. `mesh` is counted over every shard a node is on
-(see [chat-cli](../../bin/chat-cli/README.md#headless-mode)), so it may be above the links, as
+(see [chat-cli](../../crates/chat-cli/README.md#driving-it)), so it may be above the links, as
 it is for the creator.
 
 Of three runs of the scenario that day two went so. The third stopped at its fourth batch,
@@ -1004,8 +1004,8 @@ and the memory the engine's settings give its virtual machine.
 python3 tools/sim run tools/sim/scenarios/three.json --one-process target/release/harness-run --out tmp/three
 ```
 
-`--one-process` names `harness-run`, the runner of the core's integration tests (see
-[A plan on a virtual clock](../../core/integration_tests_core/README.md#a-plan-on-a-virtual-clock)),
+`--one-process` names `harness-run`, the runner of this repository's harness (see
+[A plan on a virtual clock](../../crates/harness/README.md#a-plan-on-a-virtual-clock)),
 and stands in place of `--chat-cli`. The members are then clients in that one process, on a clock
 the runner moves, and no registry and no peer is started. `sim` writes the scenario as the
 runner's plan, runs the runner to its end, and holds what it left to the scenario as it holds a
@@ -1106,7 +1106,7 @@ changes a run shows as a difference between the logs of one scenario made before
 
 The run's directory holds `plan.json`, the plan the runner was told, and `group.log` and
 `result.json`, which the runner leaves (see
-[What a run leaves](../../core/integration_tests_core/README.md#what-a-run-leaves)).
+[What a run leaves](../../crates/harness/README.md#what-a-run-leaves)).
 `runner.stderr` and `runner.out` are what the runner wrote to standard error and to standard
 output. Beside them are `expect.json`, `report.txt`, `report.json`, `run.txt` and `run.json`, as
 a run of processes has them, and `.forks-share.json` in a run given `--share`. `run.json` has no
@@ -1123,7 +1123,7 @@ a run of processes has them, and `.forks-share.json` in a run given `--share`. `
 | `batches[]` | For each batch its `joiners`, the `members` the group then had, `seated_s` on the virtual clock, from the first try of the add to the last roster, and `wall_s`, what the batch took on the machine. No `joined_s` and no `welcome_bytes`: the log holds no line of a Welcome |
 | `posts[]` | For each post its `poster`, its `readers`, those that left it `unread`, and `read` on the virtual clock. Nothing of a registry |
 | `holds[]` | The `seconds` of each `hold` step that was done, and nothing else |
-| `grow` | What the runner's result says of a `grow` step (see `grow` in [What a run leaves](../../core/integration_tests_core/README.md#what-a-run-leaves)). `null` in a run of other steps |
+| `grow` | What the runner's result says of a `grow` step (see `grow` in [What a run leaves](../../crates/harness/README.md#what-a-run-leaves)). `null` in a run of other steps |
 
 The first line of `run.txt` says that the run was one process, how far the virtual clock went,
 how long that took, and the run's seed. The table of the members has each one's installation id
@@ -1327,7 +1327,7 @@ python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-5.json --runs 5 --one
 
 A `grow` step has the runner add members from any member on any branch, until the trunk holds
 `epochs` or `branches` main branches run side by side (see
-[A group that grows](../../core/integration_tests_core/README.md#a-group-that-grows)). Only the
+[A group that grows](../../crates/harness/README.md#a-group-that-grows)). Only the
 runner does it:
 
 ```console

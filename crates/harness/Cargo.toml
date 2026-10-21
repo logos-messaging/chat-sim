@@ -1,0 +1,33 @@
+[package]
+name = "harness"
+version = "0.1.0"
+edition = "2024"
+license.workspace = true
+description = "A group of libchat clients in one process on a virtual clock, and the runner of a plan on it"
+
+[[bin]]
+name = "harness-run"
+path = "src/bin/harness-run.rs"
+
+[dependencies]
+# Workspace dependencies (sorted)
+components = { workspace = true }
+crypto = { workspace = true }
+de-mls = { workspace = true }
+libchat = { workspace = true }
+network-model = { workspace = true }
+
+# External dependencies (sorted)
+libc = "0.2"
+rand = "0.9"
+rand_chacha = "0.9"
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[dev-dependencies]
+# The store contract `MemStore` is held to.
+libchat = { workspace = true, features = ["test-support"] }
+
+# External dependencies (sorted)
+tempfile = "3"

@@ -728,7 +728,7 @@ class TheResult(Scratch):
 
     def examples(self, kind: str) -> List[dict]:
         """The lines of a kind that chat-cli's README gives for examples."""
-        readme = (REPOSITORY / "bin" / "chat-cli" / "README.md").read_text(encoding="utf-8")
+        readme = (REPOSITORY / "crates" / "chat-cli" / "README.md").read_text(encoding="utf-8")
         start = f'{{"type":"{kind}"'
         return [json.loads(line) for line in readme.splitlines() if line.startswith(start)]
 
