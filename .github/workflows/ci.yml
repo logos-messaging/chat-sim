@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    name: Lint
+    environment: ${{ github.ref == 'refs/heads/master' && 'public-cache' || '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The crates link liblogosdelivery as logos-chat's flake builds it, so the
+      # dev shell sets LOGOS_DELIVERY_LIB_DIR for their build scripts.
+      - uses: logos-co/setup-nix-cache-action@v1
+        with:
+          attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
+          attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
+      # The library the flake takes from logos-chat must be the one the crates of
+      # Cargo.lock were built against.
+      - name: Check that the flake and Cargo.lock pin one logos-chat
+        run: |
+          flake=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
+          cargo=$(grep -o 'logos-chat?rev=[0-9a-f]*' Cargo.lock | sort -u)
+          if [ "$cargo" != "logos-chat?rev=$flake" ]; then
+            echo "flake.lock pins logos-chat at $flake, Cargo.lock at: $cargo"
+            exit 1
+          fi
+      - run: nix develop -c cargo fmt --all -- --check
+      - run: nix develop -c cargo clippy --all-targets --all-features --workspace -- -D warnings
+
+  test:
+    name: Test
+    environment: ${{ github.ref == 'refs/heads/master' && 'public-cache' || '' }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: logos-co/setup-nix-cache-action@v1
+        with:
+          attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
+          attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
+      # Through the dev shell, so chat-cli links against the same Nix glibc as
+      # the prebuilt liblogosdelivery.so. chat-cli's tests drive the built
+      # binary over pipes, each with a mock registry on the runner's Python.
+      - run: nix develop -c cargo test --release --workspace
+      # Three peers, each with a delivery node of its own on a local network,
+      # form a group and read one post. The driver runs on the system Python,
+      # and the peers it starts need the dev shell.
+      - name: Run a group over a local network
+        run: nix develop -c python3 tools/sim run tools/sim/scenarios/three.json --chat-cli target/release/chat-cli --out "$RUNNER_TEMP/sim"
+
+  tools:
+    name: Tools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The tools need only the runner's own Python.
+      - run: python3 -m unittest discover -s tools/forks
+      - run: python3 -m unittest discover -s tools/sim
+
+  sim-one-process:
+    name: Sim in one process
+    environment: ${{ github.ref == 'refs/heads/master' && 'public-cache' || '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: logos-co/setup-nix-cache-action@v1
+        with:
+          attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
+          attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
+      # Fifty epochs as logos-chat-module runs a group. On Linux each run is
+      # the same run whenever it is made, so a logos-chat revision that changes
+      # its outcome changed the core.
+      - name: Run fifty epochs
+        run: nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out "$RUNNER_TEMP/50-epochs"
+      - name: Run fifty epochs on Waku's delays
+        run: nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs-waku.json --out "$RUNNER_TEMP/50-epochs-waku"
+
+  sim-containers:
+    name: Sim in containers
+    environment: ${{ github.ref == 'refs/heads/master' && 'public-cache' || '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: logos-co/setup-nix-cache-action@v1
+        with:
+          attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
+          attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
+      # The image holds chat-cli, Python for the registry, and tc for the wire.
+      - name: Build the image
+        run: nix build .#sim-image --print-build-logs
+      - name: Load the image
+        run: ./result | docker load
+      # Each peer and the registry run in a container of their own, on a
+      # network of containers. The driver runs on the system Python.
+      - name: Run a group in containers
+        run: python3 tools/sim run tools/sim/scenarios/three.json --image logos-chat-sim:latest --out "$RUNNER_TEMP/three"
+      # Each member's packets are delayed, jittered and lost on the wire.
+      - name: Run a group on a lossy wire
+        run: python3 tools/sim run tools/sim/scenarios/lossy-wire.json --image logos-chat-sim:latest --out "$RUNNER_TEMP/lossy-wire"
+      # A container the engine refuses to start says why only in its stderr
+      # file, which goes with the runner.
+      - name: Show what each container wrote to stderr
+        if: failure()
+        run: find "$RUNNER_TEMP" -name '*.stderr' -exec tail -n 40 {} +
