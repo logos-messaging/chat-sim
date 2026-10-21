@@ -39,6 +39,12 @@ mod host {
         *RANDOM.lock().unwrap_or_else(PoisonError::into_inner) =
             Some(ChaCha20Rng::seed_from_u64(seed));
         CLOCK.set(clock.clone()).expect("a process does one run");
+        // openmls hands work to rayon's pool, and on more than one thread a
+        // run that removes members came out otherwise from run to run.
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build_global()
+            .expect("the pool is built before openmls uses it");
     }
 
     /// std and the getrandom crate find it by `dlsym`: the linker exports a

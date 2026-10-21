@@ -123,8 +123,10 @@ at the start of a round when the trunk holds `epochs`, when the trunk and the ma
 
 On Linux a plan and its seed give one run. `harness-run` stands in for libc's `getrandom`, which
 every random draw of a run goes through, with a generator seeded by the plan's `seed`, and for its
-`clock_gettime`, so that the time of day is the virtual clock. Two runs of one plan write the same
-log byte for byte, and the same result but for the wall time each took, whenever they are run.
+`clock_gettime`, so that the time of day is the virtual clock. It runs openmls on one thread of
+rayon's pool: on more than one, a run that removes members came out otherwise from run to run. Two
+runs of one plan write the same log byte for byte, and the same result but for the wall time each
+took, whenever they are run.
 Another seed draws other ids for the group and its members, and which commit the group applies
 follows from them. The `seed` of `network` fixes what a member's model does with the n-th frame to
 reach it, and nothing else. Elsewhere the ids come from the OS, and the `seated_s` of a batch, and
