@@ -215,7 +215,8 @@ stopped after 0 of 2 steps: saro ended with status 1: chat-cli: Invalid conversa
 
 The same goes for a `preset` the delivery library does not know.
 
-`scenarios/` holds the scenarios the repository keeps: `three.json`, which CI runs,
+`scenarios/` holds the scenarios the repository keeps: `three.json`, which CI runs on the
+`local-network` branch,
 `50-epochs.json`, `50-epochs-waku.json` and `50-epochs-waku-loss.json`, fifty epochs as
 logos-chat-module runs a group (see
 [Fifty epochs as the module runs them](#fifty-epochs-as-the-module-runs-them)), `twenty.json`
@@ -226,7 +227,7 @@ and `fifty-sized.json`, two sizes runs have been measured at (see
 200 on Waku's delays at three rates of loss, and `grow-by-saro-waku-loss-1.json`,
 `grow-by-saro-waku-loss-5.json` and `grow-by-saro-waku-loss-10.json` grow it by saro alone (see
 [A group that grows](#a-group-that-grows)).
-`lossy-wire.json` has a wire, and CI runs it and `three.json` in containers (see
+`lossy-wire.json` has a wire, and CI on that branch runs it and `three.json` in containers (see
 [In containers](#in-containers)). `fleet-five.json` needs the `logos.test` fleet and is no part
 of CI (see [On a fleet preset](#on-a-fleet-preset)).
 
