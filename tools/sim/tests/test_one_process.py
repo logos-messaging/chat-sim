@@ -50,6 +50,7 @@ GROWN = {
     "fell_behind": [{"name": "pax", "epoch": 3}, {"name": "pax", "epoch": 5}],
     "behind": ["pax"],
     "never_joined": ["mira"],
+    "removed": [],
     "rounds": [
         {"adders": ["saro"], "joiners": ["raya"], "refused": [], "settled_s": 0.5},
         {"adders": ["saro", "raya"], "joiners": ["pax"], "refused": ["raya"], "settled_s": 180},
@@ -249,6 +250,8 @@ class Planning(unittest.TestCase):
         self.assertEqual(plan_of(members=5, steps=[GROW])["steps"], [GROW])
         by = {"step": "grow", "epochs": 3, "by": "saro", "branches": 5}
         self.assertEqual(plan_of(members=5, steps=[by])["steps"], [by])
+        sized = dict(GROW, size=4)
+        self.assertEqual(plan_of(members=5, steps=[sized])["steps"], [sized])
 
     def test_a_candidate_is_withheld_from_the_member_the_step_names(self):
         self.assertEqual(
@@ -815,6 +818,12 @@ class TheResult(Scratch):
         self.assertEqual((report["stopped"], report["grow"]), (None, kept["grow"]))
         self.assertEqual(report["seated"], 5)
 
+    def test_a_grow_of_a_size_counts_no_member_it_removed_as_seated(self):
+        kept = json.loads((FIXTURES / "grow_result.json").read_text(encoding="utf-8"))
+        kept["grow"]["removed"] = ["saro", "raya"]
+
+        self.assertEqual(self.report_leaving(kept, steps=[GROW])["seated"], 3)
+
     def test_a_grow_without_a_field_a_run_reads_stops_the_run_and_names_the_field(self):
         kept = json.loads((FIXTURES / "grow_result.json").read_text(encoding="utf-8"))
         for path in (
@@ -824,6 +833,7 @@ class TheResult(Scratch):
             "grow.lines[0].members",
             "grow.rounds[2].settled_s",
             "grow.never_joined",
+            "grow.removed",
             "members[1].seated",
         ):
             with self.subTest(path):
@@ -1035,6 +1045,11 @@ class Render(unittest.TestCase):
             ),
             table.render(grown),
         )
+
+    def test_a_grow_of_a_size_says_how_many_members_it_removed(self):
+        grown = in_one_process(grow=dict(GROWN, removed=["saro", "raya"]), check=None)
+
+        self.assertIn(", 1 never joined, 2 removed\n", table.render(grown))
 
     def test_each_hold_is_a_line_of_its_seconds_after_the_tables(self):
         holds = [{"seconds": 60.0}, {"seconds": 0.5}]

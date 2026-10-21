@@ -96,12 +96,15 @@ class Withhold:
 class Grow:
     """Members add new ones in rounds, until the trunk holds `epochs` or `branches` main branches
     run side by side, the trunk among them: one to `adders` a round on any branch, or with `by`
-    that member alone, one a round, the line it holds the trunk. One of the two is `None`."""
+    that member alone, one a round, the line it holds the trunk. One of the two is `None`. With
+    `size`, an adder whose add would take the group above it first removes the member seated
+    longest ago."""
 
     epochs: int
     adders: Optional[int]
     branches: int
     by: Optional[str] = None
+    size: Optional[int] = None
 
 
 Step = Union[Seat, Post, Hold, Cut, Heal, Withhold, Grow]
@@ -424,23 +427,31 @@ def _step(said: object, what: str, seated: int, members: int, modelled: bool) ->
         _member(member, f"`from` of {what}", seated, "is not seated by then")
         return Withhold(member)
     if said["step"] == "grow":
-        named = ("step", "epochs", "adders", "by", "branches")
+        named = ("step", "epochs", "adders", "by", "branches", "size")
         step = _fields(said, what, ("step", "epochs", "branches"), named)
         if members < 2:
             raise Refused(f"{what} is a `grow` step, and the scenario has 1 member")
         epochs = _whole(step, "epochs", what, least=1, most=MOST_MEMBERS)
         # The trunk alone is one main branch.
         branches = _whole(step, "branches", what, least=2, most=MOST_MEMBERS)
+        # An adder removes a member other than itself.
+        size = None if "size" not in step else _whole(step, "size", what, 2, MOST_MEMBERS)
         if "adders" in step and "by" in step:
             raise Refused(f"{what} says `adders` and `by`, and a `grow` step says one or the other")
         if "by" not in step:
             if "adders" not in step:
                 raise Refused(f"{what} lacks `adders` or `by`")
-            return Grow(epochs, _whole(step, "adders", what, least=1, most=MOST_MEMBERS), branches)
+            adders = _whole(step, "adders", what, least=1, most=MOST_MEMBERS)
+            if size is not None and size < 2 * adders:
+                raise Refused(
+                    f"`size` of {what} is below twice `adders`, and each adder of a group at its "
+                    "size removes a member that adds none"
+                )
+            return Grow(epochs, adders, branches, size=size)
         if not isinstance(step["by"], str):
             raise Refused(f"`by` of {what} is not a name")
         _member(step["by"], f"`by` of {what}", seated, "is not seated when a `grow` step begins")
-        return Grow(epochs, None, branches, by=step["by"])
+        return Grow(epochs, None, branches, by=step["by"], size=size)
     step = _fields(said, what, ("step",), ("step", "from"))
     sender = step.get("from", Post.sender)
     if not isinstance(sender, str):

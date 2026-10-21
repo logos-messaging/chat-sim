@@ -59,6 +59,43 @@ fn a_harness_of_no_clients_is_refused() {
     );
 }
 
+/// A retired client holds nothing and takes nothing: the group removes it
+/// without it, and the others go on.
+#[test]
+fn the_others_go_on_without_a_retired_client() {
+    let mut harness = TestHarness::<3>::new(|_, _| {});
+    let invited = [harness.raya().signer_key(), harness.pax().signer_key()];
+    let convo = harness
+        .saro()
+        .create_group_convo_v2(&[], "", "")
+        .expect("saro create");
+    harness
+        .saro()
+        .group_add_signers(&convo, &invited)
+        .expect("saro add");
+    harness.process_until_label("all three join", |h| {
+        (0..3).all(|i| listed(h, &convo, i) == 3)
+    });
+
+    harness.retire(2);
+    harness
+        .saro()
+        .group_remove_signers(&convo, &[&invited[1]])
+        .expect("saro remove");
+
+    harness.process_until_label("pax is removed", |h| {
+        (0..2).all(|i| listed(h, &convo, i) == 2)
+    });
+}
+
+#[test]
+#[should_panic(expected = "client 2 is retired")]
+fn a_retired_client_is_never_reached() {
+    let mut harness = TestHarness::<3>::new(|_, _| {});
+    harness.retire(2);
+    harness.client(2);
+}
+
 /// Each client in turn creates a group and adds the next one to it. The
 /// creator is the group's only steward, and a steward commits an add once the
 /// commit batch window of its settings has passed on its clock.

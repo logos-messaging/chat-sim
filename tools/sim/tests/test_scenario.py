@@ -143,6 +143,9 @@ class Reading(unittest.TestCase):
         self.assertEqual(
             scenario.scenario(steps(by)).steps, (Grow(epochs=3, adders=None, branches=5, by="saro"),)
         )
+        sized = scenario.scenario(steps(dict(GROW, size=4))).steps
+        self.assertEqual(sized, (Grow(epochs=3, adders=2, branches=5, size=4),))
+        self.assertEqual(scenario.scenario(steps(dict(by, size=2))).steps[0].size, 2)
 
     def test_a_scenario_of_one_member_is_its_creator_alone(self):
         alone = scenario.scenario({"members": 1, "steps": [{"step": "hold", "seconds": 60}]})
@@ -792,6 +795,12 @@ class Refusals(unittest.TestCase):
             (
                 "`epochs` of steps[0] is not a whole number",
                 three(steps=[dict(grow, epochs=50.0)]),
+            ),
+            ("`size` of steps[0] is 1, and 2 is the least", three(steps=[dict(grow, size=1)])),
+            (
+                "`size` of steps[0] is below twice `adders`, and each adder of a group at its "
+                "size removes a member that adds none",
+                three(steps=[dict(grow, size=3)]),
             ),
         ]
         for why, said in refusals:

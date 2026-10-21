@@ -236,7 +236,8 @@ pub struct Observation {
 #[allow(unused)]
 pub struct Harness {
     addresses: HashMap<usize, SignerKey>,
-    clients: Vec<TestClient>,
+    /// Each client, `None` once it is retired.
+    clients: Vec<Option<TestClient>>,
     auth: AcceptAllAuth,
     wakeup_service: WS,
     cb: Box<OnMessageCallback>,
@@ -315,7 +316,7 @@ impl Harness {
 
             let client = TestClient::init(core_client, account);
 
-            clients.push(client);
+            clients.push(Some(client));
         }
 
         debug!(?rs, "registry");
@@ -331,11 +332,19 @@ impl Harness {
     }
 
     pub fn client(&mut self, i: usize) -> &TestClient {
-        &self.clients[i]
+        let client = self.clients[i].as_ref();
+        client.unwrap_or_else(|| panic!("client {i} is retired"))
     }
 
     pub fn client_mut(&mut self, i: usize) -> &mut TestClient {
-        &mut self.clients[i]
+        let client = self.clients[i].as_mut();
+        client.unwrap_or_else(|| panic!("client {i} is retired"))
+    }
+
+    /// Drops client `i` and all it holds. It takes no payload and no wakeup
+    /// from then on, and reaching it panics.
+    pub fn retire(&mut self, i: usize) {
+        self.clients[i] = None;
     }
 
     /// The auth every client shares; what it resolves, all of them resolve.
@@ -347,7 +356,7 @@ impl Harness {
     /// a production client does with `Event::InboundError`, and records what
     /// it rejected. Without this a rejection fails the test where it happens.
     pub fn tolerate_inbound_errors(&mut self) {
-        for client in &mut self.clients {
+        for client in self.clients.iter_mut().flatten() {
             client.tolerate_inbound_errors = true;
         }
     }
@@ -403,7 +412,7 @@ impl Harness {
     fn process_payloads(&mut self) {
         // Process existing payloads for all clients.
         let now = self.wakeup_service.clock().now();
-        for client in self.clients.iter_mut() {
+        for client in self.clients.iter_mut().flatten() {
             for outcome in client.drain_outcomes(now) {
                 info!(id = ?client.signer_key(), ?outcome, "Process drain");
                 self.observed_outcomes.push(Observation {
@@ -418,9 +427,11 @@ impl Harness {
 
     fn process_records(&mut self, records: Vec<WakeupRecord>) {
         for record in records {
-            self.clients[record.client_index]
-                .wakeup(&record.convo_id)
-                .expect("Error During wakeup");
+            if let Some(client) = self.clients[record.client_index].as_mut() {
+                client
+                    .wakeup(&record.convo_id)
+                    .expect("Error During wakeup");
+            }
         }
     }
 }
@@ -430,49 +441,49 @@ impl Harness {
 
 impl TestHarness<1> {
     pub fn saro(&mut self) -> &mut TestClient {
-        &mut self.clients[SARO]
+        self.client_mut(SARO)
     }
 }
 
 impl TestHarness<2> {
     pub fn saro(&mut self) -> &mut TestClient {
-        &mut self.clients[SARO]
+        self.client_mut(SARO)
     }
 
     pub fn raya(&mut self) -> &mut TestClient {
-        &mut self.clients[RAYA]
+        self.client_mut(RAYA)
     }
 }
 
 impl TestHarness<3> {
     pub fn saro(&mut self) -> &mut TestClient {
-        &mut self.clients[SARO]
+        self.client_mut(SARO)
     }
 
     pub fn raya(&mut self) -> &mut TestClient {
-        &mut self.clients[RAYA]
+        self.client_mut(RAYA)
     }
 
     pub fn pax(&mut self) -> &mut TestClient {
-        &mut self.clients[PAX]
+        self.client_mut(PAX)
     }
 }
 
 impl TestHarness<4> {
     pub fn saro(&mut self) -> &mut TestClient {
-        &mut self.clients[SARO]
+        self.client_mut(SARO)
     }
 
     pub fn raya(&mut self) -> &mut TestClient {
-        &mut self.clients[RAYA]
+        self.client_mut(RAYA)
     }
 
     pub fn pax(&mut self) -> &mut TestClient {
-        &mut self.clients[PAX]
+        self.client_mut(PAX)
     }
 
     pub fn mira(&mut self) -> &mut TestClient {
-        &mut self.clients[MIRA]
+        self.client_mut(MIRA)
     }
 }
 

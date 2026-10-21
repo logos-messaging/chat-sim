@@ -164,7 +164,7 @@ and `grow` in a run that is not in one process:
 | `cut` | `between` | Two sides of the group are cut off from each other. `between` holds the two sides, each a list of the names of one or more members seated by then, and a member is named once. Each member of both sides is told to drop what the members of the other side publish to the group. No cut is made while one is in force. |
 | `heal` | | The cut in force ends: each member of its two sides is told to drop nothing of the other side's any longer. |
 | `withhold` | `from` | The member `from`, seated by then, is told to drop the next commit candidate that reaches it, which is one of the batch the next step seats (see [A withheld candidate](#a-withheld-candidate)). |
-| `grow` | `epochs`, `adders` or `by`, `branches` | Members add the members not yet seated in rounds, until the trunk holds `epochs` or `branches` main branches run side by side, the trunk among them. With `adders`, each round one to `adders` members, drawn from the `seed`, each add one at once, on whatever branch each is on. With `by`, the name of the first member, that member alone adds one each round, and the line it holds is the trunk. `epochs` and `adders` are 1 or more, and `branches` 2 or more. It is the scenario's only step, and the scenario says nothing of what to expect (see [A group that grows](#a-group-that-grows)). |
+| `grow` | `epochs`, `adders` or `by`, `branches`, and `size` (default none) | Members add the members not yet seated in rounds, until the trunk holds `epochs` or `branches` main branches run side by side, the trunk among them. With `adders`, each round one to `adders` members, drawn from the `seed`, each add one at once, on whatever branch each is on. With `by`, the name of the first member, that member alone adds one each round, and the line it holds is the trunk. With `size`, an adder whose add would take the group above `size` first removes the member seated longest ago. `epochs` and `adders` are 1 or more, `branches` 2 or more, and `size` 2 or more and at least twice `adders`. It is the scenario's only step, and the scenario says nothing of what to expect (see [A group that grows](#a-group-that-grows)). |
 
 A member no step seats runs its node and is in no group.
 
@@ -1394,10 +1394,10 @@ sim: error: the scenario has a `grow` step, and only --one-process does one
 
 A grow expects no outcome: how far the group gets before it parts is what it measures. Its run
 is reported on and not checked, writes no `expect.json`, and goes as expected when the runner
-did the step. `seated` is how many members the run seated, and `at_tip` how many of the members
-the report knows it has at the `tip` of a branch. After the tables `run.txt` says how the grow
-ended, what its rounds came to, and each line, and a sweep's row says how it ended in place of
-the check. Here the end of the third run of `grow-waku-loss-1.json`:
+did the step. `seated` is how many members the run seated and did not remove, and `at_tip` how
+many of the members the report knows it has at the `tip` of a branch. After the tables `run.txt`
+says how the grow ended, what its rounds came to, and each line, and a sweep's row says how it
+ended in place of the check. Here the end of the third run of `grow-waku-loss-1.json`:
 
 ```console
 5 main branches ran side by side: trunk at epoch 18, 5 main, 5 sub, 7 fell behind, 4 behind at the end, 2 never joined
@@ -1496,7 +1496,7 @@ Two rates of one seed are a pair, not two samples.
   reaches no node outside the run.
 - It does not put itself into a network namespace.
 - It forms one group, and its steps seat members, send posts and set the rules of the network
-  model: it removes nobody and restarts no peer.
+  model: it removes nobody but in a `grow` step of a `size`, and restarts no peer.
 - It checks a duration of `timers` for its name, its form and the most its flag holds: what
   the library takes is chat-cli's to refuse.
 - It shapes no traffic between the nodes but on the wire of a run in containers. The network

@@ -264,6 +264,11 @@ struct Run<'a> {
     lineage: Lineage,
     /// The member a grow step's adders are `by`, whose line is the trunk.
     adder: Option<usize>,
+    /// The members a grow step removed, in the order it removed them.
+    removed: Vec<usize>,
+    /// What the result says of each member removed, taken as its client was
+    /// retired.
+    retired: HashMap<usize, Value>,
     grown: Option<Grown>,
 }
 
@@ -316,6 +321,8 @@ impl<'a> Run<'a> {
             posts: vec![],
             lineage: Lineage::default(),
             adder: None,
+            removed: vec![],
+            retired: HashMap::new(),
             grown: None,
         };
         run.read();
@@ -347,8 +354,9 @@ impl<'a> Run<'a> {
                     epochs,
                     adders,
                     branches,
+                    size,
                 } => {
-                    self.grow(*epochs, adders, *branches);
+                    self.grow(*epochs, adders, *branches, *size);
                     Ok(())
                 }
             };
@@ -685,7 +693,7 @@ impl<'a> Run<'a> {
     /// the plan is seated or none takes part. Each round the adders, a draw
     /// from the plan's seed of members on any branch or the one they are by,
     /// each add the next member at once.
-    fn grow(&mut self, epochs: u64, adders: &Adders, branches: usize) {
+    fn grow(&mut self, epochs: u64, adders: &Adders, branches: usize, size: Option<usize>) {
         // A stream of its own, apart from the one the host draws from the seed.
         let mut draw = ChaCha20Rng::seed_from_u64(self.plan.seed);
         draw.set_stream(1);
@@ -722,7 +730,7 @@ impl<'a> Run<'a> {
                 }
                 Adders::By(_) => taking_part,
             };
-            let round = self.round(&picked, &mut grown);
+            let round = self.round(&picked, &mut grown, size);
             grown.rounds.push(round);
         };
         self.grown = Some(grown);
@@ -734,15 +742,42 @@ impl<'a> Run<'a> {
     /// or when the budget runs out. A member behind already is waited on no
     /// more until it holds a state no member has gone past, and a member
     /// whose Welcome comes after its round is never waited on.
-    fn round(&mut self, adders: &[usize], grown: &mut Grown) -> Value {
+    ///
+    /// Where the adds would take the group above `size`, an adder first
+    /// removes the member seated longest ago that neither adds this round
+    /// nor is the adder a grow step's adders are `by`. Once the round is
+    /// over, the client of each member removed is retired.
+    fn round(&mut self, adders: &[usize], grown: &mut Grown, size: Option<usize>) -> Value {
         let (began, mut left) = (self.clock.now(), self.plan.budget);
         let convo = self.convo.clone();
         let mut waited = self.level();
         let mut already = self.joined();
         already.retain(|member| self.behind(*member));
+        let present = self.seated - self.removed.len();
+        let over = size.map_or(0, |size| (present + adders.len()).saturating_sub(size));
+        let leaving = (0..self.seated).filter(|member| {
+            !self.removed.contains(member)
+                && !adders.contains(member)
+                && self.adder != Some(*member)
+        });
+        let mut removing: HashMap<usize, usize> =
+            adders.iter().copied().zip(leaving.take(over)).collect();
+        let removed_before = self.removed.len();
         let (mut joiners, mut refused) = (vec![], adders.to_vec());
         loop {
             refused.retain(|adder| {
+                if let Some(&leaving) = removing.get(adder) {
+                    let key = self.harness.client(leaving).signer_key();
+                    let removed = self
+                        .harness
+                        .client_mut(*adder)
+                        .group_remove_signers(&convo, &[&key]);
+                    if removed.is_err() {
+                        return true;
+                    }
+                    removing.remove(adder);
+                    self.removed.push(leaving);
+                }
                 let joiner = self.harness.client(self.seated).signer_key();
                 let added = self
                     .harness
@@ -761,7 +796,15 @@ impl<'a> Run<'a> {
             self.step(&mut left);
         }
         waited.extend(&joiners);
+        waited.retain(|member| !self.removed.contains(member));
         self.wait(&mut left, |run| run.settled(&waited));
+        // A client keeps all it held of the group it was removed from.
+        for at in removed_before..self.removed.len() {
+            let member = self.removed[at];
+            let said = self.member(member);
+            self.retired.insert(member, said);
+            self.harness.retire(member);
+        }
 
         let mut fell = self.joined();
         fell.retain(|member| self.behind(*member) && !already.contains(member));
@@ -788,11 +831,12 @@ impl<'a> Run<'a> {
         })
     }
 
-    /// The members seated that hold the group.
+    /// The members seated and not removed that hold the group.
     fn joined(&self) -> Vec<usize> {
         let joined = 0..self.seated;
         joined
             .filter(|member| !self.told[*member].epochs.is_empty())
+            .filter(|member| !self.removed.contains(member))
             .collect()
     }
 
@@ -868,7 +912,9 @@ impl<'a> Run<'a> {
                 .collect()
         };
         let behind = joined.iter().copied().filter(|member| self.behind(*member));
-        let never_joined = (0..self.seated).filter(|member| self.told[*member].epochs.is_empty());
+        let never_joined = (0..self.seated).filter(|member| {
+            self.told[*member].epochs.is_empty() && !self.removed.contains(member)
+        });
         Some(json!({
             "ended": grown.ended,
             "trunk_epoch": lineage.epoch_of(0),
@@ -877,6 +923,7 @@ impl<'a> Run<'a> {
             "fell_behind": grown.fell_behind,
             "behind": names(behind.collect()),
             "never_joined": names(never_joined.collect()),
+            "removed": names(self.removed.clone()),
             "rounds": grown.rounds,
         }))
     }
@@ -903,10 +950,14 @@ impl<'a> Run<'a> {
     }
 
     fn holds_a_frame(&mut self) -> bool {
-        (0..self.plan.members.len()).any(|member| {
-            let model = self.harness.client(member).model();
-            model.is_some_and(|model| model.next_due().is_some())
-        })
+        let members = 0..self.plan.members.len();
+        let retired = &self.retired;
+        members
+            .filter(|member| !retired.contains_key(member))
+            .any(|member| {
+                let model = self.harness.client(member).model();
+                model.is_some_and(|model| model.next_due().is_some())
+            })
     }
 
     /// What the run came to. `began` is when it began, by the wall clock.
@@ -915,9 +966,11 @@ impl<'a> Run<'a> {
         // What the last step published is handed over, so the log and the
         // result hold all that the run made.
         self.advance(Duration::ZERO);
-        let members: Vec<Value> = (0..self.plan.members.len())
-            .map(|member| self.member(member))
-            .collect();
+        let mut members = vec![];
+        for member in 0..self.plan.members.len() {
+            let retired = self.retired.remove(&member);
+            members.push(retired.unwrap_or_else(|| self.member(member)));
+        }
         if self.grown.is_some() {
             self.place();
         }
@@ -2058,6 +2111,38 @@ mod tests {
         assert_eq!(joiners, json!([["raya"], ["pax"], ["mira"], ["kes"]]));
         for round in rounds {
             assert_eq!(round["adders"], json!(["saro"]), "{round}");
+        }
+    }
+
+    #[test]
+    fn a_grow_step_of_a_size_has_its_adder_remove_the_member_seated_longest_ago() {
+        let step = json!({"step": "grow", "epochs": 5, "by": "saro", "branches": 5, "size": 3});
+        let left = run_of(&plan(&EIGHT, json!([step])));
+        let grown = &left.result["grow"];
+
+        assert_eq!(grown["ended"], "the trunk reached epoch 5");
+        assert_eq!(grown["removed"], json!(["raya", "pax", "mira"]));
+        assert_eq!(grown["lines"][0]["members"], json!(["saro", "kes", "tomo"]));
+        assert_eq!(grown["never_joined"], json!([]));
+    }
+
+    #[test]
+    fn a_grow_step_of_a_size_holds_no_line_above_it_and_no_member_removed() {
+        let mut step = json!({"step": "grow", "epochs": 5, "adders": 2, "branches": 5});
+        step["size"] = json!(4);
+        let left = run_of(&plan(&EIGHT, json!([step])));
+        let grown = &left.result["grow"];
+
+        assert_eq!(grown["ended"], "the trunk reached epoch 5");
+        let removed = grown["removed"].as_array().expect("the removed");
+        assert!(!removed.is_empty(), "{grown}");
+        for line in grown["lines"].as_array().expect("the lines") {
+            let members = line["members"].as_array().expect("the members");
+            assert!(members.len() <= 4, "{line}");
+            assert!(
+                members.iter().all(|member| !removed.contains(member)),
+                "{grown}"
+            );
         }
     }
 

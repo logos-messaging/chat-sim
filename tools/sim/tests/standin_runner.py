@@ -280,6 +280,7 @@ class Run:
             "fell_behind": [],
             "behind": [],
             "never_joined": [],
+            "removed": [],
             "rounds": rounds,
         }
         return None

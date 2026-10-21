@@ -56,6 +56,7 @@ _GROWN = {
     "fell_behind": [{"name": _TEXT, "epoch": _WHOLE}],
     "behind": [_TEXT],
     "never_joined": [_TEXT],
+    "removed": [_TEXT],
     "rounds": [{"adders": [_TEXT], "joiners": [_TEXT], "refused": [_TEXT], "settled_s": _NUMBER}],
 }
 
@@ -108,8 +109,9 @@ def plan(scenario: Scenario) -> dict:
             steps.append({"step": "heal"})
         elif isinstance(step, Grow):
             adders = {"adders": step.adders} if step.by is None else {"by": step.by}
+            size = {} if step.size is None else {"size": step.size}
             steps.append(
-                {"step": "grow", "epochs": step.epochs, **adders, "branches": step.branches}
+                {"step": "grow", "epochs": step.epochs, **adders, "branches": step.branches, **size}
             )
         else:
             steps.append({"step": "withhold", "from": step.member})
@@ -169,7 +171,8 @@ def run(settings: Settings, report: dict, watch: Watch) -> None:
     report["holds"] = [{"seconds": step.seconds} for step in done if isinstance(step, Hold)]
     if settings.scenario.grows:
         report["grow"] = result["grow"]
-        report["seated"] = sum(member["seated"] for member in result["members"])
+        seated = sum(member["seated"] for member in result["members"])
+        report["seated"] = seated - len(result["grow"]["removed"])
 
 
 def _result(file: Path) -> Optional[dict]:

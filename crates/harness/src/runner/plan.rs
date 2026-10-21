@@ -75,10 +75,13 @@ pub(crate) enum Step {
     Hold { time: Duration },
     /// Members add new ones in rounds, `adders` saying which, until the
     /// trunk holds `epochs` or `branches` main branches run side by side.
+    /// With `size`, an adder whose add would take the group above it first
+    /// removes the member seated longest ago.
     Grow {
         epochs: u64,
         adders: Adders,
         branches: usize,
+        size: Option<usize>,
     },
 }
 
@@ -220,7 +223,7 @@ impl Step {
             "cut" => &["step", "sides"],
             "heal" => &["step"],
             "hold" => &["step", "seconds"],
-            "grow" => &["step", "epochs", "adders", "by", "branches"],
+            "grow" => &["step", "epochs", "adders", "by", "branches", "size"],
             _ => {
                 return Err(Refused(format!(
                     "{path}.step is not seat, post, cut, heal, withhold, hold or grow"
@@ -298,11 +301,25 @@ impl Step {
                     }
                     None => Adders::Drawn(count(above("adders", 1)?)),
                 };
+                let size = match step.fields.get("size") {
+                    // An adder removes a member other than itself.
+                    Some(_) => Some(count(above("size", 2)?)),
+                    None => None,
+                };
+                if let (Some(size), Adders::Drawn(most)) = (size, &adders)
+                    && size < most.saturating_mul(2)
+                {
+                    return Err(Refused(format!(
+                        "{path}.size is below twice adders, and each adder of a group at its \
+                         size removes a member that adds none"
+                    )));
+                }
                 Step::Grow {
                     epochs: above("epochs", 1)?,
                     adders,
                     // The trunk alone is one main branch.
                     branches: count(above("branches", 2)?),
+                    size,
                 }
             }
             _ => {
@@ -901,9 +918,14 @@ mod tests {
             Step::Grow {
                 epochs: 50,
                 adders: Adders::Drawn(3),
-                branches: 5
+                branches: 5,
+                size: None
             }
         ));
+        let mut sized = step.clone();
+        sized["size"] = json!(6);
+        let read = Plan::read(&grown(sized).to_string()).expect("the plan is read");
+        assert!(matches!(read.steps[..], [Step::Grow { size: Some(6), .. }]));
         let by = json!({"step": "grow", "epochs": 50, "by": "saro", "branches": 5});
         let read = Plan::read(&grown(by).to_string()).expect("the plan is read");
         assert!(matches!(
@@ -954,6 +976,17 @@ mod tests {
                 "by",
                 json!("saro"),
                 "steps[0] holds adders and by, and a grow step holds one or the other",
+            ),
+            (
+                "size",
+                json!(1),
+                "steps[0].size is not a whole number of 2 or more",
+            ),
+            (
+                "size",
+                json!(5),
+                "steps[0].size is below twice adders, and each adder of a group at its size \
+                 removes a member that adds none",
             ),
             (
                 "colour",

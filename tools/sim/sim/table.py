@@ -184,11 +184,14 @@ def _grew(grow: dict) -> str:
     """How a `grow` step ended, in a few words: its lines, and the members not on one."""
     subs = sum(line["kind"] == "sub" for line in grow["lines"])
     fell = len({held["name"] for held in grow["fell_behind"]})
-    return (
+    said = (
         f"{grow['ended']}: trunk at epoch {grow['trunk_epoch']}, {grow['main']} main, {subs} sub, "
         f"{fell} fell behind, {len(grow['behind'])} behind at the end, "
         f"{len(grow['never_joined'])} never joined"
     )
+    if grow["removed"]:
+        said += f", {len(grow['removed'])} removed"
+    return said
 
 
 def _grow(grow: dict) -> List[str]:

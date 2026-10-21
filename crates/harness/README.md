@@ -45,7 +45,7 @@ A plan is a JSON object. A field that is not what the tables say is refused by i
 | `heal` | | No member is cut off from another |
 | `withhold` | `from`, a name | The next commit candidate to reach that member is withheld from it. The batch that follows waits for it to be |
 | `hold` | `seconds`, above 0 | Virtual time passes, and nothing is waited for |
-| `grow` | `epochs`, from 1; `adders`, from 1, or `by`, the creator's name; `branches`, from 2 | Members add new ones in rounds until the trunk holds `epochs` or `branches` main branches run side by side: with `adders` any member on any branch, with `by` the creator alone. See [A group that grows](#a-group-that-grows) |
+| `grow` | `epochs`, from 1; `adders`, from 1, or `by`, the creator's name; `branches`, from 2; `size`, from 2 and twice `adders` | Members add new ones in rounds until the trunk holds `epochs` or `branches` main branches run side by side: with `adders` any member on any branch, with `by` the creator alone. With `size`, an adder whose add would take the group above it first removes a member. See [A group that grows](#a-group-that-grows) |
 
 `cut`, `heal` and `withhold` are steps of a plan with a `network`. Saro, Raya and Pax in one group,
 and a post from Pax:
@@ -102,6 +102,15 @@ refused all round is drawn no more until it holds another state. The draws come 
 `seed`, on a stream apart from the one `getrandom` hands out: who is drawn follows from the seed and
 from who can be drawn. With `by` in place of `adders` the creator is the one adder of every round
 and adds one member, so that no member on a branch off its line is drawn to add.
+
+With `size`, the group holds that many members at most. Each round still seats members of the plan
+not yet seated, so a plan that is to reach `epochs` has a member for each add, and the group stays
+at `size` by removing as many as it adds. An adder whose add would take the group above `size` first
+removes the member seated longest ago that is not adding that round and is not the creator of `by`,
+then adds. A removed member is drawn, waited on and counted no more: it is on no line, and neither
+behind nor never joined. Once the round is over its client is dropped, with all it held of the
+group. `size` is at least twice `adders`, so that a group at its size holds a member that is not
+adding for each adder to remove.
 
 The states the members hold, each after the one its members held before it, are lines. The
 creator's first is on the trunk. Where a state has two or more after it, the one more members
@@ -195,10 +204,10 @@ as that got. The plan above left:
 | `steps_done` | How many of the plan's steps were done to the end |
 | `stopped` | `null`, or in one line why the steps stopped |
 | `conversation` | The conversation's id, as the records write it |
-| `members[]` | For each member of the plan its `name`, its `installation` and `account` as the records shorten them, whether the steps `seated` it, its `app_id` in hex, `null` while it does not hold the conversation, and its `inbound_errors`: how many frames it rejected, by the reason |
+| `members[]` | For each member of the plan its `name`, its `installation` and `account` as the records shorten them, whether the steps `seated` it, its `app_id` in hex, `null` while it does not hold the conversation, and its `inbound_errors`: how many frames it rejected, by the reason. A member a grow step removed is as it was when the round that removed it was over, when its client was dropped |
 | `members[].network` | In a plan with a `network`, the state of the member's model. The `seed`, `loss`, `welcome_loss` and `delay_ms` it was given. The app ids it is `cut` off from, and those it takes for its `own`: that of the conversation, once it holds it, since a client of the harness is handed its own frames back. `withheld`, `null` until a candidate is withheld from it, then the `app_id` of the candidate's sender, the `seat` of the steward that minted it and `applied`: whether that steward has broadcast a welcome since, as it does for a commit of its own that the group applies. With no batch after the one the candidate was withheld in, that is whether the group applied the candidate. Whether the rule that withholds is `armed`. `frames`: how many `arrived`, and of those how many `passed` to the client, are `held` for the delay or were `dropped`, by the rule that dropped them |
 | `members[].dropped[]` | In a plan with a `network`, each frame the member's model dropped: `n` numbers the frames that arrived, from 1, `why` is the rule (`loss`, `welcome_loss`, `cut`, `withheld`), `kind` what the frame is (`welcome`, `candidate`, `group`, `other`) and `bytes` its length. `app_id` is its sender's, left out for a frame that has none, and `seat` that of the steward that minted a commit candidate |
 | `batches[]` | For each batch that was seated its `joiners`, the `members` the group then had, `seated_s`, the virtual seconds from the first try of the add to the last roster, and `wall_s`, the seconds it took on the machine |
 | `posts[]` | For each post its `poster`, how many `readers` were waited on, the names of those that left it `unread` within the budget, and as `read_s` the virtual seconds from the send to each read |
-| `grow` | Only in the result of a `grow` step: why it `ended`, the `trunk_epoch`, how many lines are `main`, the trunk among them, and the `lines`, the trunk first and then each branch in the order it forked: its `kind` (`trunk`, `main`, `sub`), the line it forked `from` and the epoch it `forked_at`, `null` for the trunk, the last `epoch` it holds and the `members` whose state is on it. `fell_behind` holds the `name` and `epoch` of each member that came out of a round behind, having gone into it level or before it held the group. `behind` names the members behind at the end and `never_joined` the members added that never held the group. Each of `rounds` names its `adders`, the `joiners` they added, the adders `refused` the whole round, and the virtual seconds it took as `settled_s` |
+| `grow` | Only in the result of a `grow` step: why it `ended`, the `trunk_epoch`, how many lines are `main`, the trunk among them, and the `lines`, the trunk first and then each branch in the order it forked: its `kind` (`trunk`, `main`, `sub`), the line it forked `from` and the epoch it `forked_at`, `null` for the trunk, the last `epoch` it holds and the `members` whose state is on it. `fell_behind` holds the `name` and `epoch` of each member that came out of a round behind, having gone into it level or before it held the group. `behind` names the members behind at the end, `never_joined` the members added that never held the group and are not removed, and `removed` the members a step of a `size` removed, in the order it removed them. Each of `rounds` names its `adders`, the `joiners` they added, the adders `refused` the whole round, and the virtual seconds it took as `settled_s` |
 | `virtual_s`, `wall_s` | How far the run moved the virtual clock, and how long it took on the machine. The clock ends past the last stamp of the log when the step that wrote the last line moved it afterwards, or when a wait or a hold after that line wrote nothing |
