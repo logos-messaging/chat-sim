@@ -1,9 +1,12 @@
-"""The command line: `sim run SCENARIO` and `sim sweep SCENARIO --runs K`."""
+"""The command line: `sim run SCENARIO`, `sim sweep SCENARIO --runs K` and
+`sim compare EXPECTED OUT`.
+"""
 
 from __future__ import annotations
 
 import argparse
 import contextlib
+import json
 import os
 import re
 import shutil
@@ -13,7 +16,7 @@ from pathlib import Path
 from typing import Callable, Iterator, NoReturn, Optional, Sequence
 from urllib.parse import unquote
 
-from . import containers, judge, scenario, table
+from . import compare, containers, judge, scenario, table
 from .peers import Watch
 from .run import NoDirectory, Settings, run
 from .sweep import Interrupts, sweep
@@ -25,7 +28,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     """Runs one command and returns the exit status.
 
     0 when every step was done and the report of the logs is as the scenario expects, in
-    every run of a sweep. A command a signal interrupted returns 128 and the signal's number.
+    every run of a sweep, and for `compare` when every run came out as expected. A command a
+    signal interrupted returns 128 and the signal's number.
     """
     parser = _Parser(
         prog="sim",
@@ -57,7 +61,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     _add_arguments(many)
     many.add_argument("--runs", metavar="K", type=int, required=True, help="how many runs")
     many.set_defaults(run=_sweep)
+    held = commands.add_parser(
+        "compare",
+        help="hold a sweep in one process to the outcomes expected of it",
+        description="Holds each run of a sweep in one process to the outcome EXPECTED holds for "
+        "it, and prints a row for each. Exits 0 when every run came out as expected, 1 when one "
+        "did not, and 2 when the sweep or EXPECTED cannot be read. With --write it writes the "
+        "outcomes of the sweep to EXPECTED instead.",
+    )
+    held.add_argument(
+        "expected", metavar="EXPECTED", type=Path, help="the file of the outcomes, one a run"
+    )
+    held.add_argument(
+        "out", metavar="OUT", type=Path, help="the directory a sweep in one process wrote"
+    )
+    held.add_argument(
+        "--write", action="store_true", help="write the outcomes of the sweep to EXPECTED"
+    )
+    held.set_defaults(run=_compare)
     args = parser.parse_args(argv)
+    if args.run is _compare:
+        return _compare(parser, args)
 
     engine = args.engine or containers.ENGINES[0]
     if args.image is None:
@@ -175,6 +199,20 @@ def _sweep(args: argparse.Namespace, settings: Settings) -> int:
     if interrupts.signal is not None:
         return 128 + interrupts.signal
     return 0 if report["as_expected"] == args.runs else 1
+
+
+def _compare(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    try:
+        now = compare.outcomes(args.out)
+        if args.write:
+            args.expected.write_text(json.dumps(now, indent=2) + "\n", encoding="utf-8")
+            return 0
+        was = compare.expected(args.expected)
+    except compare.Unreadable as refused:
+        parser.error(str(refused))
+    printed, held = compare.render(was, now)
+    sys.stdout.write(printed)
+    return 0 if held else 1
 
 
 @contextlib.contextmanager

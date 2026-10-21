@@ -74,3 +74,39 @@ jobs:
         run: nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out "$RUNNER_TEMP/50-epochs"
       - name: Run fifty epochs on Waku's delays
         run: nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs-waku.json --out "$RUNNER_TEMP/50-epochs-waku"
+
+  sim-expected:
+    name: Sim held to what is expected (${{ matrix.scenario }})
+    environment: ${{ github.ref == 'refs/heads/master' && 'public-cache' || '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - grow-waku-loss-0
+          - grow-waku-loss-0.1
+          - grow-waku-loss-0.5
+          - grow-waku-loss-1
+          - grow-waku-loss-5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: logos-co/setup-nix-cache-action@v1
+        with:
+          attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
+          attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
+      - name: Sweep three seeds
+        run: nix run .#groupv2-simulation -- sweep tools/sim/scenarios/${{ matrix.scenario }}.json --runs 3 --out "$RUNNER_TEMP/sweep"
+      # A run in one process is the same run whenever it is made, so an outcome
+      # other than the one expected was changed by the logos-chat it runs.
+      - name: Hold the sweep to what is expected
+        run: |
+          status=0
+          python3 tools/sim compare tools/sim/expected/${{ matrix.scenario }}.json "$RUNNER_TEMP/sweep" > "$RUNNER_TEMP/compare.txt" || status=$?
+          cat "$RUNNER_TEMP/compare.txt"
+          {
+            echo '### ${{ matrix.scenario }}'
+            echo '```'
+            cat "$RUNNER_TEMP/compare.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"

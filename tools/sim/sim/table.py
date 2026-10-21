@@ -91,7 +91,7 @@ def row(number: int, seconds: float, report: dict) -> str:
     The seconds of a run in one process are those of its virtual clock, whatever `seconds`. A run
     of a `grow` step says how it ended in place of its check.
     """
-    said = [_check(report) if report["grow"] is None else _grew(report["grow"])]
+    said = [came_to(report)]
     if report["stopped"] is not None:
         said.append(f"stopped: {report['stopped']}")
     if report["seed"] is not None:
@@ -111,6 +111,11 @@ def row(number: int, seconds: float, report: dict) -> str:
         seconds = report["virtual_s"]
     took = "-" if seconds is None else f"{seconds:.1f}"
     return _ROW.format(number, took, at_tip, report["verdict"] or "-") + "; ".join(said)
+
+
+def came_to(report: dict) -> str:
+    """How a run came out, in a few words: its check, or how its `grow` step ended."""
+    return _check(report) if report["grow"] is None else _grew(report["grow"])
 
 
 def head(one_process: bool = False) -> str:

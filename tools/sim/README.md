@@ -348,6 +348,57 @@ short has left the rows of the runs that ended:
 | `load` | The load average of the machine at the `start` and at the `end` of the sweep |
 | `rows[]` | For each run that ended its `run` number and `directory`, whether it is `ok`, the `differences` its check found, or `null` when it was not checked, as `unchecked` how `forks check` ended when it gave no answer, what `stopped` its steps, the `verdict`, the members `at_tip` of those `seated`, its `seconds`, the `seed` of a run in one process, the `network_seed` of its network model, the `wire_seed` of its wire and what was `withheld` as its `run.json` holds it, each `null` for a run without one, and the `page` its logs were shared at |
 
+## A sweep held to what is expected
+
+```sh
+python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-5.json --runs 3 --one-process target/release/harness-run --out tmp/loss-5
+python3 tools/sim compare tools/sim/expected/grow-waku-loss-5.json tmp/loss-5
+```
+
+A run in one process is the same run every time from its seeds (see
+[In one process](#in-one-process)), so a run that comes out other than it did was changed by the
+revision of logos-chat the runner was built from. `compare` holds each run of a sweep in one
+process to the outcome a file of them expects of it, and prints a row for each. Here two runs of
+`grow-waku-loss-5.json`, held to a file that expects the second whole:
+
+```console
+run  seed  change   verdict                 at the tip  seconds  came to
+  1     0  same     split at epoch 3          18 of 20   1233.7  5 main branches ran side by side: trunk at epoch 7, 5 main, 0 sub, 3 fell behind, 2 behind at the end, 0 never joined
+  2     1  worse    split at epoch 3          62 of 78   6121.5  5 main branches ran side by side: trunk at epoch 8, 5 main, 21 sub, 16 fell behind, 10 behind at the end, 6 never joined
+           was      whole                     78 of 78   6121.5  5 main branches ran side by side: trunk at epoch 8, 5 main, 21 sub, 16 fell behind, 10 behind at the end, 6 never joined
+1 of 2 runs came out as expected: 1 worse
+```
+
+An outcome is all a sweep's row says of a run but its wall time: the seeds, the verdict, the
+members at the tip, the seconds of the virtual clock, how the run came out, and what stopped its
+steps. A run that came out otherwise has the outcome expected under it, and its change says how
+whole the group came out against it:
+
+| Change | Means |
+|---|---|
+| `same` | The outcome is the one expected. |
+| `better` | No split where there was one, a split at a later epoch, whole where members were behind, or, at the same verdict, more members at the tip. |
+| `worse` | The reverse. |
+| `changed` | Neither: the same verdict and members at the tip, in an outcome that differs all the same, such as in the seconds of its clock. |
+
+It exits 0 when every run came out as expected and the sweep has a run for each outcome expected,
+1 when not, and 2 when the sweep or the file cannot be read, or a run of the sweep was not in one
+process. `--write` writes the outcomes of the sweep to the file instead: a revision of logos-chat
+that changes how a run comes out has its outcomes written, and the file's diff shows the change.
+
+`expected/` holds the outcomes of the scenarios CI sweeps, three runs each, at the revision of
+logos-chat that `Cargo.toml` pins. Each has 200 members on the library's own timers and Waku's
+delays, any member adding up to three a round, until the trunk holds epoch 50 or five main
+branches run side by side (see [A group that grows](#a-group-that-grows)):
+
+| Scenario | Loss |
+|---|---|
+| `grow-waku-loss-0.json` | none |
+| `grow-waku-loss-0.1.json` | 0.1% |
+| `grow-waku-loss-0.5.json` | 0.5% |
+| `grow-waku-loss-1.json` | 1% |
+| `grow-waku-loss-5.json` | 5% |
+
 ## What a run does
 
 1. It starts the mock registry on a port the system picks.

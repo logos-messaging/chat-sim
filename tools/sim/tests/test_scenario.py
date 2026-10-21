@@ -397,6 +397,7 @@ class Reading(unittest.TestCase):
                 "grow-waku-loss-0.1.json",
                 "grow-waku-loss-0.5.json",
                 "grow-waku-loss-0.75.json",
+                "grow-waku-loss-0.json",
                 "grow-waku-loss-1.json",
                 "grow-waku-loss-10.json",
                 "grow-waku-loss-5.json",
@@ -445,6 +446,7 @@ class Reading(unittest.TestCase):
         grows = {
             rate: scenario.read(TOOL / "scenarios" / f"grow-waku-loss-{percent}.json")
             for percent, rate in (
+                (0, 0),
                 (0.01, 0.0001),
                 (0.1, 0.001),
                 (0.5, 0.005),
