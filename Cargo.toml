@@ -12,11 +12,11 @@ license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 # logos-chat at the revision the simulation runs.
-components = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
-crypto = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
-libchat = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
-logos-chat = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
-message-types = { git = "https://github.com/logos-messaging/logos-chat", rev = "00f396a83c99da1a6159a31add9befef8f680ac1" }
+components = { git = "https://github.com/logos-messaging/logos-chat", rev = "b750c7572012969393d9cbbbd130c297bc7898cc" }
+crypto = { git = "https://github.com/logos-messaging/logos-chat", rev = "b750c7572012969393d9cbbbd130c297bc7898cc" }
+libchat = { git = "https://github.com/logos-messaging/logos-chat", rev = "b750c7572012969393d9cbbbd130c297bc7898cc" }
+logos-chat = { git = "https://github.com/logos-messaging/logos-chat", rev = "b750c7572012969393d9cbbbd130c297bc7898cc" }
+message-types = { git = "https://github.com/logos-messaging/logos-chat", rev = "b750c7572012969393d9cbbbd130c297bc7898cc" }
 
 # Spelled as logos-chat spells them: cargo tells git sources apart by their URL and rev as written,
 # and a second spelling would link a second de-mls whose types are not libchat's.
