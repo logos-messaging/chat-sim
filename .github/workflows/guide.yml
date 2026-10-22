@@ -1,0 +1,132 @@
+name: Guide
+
+# Builds the guide, the Starlight site in guide/, and from master publishes it
+# to guide/ of the repository's Pages site, beside the reports CI publishes.
+# A pull request gets the build alone.
+
+on:
+  pull_request:
+    paths:
+      - guide/**
+      - .github/workflows/guide.yml
+  push:
+    branches: [master]
+    paths:
+      - guide/**
+      - .github/workflows/guide.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A run cancels the one before it on the same ref, so an older build of master
+# never publishes over a newer one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build the guide
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      pages: read              # read the Pages site's address
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: guide/package-lock.json
+
+      # A private site is served at the root of a host of its own, a public one
+      # under /<repository>/, so the guide's base follows the site's address.
+      - name: Read the Pages site's address
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url="$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .html_url)" || {
+            echo "::error::GitHub Pages is off for $GITHUB_REPOSITORY: switch it on to deploy from the gh-pages branch"
+            exit 1
+          }
+          python3 - "$url" <<'EOF' | tee -a "$GITHUB_ENV"
+          import sys
+          from urllib.parse import urlsplit
+          url = urlsplit(sys.argv[1])
+          print(f"SITE={url.scheme}://{url.netloc}")
+          print(f"BASE={url.path.rstrip('/')}/guide")
+          EOF
+
+      - name: Build
+        working-directory: guide
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload the guide
+        uses: actions/upload-artifact@v7
+        with:
+          name: guide
+          path: guide/dist/
+
+  publish:
+    name: Publish the guide to GitHub Pages
+    needs: build
+    # A push to master, or a manual run on it.
+    if: ${{ github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write          # push to the gh-pages branch
+
+    # Serialize with the other jobs that publish to gh-pages, queued as they are.
+    concurrency:
+      group: gh-pages-publish
+      cancel-in-progress: false
+      queue: max
+
+    steps:
+      # The tree that was built, for .github/scripts/pages.py.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Fails when there is no gh-pages branch, which is made once, by hand.
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+
+      - name: Download the guide
+        uses: actions/download-artifact@v8
+        with:
+          name: guide
+          path: ${{ runner.temp }}/guide
+
+      # Replaces the directory, so a removed page goes with it.
+      - name: Write the guide and the index
+        run: |
+          rm -rf site/guide
+          cp -R "$RUNNER_TEMP/guide" site/guide
+          python3 .github/scripts/pages.py index site
+
+      - name: Push to gh-pages
+        run: |
+          git -C site add -A
+          if git -C site diff --cached --quiet; then
+            echo "gh-pages already holds this guide."
+            exit 0
+          fi
+          git -C site config user.name "github-actions[bot]"
+          git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C site commit -qm "Publish the guide ($GITHUB_SHA)"
+          git -C site push origin gh-pages

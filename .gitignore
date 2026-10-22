@@ -31,4 +31,9 @@ chat-cli-keys
 # Nix build output symlink
 result
 
+# The guide's dependencies and build
+guide/node_modules/
+guide/dist/
+guide/.astro/
+
 .DS_Store

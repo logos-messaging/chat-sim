@@ -1,0 +1,29 @@
+---
+title: chat-sim
+description: Whether a group of logos-chat clients still holds one group when the network delays and loses what its members send.
+tableOfContents: false
+---
+
+import { CardGrid, LinkButton, LinkCard } from "@astrojs/starlight/components";
+
+Whether a group of logos-chat clients still holds one group when the network delays and loses what
+its members send. A scenario says how many members there are, what they do, what the network does to
+them and what the group is expected to come to. `tools/sim` runs it with every member in one process
+on a virtual clock, on Linux the same run every time from its seed. Every member writes a few one-line
+records into the log, and `tools/forks` reads them and gives a verdict: `whole`, or `split at epoch 4`.
+CI runs scenarios on master and on each pull request, and the site's reports show what they came to.
+
+<LinkButton href="run-it/" icon="right-arrow">Run it</LinkButton>
+<LinkButton href="how-it-works/" variant="secondary">How it works</LinkButton>
+
+## The guide
+
+<CardGrid>
+  <LinkCard title="How it works" href="how-it-works/" description="A run in one process, how a group state is identified, what each member writes, and the rule that turns logs into a verdict." />
+  <LinkCard title="Run it" href="run-it/" description="Logs from a simulation or a test; a report from files; the collector and its page; the tests." />
+  <LinkCard title="Read the report" href="read-the-report/" description="The text report line by line, every position and verdict, and the page." />
+  <LinkCard title="Simulations" href="simulations/" description="Scenario files, sweeps, a sweep held to what is expected, a group that grows, fifty epochs, and the rigs of the local-network branch." />
+  <LinkCard title="Reports" href="reports/" description="What CI runs and publishes for master and each pull request, and how to make a row again on your machine." />
+  <LinkCard title="Commands" href="reference/commands/" description="Every subcommand of forks and sim, with its flags, and harness-run." />
+  <LinkCard title="Records" href="reference/records/" description="Each record logos-chat writes, its fields and when." />
+</CardGrid>

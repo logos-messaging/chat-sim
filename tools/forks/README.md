@@ -915,6 +915,8 @@ http://127.0.0.1:8750/?token=5d1c0a9e7b3f42d8
 The collector answers with [the cookie](#the-token-and-the-receipt) and sends the browser on to
 the same address without the token, where the page stays. The page is the three files of
 `forks/page`, served as they stand: it has no build step and loads nothing from another host.
+The guide's pictures in `guide/src/assets/shots/` are of this page: take them again when it
+changes.
 
 | Part | What it shows |
 |---|---|

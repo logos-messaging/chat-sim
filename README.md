@@ -15,6 +15,10 @@ that the revision run here does not hold, so it lives on the
 [`local-network`](https://github.com/logos-messaging/chat-sim/tree/local-network) branch, pinned to
 logos-chat's `feat/local-network`.
 
+CI publishes the [guide](https://psychic-adventure-vo524n5.pages.github.io/guide/) to the
+repository's [Pages site](https://psychic-adventure-vo524n5.pages.github.io/), with a report of its
+simulations for master and for each open pull request.
+
 ## Layout
 
 | Path | What it is |
@@ -23,6 +27,7 @@ logos-chat's `feat/local-network`.
 | [`crates/network-model`](crates/network-model/src/lib.rs) | The model of a lossy network the runner puts between a client and what it receives |
 | [`tools/sim`](tools/sim/README.md) | Runs a scenario, and sweeps one over seeds and rates |
 | [`tools/forks`](tools/forks/README.md) | Reads the logs of a group's members and says whether the group forked |
+| [`guide`](guide) | The guide, a Starlight site: how a run works, how to run one, and how to read what it finds |
 | `.github/scripts/mock-registry.py` | The KeyPackage registry the peers of a run share |
 | `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page |
 
