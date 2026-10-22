@@ -1,21 +1,27 @@
 //! A transport behind a model of a lossy network, and the app's end of that
 //! model.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use chat_proto::logoschat::envelope::EnvelopeV1;
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender, bounded, unbounded};
 use logos_chat::{AddressedEnvelope, DeliveryService, Transport};
 use network_model::{AppId, Dropped, Model, NotArmed, Rate, Withhold, read};
+use prost::Message;
 use serde::Serialize;
 
 /// How many frames the model has let through may wait for the client: as
 /// many as wait in the channel of either transport, which this one stands in
 /// for.
 const INBOUND_BOUND: usize = 1024;
+
+/// The app id this client stamps on the frames it publishes to each
+/// conversation, by the conversation's id.
+type AppIds = BTreeMap<String, AppId>;
 
 /// What a model is started with.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -31,13 +37,20 @@ pub struct Settings {
 pub struct Modelled<T> {
     inner: T,
     model: Arc<Mutex<Model>>,
+    app_ids: Arc<Mutex<AppIds>>,
     inbound: Option<Receiver<Vec<u8>>>,
 }
 
 impl<T: Transport> Modelled<T> {
     /// Takes the inbound stream of `inner` and starts the thread that puts
-    /// it through `model`. A frame the model drops is sent on `drops`.
-    fn new(mut inner: T, model: Arc<Mutex<Model>>, drops: Sender<Dropped>) -> io::Result<Self> {
+    /// it through `model`. A frame the model drops is sent on `drops`, and
+    /// the app id of each frame the client publishes goes into `app_ids`.
+    fn new(
+        mut inner: T,
+        model: Arc<Mutex<Model>>,
+        app_ids: Arc<Mutex<AppIds>>,
+        drops: Sender<Dropped>,
+    ) -> io::Result<Self> {
         let frames = inner.inbound();
         let (client, inbound) = bounded(INBOUND_BOUND);
         thread::Builder::new().name("network-model".into()).spawn({
@@ -47,6 +60,7 @@ impl<T: Transport> Modelled<T> {
         Ok(Self {
             inner,
             model,
+            app_ids,
             inbound: Some(inbound),
         })
     }
@@ -56,11 +70,15 @@ impl<T: DeliveryService> DeliveryService for Modelled<T> {
     type Error = T::Error;
 
     fn publish(&mut self, envelope: AddressedEnvelope) -> Result<(), T::Error> {
-        // A transport hands a client its own frames back, and a frame can be
-        // back before the client says which app id it publishes under. So
-        // the model learns an app id of this client's own here, ahead of the
-        // frame.
+        // A transport hands a client its own frames back, so the model
+        // learns an app id of this client's own here, ahead of the frame.
+        // The client does not tell the app which app id it stamps, so the
+        // app learns it here as well, by the conversation the envelope names.
         if let Some(app_id) = read(&envelope.data).sender {
+            let convo = EnvelopeV1::decode(envelope.data.as_slice())
+                .expect("a frame with a sender is an envelope")
+                .conversation_hint;
+            self.app_ids.lock().unwrap().insert(convo, app_id.clone());
             self.model.lock().unwrap().rules_mut().add_own(app_id);
         }
         self.inner.publish(envelope)
@@ -128,10 +146,12 @@ fn deliver(
     }
 }
 
-/// The app's end of a model: its rules, what it counted and what it dropped.
+/// The app's end of a model: its rules, what it counted, what it dropped and
+/// the app id this client stamps in each conversation.
 pub struct NetworkModel {
     settings: Settings,
     model: Arc<Mutex<Model>>,
+    app_ids: Arc<Mutex<AppIds>>,
     drops: Receiver<Dropped>,
 }
 
@@ -147,15 +167,23 @@ impl NetworkModel {
         model.rules_mut().set_welcome_loss(settings.welcome_loss);
         model.set_delay(Duration::from_millis(settings.delay_ms));
         let model = Arc::new(Mutex::new(model));
+        let app_ids = Arc::new(Mutex::new(AppIds::new()));
         // Unbounded, as the client's events are: the app reads both.
         let (dropped, drops) = unbounded();
-        let transport = Modelled::new(transport, model.clone(), dropped)?;
+        let transport = Modelled::new(transport, model.clone(), app_ids.clone(), dropped)?;
         let network = Self {
             settings,
             model,
+            app_ids,
             drops,
         };
         Ok((transport, network))
+    }
+
+    /// The app id this client stamps on the frames it publishes to `convo`,
+    /// once it has published one there.
+    pub fn app_id(&self, convo: &str) -> Option<AppId> {
+        self.app_ids.lock().unwrap().get(convo).cloned()
     }
 
     /// Each frame the model drops, as it arrives.
@@ -266,6 +294,8 @@ struct DroppedFrames {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chat_proto::logoschat::convos::group_v2::{GroupV2Frame, group_v2_frame};
+    use chat_proto::logoschat::encryption::{EncryptedPayload, Plaintext, encrypted_payload};
     use network_model::Rules;
     use std::convert::Infallible;
 
@@ -313,6 +343,22 @@ mod tests {
     /// A payload that tells which frame it is.
     fn payload(n: u8) -> Vec<u8> {
         vec![n; 3]
+    }
+
+    /// A frame of the group `convo` stamped with `app_id`, as the client
+    /// publishes it.
+    fn stamped(convo: &str, app_id: &[u8]) -> AddressedEnvelope {
+        let frame = GroupV2Frame {
+            payload: Some(group_v2_frame::Payload::DeMlsWrapper(vec![])),
+            sender_app_id: app_id.to_vec().into(),
+        };
+        let plaintext = Plaintext {
+            payload: frame.encode_to_vec().into(),
+        };
+        let encrypted = EncryptedPayload {
+            encryption: Some(encrypted_payload::Encryption::Plaintext(plaintext)),
+        };
+        AddressedEnvelope::new("group".into(), convo.into(), &encrypted.encode_to_vec())
     }
 
     #[test]
@@ -443,6 +489,30 @@ mod tests {
         let dropped: Vec<u64> = network.drops().try_iter().map(|d| d.n).collect();
         assert_eq!(dropped, expected);
         assert!(!dropped.is_empty() && dropped.len() < 100, "{dropped:?}");
+    }
+
+    #[test]
+    fn a_conversation_has_the_app_id_the_client_stamped_on_a_frame_it_published_there() {
+        let (_frames, inner) = bounded(INBOUND_BOUND);
+        let settings = Settings {
+            seed: 7,
+            loss: Rate::default(),
+            welcome_loss: Rate::default(),
+            delay_ms: 0,
+        };
+        let (mut transport, network) =
+            NetworkModel::over(Fake(Some(inner)), "saro", settings).expect("the thread starts");
+        let app_id = [0x5a, 0x90, 0x4c];
+
+        transport.publish(stamped("weekend", &app_id)).unwrap();
+        // A frame of no group, as a direct chat's are, is stamped with none.
+        let direct = AddressedEnvelope::new("direct".into(), "dm".into(), &payload(1));
+        transport.publish(direct).unwrap();
+
+        let told = AppId::try_from(app_id.to_vec()).unwrap();
+        assert_eq!(network.app_id("weekend"), Some(told.clone()));
+        assert_eq!(network.app_id("dm"), None);
+        assert_eq!(network.state().own, [told.to_string()]);
     }
 
     #[test]

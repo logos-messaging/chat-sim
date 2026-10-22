@@ -178,10 +178,10 @@ class Lines(Scratch):
         peer.read_ready(soon())
         return peer
 
-    def test_the_result_of_a_new_group_and_a_joined_line_tell_the_app_id_of_a_peer(self):
-        created = {"type": "result", "input": 1, "ok": True, "convo": "c1", "app_id": "3830"}
+    def test_a_result_and_a_joined_line_tell_the_app_id_of_a_peer(self):
+        added = {"type": "result", "input": 1, "ok": True, "convo": "c1", "app_id": "3830"}
         joined = {"type": "joined", "convo": "c1", "kind": "group", "app_id": "3864"}
-        for name, line in (("saro", created), ("raya", joined)):
+        for name, line in (("saro", added), ("raya", joined)):
             peer = self.telling(line, name=name)
 
             self.assertIsNone(peer.app_id)

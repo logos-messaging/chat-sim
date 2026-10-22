@@ -158,8 +158,9 @@ to find its peers.
 the line, from 1, and `ok` says whether it worked.
 
 ```json
-{"type":"result","input":1,"ok":true,"text":"Group created (f2509018).","convo":"f2509018dc","app_id":"32656166656666613864"}
-{"type":"result","input":4,"ok":true,"text":"2 member(s)","convo":"f2509018dc","output":["── Members (2) ──","  • ca4353e659298fd1… (you)","  • f423b86be4123144…"]}
+{"type":"result","input":1,"ok":true,"text":"Group created (f2509018).","convo":"f2509018dc"}
+{"type":"result","input":2,"ok":true,"text":"Invite pending","convo":"f2509018dc","app_id":"32656166656666613864"}
+{"type":"result","input":4,"ok":true,"text":"2 member(s)","convo":"f2509018dc","app_id":"32656166656666613864","output":["── Members (2) ──","  • ca4353e659298fd1… (you)","  • f423b86be4123144…"]}
 {"type":"result","input":5,"ok":false,"error":"Unknown command: /nope. Type /help for commands."}
 ```
 
@@ -167,7 +168,7 @@ the line, from 1, and `ok` says whether it worked.
 |-------|-------|
 | `text` | The command's reply |
 | `convo` | The id of the conversation the input made or acted on |
-| `app_id` | The app id this client stamps on the frames it publishes to the group, on the result of `/new`: the lowercase hex of its bytes |
+| `app_id` | The app id this client stamps on the frames it publishes to `convo`, as the lowercase hex of its bytes, once it has published one there. Only with `--network-seed` (see [The network model](#the-network-model)) |
 | `output` | The lines the command wrote |
 | `node` | The delivery node's state, on the result of `/node` |
 | `network` | The network model's state, on the result of `/network` (see [The network model](#the-network-model)) |
@@ -196,8 +197,8 @@ rise while its `peers` stay as they are.
 The other lines are events, written as they happen, between results.
 
 `joined`: someone added this client to a conversation. `kind` is `group` or `dm`. `app_id` is the
-app id this client stamps on the frames it publishes to the conversation, and a `dm`, which
-stamps none, leaves it out.
+app id this client stamps on the frames it publishes to the conversation, told only with
+`--network-seed`, and a `dm`, which stamps none, leaves it out.
 
 ```json
 {"type":"joined","convo":"f2509018dc","kind":"group","app_id":"38643731383162396433"}
@@ -243,7 +244,7 @@ same, unless the node did not take the publish at the call, which fails the inpu
 frame the transport hands over arrives at the model, which drops it or holds it for
 `--network-delay-ms` and then hands it to the client, in the order the frames arrived. What the
 client publishes goes to the transport as it does without the model. Without the flag there is
-no model: no frame is dropped, and `/network` is refused.
+no model: no frame is dropped, no line tells an app id, and `/network` is refused.
 
 ```bash
 cargo run -p chat-cli -- --name raya --transport file --log-file raya.log \
@@ -260,7 +261,10 @@ The model reads a frame as the client first reads it, which gives the frame its 
 | `other` | Anything else. The frames of a direct chat are among them, and its invite |
 
 The sender of a frame of a group is the app id its publisher stamped on it. Each member of a
-group has an app id of its own there, which the result of its `/new` or its `joined` line gives.
+group has an app id of its own there. The model learns this client's from the first frame the
+client publishes to the group, and `app_id` gives it from then on: on each result whose `convo` is
+the group, and on the `joined` line of a joiner, which publishes as it joins. A creator alone in
+its group publishes nothing to it until its first `/add` or post.
 
 A frame that arrives is held to these rules in this order, and the first that drops it is the
 `why` of its `network_drop` line:

@@ -1424,8 +1424,8 @@ fn is_app_id(value: &Value) -> bool {
     })
 }
 
-/// The app id `peer` was told for `convo`: on the result of the `/new` that
-/// made it, or on the line that says it was joined.
+/// The app id `peer` was told for `convo`, on the first line that told it:
+/// only a peer under the network model is told one.
 fn app_id(peer: &Peer, convo: &str) -> String {
     let told = peer
         .read
@@ -1492,12 +1492,19 @@ fn states(rig: &Rig, names: &[&str], convo: &str, members: usize) -> Vec<String>
 }
 
 #[test]
-fn without_a_network_seed_no_frame_is_dropped_and_no_model_answers() {
+fn without_a_network_seed_no_frame_is_dropped_no_app_id_is_told_and_no_model_answers() {
     let rig = Rig::new();
     let [mut saro, mut raya] = rig.peers(["saro", "raya"]);
     let convo = group(&mut saro, &mut [&mut raya]);
     saro.run("hello");
     read_post(&mut raya, &convo);
+    for peer in [&saro, &raya] {
+        assert!(
+            peer.read.iter().all(|line| line.get("app_id").is_none()),
+            "{:?}",
+            peer.read
+        );
+    }
 
     for input in [
         "/network",
@@ -1561,10 +1568,33 @@ fn a_network_flag_clap_refuses_ends_with_status_2() {
 #[test]
 fn the_creator_of_a_group_and_a_joiner_are_each_told_an_app_id_of_their_own() {
     let rig = Rig::new();
-    let [mut saro, mut raya] = rig.peers(["saro", "raya"]);
+    let mut saro = rig.peer_with("saro", modelled(&[]));
+    let mut raya = rig.peer_with("raya", modelled(&[]));
 
+    // A creator alone in its group publishes nothing to it until it adds or
+    // posts.
     let created = saro.run("/new weekend");
-    saro.run(&format!("/add {}", raya.address));
+    let added = saro.run(&format!("/add {}", raya.address));
+    let joined = raya.event("joined");
+    let members = saro.run("/members");
+
+    assert_eq!(joined["convo"], created["convo"]);
+    assert!(created.get("app_id").is_none(), "{created}");
+    assert!(is_app_id(&added["app_id"]), "{added}");
+    assert!(is_app_id(&joined["app_id"]), "{joined}");
+    assert_ne!(added["app_id"], joined["app_id"]);
+    // Every result that names the group tells it from then on.
+    assert_eq!(members["app_id"], added["app_id"]);
+}
+
+#[test]
+fn a_creator_that_names_members_on_new_is_told_its_app_id_on_the_result() {
+    let rig = Rig::new();
+    let mut saro = rig.peer_with("saro", modelled(&[]));
+    let mut raya = rig.peer_with("raya", modelled(&[]));
+
+    // The welcome it broadcasts as it creates the group is its first frame to it.
+    let created = saro.run(&format!("/new weekend {}", raya.address));
     let joined = raya.event("joined");
 
     assert_eq!(joined["convo"], created["convo"]);
@@ -1576,7 +1606,8 @@ fn the_creator_of_a_group_and_a_joiner_are_each_told_an_app_id_of_their_own() {
 #[test]
 fn a_direct_chat_has_no_app_id() {
     let rig = Rig::new();
-    let [mut saro, mut raya] = rig.peers(["saro", "raya"]);
+    let mut saro = rig.peer_with("saro", modelled(&[]));
+    let mut raya = rig.peer_with("raya", modelled(&[]));
 
     let started = saro.run(&format!("/dm {}", raya.address));
     let joined = raya.event("joined");
@@ -1710,7 +1741,7 @@ fn network_counts_the_frames_that_arrived_and_names_the_app_ids_of_its_own() {
 #[test]
 fn at_a_loss_of_1_a_joiner_still_joins_and_a_post_is_dropped() {
     let rig = Rig::new();
-    let mut saro = rig.peer("saro");
+    let mut saro = rig.peer_with("saro", modelled(&[]));
     let mut raya = rig.peer_with("raya", modelled(&["--network-loss", "1"]));
     // A welcome is not lost at this rate.
     let convo = group(&mut saro, &mut [&mut raya]);
@@ -1791,7 +1822,8 @@ fn a_frame_of_a_joiners_own_that_a_node_hands_back_is_not_dropped() {
 #[test]
 fn a_cut_drops_the_posts_of_its_senders_and_no_others_until_it_is_healed() {
     let rig = Rig::new();
-    let [mut saro, mut pax] = rig.peers(["saro", "pax"]);
+    let mut saro = rig.peer("saro");
+    let mut pax = rig.peer_with("pax", modelled(&[]));
     let mut raya = rig.peer_with("raya", modelled(&[]));
     let convo = group(&mut saro, &mut [&mut raya, &mut pax]);
     let cut_off = app_id(&pax, &convo);
@@ -1892,7 +1924,7 @@ fn two_starts_with_one_seed_and_one_name_drop_the_same_frames() {
 #[test]
 fn at_a_welcome_loss_of_1_a_member_never_joins() {
     let rig = Rig::new();
-    let mut saro = rig.peer("saro");
+    let mut saro = rig.peer_with("saro", modelled(&[]));
     let mut raya = rig.peer_with("raya", modelled(&["--network-welcome-loss", "1"]));
     let convo = text(&saro.run("/new weekend")["convo"]);
     saro.run(&format!("/add {}", raya.address));
@@ -1932,10 +1964,9 @@ fn a_member_a_candidate_is_withheld_from_is_alone_exactly_when_the_group_applied
     let mut dials: Vec<String> = Vec::new();
     let [mut saro, mut raya, mut pax, mut mira, mut kes] = ["saro", "raya", "pax", "mira", "kes"]
         .map(|name| {
+            // Each under the network model, so that each tells its app id.
             let mut args: Vec<&str> = dials.iter().map(String::as_str).collect();
-            if name == "pax" {
-                args.extend(["--network-seed", "7"]);
-            }
+            args.extend(["--network-seed", "7"]);
             let peer = rig.node_peer(name, &args);
             dials.extend(["--static-node".to_string(), peer.node_address.clone()]);
             peer

@@ -307,7 +307,8 @@ class Peer(_Process):
             line = None
         if not isinstance(line, dict):
             raise Stopped(f"{self.name}: a line that is no JSON object: {text[:80]}")
-        # The result of `/new` tells it to the creator, and its `joined` line to a joiner.
+        # With a network model, its `joined` line tells it to a joiner, and to the creator the
+        # results from its first `/add` or post on.
         if line.get("type") in ("result", "joined") and "app_id" in line:
             self.app_id = line["app_id"]
         return read_at, line

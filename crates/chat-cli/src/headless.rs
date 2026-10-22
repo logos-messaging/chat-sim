@@ -36,7 +36,8 @@ enum Line {
         text: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         convo: Option<String>,
-        /// The app id of the conversation the input made.
+        /// The app id this client stamps on the frames it publishes to
+        /// `convo`, once the network model has learned it.
         #[serde(skip_serializing_if = "Option::is_none")]
         app_id: Option<String>,
         #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -52,7 +53,8 @@ enum Line {
         convo: String,
         kind: &'static str,
         /// The app id this client stamps on the frames it publishes to the
-        /// conversation.
+        /// conversation, which the network model learns from the join the
+        /// client publishes.
         #[serde(skip_serializing_if = "Option::is_none")]
         app_id: Option<String>,
     },
@@ -131,14 +133,15 @@ where
                         return Ok(());
                     }
                 }
-                let result = result_line(number, outcome, app.take_command_output());
+                let output = app.take_command_output();
+                let result = result_line(app, number, outcome, output);
                 if !write_line(&result)? || quit {
                     return Ok(());
                 }
             }
             recv(events) -> event => {
                 let event = event.context("the chat client stopped")?;
-                let line = event_line(app, &event)?;
+                let line = event_line(app, &event);
                 app.process_event(event)?;
                 if let Some(line) = line
                     && !write_line(&line)?
@@ -216,20 +219,31 @@ where
     }
 }
 
-fn result_line(input: u64, outcome: Result<Outcome>, output: Vec<String>) -> Line {
-    let (text, convo, app_id, node, network, error) = match outcome {
+fn result_line<T, R, A, S>(
+    app: &ChatApp<T, R, A, S>,
+    input: u64,
+    outcome: Result<Outcome>,
+    output: Vec<String>,
+) -> Line
+where
+    T: Transport,
+    R: RegistrationService + Clone + Send + 'static,
+    A: AuthService + Send + 'static,
+    S: ConversationStore + Send,
+{
+    let (text, convo, node, network, error) = match outcome {
         Ok(Outcome::Done {
             text,
             convo,
             node,
-            app_id,
             network,
             ..
-        }) => (Some(text), convo, app_id, node, network, None),
-        Ok(Outcome::Quit) => (None, None, None, None, None, None),
-        Ok(Outcome::Refused(why)) => (None, None, None, None, None, Some(why)),
-        Err(e) => (None, None, None, None, None, Some(format!("{e:#}"))),
+        }) => (Some(text), convo, node, network, None),
+        Ok(Outcome::Quit) => (None, None, None, None, None),
+        Ok(Outcome::Refused(why)) => (None, None, None, None, Some(why)),
+        Err(e) => (None, None, None, None, Some(format!("{e:#}"))),
     };
+    let app_id = convo.as_deref().and_then(|convo| app.app_id(convo));
     Line::Result {
         input,
         ok: error.is_none(),
@@ -244,21 +258,21 @@ fn result_line(input: u64, outcome: Result<Outcome>, output: Vec<String>) -> Lin
 }
 
 /// The line for an event, or `None` for one that has no line.
-fn event_line<T, R, A, S>(app: &ChatApp<T, R, A, S>, event: &Event) -> Result<Option<Line>>
+fn event_line<T, R, A, S>(app: &ChatApp<T, R, A, S>, event: &Event) -> Option<Line>
 where
     T: Transport,
     R: RegistrationService + Clone + Send + 'static,
     A: AuthService + Send + 'static,
     S: ConversationStore + Send,
 {
-    let line = match event {
+    match event {
         Event::ConversationStarted { convo_id, class } => Some(Line::Joined {
             convo: convo_id.to_string(),
             kind: match class {
                 ConversationClass::Dm => "dm",
                 ConversationClass::Group => "group",
             },
-            app_id: app.app_id(convo_id)?.as_ref().map(AppId::to_string),
+            app_id: app.app_id(convo_id).as_ref().map(AppId::to_string),
         }),
         Event::MessageReceived {
             convo_id,
@@ -277,8 +291,7 @@ where
             message: message.clone(),
         }),
         _ => None,
-    };
-    Ok(line)
+    }
 }
 
 /// The line for a frame the network model dropped.

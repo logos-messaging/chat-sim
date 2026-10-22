@@ -9,7 +9,7 @@
 use de_mls::WallClock;
 use harness::{Harness, TestHarness};
 use libchat::{GroupV2Config, MockClock};
-use network_model::{AppId, Dropped, Model, Rules, read};
+use network_model::{Dropped, Model, Rules, read};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -138,15 +138,11 @@ fn a_model_drops_what_its_rules_say_of_the_frames_it_is_handed() {
         let _ = harness.pax().send_content(&convo, b"from pax");
     }
 
-    // Raya publishes nothing before she holds the group.
-    let own = harness
-        .raya()
-        .app_id(&convo)
-        .expect("raya holds the group")
-        .expect("a group stamps an app id");
     let mut rules = Rules::new(SEED, "raya");
     rules.set_loss(rate);
-    rules.add_own(AppId::try_from(own).expect("an app id"));
+    for app_id in harness.raya().app_ids() {
+        rules.add_own(app_id);
+    }
     let handed = handed.take();
     let dropped_beside: Vec<Dropped> = handed
         .iter()

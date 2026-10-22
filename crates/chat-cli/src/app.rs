@@ -122,9 +122,6 @@ pub enum Outcome {
         convo: Option<String>,
         /// The delivery node's state, when the input asked for it.
         node: Option<NodeState>,
-        /// The app id of the conversation the input made, when it stamps one
-        /// on its frames.
-        app_id: Option<AppId>,
         /// The network model's state, when the input asked for it or set it.
         network: Option<Box<NetworkState>>,
     },
@@ -139,7 +136,6 @@ impl Outcome {
             text: text.into(),
             convo: None,
             node: None,
-            app_id: None,
             network: None,
         }
     }
@@ -149,7 +145,6 @@ impl Outcome {
             text: text.into(),
             convo: Some(chat_id.to_string()),
             node: None,
-            app_id: None,
             network: None,
         }
     }
@@ -262,14 +257,11 @@ where
         self.network.as_ref()
     }
 
-    /// The app id `chat_id` stamps on the frames this client publishes to it,
-    /// or `None` for a conversation that stamps none.
-    pub fn app_id(&self, chat_id: &str) -> Result<Option<AppId>> {
-        let app_id = self
-            .client
-            .app_id(chat_id)
-            .map_err(|e| anyhow::anyhow!("{e:?}"))?;
-        Ok(app_id.and_then(|app_id| AppId::try_from(app_id).ok()))
+    /// The app id this client stamps on the frames it publishes to `chat_id`,
+    /// once the network model has seen it publish one there, or `None` in a run
+    /// without the model.
+    pub fn app_id(&self, chat_id: &str) -> Option<AppId> {
+        self.network.as_ref()?.app_id(chat_id)
     }
 
     fn set_active_chat(&mut self, chat_id: Option<String>) {
@@ -584,7 +576,6 @@ where
                     text: "Account address shown".to_string(),
                     convo: None,
                     node: None,
-                    app_id: None,
                     network: None,
                 })
             }
@@ -620,7 +611,6 @@ where
                     .client
                     .create_group_conversation(&members, GroupMetadata::new(name.clone(), ""))
                     .map_err(|e| anyhow::anyhow!("{e:?}"))?;
-                let app_id = self.app_id(&chat_id)?;
                 let label = chat_id[..8.min(chat_id.len())].to_string();
                 self.start_session(chat_id.clone(), ConversationClass::Group, Some(name));
                 self.save_state()?;
@@ -633,13 +623,7 @@ where
                     )
                 };
                 self.status = msg.clone();
-                Ok(Outcome::Done {
-                    text: msg,
-                    convo: Some(chat_id),
-                    node: None,
-                    app_id,
-                    network: None,
-                })
+                Ok(Outcome::in_convo(msg, &chat_id))
             }
             "/add" => {
                 let mut addresses: Vec<&str> = args.split_whitespace().collect();
@@ -892,7 +876,6 @@ where
                     text: "Node state shown".to_string(),
                     convo: None,
                     node: Some(node),
-                    app_id: None,
                     network: None,
                 })
             }
@@ -942,7 +925,6 @@ where
                     text,
                     convo: None,
                     node: None,
-                    app_id: None,
                     network: Some(Box::new(network.state())),
                 })
             }
@@ -957,7 +939,6 @@ where
                     text: "Messages cleared".to_string(),
                     convo: self.state.active_chat.clone(),
                     node: None,
-                    app_id: None,
                     network: None,
                 })
             }

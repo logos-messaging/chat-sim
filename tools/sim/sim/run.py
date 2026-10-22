@@ -414,7 +414,8 @@ def _expected(members: List[Peer], said: Dict[str, str], word: str) -> List[Peer
 def _cut(settings: Settings, sides: List[List[Peer]]) -> None:
     """Cuts each side off from the other: each member is given the app ids of the other side.
 
-    A member tells its app id as it joins, so one that has not told it yet is waited for.
+    A member tells its app id as it joins, and the creator as it first adds or posts, so one that
+    has not told it yet is waited for.
     """
     deadline = _deadline(settings)
     app_ids = [[member.read_app_id(deadline) for member in side] for side in sides]

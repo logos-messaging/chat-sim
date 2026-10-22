@@ -616,10 +616,15 @@ impl<'a> Run<'a> {
     }
 
     /// The app id `member` stamps its frames of the conversation with, once
-    /// it holds the conversation.
+    /// it has published one. A member of a run publishes in that conversation
+    /// alone, a joiner first as it joins.
     fn app_id(&mut self, member: usize) -> Option<AppId> {
-        let app_id = self.harness.client(member).app_id(&self.convo);
-        AppId::try_from(app_id.ok()??).ok()
+        let app_ids = self.harness.client(member).app_ids();
+        assert!(
+            app_ids.len() < 2,
+            "{app_ids:?}: a member publishes in one conversation"
+        );
+        app_ids.into_iter().next()
     }
 
     /// The rules of the model of `member`. A plan has a step of the network

@@ -1,13 +1,15 @@
 use crate::mem_store::MemStore;
 use crate::test_ident::{AcceptAllAuth, TestIdent};
 use de_mls::WallClock;
+use libchat::{AddressedEnvelope, DeliveryService, GroupV2Clock, GroupV2Config, MockClock};
 use libchat::{ConversationId, Core, IdentityProvider, PayloadOutcome};
-use libchat::{GroupV2Clock, GroupV2Config, MockClock};
 use libchat::{ParticipantId, SignerKey};
 use network_model::{AppId, Dropped, Model, read};
-use std::collections::HashMap;
+use std::cell::RefCell;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 use std::time::Duration;
 use tracing::{debug, info, warn};
 
@@ -34,7 +36,7 @@ pub(crate) const STEP: Duration = Duration::from_millis(50);
 type ClientType = Core<(
     TestIdent,
     AcceptAllAuth,
-    LocalBroadcaster,
+    Publishing,
     EphemeralRegistry,
     WP,
     MemStore,
@@ -49,6 +51,7 @@ pub struct ReceivedMessage<T> {
 pub struct TestClient {
     inner: ClientType,
     account: ParticipantId,
+    app_ids: AppIds,
     received_messages: Vec<ReceivedMessage<Vec<u8>>>,
     inbound_errors: Vec<String>,
     tolerate_inbound_errors: bool,
@@ -58,10 +61,11 @@ pub struct TestClient {
 }
 
 impl TestClient {
-    fn init(client: ClientType, account: ParticipantId) -> Self {
+    fn init(client: ClientType, account: ParticipantId, app_ids: AppIds) -> Self {
         Self {
             inner: client,
             account,
+            app_ids,
             received_messages: vec![],
             inbound_errors: vec![],
             tolerate_inbound_errors: false,
@@ -79,6 +83,12 @@ impl TestClient {
     /// The account group creation resolves to this client's signer.
     pub fn account(&self) -> ParticipantId {
         self.account.clone()
+    }
+
+    /// The app ids on the frames this client published, one for each
+    /// conversation it published in.
+    pub fn app_ids(&self) -> BTreeSet<AppId> {
+        self.app_ids.borrow().clone()
     }
 
     /// Inbound payloads this client rejected, in arrival order. Only recorded
@@ -124,10 +134,10 @@ impl TestClient {
             messages.push(data);
         }
         if let Some(model) = self.model.as_mut() {
-            // The transport hands a client its own frames back, and each is
-            // of a conversation the client holds by the time it is.
-            for app_id in own_app_ids(&self.inner) {
-                model.rules_mut().add_own(app_id);
+            // The transport hands a client its own frames back, each after
+            // the client published it.
+            for app_id in self.app_ids.borrow().iter() {
+                model.rules_mut().add_own(app_id.clone());
             }
             for data in messages {
                 self.dropped.extend(model.arrive(now, read(&data), data));
@@ -198,19 +208,39 @@ impl TestClient {
     }
 }
 
-/// The app ids `client` stamps on the frames it publishes, one for each
-/// conversation it holds that stamps one.
-fn own_app_ids(client: &ClientType) -> Vec<AppId> {
-    let convos = client
-        .list_all_conversations()
-        .expect("a client lists its conversations");
-    // A conversation only the store holds is a GroupV1 one, which stamps none.
-    let app_ids = convos
-        .iter()
-        .filter_map(|convo| client.app_id(convo).ok().flatten());
-    app_ids
-        .filter_map(|app_id| AppId::try_from(app_id).ok())
-        .collect()
+/// The app ids a client stamped on the frames it published, kept by its
+/// transport and read by the client.
+type AppIds = Rc<RefCell<BTreeSet<AppId>>>;
+
+/// The broadcaster a client publishes through, keeping the app id of each
+/// frame it publishes.
+#[derive(Debug)]
+pub struct Publishing {
+    broadcaster: LocalBroadcaster,
+    app_ids: AppIds,
+}
+
+impl Publishing {
+    /// The next payload on an address this client subscribed to, as
+    /// [`LocalBroadcaster::poll`] hands it.
+    pub fn poll(&mut self) -> Option<Vec<u8>> {
+        self.broadcaster.poll()
+    }
+}
+
+impl DeliveryService for Publishing {
+    type Error = <LocalBroadcaster as DeliveryService>::Error;
+
+    fn publish(&mut self, envelope: AddressedEnvelope) -> Result<(), Self::Error> {
+        if let Some(app_id) = read(&envelope.data).sender {
+            self.app_ids.borrow_mut().insert(app_id);
+        }
+        self.broadcaster.publish(envelope)
+    }
+
+    fn subscribe(&mut self, delivery_address: &str) -> Result<(), Self::Error> {
+        self.broadcaster.subscribe(delivery_address)
+    }
 }
 
 impl Deref for TestClient {
@@ -301,10 +331,15 @@ impl Harness {
             addresses.insert(i, ident.signer_key().clone());
             auth.register(&ident);
             let account = ident.participant_id();
+            let app_ids = AppIds::default();
+            let publishing = Publishing {
+                broadcaster: ds.clone(),
+                app_ids: app_ids.clone(),
+            };
             let mut core_client = ClientType::new_with_name(
                 ident,
                 auth.clone(),
-                ds.clone(),
+                publishing,
                 rs.clone(),
                 wp,
                 MemStore::new(),
@@ -313,7 +348,7 @@ impl Harness {
             core_client.set_group_v2_clock(GroupV2Clock::Mock(ws.clock()));
             core_client.set_group_v2_config(config.clone());
 
-            let client = TestClient::init(core_client, account);
+            let client = TestClient::init(core_client, account, app_ids);
 
             clients.push(client);
         }

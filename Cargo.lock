@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "account"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "account-log",
  "thiserror",
@@ -14,7 +14,7 @@ dependencies = [
 [[package]]
 name = "account-log"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "crypto",
  "hex",
@@ -1364,12 +1364,14 @@ name = "chat-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chat-proto",
  "clap",
  "components",
  "crossbeam-channel",
  "logos-chat",
  "message-types",
  "network-model",
+ "prost",
  "serde",
  "serde_json",
  "tempfile",
@@ -1380,7 +1382,7 @@ dependencies = [
 [[package]]
 name = "chat-proto"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/chat_proto?rev=948f4ad6dedb01b44e279204d8eb30a1eda5a330#948f4ad6dedb01b44e279204d8eb30a1eda5a330"
+source = "git+https://github.com/logos-messaging/chat_proto?rev=b5f2943846208f5fdaddf2718e0f3be102e7c5f6#b5f2943846208f5fdaddf2718e0f3be102e7c5f6"
 dependencies = [
  "prost",
 ]
@@ -1388,7 +1390,7 @@ dependencies = [
 [[package]]
 name = "chat-sqlite"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "libchat",
  "rusqlite",
@@ -1513,7 +1515,7 @@ dependencies = [
 [[package]]
 name = "components"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "account",
  "account-log",
@@ -1687,11 +1689,10 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "ed25519-dalek",
  "generic-array 1.3.5",
- "getrandom 0.3.4",
  "hkdf",
  "rand_core 0.6.4",
  "sha2 0.10.9",
@@ -2042,7 +2043,7 @@ dependencies = [
 [[package]]
 name = "embedded-logos-delivery"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "base64",
  "crossbeam-channel",
@@ -3132,7 +3133,7 @@ checksum = "52ff2c0fe9bc6cb6b14a0592c2ff4fa9ceb83eea9db979b0487cd054946a2b8f"
 [[package]]
 name = "libchat"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "alloy",
  "base64",
@@ -3152,6 +3153,7 @@ dependencies = [
  "serde",
  "thiserror",
  "tracing",
+ "tracing-subscriber",
  "x25519-dalek",
  "zeroize",
 ]
@@ -3467,7 +3469,7 @@ checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 [[package]]
 name = "logos-chat"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "account",
  "components",
@@ -3480,7 +3482,7 @@ dependencies = [
 [[package]]
 name = "logos-delivery"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "base64",
  "crossbeam-channel",
@@ -3493,7 +3495,7 @@ dependencies = [
 [[package]]
 name = "logos-generic-chat"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "account",
  "chat-sqlite",
@@ -3551,7 +3553,7 @@ checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 [[package]]
 name = "message-types"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=184eb9c08b5da2cd93e6eed50fcc9ed399070711#184eb9c08b5da2cd93e6eed50fcc9ed399070711"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=586f8d41c146598f107a2612e6548a4a99c4f414#586f8d41c146598f107a2612e6548a4a99c4f414"
 dependencies = [
  "ciborium",
  "serde",
@@ -3582,7 +3584,6 @@ version = "0.1.0"
 dependencies = [
  "chat-proto",
  "de-mls",
- "libchat",
  "prost",
 ]
 

@@ -361,15 +361,15 @@ short has left the rows of the runs that ended:
    seated when the log of every member waited on holds the epoch record of the new roster, and
    the steps stop when the members' records of that epoch do not name one state. A `post` step
    waits for the `message` line of every member waited on. A `cut` step waits until each member
-   it names has told its app id, which a peer does as it creates or joins the group, and then
-   writes each member of both sides the app ids of the other side. A `withhold` step is written
-   once the step before it is done and before the `/add` of the next batch. That batch is
-   seated when the member has also written the line of the candidate its model dropped: none
-   within the budget stops the steps, and so does one written before the `/add`, a candidate of
-   an earlier round. The steps do not stop at that batch when the member alone holds a state of
-   its own and every other member waited on holds one: the steps go on without the member, and
-   no post is waited for on it. A `hold` step asks every node for its state, does nothing for
-   its seconds, which no budget bounds, and asks every node again.
+   it names has told its app id, which a peer does as it joins the group and the creator as it
+   first adds or posts, and then writes each member of both sides the app ids of the other side.
+   A `withhold` step is written once the step before it is done and before the `/add` of the
+   next batch. That batch is seated when the member has also written the line of the candidate
+   its model dropped: none within the budget stops the steps, and so does one written before the
+   `/add`, a candidate of an earlier round. The steps do not stop at that batch when the member
+   alone holds a state of its own and every other member waited on holds one: the steps go on
+   without the member, and no post is waited for on it. A `hold` step asks every node for its
+   state, does nothing for its seconds, which no budget bounds, and asks every node again.
 5. It asks every peer for the state of its network model, when the scenario has one. A peer
    abandons the frames its model holds when it ends, so a model that holds one is asked again
    every 0.5 s: until it holds none, or until the member's delay has passed since the steps
@@ -437,7 +437,7 @@ token, and is there also when nothing could be sent. `run.txt` is what the run p
 | `page` | The address of the conversation's page on the collector the logs were shared to |
 | `unshared` | What `forks share` complained of, when the logs could not be sent |
 | `nodes[].installation` | The id the fork report knows the peer by |
-| `nodes[].app_id` | The app id the peer told as it created or joined the group, or `null` |
+| `nodes[].app_id` | The app id the peer told, which a peer does in a run with a `network` as it joins the group and the creator as it first adds or posts, or `null` |
 | `nodes[].ready_s` | When the peer wrote its `ready` line, in seconds from the run's start |
 | `nodes[].start_s` | How long the peer took from its own start to that line |
 | `nodes[].dials` | The nodes it was told to dial: none on a preset |

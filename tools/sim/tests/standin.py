@@ -8,10 +8,11 @@ Into the store it is given it writes `<name>.json`, with its process id and its 
 
 Started with `--network-seed` it has a network model, of which it keeps the cut, the rule that
 withholds a commit candidate and the delay of a post: it loses no frame at a rate and holds no
-roster. A post it holds when it ends is abandoned, as a peer abandons a frame it holds. A
-roster stands for the commit candidates of its batch. So a peer whose rule is armed writes the
-line of a candidate withheld when a roster arrives, and holds that roster all the same, as a
-peer does by the candidate of another steward.
+roster. Only then does it tell its app id, as chat-cli does once it has published to the group:
+on its `joined` line and on the result of an `/add` or a `/send`. A post it holds when it ends
+is abandoned, as a peer abandons a frame it holds. A roster stands for the commit candidates of
+its batch. So a peer whose rule is armed writes the line of a candidate withheld when a roster
+arrives, and holds that roster all the same, as a peer does by the candidate of another steward.
 
 Started with `--preset` its node is on a fleet: it says that it holds a link to each of the
 six entry nodes of the preset, each of them one it dialed, and that it has no mesh. The fleet
@@ -318,7 +319,7 @@ class Peer:
         if joined and "tells-no-app-id" in self.faults:
             self.write(type="joined", convo=convo, kind="group")
         elif joined:
-            self.write(type="joined", convo=convo, kind="group", app_id=self.app_id)
+            self.write(type="joined", convo=convo, kind="group", **self.told())
         else:
             self.write(type="members", convo=convo)
 
@@ -376,6 +377,10 @@ class Peer:
     def result(self, **fields) -> None:
         self.write(type="result", input=self.inputs, ok="error" not in fields, **fields)
 
+    def told(self) -> dict:
+        """The app id a line tells: none without a network model, as in chat-cli."""
+        return {} if self.network is None else {"app_id": self.app_id}
+
     def input(self, text: str) -> None:
         self.inputs += 1
         command, _, rest = text.partition(" ")
@@ -403,11 +408,11 @@ class Peer:
             self.rosters[self.active] = [self.address]
             self.epochs[self.active] = 0
             self.record(self.active, 0, secrets.token_hex(8))
-            self.result(text=f"Created {rest}", convo=self.active, app_id=self.app_id)
+            self.result(text=f"Created {rest}", convo=self.active)
         elif command == "/add" and "refuses-add" in self.faults:
             self.result(error="The stand-in refuses to add anybody.")
         elif command == "/add":
-            self.result(text="Added")
+            self.result(text="Added", convo=self.active, **self.told())
             self.add(rest.split())
         elif command == "/send" and "refuses-post" in self.faults:
             self.result(error="The stand-in refuses to send anything.")
@@ -415,7 +420,7 @@ class Peer:
             convo, _, post = rest.partition(" ")
             frame, epoch = secrets.token_hex(8), self.epochs.get(convo, 0)
             self.report("sent", f"convo={convo} frame={frame} epoch={epoch}")
-            self.result(text="Message sent", convo=convo)
+            self.result(text="Message sent", convo=convo, **self.told())
             self.publish(
                 kind="post",
                 id=frame,

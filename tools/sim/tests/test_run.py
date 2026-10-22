@@ -293,7 +293,8 @@ class Running(Scratch):
             self.assertEqual((lines[0]["type"], lines[0]["name"]), ("ready", name))
             self.assertIn("result", [line["type"] for line in lines])
             self.assertTrue((self.out / f"{name}.stderr").is_file())
-        joined = {"type": "joined", "convo": mock.ANY, "kind": "group", "app_id": mock.ANY}
+        # Without a network model the line tells no app id.
+        joined = {"type": "joined", "convo": mock.ANY, "kind": "group"}
         self.assertIn(joined, self.lines("pax"))
 
     def test_seven_peers_are_a_ring_with_chords_seated_a_batch_at_a_time(self):
@@ -907,12 +908,12 @@ class Running(Scratch):
         )
 
     def told(self, name: str) -> str:
-        """The app id the peer `name` told of itself."""
-        (app_id,) = [
+        """The app id the peer `name` told of itself, the same on every line that told it."""
+        (app_id,) = {
             line["app_id"]
             for line in self.lines(name)
             if line["type"] in ("result", "joined") and "app_id" in line
-        ]
+        }
         return app_id
 
     def expected(self) -> dict:
