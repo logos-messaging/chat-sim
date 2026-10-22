@@ -24,6 +24,7 @@ logos-chat's `feat/local-network`.
 | [`tools/sim`](tools/sim/README.md) | Runs a scenario, and sweeps one over seeds and rates |
 | [`tools/forks`](tools/forks/README.md) | Reads the logs of a group's members and says whether the group forked |
 | `.github/scripts/mock-registry.py` | The KeyPackage registry the peers of a run share |
+| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page |
 
 ## The logos-chat it runs
 

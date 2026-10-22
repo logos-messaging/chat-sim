@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
+# A pull request's runs share a group, so a push cancels the run it
+# supersedes; every other run gets a group of its own and always finishes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -56,13 +65,18 @@ jobs:
       # The tools need only the runner's own Python.
       - run: python3 -m unittest discover -s tools/forks
       - run: python3 -m unittest discover -s tools/sim
+      - run: python3 -m unittest discover -s .github/scripts
 
   sim-one-process:
     name: Sim in one process
     environment: ${{ github.ref == 'refs/heads/master' && 'public-cache' || '' }}
     runs-on: ubuntu-latest
     steps:
+      # A pull request's head, the commit its report names, rather than its
+      # merge into master.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: logos-co/setup-nix-cache-action@v1
         with:
           attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
@@ -71,44 +85,185 @@ jobs:
       # the same run whenever it is made, so a logos-chat revision that changes
       # its outcome changed the core.
       - name: Run fifty epochs
-        run: nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out "$RUNNER_TEMP/50-epochs"
+        run: nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out "$RUNNER_TEMP/sim/50-epochs"
+      # Runs when the first run fails as well, so that the report has both.
       - name: Run fifty epochs on Waku's delays
-        run: nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs-waku.json --out "$RUNNER_TEMP/50-epochs-waku"
+        if: ${{ !cancelled() }}
+        run: nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs-waku.json --out "$RUNNER_TEMP/sim/50-epochs-waku"
+      # Each run's files, for the report on Pages, without group.log,
+      # plan.json, result.json, runner.out and runner.stderr. The wildcard makes
+      # $RUNNER_TEMP/sim the artifact's root, so each run keeps the directory
+      # named for its scenario.
+      - name: Upload the runs' text
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sim-one-process
+          path: |
+            ${{ runner.temp }}/sim/*/run.txt
+            ${{ runner.temp }}/sim/*/run.json
+            ${{ runner.temp }}/sim/*/report.txt
+            ${{ runner.temp }}/sim/*/report.json
+            ${{ runner.temp }}/sim/*/expect.json
+
+  list-expected:
+    name: List the scenarios held to what is expected
+    runs-on: ubuntu-latest
+    outputs:
+      scenarios: ${{ steps.list.outputs.scenarios }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      # The names of the files in tools/sim/expected without .json, as a JSON
+      # array: the scenarios .github/scripts/pages.py lists in the report too.
+      - name: List tools/sim/expected
+        id: list
+        run: |
+          python3 - >> "$GITHUB_OUTPUT" <<'EOF'
+          import json
+          from pathlib import Path
+          names = sorted(path.stem for path in Path("tools/sim/expected").glob("*.json"))
+          print(f"scenarios={json.dumps(names)}")
+          EOF
 
   sim-expected:
     name: Sim held to what is expected (${{ matrix.scenario }})
+    needs: list-expected
     environment: ${{ github.ref == 'refs/heads/master' && 'public-cache' || '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        scenario:
-          - grow-waku-loss-0
-          - grow-waku-loss-0.1
-          - grow-waku-loss-0.5
-          - grow-waku-loss-1
-          - grow-waku-loss-5
-          - grow-waku-size-50
+        scenario: ${{ fromJSON(needs.list-expected.outputs.scenarios) }}
+    # Read by the scripts from the environment, never written into them: a
+    # scenario's name is the name of a file in the tree under test.
+    env:
+      SCENARIO: ${{ matrix.scenario }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: logos-co/setup-nix-cache-action@v1
         with:
           attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
           attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
       - name: Sweep three seeds
-        run: nix run .#groupv2-simulation -- sweep tools/sim/scenarios/${{ matrix.scenario }}.json --runs 3 --out "$RUNNER_TEMP/sweep"
+        run: nix run .#groupv2-simulation -- sweep "tools/sim/scenarios/$SCENARIO.json" --runs 3 --out "$RUNNER_TEMP/sim/$SCENARIO"
       # A run in one process is the same run whenever it is made, so an outcome
       # other than the one expected was changed by the revision its runner was
       # built from.
       - name: Hold the sweep to what is expected
         run: |
+          out="$RUNNER_TEMP/sim/$SCENARIO"
           status=0
-          python3 tools/sim compare tools/sim/expected/${{ matrix.scenario }}.json "$RUNNER_TEMP/sweep" > "$RUNNER_TEMP/compare.txt" || status=$?
-          cat "$RUNNER_TEMP/compare.txt"
+          python3 tools/sim compare "tools/sim/expected/$SCENARIO.json" "$out" > "$out/compare.txt" 2>&1 || status=$?
+          echo "$status" > "$out/compare.status"
+          cat "$out/compare.txt"
           {
-            echo '### ${{ matrix.scenario }}'
+            echo "### $SCENARIO"
             echo '```'
-            cat "$RUNNER_TEMP/compare.txt"
+            cat "$out/compare.txt"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit "$status"
+      # The sweep's files and its runs', for the report on Pages, without each
+      # run's group.log, plan.json, result.json, runner.out and runner.stderr,
+      # in the directory named for the scenario.
+      - name: Upload the sweep's text
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sim-expected-${{ matrix.scenario }}
+          path: |
+            ${{ runner.temp }}/sim/*/sweep.txt
+            ${{ runner.temp }}/sim/*/sweep.json
+            ${{ runner.temp }}/sim/*/compare.txt
+            ${{ runner.temp }}/sim/*/compare.status
+            ${{ runner.temp }}/sim/*/*/run.txt
+            ${{ runner.temp }}/sim/*/*/run.json
+            ${{ runner.temp }}/sim/*/*/report.txt
+            ${{ runner.temp }}/sim/*/*/report.json
+            ${{ runner.temp }}/sim/*/*/expect.json
+
+  publish:
+    name: Publish the report to GitHub Pages
+    needs: [sim-one-process, sim-expected]
+    # Runs when a sim job fails as well, the run whose report is wanted most.
+    # Skipped for a pull request from a fork, whose GITHUB_TOKEN can't push.
+    if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write          # push to the gh-pages branch
+
+    # Serialize Pages pushes so two refs can't race on the gh-pages branch. The
+    # queue keeps every waiting publish; a group otherwise holds only one.
+    concurrency:
+      group: gh-pages-publish
+      cancel-in-progress: false
+      queue: max
+
+    # Read by the scripts from the environment, never written into them: a
+    # pull request's title is text its author chose.
+    env:
+      KEY: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'master' }}
+      TITLE: ${{ github.event.pull_request.title }}
+      TESTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      # The tree under test, whose .github/scripts/pages.py writes its report
+      # from tools/sim/expected.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      # The pages every report shares, the list of the reports and the landing
+      # page, are written by the default branch's pages.py, not a pull request's.
+      - name: Checkout the default branch's scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: base
+          sparse-checkout: .github/scripts
+
+      # Fails when there is no gh-pages branch, which is made once, by hand.
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+
+      # Merged, each scenario's text lands in a directory of its own however
+      # many jobs uploaded one; unmerged, a single artifact would be flattened.
+      - name: Download the runs' text
+        uses: actions/download-artifact@v8
+        with:
+          pattern: sim-*
+          path: ${{ runner.temp }}/sim
+          merge-multiple: true
+
+      - name: Write the report and the index
+        run: |
+          python3 .github/scripts/pages.py report "$RUNNER_TEMP/sim" site \
+            --expected tools/sim/expected \
+            --key "$KEY" --title="$TITLE" --sha "$TESTED_SHA" \
+            --commit-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$TESTED_SHA" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --run-number "$GITHUB_RUN_NUMBER" \
+            --time "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          python3 base/.github/scripts/pages.py index site
+
+      - name: Push to gh-pages
+        run: |
+          git -C site add -A
+          if git -C site diff --cached --quiet; then
+            echo "gh-pages already holds this report, or a newer one."
+            exit 0
+          fi
+          git -C site config user.name "github-actions[bot]"
+          git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C site commit -qm "Publish the report of $KEY ($TESTED_SHA)"
+          git -C site push origin gh-pages
