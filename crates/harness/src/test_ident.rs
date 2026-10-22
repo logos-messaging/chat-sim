@@ -19,7 +19,9 @@ pub struct TestIdent {
 
 impl TestIdent {
     pub fn new(name: impl Into<String>) -> Self {
-        let signing_key = Ed25519SigningKey::generate();
+        // `rand` seeds its generator through libc's `getrandom`, which
+        // harness-run stands in for; `generate` makes the syscall itself.
+        let signing_key = Ed25519SigningKey::from_seed(&rand::random());
         let signer = SignerKey::from(signing_key.verifying_key());
         Self {
             name: name.into(),

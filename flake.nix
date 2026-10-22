@@ -8,7 +8,7 @@
 
   inputs = {
     # The revision the simulation runs, which Cargo.toml pins logos-chat's crates at too.
-    logos-chat.url = "github:logos-messaging/logos-chat/6bd3791c7ba77ffdab0e903576dd6ffc4752d622";
+    logos-chat.url = "github:logos-messaging/logos-chat/58859378d0568d3bd9b6e8b0d1998f54bb73254b";
     # logos-chat's own, so the toolchain is the store path its CI pushes to the Logos cache.
     nixpkgs.follows = "logos-chat/nixpkgs";
     rust-overlay.follows = "logos-chat/rust-overlay";

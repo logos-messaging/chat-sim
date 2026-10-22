@@ -4,10 +4,11 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
+use chat_proto::logoschat::convos::group_v2::{GroupV2Frame, group_v2_frame};
 use chat_proto::logoschat::encryption::{EncryptedPayload, encrypted_payload};
 use chat_proto::logoschat::envelope::EnvelopeV1;
+use chat_proto::logoschat::inbox::{InboxV2Frame, inbox_v2_frame};
 use de_mls::protos::de_mls::messages::v1::{AppMessage, app_message};
-use libchat::{GroupV2Frame, GroupV2Payload, InboxV2Frame, InviteType};
 use prost::Message;
 
 /// The app id a conversation stamps on the frames it publishes: one byte or
@@ -110,7 +111,7 @@ fn group_frame(payload: &[u8]) -> Option<Frame> {
         return None;
     };
     let frame = GroupV2Frame::decode(plaintext.payload.as_ref()).ok()?;
-    let GroupV2Payload::DeMlsWrapper(inner) = frame.payload? else {
+    let group_v2_frame::Payload::DeMlsWrapper(inner) = frame.payload? else {
         return None;
     };
     // A candidate and a welcome travel in the clear, and every other frame of
@@ -125,7 +126,7 @@ fn group_frame(payload: &[u8]) -> Option<Frame> {
     };
     Some(Frame {
         kind,
-        sender: AppId::try_from(frame.sender_app_id).ok(),
+        sender: AppId::try_from(frame.sender_app_id.to_vec()).ok(),
     })
 }
 
@@ -137,7 +138,7 @@ fn seat(member_id: &[u8]) -> Option<u32> {
 
 /// The invite to a group an envelope carries to an inbox.
 fn invite(payload: &[u8]) -> Option<Frame> {
-    let InviteType::GroupV2(_) = InboxV2Frame::decode(payload).ok()?.payload? else {
+    let inbox_v2_frame::Payload::GroupV2(_) = InboxV2Frame::decode(payload).ok()?.payload? else {
         return None;
     };
     Some(Frame {
@@ -183,8 +184,8 @@ mod tests {
     /// The frame of a group that `sender` stamped and that wraps `inner`.
     fn group(sender: &[u8], inner: Vec<u8>) -> Vec<u8> {
         published(GroupV2Frame {
-            payload: Some(GroupV2Payload::DeMlsWrapper(inner.into())),
-            sender_app_id: sender.to_vec(),
+            payload: Some(group_v2_frame::Payload::DeMlsWrapper(inner)),
+            sender_app_id: sender.to_vec().into(),
         })
     }
 
@@ -246,7 +247,9 @@ mod tests {
     #[test]
     fn a_welcome_sent_to_an_inbox_has_no_sender() {
         let invite = InboxV2Frame {
-            payload: Some(InviteType::GroupV2(welcome().encode_to_vec())),
+            payload: Some(inbox_v2_frame::Payload::GroupV2(
+                welcome().encode_to_vec().into(),
+            )),
         };
 
         let frame = read(&envelope(invite.encode_to_vec()));
@@ -317,11 +320,11 @@ mod tests {
             InboxV2Frame::decode(direct_invite.as_slice())
                 .unwrap()
                 .payload,
-            Some(InviteType::GroupV1(_))
+            Some(inbox_v2_frame::Payload::GroupV1(_))
         ));
         let bare_commit = published(GroupV2Frame {
-            payload: Some(GroupV2Payload::MlsCommitMessage(encrypted_by_mls().into())),
-            sender_app_id: SARO.to_vec(),
+            payload: Some(group_v2_frame::Payload::MlsCommitMessage(encrypted_by_mls())),
+            sender_app_id: SARO.to_vec().into(),
         });
         // A handshake, in a field that neither a frame of a group nor an
         // invite has.

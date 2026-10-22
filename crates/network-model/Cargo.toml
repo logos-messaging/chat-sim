@@ -9,7 +9,6 @@ description = "A seeded model of a lossy network on the frames one client receiv
 # Workspace dependencies (sorted)
 chat-proto = { workspace = true }
 de-mls = { workspace = true }
-libchat = { workspace = true }
 
 # External dependencies (sorted)
 prost = "0.14.1"
