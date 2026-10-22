@@ -5,7 +5,7 @@ logos-chat clients still hold one group when the network delays and loses what i
 
 A scenario says how many members there are, what they do, what the network does to them, and what
 the group is expected to come to. [`tools/sim`](tools/sim/README.md) runs it with every member in
-one process on a virtual clock, where a run is the same every time from its seed.
+one process on a virtual clock, where on Linux a run is the same every time from its seed.
 [`tools/forks`](tools/forks/README.md) then reads the members' logs and says whether they still
 hold one group.
 

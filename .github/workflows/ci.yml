@@ -98,7 +98,8 @@ jobs:
       - name: Sweep three seeds
         run: nix run .#groupv2-simulation -- sweep tools/sim/scenarios/${{ matrix.scenario }}.json --runs 3 --out "$RUNNER_TEMP/sweep"
       # A run in one process is the same run whenever it is made, so an outcome
-      # other than the one expected was changed by the logos-chat it runs.
+      # other than the one expected was changed by the revision its runner was
+      # built from.
       - name: Hold the sweep to what is expected
         run: |
           status=0

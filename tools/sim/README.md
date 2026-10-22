@@ -358,8 +358,8 @@ python3 tools/sim compare tools/sim/expected/grow-waku-loss-5.json tmp/loss-5
 ```
 
 A run in one process is the same run every time from its seeds (see
-[In one process](#in-one-process)), so a run that comes out other than it did was changed by the
-revision of logos-chat the runner was built from. `compare` holds each run of a sweep in one
+[In one process](#in-one-process)), so a run that comes out other than it did was changed by a
+revision of logos-chat or of chat-sim. `compare` holds each run of a sweep in one
 process to the outcome a file of them expects of it, and prints a row for each. Here two runs of
 `grow-waku-loss-5.json`, held to a file that expects the second whole:
 
@@ -386,7 +386,8 @@ whole the group came out against it:
 It exits 0 when every run came out as expected and the sweep has a run for each outcome expected,
 1 when not, and 2 when the sweep or the file cannot be read, or a run of the sweep was not in one
 process. `--write` writes the outcomes of the sweep to the file instead: a revision of logos-chat
-that changes how a run comes out has its outcomes written, and the file's diff shows the change.
+or of chat-sim that changes how a run comes out has its outcomes written, and the file's diff
+shows the change.
 
 `expected/` holds the outcomes of the scenarios CI sweeps, three runs each, at the revision of
 logos-chat that `Cargo.toml` pins. Each is on the library's own timers and Waku's delays, any
