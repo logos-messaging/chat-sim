@@ -1,5 +1,5 @@
 2026-10-06T08:02:47.122041Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="a3f91caa"
-2026-10-06T08:02:47.125219Z  INFO libchat::groupv2trace: run installation=a3f91c07 account=5be2c0d1
+2026-10-06T08:02:47.125219Z TRACE libchat::mls_trace: run signer=a3f91c07 participant=5be2c0d1
 2026-10-06T08:03:39.125534Z  INFO core.handle_frame{user_id=saro}:inboxV2.handle_frame{user_id=saro}: libchat::inbox_v2: Process WelcomeMessage
 2026-10-06T08:03:39.136986Z  INFO core.handle_frame{user_id=saro}:inboxV2.handle_frame{user_id=saro}:groupv2.new_from_welcome{user_id=saro}: de_mls::conversation::inbound: joined conversation conversation=27d4c1e9a5
-2026-10-06T08:03:39.140575Z  INFO core.handle_frame{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=27d4c1e9a5 epoch=2 state=b8b79525ec5b0a0f members=2 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7
+2026-10-06T08:03:39.140575Z TRACE core.handle_frame{user_id=saro}:groupv2.handle_frame{signer=a3f91c07 convo=27d4c1e9a5}: libchat::mls_trace: epoch epoch=2 state=b8b79525ec5b0a0f members=2 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7

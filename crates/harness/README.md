@@ -127,6 +127,10 @@ every random draw of a run goes through, with a generator seeded by the plan's `
 rayon's pool: on more than one, a run that removes members came out otherwise from run to run. Two
 runs of one plan write the same log byte for byte, and the same result but for the wall time each
 took, whenever they are run.
+A run also depends on how many hash maps the process built before: std seeds the hasher of each new
+`HashMap` and `HashSet` with keys drawn once per thread, one of them counted up by every map built
+with a hasher of its own before it, while a clone keeps the keys of the map it copies. So a change
+to the harness or to logos-chat that builds one map more or fewer can change how a run comes out.
 Another seed draws other ids for the group and its members, and which commit the group applies
 follows from them. The `seed` of `network` fixes what a member's model does with the n-th frame to
 reach it, and nothing else. Elsewhere the ids come from the OS, and the `seated_s` of a batch, and
@@ -152,33 +156,33 @@ as that got. The plan above left:
     {
       "joiners": 2,
       "members": 3,
-      "seated_s": 1.25,
-      "wall_s": 0.048343726
+      "seated_s": 0.5,
+      "wall_s": 0.007026952
     }
   ],
-  "conversation": "c4961f8309",
+  "conversation": "5bfb2f371a",
   "members": [
     {
       "account": "7361726f",
-      "app_id": "35666635653136623164",
+      "app_id": "62363065623863663830",
       "inbound_errors": {},
-      "installation": "d76e64c2",
+      "installation": "01469e2a",
       "name": "saro",
       "seated": true
     },
     {
       "account": "72617961",
-      "app_id": "63306662343232633763",
+      "app_id": "34373865336265666561",
       "inbound_errors": {},
-      "installation": "adf36d07",
+      "installation": "4c454e6d",
       "name": "raya",
       "seated": true
     },
     {
       "account": "706178",
-      "app_id": "65343437326635343630",
+      "app_id": "61613863643635633266",
       "inbound_errors": {},
-      "installation": "b31f7abf",
+      "installation": "cc2e7d1e",
       "name": "pax",
       "seated": true
     }
@@ -196,8 +200,8 @@ as that got. The plan above left:
   ],
   "steps_done": 2,
   "stopped": null,
-  "virtual_s": 1.35,
-  "wall_s": 0.072100728
+  "virtual_s": 0.6,
+  "wall_s": 0.010238333
 }
 ```
 
@@ -206,8 +210,8 @@ as that got. The plan above left:
 | `steps_done` | How many of the plan's steps were done to the end |
 | `stopped` | `null`, or in one line why the steps stopped |
 | `conversation` | The conversation's id, as the records write it |
-| `members[]` | For each member of the plan its `name`, its `installation` and `account` as the records shorten them, whether the steps `seated` it, its `app_id` in hex, `null` while it does not hold the conversation, and its `inbound_errors`: how many frames it rejected, by the reason. A member a grow step removed is as it was when the round that removed it was over, when its client was dropped |
-| `members[].network` | In a plan with a `network`, the state of the member's model. The `seed`, `loss`, `welcome_loss` and `delay_ms` it was given. The app ids it is `cut` off from, and those it takes for its `own`: that of the conversation, once it holds it, since a client of the harness is handed its own frames back. `withheld`, `null` until a candidate is withheld from it, then the `app_id` of the candidate's sender, the `seat` of the steward that minted it and `applied`: whether that steward has broadcast a welcome since, as it does for a commit of its own that the group applies. With no batch after the one the candidate was withheld in, that is whether the group applied the candidate. Whether the rule that withholds is `armed`. `frames`: how many `arrived`, and of those how many `passed` to the client, are `held` for the delay or were `dropped`, by the rule that dropped them |
+| `members[]` | For each member of the plan its `name`, its `installation` and `account` as the records shorten them, whether the steps `seated` it, its `app_id` in hex, `null` until it has published in the conversation, and its `inbound_errors`: how many frames it rejected, by the reason. A member a grow step removed is as it was when the round that removed it was over, when its client was dropped |
+| `members[].network` | In a plan with a `network`, the state of the member's model. The `seed`, `loss`, `welcome_loss` and `delay_ms` it was given. The app ids it is `cut` off from, and those it takes for its `own`: the app id on each frame it published, since a client of the harness is handed its own frames back. `withheld`, `null` until a candidate is withheld from it, then the `app_id` of the candidate's sender, the `seat` of the steward that minted it and `applied`: whether that steward has broadcast a welcome since, as it does for a commit of its own that the group applies. With no batch after the one the candidate was withheld in, that is whether the group applied the candidate. Whether the rule that withholds is `armed`. `frames`: how many `arrived`, and of those how many `passed` to the client, are `held` for the delay or were `dropped`, by the rule that dropped them |
 | `members[].dropped[]` | In a plan with a `network`, each frame the member's model dropped: `n` numbers the frames that arrived, from 1, `why` is the rule (`loss`, `welcome_loss`, `cut`, `withheld`), `kind` what the frame is (`welcome`, `candidate`, `group`, `other`) and `bytes` its length. `app_id` is its sender's, left out for a frame that has none, and `seat` that of the steward that minted a commit candidate |
 | `batches[]` | For each batch that was seated its `joiners`, the `members` the group then had, `seated_s`, the virtual seconds from the first try of the add to the last roster, and `wall_s`, the seconds it took on the machine |
 | `posts[]` | For each post its `poster`, how many `readers` were waited on, the names of those that left it `unread` within the budget, and as `read_s` the virtual seconds from the send to each read |

@@ -1016,7 +1016,8 @@ class EndToEnd(Collecting):
                     (line,) = [each["text"] for each in around if each["line"] == at["line"]]
                     written = sent[names[at["run"]]].decode().split("\n")[at["line"] - 1]
                     self.assertEqual(line, written)
-                    self.assertIn(f"libchat::groupv2trace: {wrote[cell]} installation={seat} ", line)
+                    self.assertIn(f"{{signer={seat} convo=", line)
+                    self.assertIn(f"}}: libchat::mls_trace: {wrote[cell]} ", line)
                     self.assertIn(f" frame={post['frame']}", line)
                     self.assertEqual(seat in post["why"], cell == "unreadable")
                     if cell == "unreadable":
@@ -3261,7 +3262,7 @@ class Gained(Collecting):
 
     def test_a_malformed_line_is_counted_in_the_conversations_of_its_run_alone(self):
         self.share_group("saro")
-        torn = logged(member("raya")) + b"2026-10-08T10:00:09.000Z  INFO libchat::groupv2trace: epoch\n"
+        torn = logged(member("raya")) + b"2026-10-08T10:00:09.000Z TRACE libchat::mls_trace: epoch\n"
         self.served.share(torn, "raya")
         self.served.share(logged(member("mira", roster="mira", convo=OTHER)), "mira")
         self.assertEqual(self.served.report()["lines"]["malformed"], 1)

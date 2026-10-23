@@ -118,8 +118,9 @@ class Logs(unittest.TestCase):
 
     def test_a_roster_held_at_two_epochs_is_reached_at_the_first(self):
         again = (
-            "2026-10-10T05:40:25.500000Z  INFO libchat::groupv2trace: epoch installation=e9b55953 "
-            f"convo={CONVO} epoch=3 state=0f0f0f0f0f0f0f0f members=7 roster=e9b55953:56a4e537\n"
+            "2026-10-10T05:40:25.500000Z TRACE groupv2.handle_frame{signer=e9b55953 "
+            f"convo={CONVO} epoch=2}}: libchat::mls_trace: epoch epoch=3 state=0f0f0f0f0f0f0f0f "
+            "members=7 signers=e9b55953:56a4e537\n"
         )
         record = measure.reached(self.log + again, CONVO, 7)
 
@@ -143,12 +144,15 @@ class Logs(unittest.TestCase):
 
     def test_the_frames_whose_sender_could_not_be_checked_are_counted(self):
         def unreadable(why: str) -> str:
-            fields = f"installation=e9b55953 convo={CONVO} frame=d0cf2be190f059bc epoch=2 why={why}"
+            fields = f"frame=d0cf2be190f059bc epoch=2 why={why}"
             # Each part in a colour of its own, as chat-cli writes a record.
             coloured = fields.replace(" ", " \x1b[3m").replace("=", "\x1b[0m\x1b[2m=\x1b[0m")
             return (
                 "\x1b[2m2026-10-10T05:40:26.000000Z\x1b[0m \x1b[32m INFO\x1b[0m "
-                f"\x1b[2mlibchat::groupv2trace\x1b[0m\x1b[2m:\x1b[0m unreadable \x1b[3m{coloured}\n"
+                "\x1b[1mgroupv2.handle_frame\x1b[0m\x1b[1m{\x1b[0m\x1b[3msigner\x1b[0m"
+                f"\x1b[2m=\x1b[0me9b55953 \x1b[3mconvo\x1b[0m\x1b[2m=\x1b[0m{CONVO}\x1b[1m}}\x1b[0m"
+                "\x1b[2m:\x1b[0m "
+                f"\x1b[2mlibchat::mls_trace\x1b[0m\x1b[2m:\x1b[0m unreadable \x1b[3m{coloured}\n"
             )
 
         log = self.log + "".join(map(unreadable, ("sender", "decrypt", "epoch", "sender")))
@@ -162,7 +166,8 @@ class Logs(unittest.TestCase):
         self.assertIsNone(measure.reached("", CONVO, 7))
 
     def test_the_filter_lets_through_what_the_log_is_read_for(self):
-        for target in ("libchat::groupv2trace=info", "libchat::inbox_v2=info"):
+        lets = ("libchat::mls_trace=trace", "libchat::conversation::group_v2=info")
+        for target in (*lets, "libchat::inbox_v2=info"):
             self.assertIn(target, measure.LOG_FILTER.split(","))
 
 

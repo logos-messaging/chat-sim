@@ -1,10 +1,10 @@
 2026-10-08T08:35:40.099-03:00 INFO: chat_module: init: state installed, joining delivery preset logos.test
-2026-10-08T08:35:40.102-03:00 INFO: libchat::groupv2trace: run installation=e09a3f52 account=0d7a66f3
+2026-10-08T08:35:40.102-03:00 TRACE: libchat::mls_trace: run signer=e09a3f52 participant=0d7a66f3
 2026-10-08T08:35:40.105-03:00 INFO: chat_module::report: delivery state=initialising
 2026-10-08T08:35:41.162-03:00 INFO: chat_module::actions: delivery is online
 2026-10-08T08:35:41.165-03:00 INFO: chat_module::report: delivery state=online
 2026-10-08T08:36:33.165-03:00 INFO: libchat::inbox_v2: Process WelcomeMessage
-2026-10-08T08:36:33.168-03:00 INFO: libchat::groupv2trace: epoch installation=e09a3f52 convo=2a30d6a2c1 epoch=1 state=f6ef933bf6522007 members=2 roster=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3
+2026-10-08T08:36:33.168-03:00 TRACE: groupv2.handle_frame{signer=e09a3f52 convo=2a30d6a2c1}: libchat::mls_trace: epoch epoch=1 state=f6ef933bf6522007 members=2 signers=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3
 2026-10-08T08:36:42.168-03:00 ERROR: chat_module::actions: delivery failed: connection closed
 2026-10-08T08:36:42.171-03:00 INFO: chat_module::report: delivery state=error
 2026-10-08T08:36:43.272-03:00 INFO: chat_module::actions: delivery is online

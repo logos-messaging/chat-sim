@@ -37,6 +37,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 from urllib.parse import urlsplit
 
 FAULTS = {
@@ -119,7 +120,7 @@ def installation_of(address: str) -> str:
 
 
 def seat_of(address: str) -> str:
-    """A member as a roster lists it: its installation and its account, four bytes of each."""
+    """A member as `signers` lists it: its installation and its account, four bytes of each."""
     return f"{installation_of(address)[:8]}:{address[:8]}"
 
 
@@ -325,15 +326,15 @@ class Peer:
     def show(self, post: dict) -> None:
         if "deaf" in self.faults:
             return
-        frame = f"convo={post['convo']} frame={post['id']}"
+        frame, convo = f"frame={post['id']}", post["convo"]
         if "grumbles" in self.faults:
             self.write(type="inbound_error", message=GRUMBLED)
         if "garbles" in self.faults:
-            self.report("unreadable", f"{frame} epoch={post['epoch']} why=decrypt")
+            self.report("unreadable", f"{frame} epoch={post['epoch']} why=decrypt", convo)
             self.write(type="inbound_error", message=GARBLED)
             return
         if "unchecked" in self.faults:
-            self.report("unreadable", f"{frame} epoch={post['epoch']} why=sender")
+            self.report("unreadable", f"{frame} epoch={post['epoch']} why=sender", convo)
             return
         if "slow" in self.faults:
             time.sleep(DELIVERY)
@@ -341,7 +342,7 @@ class Peer:
         if "slow" in self.faults:
             time.sleep(LOOKUP)
         sender = installation_of(post["from"])[:8]
-        self.report("received", f"{frame} from={sender} epoch={post['epoch']}")
+        self.report("received", f"{frame} from={sender} epoch={post['epoch']}", convo)
         self.write(type="message", convo=post["convo"], text=post["text"], **{"from": post["from"]})
 
     def ask(self, method: str, path: str, body=None) -> None:
@@ -357,20 +358,28 @@ class Peer:
             sys.stdout.write(json.dumps(line) + "\n")
             sys.stdout.flush()
 
-    def log(self, target: str, text: str) -> None:
+    def log(self, target: str, text: str, level: str = "INFO", spans: str = "") -> None:
         stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         with open(self.log_file, "a", encoding="utf-8") as log:
-            log.write(f"{stamp}  INFO {target}: {text}\n")
+            log.write(f"{stamp} {level:>5} {spans}{target}: {text}\n")
 
-    def report(self, record: str, fields: str) -> None:
-        self.log("libchat::groupv2trace", f"{record} installation={self.installation[:8]} {fields}")
+    def report(self, record: str, fields: str, convo: Optional[str] = None) -> None:
+        """A trace record; one of a conversation is written in the span of the op on it."""
+        signer = self.installation[:8]
+        if convo is None:
+            self.log("libchat::mls_trace", f"{record} signer={signer} {fields}", "TRACE")
+            return
+        op = "groupv2.send_content" if record == "sent" else "groupv2.handle_frame"
+        spans = f"{op}{{signer={signer} convo={convo}}}: "
+        self.log("libchat::mls_trace", f"{record} {fields}", "TRACE", spans)
 
     def record(self, convo: str, epoch: int, state: str) -> None:
         members = self.rosters[convo]
         self.report(
             "epoch",
-            f"convo={convo} epoch={epoch} state={state} members={len(members)} "
-            f"roster={','.join(map(seat_of, members))}",
+            f"epoch={epoch} state={state} members={len(members)} "
+            f"signers={','.join(map(seat_of, members))}",
+            convo,
         )
 
     def result(self, **fields) -> None:
@@ -414,7 +423,7 @@ class Peer:
         elif command == "/send":
             convo, _, post = rest.partition(" ")
             frame, epoch = secrets.token_hex(8), self.epochs.get(convo, 0)
-            self.report("sent", f"convo={convo} frame={frame} epoch={epoch}")
+            self.report("sent", f"frame={frame} epoch={epoch}", convo)
             self.result(text="Message sent", convo=convo)
             self.publish(
                 kind="post",
@@ -518,7 +527,7 @@ def main() -> None:
         print(f"Starting logos-delivery node (preset={args.preset})...", file=sys.stderr)
         sys.exit(f"chat-cli: failed to start the delivery node: {UNKNOWN}: {args.preset}")
     peer = Peer(args)
-    peer.report("run", f"account={peer.address[:8]}")
+    peer.report("run", f"participant={peer.address[:8]}")
     if "dies-at-start" in peer.faults:
         sys.exit(STATUS)
     if "slow" in peer.faults:

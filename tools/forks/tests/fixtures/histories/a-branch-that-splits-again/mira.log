@@ -1,9 +1,9 @@
 2026-10-08T11:14:31.317+02:00 INFO: chat_module: init: state installed, joining delivery preset logos.test
-2026-10-08T11:14:31.320+02:00 INFO: libchat::groupv2trace: run installation=19f6b0e3 account=d2184c8e
+2026-10-08T11:14:31.320+02:00 TRACE: libchat::mls_trace: run signer=19f6b0e3 participant=d2184c8e
 2026-10-08T11:14:31.323+02:00 INFO: chat_module::report: delivery state=initialising
 2026-10-08T11:14:32.380+02:00 INFO: chat_module::actions: delivery is online
 2026-10-08T11:14:32.383+02:00 INFO: chat_module::report: delivery state=online
 2026-10-08T11:15:24.383+02:00 INFO: libchat::inbox_v2: Process WelcomeMessage
-2026-10-08T11:15:24.386+02:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=4b8e0c62d9 epoch=1 state=af49c0e8b1a2ebac members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
-2026-10-08T11:16:28.389+02:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=4b8e0c62d9 epoch=2 state=49c7d8ac3f32b38a members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
-2026-10-08T11:17:46.392+02:00 INFO: libchat::groupv2trace: epoch installation=19f6b0e3 convo=4b8e0c62d9 epoch=3 state=a2abec3ccb1bef22 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T11:15:24.386+02:00 TRACE: groupv2.handle_frame{signer=19f6b0e3 convo=4b8e0c62d9}: libchat::mls_trace: epoch epoch=1 state=af49c0e8b1a2ebac members=4 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T11:16:28.389+02:00 TRACE: groupv2.handle_frame{signer=19f6b0e3 convo=4b8e0c62d9}: libchat::mls_trace: epoch epoch=2 state=49c7d8ac3f32b38a members=4 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-08T11:17:46.392+02:00 TRACE: groupv2.handle_frame{signer=19f6b0e3 convo=4b8e0c62d9}: libchat::mls_trace: epoch epoch=3 state=a2abec3ccb1bef22 members=4 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e

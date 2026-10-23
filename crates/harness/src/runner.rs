@@ -308,7 +308,7 @@ impl<'a> Run<'a> {
             harness,
             records,
             by_installation: by_installation
-                .map(|(member, named)| (named.installation.clone(), member))
+                .map(|(member, named)| (named.signer.clone(), member))
                 .collect(),
             told: members.iter().map(|_| Told::default()).collect(),
             members,
@@ -375,7 +375,7 @@ impl<'a> Run<'a> {
     fn read(&mut self) {
         for (at, record) in self.records.take() {
             let field = |name: &str| record.fields.get(name);
-            let member = field("installation").and_then(|id| self.by_installation.get(id));
+            let member = field("signer").and_then(|id| self.by_installation.get(id));
             let Some(&member) = member else {
                 continue;
             };
@@ -624,10 +624,15 @@ impl<'a> Run<'a> {
     }
 
     /// The app id `member` stamps its frames of the conversation with, once
-    /// it holds the conversation.
+    /// it has published one. A member of a run publishes in that conversation
+    /// alone, a joiner first as it joins.
     fn app_id(&mut self, member: usize) -> Option<AppId> {
-        let app_id = self.harness.client(member).app_id(&self.convo);
-        AppId::try_from(app_id.ok()??).ok()
+        let app_ids = self.harness.client(member).app_ids();
+        assert!(
+            app_ids.len() < 2,
+            "{app_ids:?}: a member publishes in one conversation"
+        );
+        app_ids.into_iter().next()
     }
 
     /// The rules of the model of `member`. A plan has a step of the network
@@ -638,26 +643,24 @@ impl<'a> Run<'a> {
     }
 
     /// Cuts each side off from the frames of the other, once the members it
-    /// names that the steps seated hold the conversation.
+    /// names hold the conversation. One the steps have not seated stops them
+    /// at once.
     fn cut(&mut self, sides: &[Vec<usize>; 2]) -> Result<(), Stopped> {
+        let named: Vec<usize> = sides.iter().flatten().copied().collect();
+        if let Some(unseated) = named.iter().find(|member| **member >= self.seated) {
+            return Err(self.not_held(*unseated));
+        }
         // A member no roster was waited on for may have yet to take its
         // welcome.
-        let seated = sides.iter().flatten().copied();
-        let seated: Vec<usize> = seated.filter(|member| *member < self.seated).collect();
         let mut left = self.plan.budget;
         self.wait(&mut left, |run| {
-            let mut seated = seated.iter();
-            seated.all(|member| run.app_id(*member).is_some())
+            let mut named = named.iter();
+            named.all(|member| run.app_id(*member).is_some())
         });
         let mut app_ids = [vec![], vec![]];
         for (side, app_ids) in sides.iter().zip(&mut app_ids) {
             for member in side {
-                let app_id = self.app_id(*member).ok_or_else(|| {
-                    let name = self.name(*member);
-                    Stopped(format!(
-                        "{name}: a cut names it, and it does not hold the conversation"
-                    ))
-                })?;
+                let app_id = self.app_id(*member).ok_or_else(|| self.not_held(*member))?;
                 app_ids.push(app_id);
             }
         }
@@ -667,6 +670,14 @@ impl<'a> Run<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Why a cut that names `member` stops the steps.
+    fn not_held(&self, member: usize) -> Stopped {
+        let name = self.name(member);
+        Stopped(format!(
+            "{name}: a cut names it, and it does not hold the conversation"
+        ))
     }
 
     /// Arms the rule that withholds the next commit candidate from `from`.
@@ -1000,8 +1011,8 @@ impl<'a> Run<'a> {
         }
         let mut said = json!({
             "name": self.plan.members[member],
-            "installation": self.members[member].installation,
-            "account": self.members[member].account,
+            "installation": self.members[member].signer,
+            "account": self.members[member].participant,
             "seated": member < self.seated,
             "app_id": app_id,
             "inbound_errors": inbound_errors,
@@ -1124,7 +1135,7 @@ mod tests {
         fn written_of(&self, name: &str, frame: &str) -> Vec<String> {
             let installation = self.member(name)["installation"].as_str().expect("an id");
             let records = self.records().into_iter().filter(|record| {
-                record.fields["installation"] == installation
+                record.fields["signer"] == installation
                     && record.fields.get("frame").is_some_and(|of| of == frame)
             });
             records.map(|record| record.name).collect()
@@ -1207,7 +1218,7 @@ mod tests {
             // The roster it is said to hold is the one its records tell of.
             let holds_the_roster = records.iter().any(|record| {
                 record.name == "epoch"
-                    && record.fields["installation"] == member["installation"]
+                    && record.fields["signer"] == member["installation"]
                     && record.fields["convo"] == result["conversation"]
                     && record.fields["members"] == "3"
             });
@@ -1297,7 +1308,7 @@ mod tests {
                 [&json!(seed), &json!(delay_ms)]
             );
             assert_eq!([&network["loss"], &network["welcome_loss"]], [RATE, RATE]);
-            // A member's own frames are those of the conversation it holds.
+            // A member's own frames are those it published.
             let own = member["app_id"]
                 .as_str()
                 .map_or(json!([]), |app_id| json!([app_id]));
@@ -1627,6 +1638,16 @@ mod tests {
                 json!("pax: a cut names it, and it does not hold the conversation")
             )
         );
+        // Before the first seat the creator, who holds the conversation, has
+        // published nothing.
+        let before_any_seat = stopped(json!([{"step": "cut", "sides": [["saro"], ["pax"]]}]));
+        assert_eq!(
+            before_any_seat,
+            (
+                json!(0),
+                json!("pax: a cut names it, and it does not hold the conversation")
+            )
+        );
 
         let armed_twice = stopped(json!([
             {"step": "withhold", "from": "raya"},
@@ -1715,9 +1736,8 @@ mod tests {
         let state = |name: &str| {
             let installation = &left.member(name)["installation"];
             let mut epochs = epochs.clone();
-            let held = epochs.find(|record| {
-                record.fields["installation"] == *installation && record.epoch() == last
-            });
+            let held = epochs
+                .find(|record| record.fields["signer"] == *installation && record.epoch() == last);
             held.unwrap_or_else(|| panic!("{name} holds no epoch {last}"))
                 .fields["state"]
                 .as_str()
@@ -1736,7 +1756,7 @@ mod tests {
         // that does not decrypt is one the member rejected.
         let undecrypted = records.iter().filter(|record| {
             record.name == "unreadable"
-                && record.fields["installation"] == told["installation"]
+                && record.fields["signer"] == told["installation"]
                 && record.fields["why"] == "decrypt"
         });
         let undecrypted = undecrypted.count() as u64;
@@ -1791,7 +1811,7 @@ mod tests {
             epochs
                 .map(|record| {
                     let field = |name: &str| record.fields[name].clone();
-                    (field("installation"), field("state"))
+                    (field("signer"), field("state"))
                 })
                 .collect()
         };

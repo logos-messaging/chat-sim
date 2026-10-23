@@ -86,7 +86,7 @@ class Run:
         self.posts = []
         self.grown = None
         for name in self.names:
-            self.record(name, "run", f"account={self.account[name]}")
+            self.record(name, "run", f"participant={self.account[name]}")
         self.app_id[self.names[0]] = secrets.token_hex(10)
         self.hold_roster(self.names[0], secrets.token_hex(8), 1)
 
@@ -111,9 +111,13 @@ class Run:
 
     def record(self, name: str, record: str, fields: str) -> None:
         stamp = datetime.fromtimestamp(self.clock, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        installation = self.installation[name]
-        self.log.write(f"{stamp}  INFO libchat::groupv2trace: {record} installation={installation} ")
-        self.log.write(f"{fields}\n")
+        signer = self.installation[name]
+        if record == "run":
+            self.log.write(f"{stamp} TRACE libchat::mls_trace: run signer={signer} {fields}\n")
+        else:
+            op = "groupv2.send_content" if record == "sent" else "groupv2.handle_frame"
+            span = f"{op}{{signer={signer} convo={self.convo}}}"
+            self.log.write(f"{stamp} TRACE {span}: libchat::mls_trace: {record} {fields}\n")
         self.log.flush()
 
     def hold_roster(self, name: str, state: str, members: int) -> None:
@@ -123,8 +127,7 @@ class Run:
         self.record(
             name,
             "epoch",
-            f"convo={self.convo} epoch={self.epoch} state={state} members={members} "
-            f"roster={roster}",
+            f"epoch={self.epoch} state={state} members={members} signers={roster}",
         )
 
     def arrive(self, name: str, why, kind: str, size: int, **more) -> bool:
@@ -206,7 +209,7 @@ class Run:
     def post(self, step: dict):
         for poster in step["from"]:
             frame = secrets.token_hex(8)
-            written = f"convo={self.convo} frame={frame}"
+            written = f"frame={frame}"
             self.record(poster, "sent", f"{written} epoch={self.epoch}")
             read = []
             for name in self.names[: self.seated]:

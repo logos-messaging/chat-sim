@@ -1,9 +1,9 @@
 2026-10-09T11:03:29.307082Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="e09a3faa"
-2026-10-09T11:03:29.310260Z  INFO libchat::groupv2trace: run installation=e09a3f52 account=0d7a66f3
+2026-10-09T11:03:29.310260Z TRACE libchat::mls_trace: run signer=e09a3f52 participant=0d7a66f3
 2026-10-09T11:04:21.310575Z  INFO core.handle_frame{user_id=pax}:inboxV2.handle_frame{user_id=pax}: libchat::inbox_v2: Process WelcomeMessage
 2026-10-09T11:04:21.322027Z  INFO core.handle_frame{user_id=pax}:inboxV2.handle_frame{user_id=pax}:groupv2.new_from_welcome{user_id=pax}: de_mls::conversation::inbound: joined conversation conversation=5a2d90e7b3
-2026-10-09T11:04:21.325616Z  INFO core.handle_frame{user_id=pax}: libchat::groupv2trace: epoch installation=e09a3f52 convo=5a2d90e7b3 epoch=2 state=1a0c424c63278014 members=5 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
+2026-10-09T11:04:21.325616Z TRACE core.handle_frame{user_id=pax}:groupv2.handle_frame{signer=e09a3f52 convo=5a2d90e7b3}: libchat::mls_trace: epoch epoch=2 state=1a0c424c63278014 members=5 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
 2026-10-09T11:05:32.326342Z  INFO groupv2.wakeup{user_id=pax}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T11:05:32.330205Z  INFO groupv2.wakeup{user_id=pax}: libchat::groupv2trace: epoch installation=e09a3f52 convo=5a2d90e7b3 epoch=3 state=2a3759b4babb44b5 members=5 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
+2026-10-09T11:05:32.330205Z TRACE groupv2.wakeup{user_id=pax signer=e09a3f52 convo=5a2d90e7b3}: libchat::mls_trace: epoch epoch=3 state=2a3759b4babb44b5 members=5 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
 2026-10-09T11:06:30.330208Z  WARN groupv2.wakeup{user_id=pax}: libchat::conversation::group_v2: conversation requested teardown convo=5a2d90e7b3
-2026-10-09T11:06:30.333348Z  INFO groupv2.wakeup{user_id=pax}: libchat::groupv2trace: left installation=e09a3f52 convo=5a2d90e7b3 epoch=4
+2026-10-09T11:06:30.333348Z TRACE groupv2.wakeup{user_id=pax signer=e09a3f52 convo=5a2d90e7b3}: libchat::mls_trace: left epoch=4

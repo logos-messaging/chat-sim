@@ -1,5 +1,5 @@
 2026-10-09T07:50:36.188553Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="19f6b0aa"
-2026-10-09T07:50:36.191731Z  INFO libchat::groupv2trace: run installation=19f6b0e3 account=d2184c8e
+2026-10-09T07:50:36.191731Z TRACE libchat::mls_trace: run signer=19f6b0e3 participant=d2184c8e
 2026-10-09T07:51:28.192046Z  INFO core.handle_frame{user_id=mira}:inboxV2.handle_frame{user_id=mira}: libchat::inbox_v2: Process WelcomeMessage
 2026-10-09T07:51:28.203498Z  INFO core.handle_frame{user_id=mira}:inboxV2.handle_frame{user_id=mira}:groupv2.new_from_welcome{user_id=mira}: de_mls::conversation::inbound: joined conversation conversation=c7d2a91f03
-2026-10-09T07:51:28.207087Z  INFO core.handle_frame{user_id=mira}: libchat::groupv2trace: epoch installation=19f6b0e3 convo=c7d2a91f03 epoch=6 state=70c59e8f1e2e557c members=5 roster=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3,4d7c21be:8a02f6c9,b54a9d10:3ac7e51b,19f6b0e3:d2184c8e
+2026-10-09T07:51:28.207087Z TRACE core.handle_frame{user_id=mira}:groupv2.handle_frame{signer=19f6b0e3 convo=c7d2a91f03}: libchat::mls_trace: epoch epoch=6 state=70c59e8f1e2e557c members=5 signers=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3,4d7c21be:8a02f6c9,b54a9d10:3ac7e51b,19f6b0e3:d2184c8e

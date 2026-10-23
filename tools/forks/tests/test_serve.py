@@ -101,14 +101,14 @@ def line_of(record: Record, group: str = "") -> str:
     """A record of the rule's tests as its writer logs it; a group has installations of its own."""
     if record.kind == "delivery":
         return f"{record.time}  INFO chat_module::report: delivery state={record.state}\n"
-    said: Dict[str, object] = {"installation": hexed(group + record.installation)}
+    signer = hexed(group + record.installation)
     if record.kind == "run":
-        said["account"] = account(record.installation)
-    else:
-        said.update(convo=record.convo + group, epoch=record.epoch)
+        participant = account(record.installation)
+        return f"{record.time} TRACE libchat::mls_trace: run signer={signer} participant={participant}\n"
+    said: Dict[str, object] = {"epoch": record.epoch}
     if record.kind == "epoch":
-        roster = ",".join(f"{hexed(group + name)}:{account(name)}" for name, _ in record.roster)
-        said.update(state=hexed(record.state, 16), members=len(record.roster), roster=roster)
+        signers = ",".join(f"{hexed(group + name)}:{account(name)}" for name, _ in record.roster)
+        said.update(state=hexed(record.state, 16), members=len(record.roster), signers=signers)
     if record.commit is not None:
         said.update(commit=hexed(record.commit, 16), by=hexed(group + record.by))
     if record.frame is not None:
@@ -118,7 +118,9 @@ def line_of(record: Record, group: str = "") -> str:
     if record.why is not None:
         said["why"] = record.why
     words = " ".join(f"{key}={value}" for key, value in said.items())
-    return f"{record.time}  INFO libchat::groupv2trace: {record.kind} {words}\n"
+    op = "groupv2.send_content" if record.kind == "sent" else "groupv2.handle_frame"
+    span = f"{op}{{signer={signer} convo={record.convo + group}}}"
+    return f"{record.time} TRACE {span}: libchat::mls_trace: {record.kind} {words}\n"
 
 
 def logged(log: Log, group: str = "") -> bytes:
@@ -2305,7 +2307,7 @@ class Restarting(Collecting):
         pax.epoch("pax", 1, "Y1", "pax", OTHER)
         stay = self.served.share(logged(pax)[:-30], "pax")
         left = self.served.share(logged(member("mira", roster="mira", convo="0ddba11")), "mira")
-        self.served.share(b"  at a backtrace\n2026-10-09T10:00:00Z  INFO libchat::groupv2trace: run\n")
+        self.served.share(b"  at a backtrace\n2026-10-09T10:00:00Z TRACE libchat::mls_trace: run\n")
         self.served.open("kes")
         self.clock.pass_days(11)
         self.served.put(*stay, logged(pax)[-30:], final=True)

@@ -16,8 +16,8 @@ beyond the standard library.
 
 ## Getting a log with records in it
 
-libchat writes its records at the `info` level, so a log holds them only when its writer lets the
-target `libchat::groupv2trace` through at `info`.
+libchat writes its records at the `trace` level, so a log holds them only when its writer lets the
+target `libchat::mls_trace` through at `trace`.
 
 `harness-run` runs a whole group in one process, and its `group.log` holds a record for every
 epoch each member reaches (see
@@ -30,13 +30,6 @@ python3 tools/forks report OUT_DIR/group.log
 `chat-cli` writes the records into the log `--log-file` names, unless `RUST_LOG` sets another
 filter (see [The log](https://github.com/logos-messaging/chat-sim/blob/local-network/crates/chat-cli/README.md#the-log)). `tools/sim` has the tool read
 the logs of every member it ran, whichever of the two ran them.
-
-logos-chat's scale test writes them with `LOG=info`, run in a logos-chat checkout:
-
-```sh
-LOG=info cargo test -p integration_tests_core --test test_group_v2_scale -- \
-  --nocapture --test-threads=1 > scale.log 2>&1
-```
 
 logos-chat-module, the Logos module that wraps libchat, writes a log file of its own, in a line
 shape of its own. The tool reads both shapes: see [The lines it reads](#the-lines-it-reads).
@@ -112,40 +105,45 @@ A log line is a stamp, a level, optional span prefixes, a target, a colon and a 
 writers produce the logs, and the tool reads both:
 
 ```text
-2026-10-09T06:54:50.327025Z  INFO core.handle_frame{user_id=raya}: libchat::groupv2trace: left installation=7b1e44d9 convo=2a30d6a2c1 epoch=8
-2026-10-08T16:02:11.004+02:00 INFO: libchat::groupv2trace: left installation=7b1e44d9 convo=2a30d6a2c1 epoch=8
+2026-10-09T06:54:50.327025Z TRACE core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya signer=7b1e44d9 convo=2a30d6a2c1 epoch=7}: libchat::mls_trace: left epoch=8
+2026-10-08T16:02:11.004+02:00 TRACE: groupv2.handle_frame{user_id=raya signer=7b1e44d9 convo=2a30d6a2c1 epoch=7}: libchat::mls_trace: left epoch=8
 ```
 
 The first is the default formatter of the `tracing` crate, with or without colour codes: the stamp
-is UTC, the level is padded and has no colon, and the spans the event was written in come before
-the target. The second is the log file of logos-chat-module: the stamp is local time, with or
-without its offset from UTC, the level ends in a colon, and there are no spans.
+is UTC, and the level is padded and has no colon. The second is the log file of
+logos-chat-module: the stamp is local time, with or without its offset from UTC, and the level
+ends in a colon. In both, the spans the event was written in come before the target, the
+outermost first, each `name{fields}:` or `name:`.
 
-A **record** is a line whose target is `libchat::groupv2trace` or `chat_module::report`. Its message is
+A **record** is a line whose target is `libchat::mls_trace` or `chat_module::report`. Its message is
 the record's name and then `key=value` words, each separated by one space. The target is read at
 its place in the line and never searched for, because a conversation id is text its creator chose
 and other lines print it.
 
+A record of a conversation takes `signer` and `convo` from the span of the GroupV2 op that wrote
+it, and where two spans name one, from the innermost. The span's `epoch` is the one the op began
+at, and the tool does not read it: the record's own `epoch` is the one it is of.
+
 | Target | Record | Fields | What it says |
 |---|---|---|---|
-| `libchat::groupv2trace` | `run` | `installation` `account` | An installation started, acting for an account. |
-| `libchat::groupv2trace` | `epoch` | `installation` `convo` `epoch` `state` `members` `roster`, and `commit` `by` together or neither | The installation holds the conversation at this epoch, in this state, with these members. `commit` and `by` say the commit it applied to reach the epoch, and the installation that committed it. |
-| `libchat::groupv2trace` | `left` | `installation` `convo` `epoch` | The commit that made this epoch removed the installation. |
-| `libchat::groupv2trace` | `sent` | `installation` `convo` `frame` `epoch` | The installation published a post of its own. |
-| `libchat::groupv2trace` | `received` | `installation` `convo` `frame` `from` `epoch` | The installation read a post another one sent. |
-| `libchat::groupv2trace` | `unreadable` | `installation` `convo` `frame` `epoch` `why` | A frame of the group arrived and could not be read: a post, a vote or any other encrypted frame. |
+| `libchat::mls_trace` | `run` | `signer` `participant` | An installation started, acting for an account. |
+| `libchat::mls_trace` | `epoch` | `signer` `convo` from its span, `epoch` `state` `members` `signers`, and `commit` `by` together or neither | The installation holds the conversation at this epoch, in this state, with these members. `commit` and `by` say the commit it applied to reach the epoch, and the installation that committed it. |
+| `libchat::mls_trace` | `left` | `signer` `convo` from its span, `epoch` | The commit that made this epoch removed the installation. |
+| `libchat::mls_trace` | `sent` | `signer` `convo` from its span, `frame` `epoch` | The installation published a post of its own. |
+| `libchat::mls_trace` | `received` | `signer` `convo` from its span, `frame` `from` `epoch` | The installation read a post another one sent. |
+| `libchat::mls_trace` | `unreadable` | `signer` `convo` from its span, `frame` `epoch` `why` | A frame of the group arrived and could not be read: a post, a vote or any other encrypted frame. |
 | `chat_module::report` | `delivery` | `state` | The delivery service of this run changed state. |
 
 | Field | Written as |
 |---|---|
-| `installation`, `from`, `by` | The first four bytes of the installation's key: 8 hex characters. |
-| `account` | The first four bytes of the account id, in hex. An id shorter than four bytes is written whole, and an empty one as nothing. |
+| `signer`, `from`, `by` | The first four bytes of the key the installation signs with: 8 hex characters. The report calls it the installation's id. |
+| `participant` | The first four bytes of the account id, in hex. An id shorter than four bytes is written whole, and an empty one as nothing. |
 | `convo` | The conversation id as one word. A byte outside `[0-9A-Za-z_-]` is written `%xx`, and the tool keeps the id as written. An id holds at most 1597 bytes, which is what fits the 8000 bytes of address the page asks for a conversation by. |
-| `epoch`, `members` | A number, at most 9007199254740991, the largest a browser reads from JSON exactly. `members` is the length of the roster. The `epoch` of an `unreadable` record is the one the frame's header names, which nothing has checked: any number below 2^64. |
+| `epoch`, `members` | A number, at most 9007199254740991, the largest a browser reads from JSON exactly. `members` is the length of `signers`. The `epoch` of an `unreadable` record is the one the frame's header names, which nothing has checked: any number below 2^64. |
 | `state` | 16 hex characters: a fingerprint of the group state. Installations that hold the same state write the same fingerprint. |
-| `roster` | The members, comma-separated, each `installation:account`. |
+| `signers` | The members, comma-separated, each `signer:participant`. |
 | `commit` | 16 hex characters: the first eight bytes of the SHA-256 of a commit's bytes. |
-| `frame` | The id of a frame: 16 hex characters, eight bytes of a hash of the frame as it travels. The tool reads a shorter one and no longer one. |
+| `frame` | The id of a frame: 64 hex characters, 32 bytes of a hash of the frame as it travels. The tool reads a shorter one and no longer one. |
 | `why` | `epoch`, `decrypt` or `sender`. |
 | `state` of `delivery` | `initialising`, `online`, `error` or `stopped`. |
 
@@ -165,7 +163,9 @@ No line stops the tool. The last line of a report counts what was read:
   a build. They are skipped.
 - **malformed**: lines on a report target whose record lacks a field, repeats one, holds a
   value of the wrong shape or past its bound, gives a `members` that is not the length of its
-  `roster`, or carries one of `commit` and `by` without the other. They are skipped.
+  `signers`, or carries one of `commit` and `by` without the other. A record lacks `signer` or
+  `convo` when no span names it, and repeats one when a span names it twice or the record writes
+  one its span names. They are skipped.
 - **unknown**: lines on a report target whose record name the tool does not know. They are
   skipped. A field the tool does not know is ignored, and the record is read.
 
@@ -744,7 +744,7 @@ It writes a log of its own to standard error, one line for each write:
 ```text
 2026-10-09T17:28:42Z serving forks-data on http://127.0.0.1:8750/
 2026-10-09T17:28:51Z run 18fae263f6ea83ec26079157cea3f019 opened
-2026-10-09T17:28:51Z run 18fae263f6ea83ec26079157cea3f019 took 10066 bytes, holds 10066
+2026-10-09T17:28:51Z run 18fae263f6ea83ec26079157cea3f019 took 10025 bytes, holds 10025
 ```
 
 A line also names each directory a start leaves alone, each run that goes at thirty days, and
@@ -883,7 +883,7 @@ installations wrote in no run that is held. And each entry of `runs` says more:
   "name": "saro",
   "app": "logos-chat-ui 0.3.0",
   "final": false,
-  "size": 10066,
+  "size": 10025,
   "heard": "2026-10-09T17:28:51Z",
   "delivery": []
 }
@@ -1021,10 +1021,10 @@ once the directory is named.
 
 ```console
 $ python3 tools/forks share --to 'http://127.0.0.1:8750/?token=5d1c0a9e7b3f42d8' logs/
-mira: sent 2522 bytes, 127.0.0.1:8750 holds 2522 of 2522
-pax: sent 2308 bytes, 127.0.0.1:8750 holds 2308 of 2308
-raya: sent 2240 bytes, 127.0.0.1:8750 holds 2240 of 2240
-saro: sent 2294 bytes, 127.0.0.1:8750 holds 2294 of 2294
+mira: sent 2642 bytes, 127.0.0.1:8750 holds 2642 of 2642
+pax: sent 2397 bytes, 127.0.0.1:8750 holds 2397 of 2397
+raya: sent 2345 bytes, 127.0.0.1:8750 holds 2345 of 2345
+saro: sent 2399 bytes, 127.0.0.1:8750 holds 2399 of 2399
 ```
 
 A line on standard output says of each run how many bytes this go sent, and how many the

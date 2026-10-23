@@ -2,31 +2,31 @@
 
 running 1 test
 2026-10-09T06:54:50.259452Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="a3f91caa"
-2026-10-09T06:54:50.263041Z  INFO libchat::groupv2trace: run installation=a3f91c07 account=5be2c0d1
+2026-10-09T06:54:50.263041Z TRACE libchat::mls_trace: run signer=a3f91c07 participant=5be2c0d1
 2026-10-09T06:54:50.270767Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="7b1e44aa"
-2026-10-09T06:54:50.274630Z  INFO libchat::groupv2trace: run installation=7b1e44d9 account=91c0e3a7
+2026-10-09T06:54:50.274630Z TRACE libchat::mls_trace: run signer=7b1e44d9 participant=91c0e3a7
 2026-10-09T06:54:50.281633Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="e09a3faa"
-2026-10-09T06:54:50.284773Z  INFO libchat::groupv2trace: run installation=e09a3f52 account=0d7a66f3
+2026-10-09T06:54:50.284773Z TRACE libchat::mls_trace: run signer=e09a3f52 participant=0d7a66f3
 2026-10-09T06:54:50.292050Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="19f6b0aa"
-2026-10-09T06:54:50.295464Z  INFO libchat::groupv2trace: run installation=19f6b0e3 account=d2184c8e
+2026-10-09T06:54:50.295464Z TRACE libchat::mls_trace: run signer=19f6b0e3 participant=d2184c8e
 2026-10-09T06:54:50.303015Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="b54a9daa"
-2026-10-09T06:54:50.306703Z  INFO libchat::groupv2trace: run installation=b54a9d10 account=3ac7e51b
+2026-10-09T06:54:50.306703Z TRACE libchat::mls_trace: run signer=b54a9d10 participant=3ac7e51b
 2026-10-09T06:55:21.307528Z  INFO components::delivery::local_broadcaster: DS:Publish envelope.delivery_address="c1b3d610aa94" len=7038
-2026-10-09T06:55:21.311490Z  INFO libchat::groupv2trace: epoch installation=a3f91c07 convo=6e05e5b37e epoch=1 state=74fadaae53acd23c members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
+2026-10-09T06:55:21.311490Z TRACE groupv2.handle_frame{signer=a3f91c07 convo=6e05e5b37e}: libchat::mls_trace: epoch epoch=1 state=74fadaae53acd23c members=3 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
 2026-10-09T06:56:13.311592Z  INFO core.handle_frame{user_id=raya}:inboxV2.handle_frame{user_id=raya}: libchat::inbox_v2: Process WelcomeMessage
 2026-10-09T06:56:13.322831Z  INFO core.handle_frame{user_id=raya}:inboxV2.handle_frame{user_id=raya}:groupv2.new_from_welcome{user_id=raya}: de_mls::conversation::inbound: joined conversation conversation=6e05e5b37e
-2026-10-09T06:56:13.326207Z  INFO core.handle_frame{user_id=raya}: libchat::groupv2trace: epoch installation=7b1e44d9 convo=6e05e5b37e epoch=1 state=74fadaae53acd23c members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
+2026-10-09T06:56:13.326207Z TRACE core.handle_frame{user_id=raya}:groupv2.handle_frame{signer=7b1e44d9 convo=6e05e5b37e}: libchat::mls_trace: epoch epoch=1 state=74fadaae53acd23c members=3 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
 2026-10-09T06:57:05.326720Z  INFO core.handle_frame{user_id=pax}:inboxV2.handle_frame{user_id=pax}: libchat::inbox_v2: Process WelcomeMessage
 2026-10-09T06:57:05.338370Z  INFO core.handle_frame{user_id=pax}:inboxV2.handle_frame{user_id=pax}:groupv2.new_from_welcome{user_id=pax}: de_mls::conversation::inbound: joined conversation conversation=6e05e5b37e
-2026-10-09T06:57:05.342157Z  INFO core.handle_frame{user_id=pax}: libchat::groupv2trace: epoch installation=e09a3f52 convo=6e05e5b37e epoch=1 state=74fadaae53acd23c members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
-2026-10-09T06:57:05.350081Z  INFO groupv2.wakeup{user_id=pax}: libchat::conversation::group_v2: Wakeup convo=x libchat::groupv2trace: epoch installation=e09a3f52 convo=6e05e5b37e epoch=1 state=7ce7b87acfe39e7e members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
+2026-10-09T06:57:05.342157Z TRACE core.handle_frame{user_id=pax}:groupv2.handle_frame{signer=e09a3f52 convo=6e05e5b37e}: libchat::mls_trace: epoch epoch=1 state=74fadaae53acd23c members=3 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
+2026-10-09T06:57:05.350081Z  INFO groupv2.wakeup{user_id=pax}: libchat::conversation::group_v2: Wakeup convo=x libchat::mls_trace: epoch installation=e09a3f52 convo=6e05e5b37e epoch=1 state=7ce7b87acfe39e7e members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
 2026-10-09T06:58:09.350145Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:58:09.353346Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=6e05e5b37e epoch=2 state=b8d8e662f8ea9635 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-09T06:58:09.353346Z TRACE core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro signer=a3f91c07 convo=6e05e5b37e}: libchat::mls_trace: epoch epoch=2 state=b8d8e662f8ea9635 members=4 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
 2026-10-09T06:59:13.353684Z  INFO core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:59:13.357159Z  INFO core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya}: libchat::groupv2trace: epoch installation=7b1e44d9 convo=6e05e5b37e epoch=2 state=b8d8e662f8ea9635 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-09T06:59:13.357159Z TRACE core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya signer=7b1e44d9 convo=6e05e5b37e}: libchat::mls_trace: epoch epoch=2 state=b8d8e662f8ea9635 members=4 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
 2026-10-09T07:00:17.357771Z  INFO core.handle_frame{user_id=pax}:groupv2.handle_frame{user_id=pax}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T07:00:17.361520Z  INFO core.handle_frame{user_id=pax}:groupv2.handle_frame{user_id=pax}: libchat::groupv2trace: epoch installation=e09a3f52 convo=6e05e5b37e epoch=2 state=b8d8e662f8ea9635 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-09T07:00:17.361520Z TRACE core.handle_frame{user_id=pax}:groupv2.handle_frame{user_id=pax signer=e09a3f52 convo=6e05e5b37e}: libchat::mls_trace: epoch epoch=2 state=b8d8e662f8ea9635 members=4 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
 2026-10-09T07:01:09.362406Z  INFO core.handle_frame{user_id=mira}:inboxV2.handle_frame{user_id=mira}: libchat::inbox_v2: Process WelcomeMessage
 2026-10-09T07:01:09.373432Z  INFO core.handle_frame{user_id=mira}:inboxV2.handle_frame{user_id=mira}:groupv2.new_from_welcome{user_id=mira}: de_mls::conversation::inbound: joined conversation conversation=6e05e5b37e
-2026-10-09T07:01:09.376595Z  INFO core.handle_frame{user_id=mira}: libchat::groupv2trace: epoch installation=19f6b0e3 convo=6e05e5b37e epoch=2 state=b8d8e662f8ea9635 members=4 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
+2026-10-09T07:01:09.376595Z TRACE core.handle_frame{user_id=mira}:groupv2.handle_frame{signer=19f6b0e3 convo=6e05e5b37e}: libchat::mls_trace: epoch epoch=2 state=b8d8e662f8ea9635 members=4 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3,19f6b0e3:d2184c8e
 test a_group_of_four_holds_one_state ... ok

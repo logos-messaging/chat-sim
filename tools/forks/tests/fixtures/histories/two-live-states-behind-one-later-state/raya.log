@@ -1,9 +1,9 @@
 2026-10-09T11:08:30.340389Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="7b1e44aa"
-2026-10-09T11:08:30.343567Z  INFO libchat::groupv2trace: run installation=7b1e44d9 account=91c0e3a7
+2026-10-09T11:08:30.343567Z TRACE libchat::mls_trace: run signer=7b1e44d9 participant=91c0e3a7
 2026-10-09T11:09:22.343882Z  INFO core.handle_frame{user_id=raya}:inboxV2.handle_frame{user_id=raya}: libchat::inbox_v2: Process WelcomeMessage
 2026-10-09T11:09:22.355334Z  INFO core.handle_frame{user_id=raya}:inboxV2.handle_frame{user_id=raya}:groupv2.new_from_welcome{user_id=raya}: de_mls::conversation::inbound: joined conversation conversation=5a2d90e7b3
-2026-10-09T11:09:22.358923Z  INFO core.handle_frame{user_id=raya}: libchat::groupv2trace: epoch installation=7b1e44d9 convo=5a2d90e7b3 epoch=4 state=87bcd689838387c6 members=5 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
+2026-10-09T11:09:22.358923Z TRACE core.handle_frame{user_id=raya}:groupv2.handle_frame{signer=7b1e44d9 convo=5a2d90e7b3}: libchat::mls_trace: epoch epoch=4 state=87bcd689838387c6 members=5 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
 2026-10-09T11:11:26.369868Z  INFO core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T11:11:26.373731Z  INFO core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya}: libchat::groupv2trace: epoch installation=7b1e44d9 convo=5a2d90e7b3 epoch=5 state=703493eb66678f87 members=5 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
+2026-10-09T11:11:26.373731Z TRACE core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya signer=7b1e44d9 convo=5a2d90e7b3}: libchat::mls_trace: epoch epoch=5 state=703493eb66678f87 members=5 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,19f6b0e3:d2184c8e,b54a9d10:3ac7e51b,e09a3f52:0d7a66f3
 2026-10-09T11:12:24.373734Z  WARN groupv2.wakeup{user_id=raya}: libchat::conversation::group_v2: conversation requested teardown convo=5a2d90e7b3
-2026-10-09T11:12:24.376874Z  INFO groupv2.wakeup{user_id=raya}: libchat::groupv2trace: left installation=7b1e44d9 convo=5a2d90e7b3 epoch=6
+2026-10-09T11:12:24.376874Z TRACE groupv2.wakeup{user_id=raya signer=7b1e44d9 convo=5a2d90e7b3}: libchat::mls_trace: left epoch=6

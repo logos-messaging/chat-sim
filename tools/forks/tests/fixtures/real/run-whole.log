@@ -1,53 +1,53 @@
 2026-10-09T06:54:17.895287Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="17bdf066"
-2026-10-09T06:54:17.895349Z  INFO libchat::groupv2trace: run installation=57d94add account=7361726f
+2026-10-09T06:54:17.895349Z TRACE libchat::mls_trace: run signer=57d94add participant=7361726f
 2026-10-09T06:54:17.901617Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="5432c776"
-2026-10-09T06:54:17.901642Z  INFO libchat::groupv2trace: run installation=a36648f1 account=72617961
+2026-10-09T06:54:17.901642Z TRACE libchat::mls_trace: run signer=a36648f1 participant=72617961
 2026-10-09T06:54:17.907326Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="a6cc0243"
-2026-10-09T06:54:17.907352Z  INFO libchat::groupv2trace: run installation=58078287 account=706178
+2026-10-09T06:54:17.907352Z TRACE libchat::mls_trace: run signer=58078287 participant=706178
 2026-10-09T06:54:17.912876Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="0addcba2"
-2026-10-09T06:54:17.912900Z  INFO libchat::groupv2trace: run installation=f219e159 account=6d697261
+2026-10-09T06:54:17.912900Z TRACE libchat::mls_trace: run signer=f219e159 participant=6d697261
 2026-10-09T06:54:17.918288Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="28bddd7c"
-2026-10-09T06:54:17.918311Z  INFO libchat::groupv2trace: run installation=1afdfd4e account=6d656d62
+2026-10-09T06:54:17.918311Z TRACE libchat::mls_trace: run signer=1afdfd4e participant=6d656d62
 2026-10-09T06:54:17.951487Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="c1b3d610aa94"
 2026-10-09T06:54:17.951633Z  INFO components::delivery::local_broadcaster: DS:Publish envelope.delivery_address="c1b3d610aa94" len=7038
-2026-10-09T06:54:17.951677Z  INFO libchat::groupv2trace: epoch installation=57d94add convo=a5bb59cd29 epoch=1 state=2addb4221853892f members=3 roster=57d94add:7361726f,a36648f1:72617961,58078287:706178
+2026-10-09T06:54:17.951677Z TRACE groupv2.handle_frame{signer=57d94add convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=1 state=2addb4221853892f members=3 signers=57d94add:7361726f,a36648f1:72617961,58078287:706178
 2026-10-09T06:54:17.951690Z  INFO integration_tests_core::test_client: Process Until label="raya and pax join"
 2026-10-09T06:54:17.964729Z  INFO core.handle_frame{user_id=raya}:inboxV2.handle_frame{user_id=raya}:groupv2.new_from_welcome{user_id=raya}: components::delivery::local_broadcaster: DS:Publish envelope.delivery_address="c1b3d610aa94" len=198
-2026-10-09T06:54:17.964791Z  INFO core.handle_frame{user_id=raya}: libchat::groupv2trace: epoch installation=a36648f1 convo=a5bb59cd29 epoch=1 state=2addb4221853892f members=3 roster=57d94add:7361726f,a36648f1:72617961,58078287:706178
+2026-10-09T06:54:17.964791Z TRACE core.handle_frame{user_id=raya}:groupv2.handle_frame{signer=a36648f1 convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=1 state=2addb4221853892f members=3 signers=57d94add:7361726f,a36648f1:72617961,58078287:706178
 2026-10-09T06:54:17.964816Z  WARN integration_tests_core::test_client: DRAIN CLIENT id=SignerKey("a36648f1b585c6cf5b2f9daaf737704a8a7c89d7eb51430ac228639096167273") outcome=Inbox(InboxOutcome { new_conversation: NewConversation { convo_id: "a5bb59cd29", class: Group }, initial: None })
 2026-10-09T06:54:17.977642Z  INFO core.handle_frame{user_id=pax}:inboxV2.handle_frame{user_id=pax}:groupv2.new_from_welcome{user_id=pax}: components::delivery::local_broadcaster: DS:Publish envelope.delivery_address="c1b3d610aa94" len=198
-2026-10-09T06:54:17.977677Z  INFO core.handle_frame{user_id=pax}: libchat::groupv2trace: epoch installation=58078287 convo=a5bb59cd29 epoch=1 state=2addb4221853892f members=3 roster=57d94add:7361726f,a36648f1:72617961,58078287:706178
+2026-10-09T06:54:17.977677Z TRACE core.handle_frame{user_id=pax}:groupv2.handle_frame{signer=58078287 convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=1 state=2addb4221853892f members=3 signers=57d94add:7361726f,a36648f1:72617961,58078287:706178
 2026-10-09T06:54:17.977692Z  WARN integration_tests_core::test_client: DRAIN CLIENT id=SignerKey("58078287f001391c3207390d4f33d2ed71c8118678b8e43d374c45371e7a66e4") outcome=Inbox(InboxOutcome { new_conversation: NewConversation { convo_id: "a5bb59cd29", class: Group }, initial: None })
 2026-10-09T06:54:18.040107Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:54:18.040153Z  INFO core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro}: libchat::groupv2trace: epoch installation=57d94add convo=a5bb59cd29 epoch=2 state=166dfc142b758ea7 members=4 roster=57d94add:7361726f,a36648f1:72617961,58078287:706178,f219e159:6d697261
+2026-10-09T06:54:18.040153Z TRACE core.handle_frame{user_id=saro}:groupv2.handle_frame{user_id=saro signer=57d94add convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=2 state=166dfc142b758ea7 members=4 signers=57d94add:7361726f,a36648f1:72617961,58078287:706178,f219e159:6d697261
 2026-10-09T06:54:18.040183Z  WARN integration_tests_core::test_client: DRAIN CLIENT id=SignerKey("57d94addda2f1a7980fe7097e2d955722447b01354a3c9cbc24ac3e1880126f4") outcome=Convo(ConvoOutcome { convo_id: "a5bb59cd29", content: None, members_changed: true })
 2026-10-09T06:54:18.046964Z  INFO core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:54:18.047009Z  INFO core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya}: libchat::groupv2trace: epoch installation=a36648f1 convo=a5bb59cd29 epoch=2 state=166dfc142b758ea7 members=4 roster=57d94add:7361726f,a36648f1:72617961,58078287:706178,f219e159:6d697261
+2026-10-09T06:54:18.047009Z TRACE core.handle_frame{user_id=raya}:groupv2.handle_frame{user_id=raya signer=a36648f1 convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=2 state=166dfc142b758ea7 members=4 signers=57d94add:7361726f,a36648f1:72617961,58078287:706178,f219e159:6d697261
 2026-10-09T06:54:18.047041Z  WARN integration_tests_core::test_client: DRAIN CLIENT id=SignerKey("a36648f1b585c6cf5b2f9daaf737704a8a7c89d7eb51430ac228639096167273") outcome=Convo(ConvoOutcome { convo_id: "a5bb59cd29", content: None, members_changed: true })
 2026-10-09T06:54:18.048666Z  INFO core.handle_frame{user_id=pax}:groupv2.handle_frame{user_id=pax}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:54:18.048717Z  INFO core.handle_frame{user_id=pax}:groupv2.handle_frame{user_id=pax}: libchat::groupv2trace: epoch installation=58078287 convo=a5bb59cd29 epoch=2 state=166dfc142b758ea7 members=4 roster=57d94add:7361726f,a36648f1:72617961,58078287:706178,f219e159:6d697261
+2026-10-09T06:54:18.048717Z TRACE core.handle_frame{user_id=pax}:groupv2.handle_frame{user_id=pax signer=58078287 convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=2 state=166dfc142b758ea7 members=4 signers=57d94add:7361726f,a36648f1:72617961,58078287:706178,f219e159:6d697261
 2026-10-09T06:54:18.048757Z  INFO core.handle_frame{user_id=pax}:groupv2.handle_frame{user_id=pax}: components::delivery::local_broadcaster: DS:Publish envelope.delivery_address="c1b3d610aa94" len=7186
 2026-10-09T06:54:18.063086Z  INFO core.handle_frame{user_id=mira}:inboxV2.handle_frame{user_id=mira}:groupv2.new_from_welcome{user_id=mira}: components::delivery::local_broadcaster: DS:Publish envelope.delivery_address="c1b3d610aa94" len=198
-2026-10-09T06:54:18.063121Z  INFO core.handle_frame{user_id=mira}: libchat::groupv2trace: epoch installation=f219e159 convo=a5bb59cd29 epoch=2 state=166dfc142b758ea7 members=4 roster=57d94add:7361726f,a36648f1:72617961,58078287:706178,f219e159:6d697261
+2026-10-09T06:54:18.063121Z TRACE core.handle_frame{user_id=mira}:groupv2.handle_frame{signer=f219e159 convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=2 state=166dfc142b758ea7 members=4 signers=57d94add:7361726f,a36648f1:72617961,58078287:706178,f219e159:6d697261
 2026-10-09T06:54:18.063136Z  WARN integration_tests_core::test_client: DRAIN CLIENT id=SignerKey("f219e159f1debd2c0616eee606a9c8fc6825ec9a71bcabcb7847c4bfbeee1b5d") outcome=Inbox(InboxOutcome { new_conversation: NewConversation { convo_id: "a5bb59cd29", class: Group }, initial: None })
 2026-10-09T06:54:18.176977Z  INFO groupv2.wakeup{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:54:18.177023Z  INFO groupv2.wakeup{user_id=saro}: libchat::groupv2trace: epoch installation=57d94add convo=a5bb59cd29 epoch=3 state=19d028ec02a67735 members=3 roster=57d94add:7361726f,a36648f1:72617961,f219e159:6d697261
+2026-10-09T06:54:18.177023Z TRACE groupv2.wakeup{user_id=saro signer=57d94add convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=3 state=19d028ec02a67735 members=3 signers=57d94add:7361726f,a36648f1:72617961,f219e159:6d697261
 2026-10-09T06:54:18.177047Z  INFO libchat::core: Cached Convos convos=["a5bb59cd29"] id=SignerKey("57d94addda2f1a7980fe7097e2d955722447b01354a3c9cbc24ac3e1880126f4")
 2026-10-09T06:54:18.192598Z  INFO groupv2.wakeup{user_id=raya}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:54:18.192644Z  INFO groupv2.wakeup{user_id=raya}: libchat::groupv2trace: epoch installation=a36648f1 convo=a5bb59cd29 epoch=3 state=19d028ec02a67735 members=3 roster=57d94add:7361726f,a36648f1:72617961,f219e159:6d697261
+2026-10-09T06:54:18.192644Z TRACE groupv2.wakeup{user_id=raya signer=a36648f1 convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=3 state=19d028ec02a67735 members=3 signers=57d94add:7361726f,a36648f1:72617961,f219e159:6d697261
 2026-10-09T06:54:18.192669Z  INFO libchat::core: Cached Convos convos=["a5bb59cd29"] id=SignerKey("a36648f1b585c6cf5b2f9daaf737704a8a7c89d7eb51430ac228639096167273")
 2026-10-09T06:54:18.199634Z  WARN groupv2.wakeup{user_id=pax}: libchat::conversation::group_v2: conversation requested teardown convo=a5bb59cd29
-2026-10-09T06:54:18.199643Z  INFO groupv2.wakeup{user_id=pax}: libchat::groupv2trace: left installation=58078287 convo=a5bb59cd29 epoch=3
+2026-10-09T06:54:18.199643Z TRACE groupv2.wakeup{user_id=pax signer=58078287 convo=a5bb59cd29}: libchat::mls_trace: left epoch=3
 2026-10-09T06:54:18.199657Z  INFO libchat::core: Cached Convos convos=["a5bb59cd29"] id=SignerKey("58078287f001391c3207390d4f33d2ed71c8118678b8e43d374c45371e7a66e4")
 2026-10-09T06:54:18.213889Z  INFO groupv2.wakeup{user_id=mira}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:54:18.213931Z  INFO groupv2.wakeup{user_id=mira}: libchat::groupv2trace: epoch installation=f219e159 convo=a5bb59cd29 epoch=3 state=19d028ec02a67735 members=3 roster=57d94add:7361726f,a36648f1:72617961,f219e159:6d697261
+2026-10-09T06:54:18.213931Z TRACE groupv2.wakeup{user_id=mira signer=f219e159 convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=3 state=19d028ec02a67735 members=3 signers=57d94add:7361726f,a36648f1:72617961,f219e159:6d697261
 2026-10-09T06:54:18.213953Z  INFO libchat::core: Cached Convos convos=["a5bb59cd29"] id=SignerKey("f219e159f1debd2c0616eee606a9c8fc6825ec9a71bcabcb7847c4bfbeee1b5d")
 2026-10-09T06:54:18.251931Z  INFO groupv2.wakeup{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:54:18.251985Z  INFO groupv2.wakeup{user_id=saro}: libchat::groupv2trace: epoch installation=57d94add convo=a5bb59cd29 epoch=4 state=4410ce160df420ac members=2 roster=57d94add:7361726f,a36648f1:72617961
+2026-10-09T06:54:18.251985Z TRACE groupv2.wakeup{user_id=saro signer=57d94add convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=4 state=4410ce160df420ac members=2 signers=57d94add:7361726f,a36648f1:72617961
 2026-10-09T06:54:18.252008Z  INFO libchat::core: Cached Convos convos=["a5bb59cd29"] id=SignerKey("57d94addda2f1a7980fe7097e2d955722447b01354a3c9cbc24ac3e1880126f4")
 2026-10-09T06:54:18.265014Z  INFO groupv2.wakeup{user_id=raya}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T06:54:18.265064Z  INFO groupv2.wakeup{user_id=raya}: libchat::groupv2trace: epoch installation=a36648f1 convo=a5bb59cd29 epoch=4 state=4410ce160df420ac members=2 roster=57d94add:7361726f,a36648f1:72617961
+2026-10-09T06:54:18.265064Z TRACE groupv2.wakeup{user_id=raya signer=a36648f1 convo=a5bb59cd29}: libchat::mls_trace: epoch epoch=4 state=4410ce160df420ac members=2 signers=57d94add:7361726f,a36648f1:72617961
 2026-10-09T06:54:18.265087Z  INFO libchat::core: Cached Convos convos=["a5bb59cd29"] id=SignerKey("a36648f1b585c6cf5b2f9daaf737704a8a7c89d7eb51430ac228639096167273")
 2026-10-09T06:54:18.270498Z  WARN groupv2.wakeup{user_id=mira}: libchat::conversation::group_v2: conversation requested teardown convo=a5bb59cd29
-2026-10-09T06:54:18.270504Z  INFO groupv2.wakeup{user_id=mira}: libchat::groupv2trace: left installation=f219e159 convo=a5bb59cd29 epoch=4
+2026-10-09T06:54:18.270504Z TRACE groupv2.wakeup{user_id=mira signer=f219e159 convo=a5bb59cd29}: libchat::mls_trace: left epoch=4
 2026-10-09T06:54:18.270511Z  INFO groupv2.wakeup{user_id=mira}: integration_tests_core::wakeup: Wakeup In duration=20s convo_id="a5bb59cd29"

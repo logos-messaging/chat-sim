@@ -21,7 +21,7 @@ REAL = FIXTURES / "real"
 TOOL = Path(__file__).resolve().parents[1]
 
 SARO, RAYA, PAX, MIRA, KES = "a3f91c07", "7b1e44d9", "e09a3f52", "19f6b0e3", "b54a9d10"
-EPOCH_RECORD = re.compile(r".* libchat::groupv2trace: epoch .* state=(?P<state>[0-9a-f]+) .*")
+EPOCH_RECORD = re.compile(r".* libchat::mls_trace: epoch .* state=(?P<state>[0-9a-f]+) .*")
 
 
 def positions(conversation: dict) -> dict:
@@ -48,9 +48,9 @@ def report_of(*lines: str) -> Reported:
 def epoch_line(installation: str) -> str:
     """Saro's or Raya's record of the one state of a group of the two."""
     return (
-        "2026-10-09T06:54:50.313738Z  INFO libchat::groupv2trace: epoch "
-        f"installation={installation} convo=2a30d6a2c1 epoch=1 state=b77d02c4a91e03d5 "
-        f"members=2 roster={SARO}:5be2c0d1,{RAYA}:91c0e3a7"
+        f"2026-10-09T06:54:50.313738Z TRACE groupv2.handle_frame{{signer={installation} "
+        "convo=2a30d6a2c1}: libchat::mls_trace: epoch epoch=1 state=b77d02c4a91e03d5 "
+        f"members=2 signers={SARO}:5be2c0d1,{RAYA}:91c0e3a7"
     )
 
 
@@ -62,13 +62,13 @@ def split_lines(
     Saro, Raya and Mira take one state there and Pax another, and the record each writes of
     that epoch ends with the words given for it. Those named in `on` go on to one state.
     """
-    stamp = "2026-10-09T06:54:50.313738Z  INFO libchat::groupv2trace: epoch "
-    roster = f"members=4 roster={SARO}:5be2c0d1,{RAYA}:91c0e3a7,{MIRA}:d2184c8e,{PAX}:0d7a66f3"
+    stamp = "2026-10-09T06:54:50.313738Z TRACE groupv2.handle_frame"
+    roster = f"members=4 signers={SARO}:5be2c0d1,{RAYA}:91c0e3a7,{MIRA}:d2184c8e,{PAX}:0d7a66f3"
     took = {SARO: ("897d8438305ac6d2", saro), RAYA: ("897d8438305ac6d2", raya)}
     took.update({MIRA: ("897d8438305ac6d2", mira), PAX: ("e849c2aa9ab1f74d", pax)})
     lines = []
     for installation, (state, words) in took.items():
-        placed = f"{stamp}installation={installation} convo=2a30d6a2c1"
+        placed = f"{stamp}{{signer={installation} convo=2a30d6a2c1}}: libchat::mls_trace: epoch"
         lines.append(f"{placed} epoch=2 state=763449d6cdefb10f {roster}")
         lines.append(f"{placed} epoch=3 state={state} {roster} {words}".rstrip())
         if installation in on:
@@ -500,8 +500,8 @@ class RealLogs(unittest.TestCase):
 
     def test_a_member_with_an_empty_account_hides_no_record(self):
         joined = re.sub(
-            r"members=([0-9]+) roster=([0-9a-f:,]+)",
-            lambda found: f"members={int(found[1]) + 1} roster={found[2]},{KES}:",
+            r"members=([0-9]+) signers=([0-9a-f:,]+)",
+            lambda found: f"members={int(found[1]) + 1} signers={found[2]},{KES}:",
             (REAL / "run-split.log").read_text(),
         )
         with tempfile.TemporaryDirectory() as scratch:
@@ -518,8 +518,8 @@ class RealLogs(unittest.TestCase):
         lines = (REAL / "run-whole.log").read_bytes().split(b"\n")
         whole, last = lines[:48], lines[48]
         cut = last[: last.index(b",a36648f1:72617961")]
-        self.assertIn(b"epoch installation=a36648f1 ", cut)
-        self.assertTrue(cut.endswith(b"members=2 roster=57d94add:7361726f"))
+        self.assertIn(b"signer=a36648f1 convo=a5bb59cd29}: libchat::mls_trace: epoch ", cut)
+        self.assertTrue(cut.endswith(b"members=2 signers=57d94add:7361726f"))
         with tempfile.TemporaryDirectory() as scratch:
             log = Path(scratch) / "run-whole.log"
             log.write_bytes(b"".join(line + b"\n" for line in whole) + cut)
@@ -568,9 +568,9 @@ class CommandLine(unittest.TestCase):
         roster = ",".join(f"{installation}:{account}" for installation, account in members)
         text = report_of(
             *(
-                "2026-10-09T06:54:50.313738Z  INFO libchat::groupv2trace: epoch "
-                f"installation={installation} convo=2a30d6a2c1 epoch=1 state=b77d02c4a91e03d5 "
-                f"members=12 roster={roster}"
+                f"2026-10-09T06:54:50.313738Z TRACE groupv2.handle_frame{{signer={installation} "
+                "convo=2a30d6a2c1}: libchat::mls_trace: epoch epoch=1 state=b77d02c4a91e03d5 "
+                f"members=12 signers={roster}"
                 for installation, _ in members
             )
         ).text
@@ -583,11 +583,11 @@ class CommandLine(unittest.TestCase):
         )
 
     def test_a_branch_everyone_left(self):
-        placed = "installation=a3f91c07 convo=2a30d6a2c1"
+        placed = "groupv2.handle_frame{signer=a3f91c07 convo=2a30d6a2c1}: libchat::mls_trace:"
         reported = report_of(
-            "2026-10-09T06:54:50.313738Z  INFO libchat::groupv2trace: "
-            f"epoch {placed} epoch=1 state=b77d02c4a91e03d5 members=1 roster=a3f91c07:5be2c0d1",
-            f"2026-10-09T06:54:51.207311Z  INFO libchat::groupv2trace: left {placed} epoch=2",
+            f"2026-10-09T06:54:50.313738Z TRACE {placed} "
+            "epoch epoch=1 state=b77d02c4a91e03d5 members=1 signers=a3f91c07:5be2c0d1",
+            f"2026-10-09T06:54:51.207311Z TRACE {placed} left epoch=2",
         )
         self.assertEqual(
             reported.text,
@@ -627,7 +627,7 @@ class CommandLine(unittest.TestCase):
         )
 
     def test_an_unknown_record_is_a_count_and_changes_no_status(self):
-        stamp = "2026-10-09T06:54:50.313738Z  INFO libchat::groupv2trace: "
+        stamp = "2026-10-09T06:54:50.313738Z TRACE libchat::mls_trace: "
         reported = report_of(epoch_line(SARO), epoch_line(RAYA), f"{stamp}commit hash=c41f")
         self.assertEqual(reported.status, 0)
         self.assertNotIn("skipped", reported.text)

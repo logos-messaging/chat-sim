@@ -1,7 +1,7 @@
 2026-10-09T10:27:45.487082Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="e09a3faa"
-2026-10-09T10:27:45.490260Z  INFO libchat::groupv2trace: run installation=e09a3f52 account=0d7a66f3
+2026-10-09T10:27:45.490260Z TRACE libchat::mls_trace: run signer=e09a3f52 participant=0d7a66f3
 2026-10-09T10:28:37.490575Z  INFO core.handle_frame{user_id=pax}:inboxV2.handle_frame{user_id=pax}: libchat::inbox_v2: Process WelcomeMessage
 2026-10-09T10:28:37.502027Z  INFO core.handle_frame{user_id=pax}:inboxV2.handle_frame{user_id=pax}:groupv2.new_from_welcome{user_id=pax}: de_mls::conversation::inbound: joined conversation conversation=e2c95d0b76
-2026-10-09T10:28:37.505616Z  INFO core.handle_frame{user_id=pax}: libchat::groupv2trace: epoch installation=e09a3f52 convo=e2c95d0b76 epoch=1 state=0f99ad25fccba16a members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
+2026-10-09T10:28:37.505616Z TRACE core.handle_frame{user_id=pax}:groupv2.handle_frame{signer=e09a3f52 convo=e2c95d0b76}: libchat::mls_trace: epoch epoch=1 state=0f99ad25fccba16a members=3 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
 2026-10-09T10:29:48.506342Z  INFO groupv2.wakeup{user_id=pax}: de_mls::conversation::handle: state transition state="Working"
-2026-10-09T10:29:48.510205Z  INFO groupv2.wakeup{user_id=pax}: libchat::groupv2trace: epoch installation=e09a3f52 convo=e2c95d0b76 epoch=3 state=eec9462fe89528da members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
+2026-10-09T10:29:48.510205Z TRACE groupv2.wakeup{user_id=pax signer=e09a3f52 convo=e2c95d0b76}: libchat::mls_trace: epoch epoch=3 state=eec9462fe89528da members=3 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3

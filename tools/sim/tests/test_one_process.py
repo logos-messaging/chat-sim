@@ -400,7 +400,7 @@ class Running(Scratch):
         # The stamps of the log are those of the plan's clock.
         log = (self.out / "group.log").read_text(encoding="utf-8")
         self.assertTrue(
-            log.startswith("2026-01-01T00:00:00.000000Z  INFO libchat::groupv2trace: run "), log
+            log.startswith("2026-01-01T00:00:00.000000Z TRACE libchat::mls_trace: run "), log
         )
 
     def test_a_run_in_one_process_starts_no_registry_and_no_peer(self):
@@ -655,13 +655,13 @@ class Running(Scratch):
     def test_a_runner_a_signal_ended_is_named_with_the_signal_and_has_left_no_result(self):
         self.assertEqual(self.stop_of("killed"), KILLED)
         self.assertEqual((self.out / "result.json").read_bytes(), b"")
-        self.assertIn(" libchat::groupv2trace: run ", (self.out / "group.log").read_text("utf-8"))
+        self.assertIn(" libchat::mls_trace: run ", (self.out / "group.log").read_text("utf-8"))
 
     def test_a_runner_that_ends_as_it_should_and_leaves_no_result_stops_the_run(self):
         self.assertEqual(
             self.stop_of("no-result"), "the runner ended with status 0 and left no result"
         )
-        self.assertIn(" libchat::groupv2trace: epoch ", (self.out / "group.log").read_text("utf-8"))
+        self.assertIn(" libchat::mls_trace: epoch ", (self.out / "group.log").read_text("utf-8"))
 
     def test_a_runner_that_is_no_program_stops_the_run_and_the_report_is_written(self):
         runner = self.scratch / "runner"

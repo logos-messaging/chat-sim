@@ -37,15 +37,15 @@ def of_history(directory: Path) -> dict:
 
 def record(second: int, kind: str, installation: str, rest: str) -> str:
     return (
-        f"2026-10-09T06:54:{second:02d}.000000Z  INFO libchat::groupv2trace: {kind} "
-        f"installation={installation} convo={CONVO} {rest}"
+        f"2026-10-09T06:54:{second:02d}.000000Z TRACE groupv2.handle_frame{{signer={installation} "
+        f"convo={CONVO}}}: libchat::mls_trace: {kind} {rest}"
     )
 
 
 def held(second: int, installation: str) -> str:
     """An installation's record of the one state of a group of Saro, Raya and Pax."""
     return record(
-        second, "epoch", installation, f"epoch=1 state=b77d02c4a91e03d5 members=3 roster={ROSTER}"
+        second, "epoch", installation, f"epoch=1 state=b77d02c4a91e03d5 members=3 signers={ROSTER}"
     )
 
 
@@ -360,7 +360,7 @@ class Differences(Checking):
         five = f"{ROSTER},{MIRA}:d2184c8e,{TOMO}:6f0e1d2c"
         sharing = (SARO, RAYA, PAX, TOMO)
         lines = [
-            record(at, "epoch", seat, f"epoch=1 state=b77d02c4a91e03d5 members=5 roster={five}")
+            record(at, "epoch", seat, f"epoch=1 state=b77d02c4a91e03d5 members=5 signers={five}")
             for at, seat in enumerate(sharing, 1)
         ]
         lines += [
@@ -373,7 +373,7 @@ class Differences(Checking):
                 at,
                 "epoch",
                 seat,
-                f"epoch=2 state=0c8e3f5a7b9d1e24 members=6 roster={five},{KES}:aa0b1c2d",
+                f"epoch=2 state=0c8e3f5a7b9d1e24 members=6 signers={five},{KES}:aa0b1c2d",
             )
             for at, seat in enumerate(sharing, 20)
         ]

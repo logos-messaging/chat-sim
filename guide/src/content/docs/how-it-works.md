@@ -45,16 +45,17 @@ epoch carries a **state**: 8 bytes of a BLAKE2b hash of the MLS epoch authentica
 - **Same commits, same state.** Every member of an epoch derives the same epoch authenticator, and members
   that applied different commits derive different ones. A fork shows as two states at one epoch.
 - **Hashed, because the authenticator is a secret.** The record carries the hash, never the authenticator.
-- **Short ids.** An installation is the first 4 bytes of its public signing key (`02680b98`), an account the
+- **Short ids.** An installation is the first 4 bytes of its public signing key (`f95e254c`), an account the
   first 4 bytes of its id. A post is named by a hash of its frame, the same at the sender and every reader.
 
 ## What each member writes
 
-The chat core writes one line per event on the log target `libchat::groupv2trace`, at `info`. A line of a
-run of `three.json`:
+The chat core writes one line per event on the log target `libchat::mls_trace`, at `trace`, in the span of
+the GroupV2 op that wrote it: the span names the member's signing key and the conversation. A line of a run
+of `three.json`, where Saro's wakeup took the group from epoch 0 to 1:
 
 ```text
-2026-01-01T00:00:00.500000Z  INFO libchat::groupv2trace: epoch installation=02680b98 convo=6fbcb48dfa epoch=1 state=d773ea9e00babd94 members=3 roster=02680b98:7361726f,fd24df45:72617961,530d0b04:706178
+2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178
 ```
 
 `run`, `epoch` and `left` decide the verdict. `sent`, `received` and `unreadable` add what the page draws:

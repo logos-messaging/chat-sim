@@ -1,5 +1,5 @@
 2026-10-09T07:47:40.168608Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="b54a9daa"
-2026-10-09T07:47:40.171786Z  INFO libchat::groupv2trace: run installation=b54a9d10 account=3ac7e51b
+2026-10-09T07:47:40.171786Z TRACE libchat::mls_trace: run signer=b54a9d10 participant=3ac7e51b
 2026-10-09T07:48:32.172101Z  INFO core.handle_frame{user_id=kes}:inboxV2.handle_frame{user_id=kes}: libchat::inbox_v2: Process WelcomeMessage
 2026-10-09T07:48:32.183553Z  INFO core.handle_frame{user_id=kes}:inboxV2.handle_frame{user_id=kes}:groupv2.new_from_welcome{user_id=kes}: de_mls::conversation::inbound: joined conversation conversation=c7d2a91f03
-2026-10-09T07:48:32.187142Z  INFO core.handle_frame{user_id=kes}: libchat::groupv2trace: epoch installation=b54a9d10 convo=c7d2a91f03 epoch=5 state=b8e627d0e8af9dc6 members=5 roster=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3,4d7c21be:8a02f6c9,b54a9d10:3ac7e51b,19f6b0e3:d2184c8e
+2026-10-09T07:48:32.187142Z TRACE core.handle_frame{user_id=kes}:groupv2.handle_frame{signer=b54a9d10 convo=c7d2a91f03}: libchat::mls_trace: epoch epoch=5 state=b8e627d0e8af9dc6 members=5 signers=a3f91c07:5be2c0d1,e09a3f52:0d7a66f3,4d7c21be:8a02f6c9,b54a9d10:3ac7e51b,19f6b0e3:d2184c8e

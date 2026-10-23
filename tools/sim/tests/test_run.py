@@ -210,7 +210,7 @@ class Running(Scratch):
         for node in report["nodes"]:
             self.assertEqual(node["installation"], self.lines(node["name"])[0]["installation"][:8])
             log = (self.out / f"{node['name']}.log").read_text(encoding="utf-8")
-            self.assertIn(f"installation={node['installation']} ", log)
+            self.assertIn(f"signer={node['installation']} ", log)
         drawn = json.loads((self.out / "report.json").read_text(encoding="utf-8"))
         self.assertEqual([held["id"] for held in drawn["conversations"]], [report["conversation"]])
         self.assertIn("\n  whole\n", (self.out / "report.txt").read_text(encoding="utf-8"))

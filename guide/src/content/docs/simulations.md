@@ -34,15 +34,15 @@ python3 tools/sim run tools/sim/scenarios/three.json --one-process target/releas
 ```
 
 ```text
-3 members, fast group timers, one process, 0.600s on a virtual clock in 0.007s of wall time, seed 0
+3 members, fast group timers, one process, 0.600s on a virtual clock in 0.010s of wall time, seed 0
 whole: 3 of 3 members at the tip
 the report is as expected
-load average 1.51 at the start, 1.51 at the end
+load average 4.39 at the start, 4.39 at the end
 
 member  installation  errors
-saro        02680b98       0
-raya        fd24df45       0
-pax         530d0b04       0
+saro        f95e254c       0
+raya        671cc18a       0
+pax         c1f311f2       0
 
 batch  joiners  members  seated
 1            2        3  0.500s
@@ -94,19 +94,19 @@ group. This one, saved as `four.json`, seats the others two at a time, has every
 frames it receives and hold the rest for 40 ms, and has every member post:
 
 ```text
-4 members, fast group timers, one process, 1.800s on a virtual clock in 0.015s of wall time, seed 0, network seed 1, loss 0.02, welcome loss 0
+4 members, fast group timers, one process, 1.750s on a virtual clock in 0.016s of wall time, seed 0, network seed 1, loss 0.02, welcome loss 0
 whole: 4 of 4 members at the tip
 the report is as expected
-load average 1.91 at the start, 1.91 at the end
+load average 3.05 at the start, 3.05 at the end
 
 member  installation  arrived  passed  held  lost  errors
-saro        02680b98       13      12     0     1       0
-raya        fd24df45       13      13     0     0       0
-pax         530d0b04       14      13     0     1       0
-mira        afe3fa0b        5       5     0     0       0
+saro        f95e254c       12      11     0     1       0
+raya        671cc18a       13      13     0     0       0
+pax         c1f311f2       13      12     0     1       0
+mira        97bfa122        4       4     0     0       0
 
 batch  joiners  members  seated
-1            2        3  0.600s
+1            2        3  0.550s
 2            1        4  0.700s
 
 post  from  read by  median   worst
@@ -196,9 +196,9 @@ python3 tools/sim compare tools/sim/expected/grow-waku-loss-5.json tmp/grow-waku
 
 ```text
 run  seed  change   verdict                 at the tip  seconds  came to
-  1     0  same     split at epoch 3          18 of 20   1233.7  5 main branches ran side by side: trunk at epoch 7, 5 main, 0 sub, 3 fell behind, 2 behind at the end, 0 never joined
-  2     1  same     split at epoch 3          62 of 78   6121.5  5 main branches ran side by side: trunk at epoch 8, 5 main, 21 sub, 16 fell behind, 10 behind at the end, 6 never joined
-  3     2  same     split at epoch 5          12 of 16   1324.7  6 main branches ran side by side: trunk at epoch 9, 6 main, 0 sub, 6 fell behind, 2 behind at the end, 2 never joined
+  1     0  same     split at epoch 3          31 of 38   2583.7  5 main branches ran side by side: trunk at epoch 12, 5 main, 7 sub, 7 fell behind, 4 behind at the end, 3 never joined
+  2     1  same     split at epoch 5          26 of 30   2125.9  6 main branches ran side by side: trunk at epoch 14, 6 main, 2 sub, 7 fell behind, 2 behind at the end, 2 never joined
+  3     2  same     split at epoch 5          13 of 20   1626.6  5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 6 fell behind, 4 behind at the end, 3 never joined
 3 of 3 runs came out as expected
 ```
 
@@ -338,13 +338,13 @@ seconds until each of the 50 others read it. The run CI makes, seed 0, at the re
 | Scenario | The clock at the end | Epoch 1 | Epochs 2 to 50 | Post, median and worst |
 |---|---|---|---|---|
 | `50-epochs.json` | 3494.75 s | 60.0 s | 70.0 to 70.05 s | 0 and 0 s |
-| `50-epochs-waku.json` | 3625.34 s | 61.15 s | 71.7 to 73.0 s | 0.55 and 0.65 s |
+| `50-epochs-waku.json` | 3627.34 s | 60.6 s | 71.75 to 72.95 s | 0.55 and 0.65 s |
 
 Each took about 20 s of wall time on a machine of 16 cores.
 
 - **Fifty epochs take an hour, and the timers are most of it.** An epoch after the first takes 70 s, the
   members' 10 s to vote and the 60 s window. The first, added while the creator is the group's only
-  member, takes the window alone. Waku's delays add 1.15 to 2.95 s to an epoch, and put a post's reading
+  member, takes the window alone. Waku's delays add 0.6 to 2.95 s to an epoch, and put a post's reading
   at the reader's delay, to the next step of the clock.
 - **A seed gives one run.** From seed to seed the ids of the group and its members change, and with them
   which commit the group applies. CI runs seed 0 of both on every push, and [Reports](../reports/) shows

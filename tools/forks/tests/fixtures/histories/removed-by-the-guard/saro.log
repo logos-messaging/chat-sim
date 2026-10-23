@@ -1,8 +1,8 @@
 2026-08-21T21:11:11.952 INFO: chat_module: init: state installed, joining delivery preset logos.test
-2026-08-21T21:11:11.955 INFO: libchat::groupv2trace: run installation=a3f91c07 account=5be2c0d1
+2026-08-21T21:11:11.955 TRACE: libchat::mls_trace: run signer=a3f91c07 participant=5be2c0d1
 2026-08-21T21:11:11.958 INFO: chat_module::report: delivery state=initialising
 2026-08-21T21:11:13.015 INFO: chat_module::actions: delivery is online
 2026-08-21T21:11:13.018 INFO: chat_module::report: delivery state=online
 2026-08-21T21:11:53.018 INFO: chat_module::actions: created group conversation 3f2a8e11c4
-2026-08-21T21:11:53.021 INFO: libchat::groupv2trace: epoch installation=a3f91c07 convo=3f2a8e11c4 epoch=1 state=80a523ccf9c6b603 members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
-2026-08-21T21:13:04.024 INFO: libchat::groupv2trace: epoch installation=a3f91c07 convo=3f2a8e11c4 epoch=2 state=61596a6fbd63dd5d members=2 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7
+2026-08-21T21:11:53.021 TRACE: groupv2.handle_frame{signer=a3f91c07 convo=3f2a8e11c4}: libchat::mls_trace: epoch epoch=1 state=80a523ccf9c6b603 members=3 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,e09a3f52:0d7a66f3
+2026-08-21T21:13:04.024 TRACE: groupv2.handle_frame{signer=a3f91c07 convo=3f2a8e11c4}: libchat::mls_trace: epoch epoch=2 state=61596a6fbd63dd5d members=2 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7

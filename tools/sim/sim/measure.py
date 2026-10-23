@@ -8,14 +8,19 @@ from datetime import datetime, timezone
 from typing import Dict, Iterator, List, NamedTuple, Optional, Sequence
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
+# The conversation is the innermost op span's.
 _EPOCH = re.compile(
-    r"^(\S+) .*libchat::groupv2trace: epoch .*\bconvo=(\S+) epoch=(\d+) state=(\S+) members=(\d+)"
+    r"^(\S+) .*\bconvo=([^\s}]+).* libchat::mls_trace: epoch epoch=(\d+) state=(\S+) "
+    r"members=(\d+)"
 )
 _WELCOME = re.compile(r"^(\S+) .*libchat::inbox_v2: Publish WelcomeMessage bytes=(\d+)")
-_UNCHECKED = re.compile(r" libchat::groupv2trace: unreadable .*\bwhy=sender\b")
+_UNCHECKED = re.compile(r" libchat::mls_trace: unreadable .*\bwhy=sender\b")
 
-# What a log has to let through for `welcomes` to find anything in it.
-LOG_FILTER = "warn,libchat::groupv2trace=info,libchat::inbox_v2=info"
+# What a log has to let through for its records to name their conversation, and for
+# `welcomes` to find anything in it.
+LOG_FILTER = (
+    "warn,libchat::mls_trace=trace,libchat::conversation::group_v2=info,libchat::inbox_v2=info"
+)
 
 
 def spread(seconds: Sequence[float]) -> Optional[Dict[str, float]]:

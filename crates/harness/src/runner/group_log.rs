@@ -1,7 +1,7 @@
 //! A run's log on the virtual clock, and the trace records it holds, kept as
 //! they are written.
 
-use crate::log::{Record, TRACE, log_level};
+use crate::log::{Record, TRACE, lines};
 use de_mls::WallClock;
 use libchat::MockClock;
 use std::fmt;
@@ -9,9 +9,8 @@ use std::fs::File;
 use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tracing::{Level, Subscriber};
+use tracing::Subscriber;
 use tracing_subscriber::Layer;
-use tracing_subscriber::filter::Targets;
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::fmt::format::Writer;
 use tracing_subscriber::fmt::time::FormatTime;
@@ -106,8 +105,8 @@ impl FormatTime for Timer {
 }
 
 /// A subscriber that writes `file` with `clock` as the time of each line: the
-/// trace records, and of everything else what `LOG` asks for. The records go
-/// to the returned [`Records`] as well.
+/// trace records in their ops' spans, and of everything else what `LOG` asks
+/// for. The records go to the returned [`Records`] as well.
 pub(crate) fn on(
     file: File,
     clock: MockClock,
@@ -116,10 +115,6 @@ pub(crate) fn on(
         clock: clock.clone(),
         written: Arc::default(),
     };
-    let level = log_level();
-    let lines = Targets::new()
-        .with_default(level)
-        .with_target(TRACE, level.max(Level::INFO));
     let kept = records.clone().with_filter(|line| line.target() == TRACE);
     // The file takes each line in one write, so a run that is cut short
     // leaves every line it wrote.
@@ -127,7 +122,7 @@ pub(crate) fn on(
         .with_timer(Timer(clock))
         .with_ansi(false)
         .with_writer(file.and(kept))
-        .with_filter(lines);
+        .with_filter(lines());
     (tracing_subscriber::registry().with(layer), records)
 }
 

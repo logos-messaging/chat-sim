@@ -9,7 +9,7 @@ from forks.runs import InputError, find_runs, left_out, read_run
 
 def run_line(installation: str) -> str:
     stamp = "2026-10-08T16:02:11.004+02:00"
-    return f"{stamp} INFO: libchat::groupv2trace: run installation={installation} account=5be2c0d1\n"
+    return f"{stamp} TRACE: libchat::mls_trace: run signer={installation} participant=5be2c0d1\n"
 
 
 class Runs(unittest.TestCase):

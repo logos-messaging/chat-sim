@@ -2,8 +2,10 @@
 
 A line is a stamp, a level, optional span prefixes, a target, a colon and the message. A record is
 a line whose target is a report target; its message is the record's name and then `key=value`
-words. The target is read at its place in that structure and never searched for: a conversation
-id is text its creator chose, other lines print it as it is, and it may hold a record's whole text.
+words, and the signer and the conversation it is about are fields of the innermost span that
+names them. The target is read at its place in that structure and never searched for: a
+conversation id is text its creator chose, other lines print it as it is, and it may hold a
+record's whole text.
 """
 
 from __future__ import annotations
@@ -113,44 +115,46 @@ def _header_epoch(value: str) -> int:
     return int(value)
 
 
-def _roster(value: str) -> Tuple[Tuple[str, str], ...]:
+def _signers(value: str) -> Tuple[Tuple[str, str], ...]:
     return tuple(_member(pair) for pair in value.split(","))
 
 
 def _member(pair: str) -> Tuple[str, str]:
-    installation, colon, account = pair.partition(":")
+    signer, colon, participant = pair.partition(":")
     if not colon:
         raise ValueError(pair)
-    return _installation(installation), _account(account)
+    return _signer(signer), _participant(participant)
 
 
-_installation = _shaped(r"[0-9a-f]{8}")
-# An installation is the first four bytes of a key. An account is the first four bytes of what a
+_signer = _shaped(r"[0-9a-f]{8}")
+# A signer is the first four bytes of a key. A participant is the first four bytes of what a
 # member's credential holds, which may be fewer, or none.
-_account = _shaped(r"(?:[0-9a-f]{2}){0,4}")
+_participant = _shaped(r"(?:[0-9a-f]{2}){0,4}")
 _convo = _shaped(r"(?:[0-9A-Za-z_-]|%%[0-9a-f]{2}){1,%d}" % MAX_CONVO)
 _fingerprint = _shaped(r"[0-9a-f]{16}")
-# A frame is named by eight bytes of a hash.
-_frame = _shaped(r"[0-9a-f]{1,16}")
+# A frame is named by 32 bytes of a hash.
+_frame = _shaped(r"[0-9a-f]{1,64}")
 # A commit is named by the first eight bytes of the hash of its bytes.
 _commit = _shaped(r"[0-9a-f]{16}")
-_placed = {"installation": _installation, "convo": _convo, "epoch": _number}
+_placed = {"signer": _signer, "convo": _convo, "epoch": _number}
+# The fields a record takes from the spans of the op that wrote it.
+_CONTEXT = frozenset({"signer", "convo"})
 
 # Each target's records, and for each the fields it carries.
 _RECORDS: Dict[str, Dict[str, Dict[str, Callable]]] = {
-    "libchat::groupv2trace": {
-        "run": {"installation": _installation, "account": _account},
+    "libchat::mls_trace": {
+        "run": {"signer": _signer, "participant": _participant},
         "epoch": {
             **_placed,
             "state": _fingerprint,
             "members": _number,
-            "roster": _roster,
+            "signers": _signers,
             "commit": _commit,
-            "by": _installation,
+            "by": _signer,
         },
         "left": _placed,
         "sent": {**_placed, "frame": _frame},
-        "received": {**_placed, "frame": _frame, "from": _installation},
+        "received": {**_placed, "frame": _frame, "from": _signer},
         "unreadable": {
             **_placed,
             "epoch": _header_epoch,
@@ -165,8 +169,8 @@ _RECORDS: Dict[str, Dict[str, Dict[str, Callable]]] = {
 # The fields a record may lack, all of them or none: libchat writes a commit and who committed
 # it together, and neither at an epoch its installation applied no commit to reach.
 _TOGETHER = frozenset({"commit", "by"})
-# `from` is a Python keyword.
-_ATTRIBUTE = {"from": "sender"}
+# `from` is a Python keyword, and a record keeps the report's words for who wrote it.
+_ATTRIBUTE = {"from": "sender", "signer": "installation", "participant": "account", "signers": "roster"}
 
 
 def instant(time: str) -> Tuple[datetime, str]:
@@ -209,8 +213,9 @@ def read_complete_lines(data: bytes, run: str, first_line: int = 1) -> Reading:
         found = _target_and_message(text[stamp.end() :])
         if found is None or found[0] not in _RECORDS:
             continue
+        target, message, spans = found
         try:
-            kind, fields = _fields(_RECORDS[found[0]], found[1])
+            kind, fields = _fields(_RECORDS[target], message, spans)
         except _UnknownRecord:
             counts.unknown += 1
         except ValueError:
@@ -238,43 +243,61 @@ def _stamp(text: str) -> Optional[re.Match]:
     return stamp
 
 
-def _target_and_message(after_stamp: str) -> Optional[Tuple[str, str]]:
+def _target_and_message(after_stamp: str) -> Optional[Tuple[str, str, List[str]]]:
+    """A line's target, its message and the fields of its spans, outermost first."""
     level = _LEVEL.fullmatch(after_stamp)
     if not level:
         return None
-    # Only tracing's own formatter writes spans, and chat-module's line has none.
-    rest = level["rest"] if level["colon"] else _after_spans(level["rest"])
+    spans, rest = _spans(level["rest"])
     found = _TARGET.fullmatch(rest)
-    return (found["target"], found["message"]) if found else None
+    return (found["target"], found["message"], spans) if found else None
 
 
-def _after_spans(rest: str) -> str:
-    """What follows a line's span prefixes, each `name{fields}:` or `name:`, and their one space.
+def _spans(rest: str) -> Tuple[List[str], str]:
+    """The fields of a line's span prefixes, each `name{fields}:` or `name:`, and what follows them
+    and their one space; no spans when the prefixes end in no space.
 
     A span's fields end at the first `}:`. No later one is tried: a later one may be text a peer
     chose, and trying each makes a line cost more than its length.
     """
-    at = 0
+    at, spans = 0, []
     while True:
         name = _SPAN_NAME.match(rest, at)
         if not name:
-            return rest
+            return [], rest
         end = name.end()
         if rest.startswith("{", end):
             close = rest.find("}:", end)
             if close < 0:
-                return rest
+                return [], rest
+            spans.append(rest[end + 1 : close])
             end = close + 2
         elif rest.startswith(":", end):
+            spans.append("")
             end += 1
         else:
-            return rest
+            return [], rest
         if rest.startswith(" ", end):
-            return rest[end + 1 :]
+            return spans, rest[end + 1 :]
         at = end
 
 
-def _fields(kinds: Dict[str, Dict[str, Callable]], message: str) -> Tuple[str, dict]:
+def _context(spans: List[str]) -> Dict[str, str]:
+    """`signer` and `convo` as the innermost span that names each writes it."""
+    context: Dict[str, str] = {}
+    for fields in spans:
+        named: Dict[str, str] = {}
+        for word in fields.split(" "):
+            key, equals, value = word.partition("=")
+            if equals and key in _CONTEXT:
+                if key in named:
+                    raise ValueError(word)
+                named[key] = value
+        context.update(named)
+    return context
+
+
+def _fields(kinds: Dict[str, Dict[str, Callable]], message: str, spans: List[str]) -> Tuple[str, dict]:
     kind, *words = message.split(" ")
     if kind not in kinds:
         raise _UnknownRecord(kind)
@@ -283,6 +306,10 @@ def _fields(kinds: Dict[str, Dict[str, Callable]], message: str) -> Tuple[str, d
         key, equals, value = word.partition("=")
         if not equals or key in written:
             raise ValueError(word)
+        written[key] = value
+    for key, value in _context(spans).items():
+        if key in written:
+            raise ValueError(key)
         written[key] = value
     fields = {}
     for key, parse in kinds[kind].items():

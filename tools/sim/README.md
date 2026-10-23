@@ -365,9 +365,9 @@ process to the outcome a file of them expects of it, and prints a row for each. 
 
 ```console
 run  seed  change   verdict                 at the tip  seconds  came to
-  1     0  same     split at epoch 3          18 of 20   1233.7  5 main branches ran side by side: trunk at epoch 7, 5 main, 0 sub, 3 fell behind, 2 behind at the end, 0 never joined
-  2     1  worse    split at epoch 3          62 of 78   6121.5  5 main branches ran side by side: trunk at epoch 8, 5 main, 21 sub, 16 fell behind, 10 behind at the end, 6 never joined
-           was      whole                     78 of 78   6121.5  5 main branches ran side by side: trunk at epoch 8, 5 main, 21 sub, 16 fell behind, 10 behind at the end, 6 never joined
+  1     0  same     split at epoch 3          31 of 38   2583.7  5 main branches ran side by side: trunk at epoch 12, 5 main, 7 sub, 7 fell behind, 4 behind at the end, 3 never joined
+  2     1  worse    split at epoch 5          26 of 30   2125.9  6 main branches ran side by side: trunk at epoch 14, 6 main, 2 sub, 7 fell behind, 2 behind at the end, 2 never joined
+           was      whole                     30 of 30   2125.9  6 main branches ran side by side: trunk at epoch 14, 6 main, 2 sub, 7 fell behind, 2 behind at the end, 2 never joined
 1 of 2 runs came out as expected: 1 worse
 ```
 
@@ -1077,15 +1077,15 @@ run of processes: by the same expectation, with `forks report` and `forks check`
 outcomes of a `withhold` step, and with `--share`. `sweep` takes the flag as `run` does.
 
 ```console
-3 members, fast group timers, one process, 0.600s on a virtual clock in 0.011s of wall time, seed 0
+3 members, fast group timers, one process, 0.600s on a virtual clock in 0.010s of wall time, seed 0
 whole: 3 of 3 members at the tip
 the report is as expected
-load average 0.40 at the start, 0.40 at the end
+load average 4.39 at the start, 4.39 at the end
 
 member  installation  errors
-saro        02680b98       0
-raya        fd24df45       0
-pax         530d0b04       0
+saro        f95e254c       0
+raya        671cc18a       0
+pax         c1f311f2       0
 
 batch  joiners  members  seated
 1            2        3  0.500s

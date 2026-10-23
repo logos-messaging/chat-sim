@@ -8,7 +8,6 @@ Every command runs from the root of a chat-sim checkout.
 ```mermaid
 flowchart TB
     s["a simulation<br/>in one process"] --> logs[("logs with<br/>the records")]
-    t["a test of logos-chat"] --> logs
     c["chat-cli, on the<br/>local-network branch"] --> logs
     logs -->|"forks report"| text["text or JSON"]
     logs -->|"forks share,<br/>or sim --share"| col["forks serve"] --> page["the page"]
@@ -21,7 +20,7 @@ flowchart TB
 
 ## 1. Get logs that hold the records
 
-The records are `info` lines on the target `libchat::groupv2trace`. Every source below lets them through.
+The records are `trace` lines on the target `libchat::mls_trace`. Every source below lets them through.
 
 **A simulation.** Every member runs in one process on a virtual clock, on Linux the same run every time,
 and writes into `group.log`:
@@ -39,14 +38,6 @@ python3 tools/sim run tools/sim/scenarios/three.json --one-process target/releas
 
 [Simulations](../simulations/) covers scenarios and sweeps.
 
-**A test of logos-chat.** In a checkout of logos-chat at the revision chat-sim pins in `Cargo.toml`, the
-scale test writes the records with `LOG=info` (or `debug`), and only under `--nocapture`:
-
-```sh
-LOG=info cargo test -p integration_tests_core --test test_group_v2_scale \
-  -- --nocapture --test-threads=1 > scale.log 2>&1
-```
-
 **chat-cli.** chat-cli writes the records into the log `--log-file` names, unless `RUST_LOG` sets another
 filter. It builds on logos-chat changes that the revision chat-sim pins does not hold, so it lives on the
 [`local-network`](https://github.com/logos-messaging/chat-sim/tree/local-network) branch, and `tools/sim`
@@ -62,17 +53,17 @@ python3 tools/forks report tmp/three/group.log
 ```
 
 ```text
-conversation 6fbcb48dfa
+conversation f190ef36ae
   whole
   3 of 3 seats share a log
 
-  branch A: epoch 1, state d773ea9e00babd94, 3 members
-    on it: 02680b98, 530d0b04, fd24df45
+  branch A: epoch 1, state d7dfaece05f67d08, 3 members
+    on it: 671cc18a, c1f311f2, f95e254c
 
   installation  account   name   epoch  position  branch
-  02680b98      7361726f  group  1      tip       A
-  530d0b04      706178    group  1      tip       A
-  fd24df45      72617961  group  1      tip       A
+  671cc18a      72617961  group  1      tip       A
+  c1f311f2      706178    group  1      tip       A
+  f95e254c      7361726f  group  1      tip       A
 
 lines: 10 read, 10 records, 0 without a stamp, 0 malformed, 0 unknown
 ```

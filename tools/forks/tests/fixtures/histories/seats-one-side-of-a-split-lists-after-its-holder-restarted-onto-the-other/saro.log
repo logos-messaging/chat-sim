@@ -1,6 +1,6 @@
 2026-10-06T07:30:02.647082Z  INFO components::delivery::local_broadcaster: DS:Subscribe delivery_address="a3f91caa"
-2026-10-06T07:30:02.650260Z  INFO libchat::groupv2trace: run installation=a3f91c07 account=5be2c0d1
+2026-10-06T07:30:02.650260Z TRACE libchat::mls_trace: run signer=a3f91c07 participant=5be2c0d1
 2026-10-06T07:31:13.650575Z  INFO groupv2.wakeup{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
-2026-10-06T07:31:13.654027Z  INFO groupv2.wakeup{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=6d2f90b1c8 epoch=2 state=223d0e23fcaa6c19 members=2 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7
+2026-10-06T07:31:13.654027Z TRACE groupv2.wakeup{user_id=saro signer=a3f91c07 convo=6d2f90b1c8}: libchat::mls_trace: epoch epoch=2 state=223d0e23fcaa6c19 members=2 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7
 2026-10-06T07:32:24.654616Z  INFO groupv2.wakeup{user_id=saro}: de_mls::conversation::handle: state transition state="Working"
-2026-10-06T07:32:24.658342Z  INFO groupv2.wakeup{user_id=saro}: libchat::groupv2trace: epoch installation=a3f91c07 convo=6d2f90b1c8 epoch=3 state=99b096c4d43323b1 members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,4d7c21be:8a02f6c9
+2026-10-06T07:32:24.658342Z TRACE groupv2.wakeup{user_id=saro signer=a3f91c07 convo=6d2f90b1c8}: libchat::mls_trace: epoch epoch=3 state=99b096c4d43323b1 members=3 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,4d7c21be:8a02f6c9

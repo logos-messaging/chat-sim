@@ -1,7 +1,7 @@
 2026-10-07T15:02:18.422+09:00 INFO: chat_module: init: state installed, joining delivery preset logos.test
-2026-10-07T15:02:18.425+09:00 INFO: libchat::groupv2trace: run installation=4d7c21be account=8a02f6c9
+2026-10-07T15:02:18.425+09:00 TRACE: libchat::mls_trace: run signer=4d7c21be participant=8a02f6c9
 2026-10-07T15:02:18.428+09:00 INFO: chat_module::report: delivery state=initialising
 2026-10-07T15:02:19.485+09:00 INFO: chat_module::actions: delivery is online
 2026-10-07T15:02:19.488+09:00 INFO: chat_module::report: delivery state=online
 2026-10-07T15:03:11.488+09:00 INFO: libchat::inbox_v2: Process WelcomeMessage
-2026-10-07T15:03:11.491+09:00 INFO: libchat::groupv2trace: epoch installation=4d7c21be convo=3c81d5f2a9 epoch=5 state=a4f7fb2158f2bd25 members=3 roster=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,4d7c21be:8a02f6c9
+2026-10-07T15:03:11.491+09:00 TRACE: groupv2.handle_frame{signer=4d7c21be convo=3c81d5f2a9}: libchat::mls_trace: epoch epoch=5 state=a4f7fb2158f2bd25 members=3 signers=a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7,4d7c21be:8a02f6c9
