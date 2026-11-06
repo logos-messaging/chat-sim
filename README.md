@@ -15,8 +15,8 @@ that the revision run here does not hold, so it lives on the
 [`local-network`](https://github.com/logos-messaging/chat-sim/tree/local-network) branch, pinned to
 logos-chat's `feat/local-network`.
 
-CI publishes the [guide](https://psychic-adventure-vo524n5.pages.github.io/guide/) to the
-repository's [Pages site](https://psychic-adventure-vo524n5.pages.github.io/), with a report of its
+CI publishes the [guide](https://logos-messaging.github.io/chat-sim/guide/) to the
+repository's [Pages site](https://logos-messaging.github.io/chat-sim/), with a report of its
 simulations for master and for each open pull request.
 
 ## Layout
