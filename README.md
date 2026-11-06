@@ -30,6 +30,7 @@ simulations for master and for each open pull request.
 | [`guide`](guide) | The guide, a Starlight site: how a run works, how to run one, and how to read what it finds |
 | `.github/scripts/mock-registry.py` | The KeyPackage registry the peers of a run share |
 | `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page |
+| `.github/scripts/simulate.py` | Plans the jobs of `simulate.yml` and writes the comment on what they came to |
 
 ## The logos-chat it runs
 
@@ -40,6 +41,13 @@ revision. To move it, change the revision in both, then run
 `nix flake lock`; cargo updates `Cargo.lock` on the next build.
 
 `de-mls` and `chat-proto` are spelled in `Cargo.toml` as logos-chat spells them, and move with it.
+
+The workflow `simulate.yml` runs master at another logos-chat revision, started by hand with the
+revision, the suite, and a base revision to compare with or none. The quick suite, for a
+logos-chat pull request, is `50-epochs`, `50-epochs-waku` and `grow-waku-loss-0.5`, `-1` and
+`-5`; the long one adds every other scenario held in `tools/sim/expected`. The run's summary holds
+the comment for the pull request: what each scenario's runs came to, and which moved from the
+base's, or from those `tools/sim/expected` holds when there is no base.
 
 ## Running it
 

@@ -1,0 +1,204 @@
+name: Simulate
+
+# Runs chat-sim's master at a logos-chat revision it is handed: the quick
+# suite for a logos-chat pull request, the long one for main. Handed a base
+# revision too, it runs the suite there beside it, and the comment says which
+# runs moved; without one, it holds the runs to tools/sim/expected. Started by
+# hand until an app can start it from logos-chat and post the comment there.
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: The logos-chat commit to run, its 40 hex digits
+        required: true
+      base:
+        description: The logos-chat commit to compare with, its 40 hex digits, or nothing
+        required: false
+      suite:
+        description: The suite to run
+        type: choice
+        options: [quick, long]
+        default: quick
+      pr:
+        description: The number of the logos-chat pull request the revision is of, or nothing
+        required: false
+
+permissions:
+  contents: read
+
+# A newer run for the same pull request, or the same revision, cancels the one
+# it supersedes.
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.pr || inputs.revision }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  plan:
+    name: Plan the runs
+    runs-on: ubuntu-latest
+    outputs:
+      suite: ${{ steps.plan.outputs.suite }}
+      revision: ${{ steps.plan.outputs.revision }}
+      base: ${{ steps.plan.outputs.base }}
+      pr: ${{ steps.plan.outputs.pr }}
+      runs: ${{ steps.plan.outputs.runs }}
+      scenarios: ${{ steps.plan.outputs.scenarios }}
+    # Read by the script from the environment, never written into it: what the
+    # workflow is handed is text whoever started it chose. The jobs after this
+    # one read it from this job's outputs, once the script has checked it.
+    env:
+      SUITE: ${{ inputs.suite }}
+      REVISION: ${{ inputs.revision }}
+      BASE: ${{ inputs.base }}
+      PR: ${{ inputs.pr }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check what the workflow was handed, and plan its runs
+        id: plan
+        run: |
+          python3 .github/scripts/simulate.py plan --suite "$SUITE" --revision "$REVISION" \
+            --base "$BASE" --pr "$PR" --expected tools/sim/expected >> "$GITHUB_OUTPUT"
+
+  run:
+    name: Run at ${{ matrix.run.name }}
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ${{ fromJSON(needs.plan.outputs.runs) }}
+    env:
+      REVISION: ${{ matrix.run.revision }}
+      SCENARIOS: ${{ matrix.run.scenarios }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: logos-co/setup-nix-cache-action@v1
+      # Both pins, which ci.yml's Lint holds to one revision: the flake's input,
+      # whose lock gives the toolchain, and Cargo.toml's git dependencies, which
+      # cargo locks again on the build.
+      - name: Pin logos-chat at the revision
+        run: |
+          pinned=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
+          sed -i "s/$pinned/$REVISION/g" flake.nix Cargo.toml
+          nix flake lock
+      # The dev shell's toolchain on PATH, for rust-cache's key as well.
+      - uses: nicknovitski/nix-develop@v1
+      # The build of every dependency from an earlier run, at any revision of
+      # logos-chat, so that only its crates and chat-sim's build again.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: harness-run
+      - name: Build harness-run
+        id: build
+        run: |
+          cargo build --release -p harness --bin harness-run
+          flake=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
+          cargo=$(grep -o 'logos-chat?rev=[0-9a-f]*' Cargo.lock | sort -u)
+          echo "flake.lock pins logos-chat at $flake, Cargo.lock at: $cargo"
+          [ "$flake" = "$REVISION" ] && [ "$cargo" = "logos-chat?rev=$REVISION" ]
+      # A revision chat-sim does not build at runs nothing: each of the job's
+      # scenarios says so, for the comment.
+      - name: Mark the scenarios unbuilt
+        if: ${{ failure() && steps.build.outcome == 'failure' }}
+        run: |
+          for scenario in $SCENARIOS; do
+            mkdir -p "$RUNNER_TEMP/sim/${scenario%=*}"
+            echo "chat-sim does not build at $REVISION" > "$RUNNER_TEMP/sim/${scenario%=*}/unbuilt"
+          done
+      # Each scenario a sweep, so that compare can read it: NAME=RUNS, as many
+      # runs as tools/sim/expected holds for it, or one. A sweep that does not
+      # go as its scenario expects fails the job after the rest have run.
+      - name: Run the scenarios
+        run: |
+          status=0
+          for scenario in $SCENARIOS; do
+            name=${scenario%=*}
+            out="$RUNNER_TEMP/sim/$name"
+            python3 tools/sim sweep "tools/sim/scenarios/$name.json" --runs "${scenario#*=}" \
+              --one-process target/release/harness-run --out "$out" || status=1
+            python3 tools/sim compare --write "$out/outcomes.json" "$out" || status=1
+          done
+          exit "$status"
+      # Each sweep's files and its runs', without each run's group.log,
+      # plan.json, result.json, runner.out and runner.stderr, in the directory
+      # named for the scenario.
+      - name: Upload the runs' text
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sim-${{ matrix.run.side }}-${{ strategy.job-index }}
+          path: |
+            ${{ runner.temp }}/sim/*/sweep.txt
+            ${{ runner.temp }}/sim/*/sweep.json
+            ${{ runner.temp }}/sim/*/outcomes.json
+            ${{ runner.temp }}/sim/*/unbuilt
+            ${{ runner.temp }}/sim/*/*/run.txt
+            ${{ runner.temp }}/sim/*/*/run.json
+            ${{ runner.temp }}/sim/*/*/report.txt
+            ${{ runner.temp }}/sim/*/*/report.json
+            ${{ runner.temp }}/sim/*/*/expect.json
+
+  comment:
+    name: Write the comment
+    needs: [plan, run]
+    # Runs when a run job fails as well: the comment says which runs have no
+    # outcome.
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      SUITE: ${{ needs.plan.outputs.suite }}
+      REVISION: ${{ needs.plan.outputs.revision }}
+      BASE: ${{ needs.plan.outputs.base }}
+      PR: ${{ needs.plan.outputs.pr }}
+      SCENARIOS: ${{ needs.plan.outputs.scenarios }}
+    steps:
+      - uses: actions/checkout@v4
+      # Merged, each scenario's text lands in a directory of its own however
+      # many jobs uploaded one.
+      - name: Download the runs at the revision
+        uses: actions/download-artifact@v8
+        with:
+          pattern: sim-revision-*
+          path: ${{ runner.temp }}/revision
+          merge-multiple: true
+      - name: Download the runs at the base
+        if: ${{ needs.plan.outputs.base != '' }}
+        uses: actions/download-artifact@v8
+        with:
+          pattern: sim-base-*
+          path: ${{ runner.temp }}/base
+          merge-multiple: true
+      # compare's rows for each scenario with something to hold its runs to:
+      # the base's runs, or without a base what tools/sim/expected holds.
+      - name: Hold each scenario's runs to the base's, or to what is held
+        run: |
+          for name in $SCENARIOS; do
+            out="$RUNNER_TEMP/revision/$name"
+            was="tools/sim/expected/$name.json"
+            if [ -n "$BASE" ]; then
+              was="$RUNNER_TEMP/base/$name/outcomes.json"
+            fi
+            if [ -f "$was" ] && [ -f "$out/outcomes.json" ]; then
+              python3 tools/sim compare "$was" "$out" > "$out/compare.txt" 2>&1 || true
+            fi
+          done
+      - name: Write the comment
+        run: |
+          base=()
+          if [ -n "$BASE" ]; then
+            base=(--base "$BASE" --base-runs "$RUNNER_TEMP/base")
+          fi
+          python3 .github/scripts/simulate.py comment "$RUNNER_TEMP/revision" \
+            --suite "$SUITE" --revision "$REVISION" "${base[@]}" --pr "$PR" \
+            --expected tools/sim/expected --chat-sim "$GITHUB_SHA" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            > "$RUNNER_TEMP/comment.md"
+          cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the comment
+        uses: actions/upload-artifact@v7
+        with:
+          name: comment
+          path: ${{ runner.temp }}/comment.md
