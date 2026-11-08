@@ -20,11 +20,10 @@ from typing import List, Optional, Sequence, Tuple
 # The quick suite, at most 20 minutes for a logos-chat pull request; the long one is every
 # scenario CI holds to what is expected, and the two of fifty epochs.
 QUICK = (
-    "50-epochs",
-    "50-epochs-waku",
-    "grow-waku-loss-0.5",
-    "grow-waku-loss-1",
-    "grow-waku-loss-5",
+    "50-epochs-by-saro-waku-loss-0",
+    "50-epochs-by-saro-waku-loss-0.1",
+    "50-epochs-by-saro-waku-loss-1",
+    "50-epochs-by-saro-waku-loss-5",
 )
 FIFTY_EPOCHS = ("50-epochs", "50-epochs-waku")
 SUITES = ("quick", "long")
@@ -83,13 +82,13 @@ def scenarios(suite: str, expected: Path) -> List[Tuple[str, int]]:
     it, and one when it holds none."""
     held = sorted(path.stem for path in expected.glob("*.json"))
     names = QUICK if suite == "quick" else FIFTY_EPOCHS + tuple(held)
-    return [(name, _held_runs(expected / f"{name}.json") or 1) for name in names]
+    return [(name, _held_runs(expected / f"{name}.json") or 20) for name in names]
 
 
 def jobs(suite: str, revision: str, base: str, swept: Sequence[Tuple[str, int]]) -> List[dict]:
     """The run jobs: the quick suite in one job a side, the long one a job a scenario a side."""
     sides = [("revision", revision)] + ([("base", base)] if base else [])
-    chunks = [swept] if suite == "quick" else [[one] for one in swept]
+    chunks = [[one] for one in swept]
     return [
         {
             "side": side,
