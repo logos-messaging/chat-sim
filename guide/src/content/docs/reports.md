@@ -55,16 +55,19 @@ nothing large. It runs no script, and what a run or a pull request's title says 
 A run in one process is the same run every time from its seeds, on Linux, so a run that comes out other
 than before was changed by a revision of logos-chat or of chat-sim. `tools/sim/expected/` holds, for each
 scenario CI sweeps, what each of its three runs came to at the revision of logos-chat that chat-sim pins
-in `Cargo.toml`: the seeds, the verdict, the members at the tip of those seated, the seconds of the
-virtual clock, how the run came out and what stopped its steps. `compare` holds each run of the sweep to
-the outcome expected of it, and names each change:
+in `Cargo.toml`: the seeds, the ids of the group and of its members, the verdict, the members at the tip
+of those seated, the seconds of the virtual clock, how the run came out and what stopped its steps, and
+of a `grow` step how far the trunk got and how many ended off it. `compare` holds each run of the sweep
+to the outcome expected of it, and names each change by where the run stands against it, in the order
+[Simulations](../simulations/#held-to-what-is-expected) gives:
 
 | Change | Means |
 |---|---|
 | `same` | the outcome is the one expected |
-| `better` | no split where there was one, a split at a later epoch, whole where members were behind, or, at the same verdict, more members at the tip |
-| `worse` | the reverse |
-| `changed` | neither: the same verdict and members at the tip, in an outcome that differs all the same, such as in the seconds of its clock |
+| `better` | the run stands higher than the one expected |
+| `worse` | the run stands lower |
+| `re-rolled` | both runs drew ids, and the run drew others than the one expected, the group's or the members', so it is another run of that seed and neither better nor worse; a run that read no result drew none and is `worse` |
+| `changed` | neither: the run stands where the one expected did, in an outcome that differs all the same, such as in the seconds of its clock |
 
 A scenario is as expected when every run is `same` and the sweep has a run for each outcome expected. A
 change that moves how a run comes out has its outcomes written with

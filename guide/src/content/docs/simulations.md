@@ -195,29 +195,40 @@ python3 tools/sim compare tools/sim/expected/grow-waku-loss-5.json tmp/grow-waku
 ```
 
 ```text
-run  seed  change   verdict                 at the tip  seconds  came to
-  1     0  same     split at epoch 3          31 of 38   2583.7  5 main branches ran side by side: trunk at epoch 12, 5 main, 7 sub, 7 fell behind, 4 behind at the end, 3 never joined
-  2     1  same     split at epoch 5          26 of 30   2125.9  6 main branches ran side by side: trunk at epoch 14, 6 main, 2 sub, 7 fell behind, 2 behind at the end, 2 never joined
-  3     2  same     split at epoch 5          13 of 20   1626.6  5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 6 fell behind, 4 behind at the end, 3 never joined
+run  seed  change     verdict                 at the tip  seconds  came to
+  1     0  same       split at epoch 3          31 of 38   2583.7  5 main branches ran side by side: trunk at epoch 12, 5 main, 7 sub, 7 fell behind, 4 behind at the end, 3 never joined
+  2     1  same       split at epoch 5          26 of 30   2125.9  6 main branches ran side by side: trunk at epoch 14, 6 main, 2 sub, 7 fell behind, 2 behind at the end, 2 never joined
+  3     2  same       split at epoch 5          13 of 20   1626.6  5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 6 fell behind, 4 behind at the end, 3 never joined
 3 of 3 runs came out as expected
 ```
 
 A run in one process is the same run every time from its seeds, on Linux, so a run that comes out other
 than it did was changed by a revision of logos-chat or of chat-sim. `compare` holds each run of a sweep
-in one process to the outcome a file expects of it: the seeds, the verdict, the members at the tip, the
-seconds of the clock, how the run came out and what stopped its steps. A run that came out otherwise has
-the outcome expected under it, as `was`, and its change says how whole the group came out against it:
+in one process to the outcome a file expects of it: the seeds, the ids of the group and of its members,
+the verdict, the members at the tip, the seconds of the clock, how the run came out and what stopped its
+steps, and of a `grow` step the trunk's epoch, how the step ended (`whole`, `behind`, `split`, or
+`stalled` where the trunk stopped short of the epoch it grew toward), the lines off the trunk, and the
+members off it: behind at the end, on another line, or never joined. A run that came out otherwise has
+the outcome expected under it, as `was`, and its change says where the run stands against it.
+
+A run of a `grow` step stands, highest first, by the epochs without a fork (the first split's epoch, or
+the trunk's where there is none); at the same epochs, whole at the end over any other ending; then the
+fewer lines off the trunk; then the fewer members off it. Any other run stands by its verdict: a split,
+the later the better, then any other verdict, then whole, and at each the more members at the tip. A run
+with no verdict stands lowest.
 
 | Change | Means |
 |---|---|
 | `same` | the outcome is the one expected |
-| `better` | no split where there was one, a split at a later epoch, whole where members were behind, or, at the same verdict, more members at the tip |
-| `worse` | the reverse |
-| `changed` | neither: the same verdict and members at the tip, in an outcome that differs all the same, such as in the seconds of its clock |
+| `better` | the run stands higher than the one expected |
+| `worse` | the run stands lower |
+| `re-rolled` | both runs drew ids, and the run drew others than the one expected, the group's or the members' (a run that read no result drew none and is `worse`): the ids follow from the seed, so the run is another run of that seed and says nothing of the group against the one expected, neither better nor worse |
+| `changed` | neither: the run stands where the one expected did, in an outcome that differs all the same, such as in the seconds of its clock |
 
 `compare` exits 0 when every run came out as expected and the sweep has a run for each outcome expected,
-1 when not, and 2 when the sweep or the file cannot be read, or a run was not in one process. It runs
-with `python3`: the flake's app adds `--one-process`, which `compare` does not take.
+1 when not, and 2 when the sweep or the file cannot be read, the file holds outcomes without the ids and
+the fields of a `grow` step, or a run was not in one process. It runs with `python3`: the flake's app
+adds `--one-process`, which `compare` does not take.
 
 `tools/sim/expected/` holds the outcomes of the scenarios CI sweeps, three runs each, at the revision of
 logos-chat that `Cargo.toml` pins. `compare --write` writes a sweep's outcomes to the file instead: a

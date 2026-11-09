@@ -364,30 +364,57 @@ process to the outcome a file of them expects of it, and prints a row for each. 
 `grow-waku-loss-5.json`, held to a file that expects the second whole:
 
 ```console
-run  seed  change   verdict                 at the tip  seconds  came to
-  1     0  same     split at epoch 3          31 of 38   2583.7  5 main branches ran side by side: trunk at epoch 12, 5 main, 7 sub, 7 fell behind, 4 behind at the end, 3 never joined
-  2     1  worse    split at epoch 5          26 of 30   2125.9  6 main branches ran side by side: trunk at epoch 14, 6 main, 2 sub, 7 fell behind, 2 behind at the end, 2 never joined
-           was      whole                     30 of 30   2125.9  6 main branches ran side by side: trunk at epoch 14, 6 main, 2 sub, 7 fell behind, 2 behind at the end, 2 never joined
+run  seed  change     verdict                 at the tip  seconds  came to
+  1     0  same       split at epoch 3          31 of 38   2583.7  5 main branches ran side by side: trunk at epoch 12, 5 main, 7 sub, 7 fell behind, 4 behind at the end, 3 never joined
+  2     1  worse      split at epoch 5          26 of 30   2125.9  6 main branches ran side by side: trunk at epoch 14, 6 main, 2 sub, 7 fell behind, 2 behind at the end, 2 never joined
+           was        whole                     30 of 30   2125.9  6 main branches ran side by side: trunk at epoch 14, 6 main, 2 sub, 7 fell behind, 2 behind at the end, 2 never joined
 1 of 2 runs came out as expected: 1 worse
 ```
 
-An outcome is all a sweep's row says of a run but its wall time: the seeds, the verdict, the
-members at the tip, the seconds of the virtual clock, how the run came out, and what stopped its
-steps. A run that came out otherwise has the outcome expected under it, and its change says how
-whole the group came out against it:
+An outcome is all a sweep's row says of a run but its wall time, the ids the run drew, and how
+far a `grow` step got:
+
+| Field | Holds |
+|-------|-------|
+| `seed`, `network_seed` | The seed of the run and of its network model, `null` without one |
+| `conversation` | The group's id |
+| `members_digest` | The first 16 hex digits of the SHA-256 of the members' installation ids in member order, each followed by a newline |
+| `verdict`, `at_tip`, `seated`, `virtual_s` | The verdict, the members at the tip of those seated, and the seconds of the virtual clock |
+| `trunk_epoch` | The trunk's epoch at the end of the `grow` step |
+| `ended` | How the `grow` step ended: `split` where the verdict is `split at epoch N`; `stalled` where the trunk stopped short of the epoch the step grew toward, which is any ending but `the trunk reached epoch N`; `whole` where the verdict is `whole`; `behind` otherwise |
+| `lines_off_trunk` | The lines whose kind is not `trunk`: main and sub |
+| `members_off_trunk` | The members behind at the end, on a line not the trunk, or never joined, each counted once: the names in the grow's `behind`, in its `never_joined`, and in the `members` of each line not the trunk |
+| `came_to`, `stopped` | How the run came out, and what stopped its steps |
+
+`conversation` and `members_digest` are `null` for a run that read no result of its runner,
+and `trunk_epoch`, `ended`, `lines_off_trunk` and `members_off_trunk` for a run without a
+`grow` step. `members_digest` is the first 16 digits `printf '%s\n' ID... | sha256sum` prints,
+given each member's `installation` in `run.json`, in order.
+
+A run that came out otherwise has the outcome expected under it, and its change says where the
+run stands against it. A run of a `grow` step stands, highest first, by:
+
+1. The epochs without a fork: the first split's epoch, or the trunk's where there is none.
+2. At the same epochs, `whole` at the end over any other ending.
+3. The fewer lines off the trunk.
+4. The fewer members off the trunk.
+
+Any other run stands by its verdict: a split, the later the better, then any other verdict, then
+whole, and at each the more members at the tip. A run with no verdict stands lowest.
 
 | Change | Means |
 |---|---|
 | `same` | The outcome is the one expected. |
-| `better` | No split where there was one, a split at a later epoch, whole where members were behind, or, at the same verdict, more members at the tip. |
-| `worse` | The reverse. |
-| `changed` | Neither: the same verdict and members at the tip, in an outcome that differs all the same, such as in the seconds of its clock. |
+| `better` | The run stands higher than the one expected. |
+| `worse` | The run stands lower. |
+| `re-rolled` | Both runs drew ids, and the run drew others than the one expected, the group's or the members'; a run that read no result drew none and is `worse`. The ids follow from the seed, so a revision that draws a number more or fewer before them makes another run of the same seed, which says nothing of the group against the one expected: it is neither better nor worse. |
+| `changed` | Neither: the run stands where the one expected did, in an outcome that differs all the same, such as in the seconds of its clock. |
 
 It exits 0 when every run came out as expected and the sweep has a run for each outcome expected,
-1 when not, and 2 when the sweep or the file cannot be read, or a run of the sweep was not in one
-process. `--write` writes the outcomes of the sweep to the file instead: a revision of logos-chat
-or of chat-sim that changes how a run comes out has its outcomes written, and the file's diff
-shows the change.
+1 when not, and 2 when the sweep or the file cannot be read, the file holds outcomes without the
+ids and the fields of a `grow` step, or a run of the sweep was not in one process. `--write`
+writes the outcomes of the sweep to the file instead: a revision of logos-chat or of chat-sim
+that changes how a run comes out has its outcomes written, and the file's diff shows the change.
 
 `expected/` holds the outcomes of the scenarios CI sweeps, three runs each, at the revision of
 logos-chat that `Cargo.toml` pins. Each is on the library's own timers and Waku's delays, any
@@ -1571,3 +1598,5 @@ The runs in one process are against `tests/standin_runner.py`, a stand-in for th
 runs no group and leaves the log and the result a runner leaves. `tests/fixtures/result.json` is
 a result the runner left. What the stand-in leaves is held against its fields, and a run is
 given it whole and with each field the run reads taken out in turn.
+`tests/fixtures/grow_whole.json`, `grow_split.json` and `grow_stalled.json` are the `run.json` of
+three runs of a `grow` step, cut to what `compare` reads.

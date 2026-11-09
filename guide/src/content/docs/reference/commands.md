@@ -93,7 +93,8 @@ nix run .#groupv2-simulation -- run SCENARIO --out DIR [--share ADDRESS]
 ```
 
 `run` runs the scenario once; `sweep` runs it K times, one after another; `compare` holds a sweep in one
-process to the outcomes in `EXPECTED`, or with `--write` writes the sweep's outcomes there. `RIG` is
+process to the outcomes in `EXPECTED` and says of each run `same`, `better`, `worse`, `re-rolled` or
+`changed`, or with `--write` writes the sweep's outcomes there. `RIG` is
 `--one-process PATH`, the path of `harness-run`. The flake's app `groupv2-simulation` builds the runner
 and adds that flag to what follows `--`, so it runs `run` and `sweep`, and `compare` runs with `python3`.
 `--chat-cli PATH` and `--image IMAGE [--engine docker|podman]`
@@ -103,7 +104,7 @@ run chat-cli, which is on the `local-network` branch. `DIR` must not exist.
 |---|---|---|
 | 0 | every run went as expected | every run came out as expected, and the sweep has a run for each outcome expected |
 | 1 | a run did not | a run did not, or the runs and the outcomes expected differ in number |
-| 2 | the command line or the scenario is refused | the sweep or `EXPECTED` cannot be read, or a run was not in one process |
+| 2 | the command line or the scenario is refused | the sweep or `EXPECTED` cannot be read, `EXPECTED` holds outcomes without the ids and the fields of a `grow` step, or a run was not in one process |
 | 128 + n | signal n interrupted it | |
 
 ## harness-run
