@@ -217,6 +217,70 @@ class Plan(Fixture):
                 self.assertIn(said, err)
 
 
+class Measurement(unittest.TestCase):
+    """A history of three commits: to crates/, then to the guide, then to tools/forks/forks/."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.tree = Path(directory.name) / "tree"
+        self.git("init", "-q", str(self.tree), tree=Path(directory.name))
+        self.shas = [
+            self.change(path) for path in ("crates/harness/a", "guide/b", "tools/forks/forks/c")
+        ]
+
+    def git(self, *argv: str, tree: Optional[Path] = None) -> str:
+        unsigned = ("-c", "commit.gpgsign=false", "-c", "user.name=Saro", "-c", "user.email=s@o")
+        return subprocess.run(
+            ["git", "-C", str(tree or self.tree), *unsigned, *argv],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    def change(self, path: str) -> str:
+        file = self.tree / path
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(path, encoding="utf-8")
+        self.git("add", path)
+        self.git("commit", "-qm", path)
+        return self.git("rev-parse", "HEAD")
+
+    def test_is_the_newest_commit_to_what_a_run_measures(self):
+        self.assertEqual(simulate.measurement(self.tree), self.shas[2])
+        self.change("guide/d")
+        status, out, _ = run("measurement", "--tree", str(self.tree))
+        self.assertEqual((status, out), (0, f"measurement={self.shas[2]}\n"))
+
+    def test_a_commit_to_the_guide_moves_no_measurement(self):
+        self.git("reset", "-q", "--hard", self.shas[1])
+        self.assertEqual(simulate.measurement(self.tree), self.shas[0])
+
+    def test_a_commit_to_a_build_file_at_the_root_moves_it_and_one_to_the_readme_does_not(self):
+        for path in (
+            "Cargo.toml",
+            "Cargo.lock",
+            ".cargo/config.toml",
+            "rust-toolchain.toml",
+            "flake.nix",
+            "flake.lock",
+        ):
+            with self.subTest(path=path):
+                moved = self.change(path)
+                self.assertEqual(simulate.measurement(self.tree), moved)
+        self.change("README.md")
+        self.assertEqual(simulate.measurement(self.tree), moved)
+
+    def test_a_shallow_clone_is_refused(self):
+        shallow = self.tree.parent / "shallow"
+        self.git("clone", "-q", "--depth", "1", f"file://{self.tree}", str(shallow))
+
+        status, out, err = run("measurement", "--tree", str(shallow))
+
+        self.assertEqual((status, out), (2, ""))
+        self.assertIn("shallow clone", err)
+
+
 class Title(unittest.TestCase):
     """The verdict of a matrix in a few words, from the counts of its cells."""
 

@@ -10,7 +10,7 @@ holds but the goal's, a job a scenario a side. `plan` checks what it was handed 
 jobs, and `comment` writes the comment in Markdown: for `pr` and `main` from the matrix
 `tools/sim matrix` wrote of the runs, and for `long` a row for each scenario with what
 `tools/sim compare` said of its runs against the base's, or against what `tools/sim/expected`
-holds when there is no base.
+holds when there is no base. `measurement` prints the chat-sim commit a run measures.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ import argparse
 import html
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
@@ -34,6 +35,21 @@ FIFTY_EPOCHS = ("50-epochs", "50-epochs-waku")
 SUITES = ("pr", "main", "long")
 LOGOS_CHAT = "https://github.com/logos-messaging/logos-chat"
 CHAT_SIM = "https://github.com/logos-messaging/chat-sim"
+# What a run measures: a commit under these paths can move how a run comes out, where one to the
+# guide or to the pages cannot. The build reads the files at the root besides crates/, and
+# tools/sim judges each run's logs with tools/forks.
+MEASURED = (
+    "crates/",
+    "Cargo.toml",
+    "Cargo.lock",
+    ".cargo/",
+    "rust-toolchain.toml",
+    "flake.nix",
+    "flake.lock",
+    "tools/forks/forks/",
+    "tools/sim/sim/",
+    "tools/sim/scenarios/",
+)
 # What a matrix of `tools/sim matrix` holds.
 MATRIX = {"head", "base", "cells", "counts", "verdict", "summary"}
 
@@ -123,6 +139,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     comment.add_argument("--run-url", metavar="URL", required=True, help="the workflow run's page")
     comment.add_argument("--report-url", metavar="URL", help="the page of the run's report")
     comment.set_defaults(command=_comment)
+    measured = commands.add_parser(
+        "measurement",
+        help="print the chat-sim commit a run measures",
+        description="Prints, as a line for $GITHUB_OUTPUT, the newest commit of the tree that "
+        "touches what a run measures. Refuses a shallow clone.",
+    )
+    measured.add_argument(
+        "--tree", metavar="DIR", type=Path, default=Path(), help="the checkout (default: .)"
+    )
+    measured.set_defaults(command=_measurement)
     args = parser.parse_args(argv)
     return args.command(parser, args)
 
@@ -140,6 +166,15 @@ def scenarios(suite: str, expected: Path) -> List[Tuple[str, int]]:
     held = sorted(path.stem for path in expected.glob("*.json") if path.stem not in goal)
     names = FIFTY_EPOCHS + tuple(held)
     return [(name, _held_runs(expected / f"{name}.json") or 1) for name in names]
+
+
+def measurement(tree: Path) -> Optional[str]:
+    """The newest commit of `tree` that touches `MEASURED`, or `None` in a shallow clone."""
+    shallow = _git(tree, "rev-parse", "--is-shallow-repository")
+    # A shallow clone's oldest commit seems to add every file, so it would be named for any path.
+    if shallow != "false":
+        return None
+    return _git(tree, "log", "-1", "--format=%H", "--", *MEASURED) or None
 
 
 def jobs(suite: str, revision: str, base: str, swept: Sequence[Tuple[str, int]]) -> List[dict]:
@@ -358,6 +393,20 @@ def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     written = render_pr(matrix, facts) if args.suite == "pr" else render_main(matrix, facts)
     sys.stdout.write(written)
     return 0
+
+
+def _measurement(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    measured = measurement(args.tree)
+    if measured is None:
+        parser.error(f"--tree: {args.tree} is a shallow clone, or no commit touches {MEASURED}")
+    print(f"measurement={measured}")
+    return 0
+
+
+def _git(tree: Path, *argv: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(tree), *argv], check=True, capture_output=True, text=True
+    ).stdout.strip()
 
 
 def _held_runs(file: Path) -> int:

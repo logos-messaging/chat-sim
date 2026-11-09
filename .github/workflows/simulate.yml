@@ -58,6 +58,7 @@ jobs:
       pr: ${{ steps.plan.outputs.pr }}
       runs: ${{ steps.plan.outputs.runs }}
       scenarios: ${{ steps.plan.outputs.scenarios }}
+      measurement: ${{ steps.measured.outputs.measurement }}
     # Read by the script from the environment, never written into it: what the
     # workflow is handed is text whoever started it chose. The jobs after this
     # one read it from this job's outputs, once the script has checked it.
@@ -67,12 +68,21 @@ jobs:
       BASE: ${{ inputs.base }}
       PR: ${{ inputs.pr }}
     steps:
+      # The whole history, for the commit the runs measure. It is every branch's,
+      # gh-pages and the text it publishes among them, so the clone leaves out
+      # what the files hold but the checkout's.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
       - name: Check what the workflow was handed, and plan its runs
         id: plan
         run: |
           python3 .github/scripts/simulate.py plan --suite "$SUITE" --revision "$REVISION" \
             --base "$BASE" --pr "$PR" --expected tools/sim/expected >> "$GITHUB_OUTPUT"
+      - name: Name the chat-sim commit the runs measure
+        id: measured
+        run: python3 .github/scripts/simulate.py measurement >> "$GITHUB_OUTPUT"
 
   run:
     name: Run at ${{ matrix.run.name }}
