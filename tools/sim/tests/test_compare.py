@@ -163,6 +163,19 @@ class GrowStanding(unittest.TestCase):
     def test_members_at_the_tip_move_no_grow_run(self):
         self.assertEqual(compare.change(SPLIT, dict(SPLIT, at_tip=50)), "changed")
 
+    def test_two_runs_stand_apart_in_the_first_part_of_the_standing_that_differs(self):
+        behind = dict(WHOLE, verdict="whole, members behind", ended="behind", members_off_trunk=1)
+        for was, now, part in (
+            (SPLIT, dict(SPLIT, verdict="split at epoch 12", lines_off_trunk=2), "epochs"),
+            (WHOLE, behind, "ended"),
+            (SPLIT, dict(SPLIT, lines_off_trunk=6, members_off_trunk=30), "lines_off_trunk"),
+            (SPLIT, dict(SPLIT, members_off_trunk=19), "members_off_trunk"),
+            (SPLIT, dict(SPLIT, at_tip=50), None),
+            (SPLIT, dict(SPLIT, verdict=None), None),
+        ):
+            with self.subTest(part=part, now=now):
+                self.assertEqual(compare.apart(was, now), part)
+
     def test_a_run_with_no_verdict_is_worse_than_any(self):
         self.assertEqual(compare.change(STALLED, dict(STALLED, verdict=None)), "worse")
 

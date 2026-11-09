@@ -35,16 +35,21 @@ class Interrupts:
 
 
 def sweep(
-    settings: Settings, runs: int, interrupts: Interrupts, say: Callable[[str], None]
+    settings: Settings,
+    runs: int,
+    interrupts: Interrupts,
+    say: Callable[[str], None],
+    first: int = 1,
 ) -> dict:
-    """Runs a scenario `runs` times, each in a directory of its own under `settings.out`.
+    """Runs a scenario `runs` times from run `first` of a sweep, each in a directory of its own
+    under `settings.out`, named by the run's number as wide as the last run's.
 
     A scenario with a network model or a wire gives each run the seed after that of the run
-    before.
+    before, so that a run has the seeds it has in a sweep from run 1.
 
-    Says the head of the rows, a row as each run ends, and how many went as expected. Returns
-    the same, which it also writes under `settings.out` as `sweep.json` and `sweep.txt`, as
-    each row is said and once more at the end.
+    Says the head of the rows, a row as each run ends, and how many went as expected, and of
+    which runs when they do not start at 1. Returns the same, which it also writes under
+    `settings.out` as `sweep.json` and `sweep.txt`, as each row is said and once more at the end.
     """
     make(settings.out)
     said = []
@@ -61,6 +66,7 @@ def sweep(
             (settings.out / name).write_text(held, encoding="utf-8")
 
     report = {
+        "from": first,
         "runs": runs,
         "done": 0,
         "as_expected": 0,
@@ -69,12 +75,13 @@ def sweep(
         "rows": [],
     }
     tell(table.head(settings.one_process is not None))
-    for number in range(1, runs + 1):
+    last = first + runs - 1
+    for number in range(first, last + 1):
         # The watch is made before the look: a signal taken from here on is in one of the two.
         watch = interrupts.watch()
         if interrupts.signal is not None:
             break
-        directory = f"{number:0{len(str(runs))}d}"
+        directory = f"{number:0{len(str(last))}d}"
         started = time.monotonic()
         scenario = settings.scenario.of_run(number)
         one = run(
@@ -108,6 +115,8 @@ def sweep(
         write()
     report["load"]["end"] = list(os.getloadavg())
     counted = f"{report['as_expected']} of {report['done']} runs went as expected"
+    if first != 1:
+        counted += f", run {first}" if runs == 1 else f", runs {first} to {last}"
     if interrupts.signal is not None:
         report["interrupted"] = signal.Signals(interrupts.signal).name
         counted += f": interrupted by {report['interrupted']} after {report['done']} of {runs}"

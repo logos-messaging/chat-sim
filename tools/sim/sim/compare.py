@@ -29,10 +29,13 @@ _KEYS = _ROW | {
     "lines_off_trunk",
     "members_off_trunk",
 }
+# The parts of where a run of a `grow` step with a verdict stands, in the order they rank it: the
+# epochs without a fork, whether it ended whole, then the lines and the members off the trunk.
+STANDING = ("epochs", "ended", "lines_off_trunk", "members_off_trunk")
 
 
 class Unreadable(Exception):
-    """A sweep or a file of expected outcomes that cannot be read, and why."""
+    """A sweep, a run or a file of expected outcomes that cannot be read, and why."""
 
 
 def outcomes(out: Path) -> List[dict]:
@@ -116,6 +119,27 @@ def change(was: dict, now: dict) -> str:
     return "changed"
 
 
+def unforked(outcome: dict) -> Optional[int]:
+    """How many epochs a run of a `grow` step went without a fork: the epoch of its first split,
+    else the trunk's; `None` for a run with no verdict or without a `grow` step."""
+    verdict = outcome["verdict"]
+    if verdict is None or outcome["ended"] is None:
+        return None
+    split = _SPLIT.match(verdict)
+    return outcome["trunk_epoch"] if split is None else int(split[1])
+
+
+def apart(was: dict, now: dict) -> Optional[str]:
+    """The first part of `STANDING` in which two runs of a `grow` step that each have a verdict
+    stand apart; `None` where they stand alike, or either is not such a run."""
+    if any(one["verdict"] is None or one["ended"] is None for one in (was, now)):
+        return None
+    for part, held, drawn in zip(STANDING, _standing(was)[1:], _standing(now)[1:]):
+        if held != drawn:
+            return part
+    return None
+
+
 def render(was: List[dict], now: List[dict]) -> Tuple[str, bool]:
     """A row for each run, under it the outcome expected where it differs, then a count.
 
@@ -197,10 +221,9 @@ def _standing(outcome: dict) -> Tuple[int, ...]:
     if outcome["ended"] is not None:
         if verdict is None:
             return (0,)
-        epochs = outcome["trunk_epoch"] if split is None else int(split[1])
         return (
             1,
-            epochs,
+            unforked(outcome),
             outcome["ended"] == "whole",
             -outcome["lines_off_trunk"],
             -outcome["members_off_trunk"],

@@ -159,6 +159,47 @@ class Sweeping(Scratch):
         self.assertEqual(report["rows"][9]["directory"], "10")
         self.assertEqual(self.said[-1], "10 of 10 runs went as expected")
 
+    def test_a_sweep_from_a_run_does_the_runs_from_it_with_the_seeds_each_has_from_run_1(self):
+        whole = whole_run()
+        settings = Settings(Path(), scenario.scenario(said(seed=4, network={"seed": 7})), self.out)
+        lines: List[str] = []
+        with mock.patch("sim.sweep.run", return_value=whole) as run:
+            report = sweep(settings, 3, Interrupts(), lines.append, 9)
+
+        given = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(
+            [one.out for one in given], [self.out / name for name in ("09", "10", "11")]
+        )
+        self.assertEqual(
+            [one.scenario for one in given], [settings.scenario.of_run(k) for k in (9, 10, 11)]
+        )
+        self.assertEqual([one.scenario.network.seed for one in given], [15, 16, 17])
+        self.assertEqual((report["from"], report["runs"], report["done"]), (9, 3, 3))
+        self.assertEqual(
+            [(row["run"], row["directory"]) for row in report["rows"]],
+            [(9, "09"), (10, "10"), (11, "11")],
+        )
+        self.assertEqual(lines[-1], "3 of 3 runs went as expected, runs 9 to 11")
+        self.assertEqual(json.loads((self.out / "sweep.json").read_text("utf-8")), report)
+        self.assertEqual((self.out / "sweep.txt").read_text("utf-8").splitlines(), lines)
+
+    def test_a_sweep_of_one_run_from_a_run_names_it_and_one_from_run_1_names_none(self):
+        whole = whole_run()
+        settings = Settings(Path(), scenario.scenario(said()), self.out)
+        for first, counted in (
+            (2, "1 of 1 runs went as expected, run 2"),
+            (1, "1 of 1 runs went as expected"),
+        ):
+            with self.subTest(first=first):
+                lines: List[str] = []
+                out = self.scratch / str(first)
+                with mock.patch("sim.sweep.run", return_value=whole) as run:
+                    report = sweep(
+                        dataclasses.replace(settings, out=out), 1, Interrupts(), lines.append, first
+                    )
+                self.assertEqual(run.call_args.args[0].out, out / str(first))
+                self.assertEqual((report["from"], lines[-1]), (first, counted))
+
     def test_a_shared_run_has_the_page_of_its_conversation_in_its_row(self):
         whole = whole_run()
         whole["page"] = "http://127.0.0.1:8750/#2a30d6a2c1"
@@ -287,6 +328,26 @@ class Sweeping(Scratch):
             lines[-1], "0 of 0 runs went as expected: interrupted by SIGTERM after 0 of 3"
         )
 
+    def test_a_sweep_from_a_run_that_a_signal_interrupts_names_the_runs_asked_for(self):
+        interrupts = Interrupts()
+
+        def run(settings: Settings, watch: Watch) -> dict:
+            if settings.out.name == "12":
+                watch.close()
+                interrupts.take(signal.SIGTERM)
+            return whole_run()
+
+        settings = Settings(Path(), scenario.scenario(said()), self.out)
+        lines: List[str] = []
+        with mock.patch("sim.sweep.run", side_effect=run):
+            report = sweep(settings, 3, interrupts, lines.append, 11)
+
+        self.assertEqual([row["run"] for row in report["rows"]], [11, 12])
+        self.assertEqual(
+            lines[-1],
+            "2 of 2 runs went as expected, runs 11 to 13: interrupted by SIGTERM after 2 of 3",
+        )
+
 
 class CommandLine(Scratch):
     def sim(self, *arguments: str, faults: Dict[int, Sequence[str]]) -> Tuple[int, str]:
@@ -303,6 +364,35 @@ class CommandLine(Scratch):
         self.assertEqual(status, 0)
         self.assertEqual(printed, (self.out / "sweep.txt").read_text("utf-8"))
         self.assertTrue(printed.endswith("\n2 of 2 runs went as expected\n"))
+
+    def test_a_sweep_from_a_run_does_that_run_with_its_seeds(self):
+        seeded = str(self.scenario(network={"seed": 7}))
+        status, printed = self.sim(seeded, "--runs", "1", "--from", "3", faults={})
+
+        self.assertEqual(status, 0)
+        self.assertTrue(printed.endswith("\n1 of 1 runs went as expected, run 3\n"))
+        kept = json.loads((self.out / "3" / "run.json").read_text("utf-8"))
+        self.assertEqual(kept["network"]["seed"], 9)
+
+    def test_a_sweep_from_run_0_or_whose_last_run_would_pass_the_most_seed_is_refused(self):
+        for arguments, said in (
+            (
+                (str(self.scenario()), "--runs", "1", "--from", "0"),
+                "--from: a sweep's first run is run 1",
+            ),
+            (
+                (str(self.scenario(seed=2**64 - 3)), "--runs", "2", "--from", "3"),
+                f"--runs: run 4 would have the seed {2**64}, and {2**64 - 1} is the most",
+            ),
+        ):
+            with self.subTest(said=said):
+                complained = io.StringIO()
+                with self.assertRaises(SystemExit) as refused:
+                    with contextlib.redirect_stderr(complained):
+                        self.sim(*arguments, faults={})
+                self.assertEqual(refused.exception.code, 2)
+                self.assertEqual(complained.getvalue().splitlines()[-1], f"sim: error: {said}")
+                self.assertFalse(self.out.exists())
 
     def test_a_sweep_one_run_of_which_did_not_is_status_1(self):
         faults = {2: ["deaf=raya"]}

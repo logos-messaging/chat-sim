@@ -87,25 +87,34 @@ gives every call with its statuses.
 
 ```sh
 python3 tools/sim run SCENARIO RIG --out DIR [--share ADDRESS]
-python3 tools/sim sweep SCENARIO RIG --out DIR --runs K [--share ADDRESS]
+python3 tools/sim sweep SCENARIO RIG --out DIR --runs K [--from N] [--share ADDRESS]
 python3 tools/sim compare [--write] EXPECTED OUT
+python3 tools/sim matrix HEAD [--base DIR] [--asked FILE] [--out FILE]
 nix run .#groupv2-simulation -- run SCENARIO --out DIR [--share ADDRESS]
 ```
 
-`run` runs the scenario once; `sweep` runs it K times, one after another; `compare` holds a sweep in one
+`run` runs the scenario once; `sweep` runs it K times, one after another, and with `--from N` those are
+runs N to N+K-1 of a sweep, each with the seeds it has in a sweep from run 1; `compare` holds a sweep in one
 process to the outcomes in `EXPECTED` and says of each run `same`, `better`, `worse`, `re-rolled` or
-`changed`, or with `--write` writes the sweep's outcomes there. `RIG` is
+`changed`, or with `--write` writes the sweep's outcomes there. `matrix` pairs the runs in one process under
+`HEAD` with those under `--base` by scenario and seed, at any depth, and writes as JSON a cell for each with
+its change, a cell too for each run the sweeps in `--asked` ask of each side, and the verdict over the
+cells: `same`, `better`, `worse`, `hint` (one cell worse), `mixed`, `re-rolled`, `no-base`, `no-outcome`
+or `unbuilt`; without a base, each scenario's summary.
+[`tools/sim/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#a-matrix-of-a-revisions-runs-beside-its-bases)
+gives its fields and what decides the verdict. `RIG` is
 `--one-process PATH`, the path of `harness-run`. The flake's app `groupv2-simulation` builds the runner
-and adds that flag to what follows `--`, so it runs `run` and `sweep`, and `compare` runs with `python3`.
+and adds that flag to what follows `--`, so it runs `run` and `sweep`, and `compare` and `matrix` run with
+`python3`.
 `--chat-cli PATH` and `--image IMAGE [--engine docker|podman]`
 run chat-cli, which is on the `local-network` branch. `DIR` must not exist.
 
-| Exit | run, sweep | compare |
-|---|---|---|
-| 0 | every run went as expected | every run came out as expected, and the sweep has a run for each outcome expected |
-| 1 | a run did not | a run did not, or the runs and the outcomes expected differ in number |
-| 2 | the command line or the scenario is refused | the sweep or `EXPECTED` cannot be read, `EXPECTED` holds outcomes without the ids and the fields of a `grow` step, or a run was not in one process |
-| 128 + n | signal n interrupted it | |
+| Exit | run, sweep | compare | matrix |
+|---|---|---|---|
+| 0 | every run went as expected | every run came out as expected, and the sweep has a run for each outcome expected | it wrote the matrix |
+| 1 | a run did not | a run did not, or the runs and the outcomes expected differ in number | |
+| 2 | the command line or the scenario is refused | the sweep or `EXPECTED` cannot be read, `EXPECTED` holds outcomes without the ids and the fields of a `grow` step, or a run was not in one process | a directory is not there, `--asked` cannot be read, or a run cannot be read, was not in one process, or is a second run of a scenario at one seed |
+| 128 + n | signal n interrupted it | | |
 
 ## harness-run
 

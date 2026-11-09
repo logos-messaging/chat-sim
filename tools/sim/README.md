@@ -337,6 +337,13 @@ run  seconds  at the tip  verdict                 check
 | `verdict` | The verdict of the report. |
 | `check` | `as expected`, or the first difference the check found and how many more there are, or `not checked`, with how `forks check` ended when it was run and gave no answer. Then, after `; stopped:`, what stopped the steps when something did. Then `seed` and the seed of a run in one process, `network seed` and the seed of its network model, `wire seed` and the seed of its wire, and what was withheld from whom and whether the group applied it, for a run that has them. Then the address of the conversation's page when the logs were shared, or after `not shared:` why they were not. |
 
+With `--from N` the sweep does runs N to N+K-1 of a sweep from run 1, each with the seeds it has
+there, in a directory named by its number as wide as the last run's number. So `--from 1 --runs
+10` and `--from 11 --runs 10` do the twenty runs of `--runs 20`, in `01` to `10` and `11` to
+`20`, and a sweep that does not start at run 1 names its runs in the last line: `10 of 10 runs
+went as expected, runs 11 to 20`. A sweep whose last run would have a seed above 2^64 - 1 is
+refused the same way.
+
 It takes the flags of `run`, and `--share` sends the logs of every run. A sweep exits 0 when every
 run went as expected, 1 when one did not, and 2 when its command line or the scenario is refused.
 A sweep that SIGINT, SIGTERM or SIGHUP interrupts stops the run in hand, which gets no row,
@@ -348,7 +355,8 @@ short has left the rows of the runs that ended:
 
 | Field | Holds |
 |-------|-------|
-| `runs`, `done`, `as_expected` | How many runs were asked for, how many ended, and how many of those went as expected |
+| `from`, `runs` | The number of the first run asked for, and how many runs were asked for |
+| `done`, `as_expected` | How many runs ended, and how many of those went as expected |
 | `interrupted` | The name of the signal that interrupted the sweep, or `null` |
 | `load` | The load average of the machine at the `start` and at the `end` of the sweep |
 | `rows[]` | For each run that ended its `run` number and `directory`, whether it is `ok`, the `differences` its check found, or `null` when it was not checked, as `unchecked` how `forks check` ended when it gave no answer, what `stopped` its steps, the `verdict`, the members `at_tip` of those `seated`, its `seconds`, the `seed` of a run in one process, the `network_seed` of its network model, the `wire_seed` of its wire and what was `withheld` as its `run.json` holds it, each `null` for a run without one, and the `page` its logs were shared at |
@@ -449,6 +457,63 @@ place of its `seat` and `post` steps: saro alone adds, one member a round, towar
 counts are those of fifty epochs. A run ends when the trunk holds epoch 50, when every member is
 seated, or when saro can add no more. A lost Welcome costs the run one member, who never joined,
 where the `seat` step stops at it. At no loss a fork is the code's, not the network's.
+
+## A matrix of a revision's runs beside its base's
+
+```sh
+python3 tools/sim matrix tmp/head --base tmp/base --out tmp/matrix.json
+```
+
+`matrix` reads the runs in one process under a directory, at any depth: each run's
+`<scenario>/<run>/run.json` as a sweep writes it, and `<scenario>/<run>/unbuilt` for each run of
+a job that could not build chat-sim. With `--base` it reads those of the base revision too, pairs
+the runs of the two by scenario and seed, and takes each run's outcome and the change of each pair
+as `compare` does. `--asked` names a JSON list of the sweeps asked of each side, each with its
+`scenario`, a file of `tools/sim/scenarios` without `.json`, the run it is `from` and how many
+`runs`, and any other field besides. It writes the matrix as JSON, to standard output or to the
+file `--out` names, and exits 0 when it wrote it and 2 when a directory is not there, `--asked`
+cannot be read, or a run cannot be read, was not in one process, or is a second run of a scenario
+at a seed already read.
+
+A cell is a scenario and a seed either side has a run of, or that `--asked` asks of each side; the
+seed of a run asked for, or of one whose job could not build chat-sim, is the one its scenario
+gives it. A cell has no outcome at a side whose job could not build it, that has no run of it, or
+whose run has no verdict, as when its runner left no result. Its change is what `compare` says of
+the base's outcome and the head's, where both have one.
+
+| Field | Holds |
+|-------|-------|
+| `head`, `base` | Of each side, how many `runs` were read and how many runs its jobs could not build, as `unbuilt`; `base` is `null` without `--base` |
+| `cells[]` | For each cell, in the order of its loss, then scenario, then seed: the `scenario`, the `seed`, the `run` of a sweep it is, the `loss` of its network model and that loss in percent as its `rate`, such as `0.1%`; the `head`'s outcome and the `base`'s as `compare --write` writes one, each `null` where the side has no outcome; whether each side's job could not build it, as `unbuilt`; the `change`, `null` where there is none; of each side the `epochs` without a fork, the first split's epoch or else the trunk's, and how the run `ended`; and where the cell is better or worse, what `moved`: the `part` of the standing the two runs first stand apart in, `epochs`, `ended`, `lines_off_trunk` or `members_off_trunk`, and the value of each side, else `null` |
+| `counts` | How many `cells`, how many have a change as `compared`, how many of those are `same`, `changed`, `better`, `worse` and `re-rolled`, and how many have no outcome at the head as `no-outcome` |
+| `verdict` | The first verdict of those below that holds |
+| `summary[]` | Without `--base`, for each scenario: its `scenario`, `loss` and `rate`, how many `runs` and how many of them have no outcome as `no-outcome`, how many ended `whole`, `behind`, `split` and `stalled`, the `lowest`, `median` and `highest` of the `epochs` without a fork, and the `median` of the `members_off_trunk` at the end as `compare` counts them, behind, on a line not the trunk or never joined; `null` with `--base` |
+
+| Verdict | When |
+|---|---|
+| `unbuilt` | A job at the head could not build chat-sim, and no run at the head was read. |
+| `no-outcome` | A cell has no outcome at the head. |
+| `no-base` | No cell has a change. |
+| `mixed` | Cells are better and cells are worse. |
+| `better` | Cells are better, and none worse. |
+| `worse` | Two or more cells are worse, and none better. |
+| `hint` | One cell is worse, and none better. |
+| `re-rolled` | Cells are re-rolled, and none better or worse. |
+| `same` | Every cell with a change is the same or changed. |
+
+The order says what went wrong at the head before what is missing at the base, and that before
+what moved. Where more than one could be meant:
+
+- A cell that is `changed`, which differs from the base's but stands where it did with the same
+  ids, counts as the same, since the verdict says where the runs stand.
+- A re-rolled cell is neither better nor worse, so the cells better or worse beside it decide the
+  verdict, and it is `re-rolled` only when no other cell moved.
+- With no base, a base that did not build, or a base with no outcome for any cell, no cell has a
+  change and the head's cells stand alone: `no-base`. A cell the base has no outcome for has no
+  change, and the cells that have one decide.
+- A head whose jobs built some runs and not others is not `unbuilt`: the runs not built have no
+  outcome, so it is `no-outcome`.
+- `unbuilt` comes before `no-outcome`, and `no-outcome` before `no-base`.
 
 ## What a run does
 
@@ -1617,4 +1682,6 @@ runs no group and leaves the log and the result a runner leaves. `tests/fixtures
 a result the runner left. What the stand-in leaves is held against its fields, and a run is
 given it whole and with each field the run reads taken out in turn.
 `tests/fixtures/grow_whole.json`, `grow_split.json` and `grow_stalled.json` are the `run.json` of
-three runs of a `grow` step, cut to what `compare` reads.
+three runs of a `grow` step, cut to what `compare` reads. `tests/fixtures/matrix/` is what six
+jobs uploaded of seeds 0 and 1 of `50-epochs-by-saro-waku-loss-0.1.json`, `-1` and `-5`, each in
+the directory of its artifact, every `run.json` cut to what `matrix` reads.
