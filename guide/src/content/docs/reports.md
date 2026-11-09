@@ -11,7 +11,7 @@ commit, not on its merge into master.
 | Job | Runs |
 |---|---|
 | Sim in one process | `50-epochs.json` and `50-epochs-waku.json`, once each |
-| Sim held to what is expected | for each file in `tools/sim/expected/`, a sweep of three seeds of the scenario of that name in `tools/sim/scenarios/`, held by `tools/sim compare` to the file |
+| Sim held to what is expected | for each file in `tools/sim/expected/`, a sweep of the scenario of that name in `tools/sim/scenarios/`, as many runs as the file holds outcomes, held by `tools/sim compare` to the file |
 | Publish the report to GitHub Pages | the report of the CI run, from the text the two jobs upload |
 
 The report is published when a simulation job fails as well: that is the run whose report is wanted
@@ -26,7 +26,7 @@ most. The output of each `compare` is also in the summary of its job on the CI r
 | What ran | `master`, or `#N` and the pull request's title |
 | Commit | the commit that ran, by its short sha, linking to the commit |
 | When (UTC) | when CI wrote the report |
-| Sweeps | how many of the scenarios CI sweeps came out as expected, such as `6 of 6 as expected` or `5 of 6 as expected` |
+| Sweeps | how many of the scenarios CI sweeps came out as expected, such as `10 of 10 as expected` or `9 of 10 as expected` |
 | the last two, with no heading | `report`, a link to the report page, and `CI run`, a link to the CI run |
 
 A row and its page are those of the newest CI run of master, or of the pull request, to publish a
@@ -54,12 +54,13 @@ nothing large. It runs no script, and what a run or a pull request's title says 
 
 A run in one process is the same run every time from its seeds, on Linux, so a run that comes out other
 than before was changed by a revision of logos-chat or of chat-sim. `tools/sim/expected/` holds, for each
-scenario CI sweeps, what each of its three runs came to at the revision of logos-chat that chat-sim pins
-in `Cargo.toml`: the seeds, the ids of the group and of its members, the verdict, the members at the tip
-of those seated, the seconds of the virtual clock, how the run came out and what stopped its steps, and
-of a `grow` step how far the trunk got and how many ended off it. `compare` holds each run of the sweep
-to the outcome expected of it, and names each change by where the run stands against it, in the order
-[Simulations](../simulations/#held-to-what-is-expected) gives:
+scenario CI sweeps, what each of its runs came to at the revision of logos-chat that chat-sim pins in
+`Cargo.toml`: the seeds, the ids of the group and of its members, the verdict, the members at the tip of
+those seated, the seconds of the virtual clock, how the run came out and what stopped its steps, and of a
+`grow` step how far the trunk got and how many ended off it. CI sweeps each scenario as many runs as its
+file holds, from seed 0: two of each `50-epochs-by-saro-waku-loss-` file, three of each `grow-waku-` one.
+`compare` holds each run of the sweep to the outcome expected of it, and names each change by where the
+run stands against it, in the order [Simulations](../simulations/#held-to-what-is-expected) gives:
 
 | Change | Means |
 |---|---|
@@ -90,6 +91,9 @@ On Linux, at the commit of the row:
 nix run .#groupv2-simulation -- sweep tools/sim/scenarios/grow-waku-loss-5.json --runs 3 --out tmp/grow-waku-loss-5
 python3 tools/sim compare tools/sim/expected/grow-waku-loss-5.json tmp/grow-waku-loss-5
 ```
+
+`--runs` is as many as the scenario's file in `tools/sim/expected/` holds outcomes: three here, two for a
+`50-epochs-by-saro-waku-loss-` one.
 
 `compare` prints the rows of the page's section, and each run's `report.txt` is the page's. A run of fifty
 epochs:

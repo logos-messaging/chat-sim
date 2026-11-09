@@ -279,3 +279,30 @@ class CommandLine(Scratch):
         refused = self.refused()
 
         self.assertTrue(refused.endswith(": not a list of the outcomes `compare --write` writes"))
+
+
+class HeldRuns(Scratch):
+    """A directory of files of expected outcomes, one a scenario."""
+
+    def hold(self, name: str, held: str) -> None:
+        (self.scratch / f"{name}.json").write_text(held, encoding="utf-8")
+
+    def test_each_scenario_holds_as_many_runs_as_its_file_has_outcomes(self):
+        self.hold("grow-waku-loss-5", json.dumps([WHOLE, SPLIT, STALLED]))
+        self.hold("50-epochs-by-saro-waku-loss-1", json.dumps([WHOLE, SPLIT]))
+
+        self.assertEqual(
+            compare.held_runs(self.scratch),
+            [("50-epochs-by-saro-waku-loss-1", 2), ("grow-waku-loss-5", 3)],
+        )
+
+    def test_a_file_that_cannot_be_read_is_refused_by_its_name(self):
+        self.hold("grow-waku-loss-5", json.dumps([WHOLE, SPLIT, STALLED]))
+        self.hold("grow-waku-loss-1", "<<<<<<< HEAD")
+
+        with self.assertRaises(compare.Unreadable) as refused:
+            compare.held_runs(self.scratch)
+
+        self.assertTrue(
+            str(refused.exception).startswith(f"{self.scratch / 'grow-waku-loss-1.json'}: not JSON")
+        )

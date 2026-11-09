@@ -154,6 +154,7 @@ Every field is checked before anything starts. The full format, with every field
 | `50-epochs.json` | 51 members one at a time, fifty epochs, on the library's own timers, as logos-chat-module runs a group; CI runs it |
 | `50-epochs-waku.json` | the same, each member's frames held for a delay Waku relay was measured at; CI runs it |
 | `50-epochs-waku-loss.json` | the same, with 5% of each member's frames lost, a rate assumed |
+| `50-epochs-by-saro-waku-loss-*.json` | 51 members on the network of `50-epochs-waku-loss.json`, saro alone adding one a round toward epoch 50 with no cap on branches, at a loss of 0, 0.1, 1 or 5% that the name gives in percent; CI sweeps each |
 | `lossy.json` | 5 members one at a time, with 5% of frames lost |
 | `lost-candidate.json` | 5 members one at a time, pax losing a commit candidate of the round that seats the fifth |
 | `grow-waku-loss-*.json` | 200 members on the library's own timers and Waku's delays, any member adding up to three a round, at a loss of 0 to 10% that the name gives in percent; CI sweeps 0, 0.1, 0.5, 1 and 5 |
@@ -230,9 +231,20 @@ with no verdict stands lowest.
 the fields of a `grow` step, or a run was not in one process. It runs with `python3`: the flake's app
 adds `--one-process`, which `compare` does not take.
 
-`tools/sim/expected/` holds the outcomes of the scenarios CI sweeps, three runs each, at the revision of
-logos-chat that `Cargo.toml` pins. `compare --write` writes a sweep's outcomes to the file instead: a
-change that moves how a run comes out has its outcomes written, and the file's diff shows the change.
+`tools/sim/expected/` holds the outcomes of the scenarios CI sweeps at the revision of logos-chat that
+`Cargo.toml` pins, and CI sweeps each as many runs as its file holds, from seed 0: two of each
+`50-epochs-by-saro-waku-loss-` file, three of each `grow-waku-` one. `compare --write` writes a sweep's
+outcomes to the file instead: a change that moves how a run comes out has its outcomes written, and the
+file's diff shows the change.
+
+The four `50-epochs-by-saro-waku-loss-` files measure how many epochs a group of 51 lasts as one group.
+Each is `50-epochs-waku-loss.json` at no loss, 0.1%, 1% or 5% of the frames each member receives,
+Welcomes too, with a `grow` step in place of its `seat` and `post` steps (see
+[A group that grows](#a-group-that-grows)): saro alone adds, one member a round, toward epoch 50, and
+`branches` is 51, one for each member, so that a run goes on past any split and the forks it counts are
+those of fifty epochs. A lost Welcome costs the run one member, who never joined, where one stops a run
+of `50-epochs-waku-loss.json` (see [With frames lost](#with-frames-lost)). At no loss a fork is the
+code's, not the network's.
 
 ## A group that grows
 
@@ -295,8 +307,8 @@ one at a time, as `50-epochs.json` seats them, no epoch takes longer than 70.05 
 | Test | `cargo test --release --workspace` in the dev shell, on Linux and macOS |
 | Tools | the tests of `tools/forks`, `tools/sim` and the script that writes the site |
 | Sim in one process | `50-epochs.json` and `50-epochs-waku.json`, through `nix run .#groupv2-simulation` |
-| List the scenarios held to what is expected | the names of the files in `tools/sim/expected/`, for the next job |
-| Sim held to what is expected | for each file in `tools/sim/expected/`, a sweep of three seeds of the scenario of that name, held by `compare` to the file |
+| List the scenarios held to what is expected | the names of the files in `tools/sim/expected/` and how many outcomes each holds, for the next job |
+| Sim held to what is expected | for each file in `tools/sim/expected/`, a sweep of the scenario of that name, as many runs as the file holds outcomes, held by `compare` to the file |
 | Publish the report to GitHub Pages | the report of the two simulation jobs, on the site |
 
 [Reports](../reports/) shows what the two simulation jobs came to on master and on each pull request.

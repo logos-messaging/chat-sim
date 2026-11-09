@@ -384,6 +384,10 @@ class Reading(unittest.TestCase):
         self.assertEqual(
             kept,
             [
+                "50-epochs-by-saro-waku-loss-0.1.json",
+                "50-epochs-by-saro-waku-loss-0.json",
+                "50-epochs-by-saro-waku-loss-1.json",
+                "50-epochs-by-saro-waku-loss-5.json",
                 "50-epochs-waku-loss.json",
                 "50-epochs-waku.json",
                 "50-epochs.json",
@@ -445,6 +449,18 @@ class Reading(unittest.TestCase):
         self.assertEqual((lossy.network.loss, lossy.network.welcome_loss), (0.05, 0.05))
         held = dataclasses.replace(lossy.network, loss=0, welcome_loss=0)
         self.assertEqual(dataclasses.replace(lossy, network=held), waku)
+
+    def test_fifty_epochs_by_saro_are_those_on_waku_with_loss_grown_by_saro_at_their_rate(self):
+        seated = scenario.read(TOOL / "scenarios" / "50-epochs-waku-loss.json")
+        alone = Grow(epochs=50, adders=None, branches=51, by="saro")
+        for percent, rate in ((0, 0), (0.1, 0.001), (1, 0.01), (5, 0.05)):
+            grown = scenario.read(
+                TOOL / "scenarios" / f"50-epochs-by-saro-waku-loss-{percent}.json"
+            )
+            rated = dataclasses.replace(seated.network, loss=rate, welcome_loss=rate)
+            self.assertEqual(
+                grown, dataclasses.replace(seated, network=rated, steps=(alone,)), percent
+            )
 
     def test_a_grow_on_waku_has_two_hundred_delays_of_its_arrivals_and_differs_by_its_rate(self):
         grows = {

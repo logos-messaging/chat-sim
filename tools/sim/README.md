@@ -228,6 +228,9 @@ and `fifty-sized.json`, two sizes runs have been measured at (see
 `grow-by-saro-waku-loss-5.json` and `grow-by-saro-waku-loss-10.json` grow it by saro alone, and
 `grow-waku-size-50.json` holds one of fifty toward epoch 1000 (see
 [A group that grows](#a-group-that-grows)).
+`50-epochs-by-saro-waku-loss-0.json`, `-0.1`, `-1` and `-5` grow a group of 51 by saro alone
+toward epoch 50 on the network of `50-epochs-waku-loss.json`, at four rates of loss (see
+[A sweep held to what is expected](#a-sweep-held-to-what-is-expected)).
 `lossy-wire.json` has a wire, and CI on that branch runs it and `three.json` in containers (see
 [In containers](#in-containers)). `fleet-five.json` needs the `logos.test` fleet and is no part
 of CI (see [On a fleet preset](#on-a-fleet-preset)).
@@ -416,21 +419,36 @@ ids and the fields of a `grow` step, or a run of the sweep was not in one proces
 writes the outcomes of the sweep to the file instead: a revision of logos-chat or of chat-sim
 that changes how a run comes out has its outcomes written, and the file's diff shows the change.
 
-`expected/` holds the outcomes of the scenarios CI sweeps, three runs each, at the revision of
-logos-chat that `Cargo.toml` pins. Each is on the library's own timers and Waku's delays, any
-member adding up to three a round. The `grow-waku-loss-` ones have 200 members and go until the
-trunk holds epoch 50 or five main branches run side by side, and `grow-waku-size-50.json` holds
-fifty until the trunk holds epoch 1000 or a main branch forks off it (see
-[A group that grows](#a-group-that-grows)):
+`expected/` holds the outcomes of the scenarios CI sweeps at the revision of logos-chat that
+`Cargo.toml` pins, and CI sweeps each as many runs as its file holds outcomes, from seed 0. Each
+is on the library's own timers and Waku's delays. The `50-epochs-by-saro-waku-loss-` ones are 51
+members that saro alone grows toward epoch 50, and the others have any member adding up to three a
+round: the `grow-waku-loss-` ones have 200 members and go until the trunk holds epoch 50 or five
+main branches run side by side, and `grow-waku-size-50.json` holds fifty until the trunk holds
+epoch 1000 or a main branch forks off it (see [A group that grows](#a-group-that-grows)):
 
-| Scenario | Loss |
-|---|---|
-| `grow-waku-loss-0.json` | none |
-| `grow-waku-loss-0.1.json` | 0.1% |
-| `grow-waku-loss-0.5.json` | 0.5% |
-| `grow-waku-loss-1.json` | 1% |
-| `grow-waku-loss-5.json` | 5% |
-| `grow-waku-size-50.json` | none |
+| Scenario | Loss | Runs |
+|---|---|---|
+| `50-epochs-by-saro-waku-loss-0.json` | none | 2 |
+| `50-epochs-by-saro-waku-loss-0.1.json` | 0.1% | 2 |
+| `50-epochs-by-saro-waku-loss-1.json` | 1% | 2 |
+| `50-epochs-by-saro-waku-loss-5.json` | 5% | 2 |
+| `grow-waku-loss-0.json` | none | 3 |
+| `grow-waku-loss-0.1.json` | 0.1% | 3 |
+| `grow-waku-loss-0.5.json` | 0.5% | 3 |
+| `grow-waku-loss-1.json` | 1% | 3 |
+| `grow-waku-loss-5.json` | 5% | 3 |
+| `grow-waku-size-50.json` | none | 3 |
+
+The `50-epochs-by-saro-waku-loss-` ones measure how many epochs a group of 51 lasts as one group.
+Each is `50-epochs-waku-loss.json` (see
+[Fifty epochs as the module runs them](#fifty-epochs-as-the-module-runs-them)) losing the rate its
+name gives in percent of the frames each member receives, Welcomes too, with a `grow` step in
+place of its `seat` and `post` steps: saro alone adds, one member a round, toward epoch 50, and
+`branches` is 51, one for each member, so that a run goes on past any split and the forks it
+counts are those of fifty epochs. A run ends when the trunk holds epoch 50, when every member is
+seated, or when saro can add no more. A lost Welcome costs the run one member, who never joined,
+where the `seat` step stops at it. At no loss a fork is the code's, not the network's.
 
 ## What a run does
 

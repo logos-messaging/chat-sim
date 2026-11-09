@@ -90,6 +90,13 @@ def expected(file: Path) -> List[dict]:
     return held
 
 
+def held_runs(directory: Path) -> List[Tuple[str, int]]:
+    """Each scenario `directory` holds a file of expected outcomes of, by the file's name without
+    `.json`, and how many runs the file holds."""
+    names = sorted(path.stem for path in directory.glob("*.json"))
+    return [(name, len(expected(directory / f"{name}.json"))) for name in names]
+
+
 def change(was: dict, now: dict) -> str:
     """`same`; `re-rolled` when both runs drew ids and the group's or the members' differ;
     `better` or `worse` by where the run stands; or `changed` when it stands where it did.
