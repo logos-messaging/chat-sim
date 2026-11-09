@@ -25,7 +25,6 @@ fn main() -> ExitCode {
 /// getrandom crate and OpenMLS ask libc for them.
 #[cfg(target_os = "linux")]
 mod host {
-    use de_mls::WallClock;
     use libchat::MockClock;
     use rand_chacha::ChaCha20Rng;
     use rand_chacha::rand_core::{RngCore, SeedableRng};

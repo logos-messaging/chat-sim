@@ -2,7 +2,6 @@
 //! a refusal names the field and what it should be.
 
 use crate::test_client::fast_group_v2_config;
-use de_mls::WallClock;
 use libchat::{GroupV2Config, MockClock};
 use network_model::{NotARate, Rate};
 use serde_json::{Map, Value};
@@ -110,7 +109,9 @@ impl Plan {
         let budget = seconds(plan.get("budget_s")?)
             .ok_or_else(|| Refused("budget_s is not a number of seconds, 0 or more".into()))?;
         let start = Duration::from_secs(whole(plan.get("start")?, "start")?);
-        if MockClock::at(start).now() != start {
+        let clock = MockClock::new();
+        clock.advance(start);
+        if clock.now() != start {
             return Err(Refused("start is past the time the clock counts to".into()));
         }
         if start < KEY_PACKAGE_MARGIN {

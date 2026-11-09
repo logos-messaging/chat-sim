@@ -1,4 +1,3 @@
-use de_mls::WallClock;
 use libchat::{ConversationId, MockClock, WakeupService};
 use std::cell::RefCell;
 use std::cmp::Reverse;

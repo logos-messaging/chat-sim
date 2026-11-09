@@ -11,7 +11,6 @@ mod plan;
 
 use crate::log::{Member, Record};
 use crate::test_client::{Harness, STEP};
-use de_mls::WallClock;
 use group_log::Records;
 use libchat::{ChatError, ConversationId, MockClock, SignerKey};
 use network_model::{AppId, Dropped, Kind, Model, Rules, Why, Withhold};
@@ -63,7 +62,8 @@ pub fn run(plan: &Path, out: &Path, host: impl FnOnce(u64, &MockClock)) -> Resul
     let mut into = File::create(&result).map_err(|e| NotRun::at(&result, e))?;
 
     let began = Instant::now();
-    let clock = MockClock::at(plan.start);
+    let clock = MockClock::new();
+    clock.advance(plan.start);
     host(plan.seed, &clock);
     let (subscriber, records) = group_log::on(file, clock.clone());
     let came_to = tracing::subscriber::with_default(subscriber, || {
@@ -1843,7 +1843,8 @@ mod tests {
     fn by_hand<T>(plan: &Value, steps: impl FnOnce(&mut Run) -> T) -> T {
         let plan = Plan::read(&plan.to_string()).expect("a plan");
         let log = tempfile::tempfile().expect("a file");
-        let clock = MockClock::at(plan.start);
+        let clock = MockClock::new();
+        clock.advance(plan.start);
         let (subscriber, records) = group_log::on(log, clock.clone());
         tracing::subscriber::with_default(subscriber, || {
             steps(&mut Run::new(&plan, clock, records))

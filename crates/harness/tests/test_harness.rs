@@ -6,7 +6,6 @@
 //! cargo test -p harness --test test_harness
 //! ```
 
-use de_mls::WallClock;
 use harness::{Harness, TestHarness};
 use libchat::{GroupV2Config, MockClock};
 use network_model::{Dropped, Model, Rules, read};
@@ -106,7 +105,8 @@ fn every_client_is_under_the_settings_and_on_the_clock_it_was_built_with() {
     // to half a second.
     let config = GroupV2Config::default();
     let window = config.commit_batch_window;
-    let clock = MockClock::at(Duration::from_secs(1_791_817_445));
+    let clock = MockClock::new();
+    clock.advance(Duration::from_secs(1_791_817_445));
     let mut harness = Harness::new(names.to_vec(), config, clock.clone(), |_, _| {});
 
     for creator in 0..names.len() {

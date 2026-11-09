@@ -1,7 +1,6 @@
 use crate::mem_store::MemStore;
 use crate::test_ident::{AcceptAllAuth, TestIdent};
-use de_mls::WallClock;
-use libchat::{AddressedEnvelope, DeliveryService, GroupV2Clock, GroupV2Config, MockClock};
+use libchat::{AddressedEnvelope, Clock, DeliveryService, GroupV2Config, MockClock};
 use libchat::{ConversationId, Core, IdentityProvider, PayloadOutcome};
 use libchat::{ParticipantId, SignerKey};
 use network_model::{AppId, Dropped, Model, read};
@@ -347,7 +346,7 @@ impl Harness {
                 MemStore::new(),
             )
             .unwrap();
-            core_client.set_group_v2_clock(GroupV2Clock::Mock(ws.clock()));
+            core_client.set_clock(Clock::Mock(ws.clock()));
             core_client.set_group_v2_config(config.clone());
 
             let client = TestClient::init(core_client, account, app_ids);

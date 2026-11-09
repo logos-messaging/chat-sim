@@ -2,7 +2,6 @@
 //! they are written.
 
 use crate::log::{Record, TRACE, lines};
-use de_mls::WallClock;
 use libchat::MockClock;
 use std::fmt;
 use std::fs::File;
