@@ -28,6 +28,7 @@ simulations for master and for each open pull request.
 | [`tools/sim`](tools/sim/README.md) | Runs a scenario, and sweeps one over seeds and rates |
 | [`tools/forks`](tools/forks/README.md) | Reads the logs of a group's members and says whether the group forked |
 | [`guide`](guide) | The guide, a Starlight site: how a run works, how to run one, and how to read what it finds |
+| `.github/scripts/measure.py` | Says whether `simulate.yml`'s main suite is to run at logos-chat main's tip, from the points on `gh-pages` and the runs going |
 | `.github/scripts/mock-registry.py` | The KeyPackage registry the peers of a run share |
 | `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page |
 | `.github/scripts/simulate.py` | Plans the jobs of `simulate.yml` and writes the comment on what they came to |
@@ -51,6 +52,14 @@ with no base; `long` runs `50-epochs`, `50-epochs-waku` and every other scenario
 `tools/sim matrix` says and a cell a rate and seed, for `main` how the runs at each rate ended, and
 for `long` what each scenario's runs came to and which moved from the base's, or from those
 `tools/sim/expected` holds when there is no base.
+
+`measure-main.yml` starts it as well: every hour, it dispatches `main` at logos-chat main's tip,
+unless the tip has its point on `gh-pages` at the chat-sim commit a run measures (the newest that
+touches `crates/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`, `rust-toolchain.toml`, `flake.nix`,
+`flake.lock`, `tools/forks/forks/`, `tools/sim/sim/` or `tools/sim/scenarios/`), a run at the
+tip handed no `pr`, of any suite, is queued or in progress, or such a run of `main` of chat-sim's
+default branch ended at that commit without its point, which a person looks into before starting
+it again by hand.
 
 ## Running it
 

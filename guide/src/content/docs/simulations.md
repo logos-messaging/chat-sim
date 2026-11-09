@@ -310,6 +310,7 @@ one at a time, as `50-epochs.json` seats them, no epoch takes longer than 70.05 
 | List the scenarios held to what is expected | the names of the files in `tools/sim/expected/` and how many outcomes each holds, for the next job |
 | Sim held to what is expected | for each file in `tools/sim/expected/`, a sweep of the scenario of that name, as many runs as the file holds outcomes, held by `compare` to the file |
 | Publish the report to GitHub Pages | the report of the two simulation jobs, on the site |
+| Measure main's tip when it has no point | every hour, in `measure-main.yml`: `simulate.yml`'s `main` suite at logos-chat main's tip, seeds 0 to 19 of each `50-epochs-by-saro-waku-loss-` scenario, unless the tip has its point on the site at the chat-sim commit a run measures, the newest that touches `crates/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`, `rust-toolchain.toml`, `flake.nix`, `flake.lock`, `tools/forks/forks/`, `tools/sim/sim/` or `tools/sim/scenarios/`, a run at the tip handed no `pr`, of any suite, is queued or in progress, or such a run of `main` of chat-sim's default branch ended at that commit without its point |
 
 [Reports](../reports/) shows what the two simulation jobs came to on master and on each pull request.
 

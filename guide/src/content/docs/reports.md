@@ -17,6 +17,20 @@ commit, not on its merge into master.
 The report is published when a simulation job fails as well: that is the run whose report is wanted
 most. The output of each `compare` is also in the summary of its job on the CI run.
 
+Every hour, `measure-main.yml` starts `simulate.yml`'s `main` suite at logos-chat main's tip: seeds 0
+to 19 of each `50-epochs-by-saro-waku-loss-` scenario. It starts nothing when the tip already has its
+point on the site, `logos-chat/main/<tip>/<measurement>/point.json`, at the chat-sim commit a run
+measures (the newest that touches `crates/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
+`rust-toolchain.toml`, `flake.nix`, `flake.lock`, `tools/forks/forks/`, `tools/sim/sim/` or
+`tools/sim/scenarios/`), or when a run at the tip, of any suite, is queued or in progress. A tip with a
+point at an older measurement only is run again: what changed in chat-sim is the reason. A run of `main`
+at the tip that ended at the measurement without its point holds the tip back too: the next would fail
+where it failed, so the summary of the hourly run links it, and the tip runs again when it is started by
+hand.
+A run handed a `pr` holds the tip back neither going nor ended: it ran at the pull request's head and
+keeps no point, and a run started at the tip does not cancel it. Nor does a run of another branch than
+chat-sim's default that ended: it keeps no point either.
+
 ## The list
 
 `reports/` has a row for master, then one for each open pull request, the highest number first:

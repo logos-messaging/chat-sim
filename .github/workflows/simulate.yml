@@ -16,7 +16,10 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # a scenario a side, and holds them to the base's runs, or without a base to
 # what is held.
 # Started by hand until an app can start it from logos-chat and post the
-# comment there.
+# comment there. Every hour, measure-main.yml starts main at logos-chat main's
+# tip if the tip has no point at the current measurement, no run at it handed
+# no pr is going, and no such run of main ended at that measurement without its
+# point.
 on:
   workflow_dispatch:
     inputs:
