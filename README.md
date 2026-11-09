@@ -17,7 +17,8 @@ logos-chat's `feat/local-network`.
 
 CI publishes the [guide](https://logos-messaging.github.io/chat-sim/guide/) to the
 repository's [Pages site](https://logos-messaging.github.io/chat-sim/), with a report of its
-simulations for master and for each open pull request.
+simulations for master and for each open pull request, and the runs of logos-chat that
+`simulate.yml` keeps.
 
 ## Layout
 
@@ -30,7 +31,7 @@ simulations for master and for each open pull request.
 | [`guide`](guide) | The guide, a Starlight site: how a run works, how to run one, and how to read what it finds |
 | `.github/scripts/measure.py` | Says whether `simulate.yml`'s main suite is to run at logos-chat main's tip, from the points on `gh-pages` and the runs going |
 | `.github/scripts/mock-registry.py` | The KeyPackage registry the peers of a run share |
-| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page |
+| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main and the runs of its pull requests that `simulate.yml` makes |
 | `.github/scripts/simulate.py` | Plans the jobs of `simulate.yml` and writes the comment on what they came to |
 
 ## The logos-chat it runs
@@ -51,7 +52,12 @@ with no base; `long` runs `50-epochs`, `50-epochs-waku` and every other scenario
 `tools/sim/expected` but those four. The run's summary holds the comment: for `pr` the verdict
 `tools/sim matrix` says and a cell a rate and seed, for `main` how the runs at each rate ended, and
 for `long` what each scenario's runs came to and which moved from the base's, or from those
-`tools/sim/expected` holds when there is no base.
+`tools/sim/expected` holds when there is no base. Its publish job keeps a `main` run handed no
+`pr` on the Pages
+site as a point of logos-chat's main, with the matrix's cells and summary, and a `pr` run under
+the number of its pull request, with the matrix, each with its runs' text; the guide's
+[Reports](https://logos-messaging.github.io/chat-sim/guide/reports/#logos-chats-runs) says what
+they hold and how long.
 
 `measure-main.yml` starts it as well: every hour, it dispatches `main` at logos-chat main's tip,
 unless the tip has its point on `gh-pages` at the chat-sim commit a run measures (the newest that

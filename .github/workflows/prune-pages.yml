@@ -5,6 +5,11 @@ name: Prune Pages
 # Closing a pull request prunes; the weekly run sweeps up any report a publish
 # recreated after its pull request closed.
 #
+# The weekly run and a dispatch also rewrite gh-pages as one commit of its
+# tree as it stands. Every publish is a commit, so the branch would otherwise
+# keep in its history the runs' text of every point of logos-chat's main,
+# about 5 MB a point, long after the tree let it go past the newest thirty.
+#
 # pull_request_target runs this file from the base branch with a write token,
 # and it never checks out the pull request's code.
 
@@ -76,3 +81,23 @@ jobs:
           git -C site commit -qm "Prune the reports of closed pull requests: ${removed[*]}"
           git -C site push origin gh-pages
           echo "Pruned: ${removed[*]}"
+
+      # In the publish queue, so no publish lands between the read and the
+      # push; the lease refuses the push all the same if one did. Pages serves
+      # the branch as pushed and builds once. The checkout is shallow, so the
+      # head's parent is read from the commit itself.
+      - name: Rewrite gh-pages as one commit of its tree
+        if: ${{ github.event_name != 'pull_request_target' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          head="$(git -C site rev-parse HEAD)"
+          if ! grep -q '^parent ' <<<"$(git -C site cat-file commit "$head")"; then
+            echo "gh-pages is one commit already."
+            exit 0
+          fi
+          git -C site config user.name "github-actions[bot]"
+          git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          one="$(git -C site commit-tree -m "Rewrite gh-pages as one commit of its tree" "$head^{tree}")"
+          git -C site push --force-with-lease="refs/heads/gh-pages:$head" origin "$one:refs/heads/gh-pages"
+          echo "gh-pages is now one commit, $one, of the tree of $head."

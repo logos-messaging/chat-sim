@@ -323,6 +323,16 @@ class Title(unittest.TestCase):
         )
 
 
+class Publish(unittest.TestCase):
+    def test_simulate_yml_keeps_a_point_for_a_main_run_handed_no_pr_alone(self):
+        workflow = (ROOT / ".github" / "workflows" / "simulate.yml").read_text(encoding="utf-8")
+        publish = workflow.split("\n  publish:\n", 1)[1].split("\n    runs-on: ", 1)[0]
+
+        main = "needs.plan.outputs.suite == 'main'"
+        self.assertEqual(publish.count(main), 1)
+        self.assertIn(f"{main} && needs.plan.outputs.pr == ''", publish)
+
+
 class Branch(unittest.TestCase):
     def test_measure_main_yml_lists_the_runs_of_the_default_branch_alone_that_ended(self):
         workflow = (ROOT / ".github" / "workflows" / "measure-main.yml").read_text(encoding="utf-8")

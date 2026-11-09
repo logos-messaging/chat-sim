@@ -1,6 +1,6 @@
 ---
 title: Reports
-description: What CI runs on master and on each pull request, what the site's reports show, and how to make a row again on your machine.
+description: What CI runs on master and on each pull request, what the site's reports show, how to make a row again on your machine, and what the site keeps of logos-chat's runs.
 ---
 
 CI runs on every push to master and on every pull request to master. Two of its jobs run simulations in
@@ -17,16 +17,14 @@ commit, not on its merge into master.
 The report is published when a simulation job fails as well: that is the run whose report is wanted
 most. The output of each `compare` is also in the summary of its job on the CI run.
 
-Every hour, `measure-main.yml` starts `simulate.yml`'s `main` suite at logos-chat main's tip: seeds 0
-to 19 of each `50-epochs-by-saro-waku-loss-` scenario. It starts nothing when the tip already has its
-point on the site, `logos-chat/main/<tip>/<measurement>/point.json`, at the chat-sim commit a run
-measures (the newest that touches `crates/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`,
-`rust-toolchain.toml`, `flake.nix`, `flake.lock`, `tools/forks/forks/`, `tools/sim/sim/` or
-`tools/sim/scenarios/`), or when a run at the tip, of any suite, is queued or in progress. A tip with a
-point at an older measurement only is run again: what changed in chat-sim is the reason. A run of `main`
-at the tip that ended at the measurement without its point holds the tip back too: the next would fail
-where it failed, so the summary of the hourly run links it, and the tip runs again when it is started by
-hand.
+Every hour, `measure-main.yml` starts `simulate.yml`'s `main` suite at logos-chat main's tip: seeds 0 to
+19 of each `50-epochs-by-saro-waku-loss-` scenario. It starts nothing when the tip already has its point
+on the site, `logos-chat/main/<tip>/<measurement>/point.json`, at the chat-sim commit a run measures
+(see [logos-chat's runs](#logos-chats-runs)), or when a run at the tip, of any suite, is queued or in
+progress. A tip with a point at an older measurement only is run again: what changed in chat-sim is the
+reason. A run of `main` at the tip that ended at the measurement without its point holds the tip back
+too: the next would fail where it failed, so the summary of the hourly run links it, and the tip runs
+again when it is started by hand.
 A run handed a `pr` holds the tip back neither going nor ended: it ran at the pull request's head and
 keeps no point, and a run started at the tip does not cancel it. Nor does a run of another branch than
 chat-sim's default that ended: it keeps no point either.
@@ -118,6 +116,57 @@ nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out tmp
 
 Its `report.txt` is the page's, and so is its `run.txt` but for the wall time and the load average in its
 head. A sweep of `grow-waku-size-50.json` takes the runner over half an hour.
+
+## logos-chat's runs
+
+The workflow `simulate.yml` runs chat-sim at a logos-chat revision it is handed, and its publish job keeps
+the runs of two of its suites under `logos-chat/` of the site: those of `main`, seeds 0 to 19 of each
+`50-epochs-by-saro-waku-loss-` file at a commit of logos-chat's main, as a point of main, and those of
+`pr`, seeds 0 and 1 of the three lossy ones at a logos-chat pull request's head and at its base. A pull
+request's run keeps the matrix [`tools/sim matrix`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#a-matrix-of-a-revisions-runs-beside-its-bases)
+wrote of the runs and a point the matrix's cells and summary, and each keeps each run's `run.txt`,
+`report.txt` and `run.json`. A run's `report.json`, ten times the rest, stays in the workflow run's
+artifacts.
+
+| Path | Holds |
+|---|---|
+| `logos-chat/main/<sha>/<measurement>/point.json` | the point of the logos-chat commit `<sha>`, measured by the chat-sim commit `<measurement>` |
+| `logos-chat/main/<sha>/<measurement>/<scenario>/<run>/` | the text of each of the point's runs, `<run>` its number in a sweep of its scenario |
+| `logos-chat/pr-N/matrix.json` | the matrix of the newest run for pull request N, the head's runs beside the base's |
+| `logos-chat/pr-N/meta.json` | what ran: the pull request's number as `pr`, the `revision` and the `base`, `null` without one, chat-sim's commit as `chat_sim`, the `measurement`, the workflow run's `run_url` and `run_number`, and the `time` it was written, in UTC |
+| `logos-chat/pr-N/head/<scenario>/<run>/`, `logos-chat/pr-N/base/<scenario>/<run>/` | the text of each run at the head and at the base |
+
+The measurement is the newest chat-sim commit that touches what a run measures: `crates/`,
+`Cargo.toml`, `Cargo.lock`, `.cargo/`, `rust-toolchain.toml`, `flake.nix`, `flake.lock`,
+`tools/forks/forks/`, `tools/sim/sim/` or `tools/sim/scenarios/`. A commit to the guide or to the pages
+moves no point, and one that moves the measurement gives a logos-chat commit a point of its own beside the
+one before.
+
+A `point.json` holds what a page of the point draws:
+
+| Field | Holds |
+|---|---|
+| `logos_chat`, `measurement`, `chat_sim` | the logos-chat commit, the chat-sim commit the runs measure, and the chat-sim commit that ran them |
+| `time`, `run_url`, `run_number` | when the point was written, in UTC, and the workflow run's page and number |
+| `merged` | the logos-chat pull requests merged since the point it follows, each its `number` and `title`, from the commits logos-chat's compare API gives between the two: a squash merge's commit is titled `<title> (#N)`, a merge commit's `Merge pull request #N from <branch>` above the title |
+| `previous` | the point it follows, its `logos_chat` and `measurement`, and as `rerolled` whether a run drew other ids than that point's run of its scenario and seed, the group's or the members'; `null` for the first point |
+| `cells` | each run's cell as the matrix holds it: the scenario, the seed, the run, the loss and its rate, the run's outcome as `compare --write` writes one, the epochs without a fork, how the run ended, and whether its job could not build chat-sim. A point has no base, so each field of a base is `null`, and `unbuilt.base` is `false` |
+| `summary` | of each rate, how many runs and how each ended, the lowest, median and highest epochs without a fork, and the median of the members off the trunk at the end |
+
+The points are in the order of their workflow runs' numbers, which GitHub gives in the order the runs
+were started and a re-run keeps. A point follows the point of the site of the highest run number below
+its own but the one of its own commit and measurement, and is refused unless logos-chat's compare API
+says its commit is ahead of that point's, or is that commit. A point and a pull request's directory are
+those of the newest run to publish them, by run number: a publish from an older run is kept out, and a
+re-run replaces what was there whole. Only a run of chat-sim's default branch keeps a point, and none
+keeps one whose jobs read no run at the revision, built or not, as when logos-chat has no such commit.
+A `main` run handed a `pr` ran at the pull request's head, not at a commit of main: it is not kept.
+
+The newest thirty points by run number keep their runs' text: once a point is written, the runs' text of
+each point older than those is removed, and its `point.json` stays. A point's text is about 5 MB, and
+Pages holds a site of 1 GB. Every publish is a commit on `gh-pages`, so the weekly run of Prune Pages also
+rewrites the branch as one commit of its tree as it stands, and the text a point lets go leaves the
+branch's history too.
 
 ## The guide
 

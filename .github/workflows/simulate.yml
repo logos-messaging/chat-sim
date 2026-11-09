@@ -15,11 +15,20 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # one tools/sim/expected holds but the goal's, as many runs as it holds, a job
 # a scenario a side, and holds them to the base's runs, or without a base to
 # what is held.
+# The publish job keeps a main run on the Pages site as a point of main,
+# logos-chat/main/<sha>/<measurement>/, and a pr run for a pull request in
+# logos-chat/pr-<N>/, each with its runs' text; the long suite keeps nothing.
+# Main's points are a series the site shares, so only a run of the default
+# branch keeps one; a pr run keeps its pull request's run from any branch.
+# A main run handed a pr ran at the pull request's head, not at a commit of
+# main: it keeps no point, and measure-main.yml does not wait on it.
 # Started by hand until an app can start it from logos-chat and post the
 # comment there. Every hour, measure-main.yml starts main at logos-chat main's
 # tip if the tip has no point at the current measurement, no run at it handed
 # no pr is going, and no such run of main ended at that measurement without its
 # point.
+# Only a dispatch starts it, never a pull_request event, so no fork's code
+# reaches the publish job, which can push to gh-pages.
 on:
   workflow_dispatch:
     inputs:
@@ -262,3 +271,125 @@ jobs:
         with:
           name: comment
           path: ${{ runner.temp }}/comment.md
+
+  publish:
+    name: Publish to GitHub Pages
+    needs: [plan, comment]
+    # A pull request's run is kept by its number: a pr run handed none has no
+    # place on the site. A point of main is measured by the default branch, and
+    # a main run handed a pr ran at its head, not at a commit of main: it is not
+    # kept.
+    if: >-
+      ${{ !cancelled() && needs.comment.result == 'success' &&
+      ((needs.plan.outputs.suite == 'main' && needs.plan.outputs.pr == '' &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) ||
+      (needs.plan.outputs.suite == 'pr' && needs.plan.outputs.pr != '')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write          # push to the gh-pages branch
+
+    # Serialize with the other jobs that publish to gh-pages, queued as they are.
+    concurrency:
+      group: gh-pages-publish
+      cancel-in-progress: false
+      queue: max
+
+    env:
+      SUITE: ${{ needs.plan.outputs.suite }}
+      REVISION: ${{ needs.plan.outputs.revision }}
+      BASE: ${{ needs.plan.outputs.base }}
+      PR: ${{ needs.plan.outputs.pr }}
+      MEASUREMENT: ${{ needs.plan.outputs.measurement }}
+
+    steps:
+      # The tree that ran, whose .github/scripts/pages.py writes what it ran. It
+      # writes none of the pages the site shares, the default branch's to write.
+      - uses: actions/checkout@v4
+
+      # Fails when there is no gh-pages branch, which is made once, by hand.
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+
+      - name: Download the matrix
+        uses: actions/download-artifact@v8
+        with:
+          name: matrix
+          path: ${{ runner.temp }}/matrix
+      # Each job's artifact in a directory of its own, as the comment job has
+      # them: the jobs of one scenario each wrote a sweep.json.
+      - name: Download the runs at the revision
+        uses: actions/download-artifact@v8
+        with:
+          pattern: sim-revision-*
+          path: ${{ runner.temp }}/revision
+      - name: Download the runs at the base
+        if: ${{ needs.plan.outputs.base != '' }}
+        uses: actions/download-artifact@v8
+        with:
+          pattern: sim-base-*
+          path: ${{ runner.temp }}/base
+
+      - name: Find the point this one follows
+        id: previous
+        if: ${{ needs.plan.outputs.suite == 'main' }}
+        run: |
+          python3 .github/scripts/pages.py previous site --revision "$REVISION" \
+            --measurement "$MEASUREMENT" --run-number "$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+      # The pull requests merged since that point, from logos-chat's public
+      # API, which the job's own token reads.
+      - name: Ask logos-chat for its commits since that point
+        if: ${{ steps.previous.outputs.previous != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS: ${{ steps.previous.outputs.previous }}
+        run: |
+          gh api "repos/logos-messaging/logos-chat/compare/$PREVIOUS...$REVISION" \
+            > "$RUNNER_TEMP/commits.json"
+
+      - name: Write the point, and prune the text of the points past the newest thirty
+        if: ${{ needs.plan.outputs.suite == 'main' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/revision"
+          commits=()
+          if [ -f "$RUNNER_TEMP/commits.json" ]; then
+            commits=(--commits "$RUNNER_TEMP/commits.json")
+          fi
+          python3 .github/scripts/pages.py point "$RUNNER_TEMP/matrix/matrix.json" \
+            "$RUNNER_TEMP/revision" site "${commits[@]}" \
+            --revision "$REVISION" --measurement "$MEASUREMENT" --chat-sim "$GITHUB_SHA" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --run-number "$GITHUB_RUN_NUMBER" --time "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      - name: Write the pull request's run
+        if: ${{ needs.plan.outputs.suite == 'pr' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/revision" "$RUNNER_TEMP/base"
+          base=()
+          if [ -n "$BASE" ]; then
+            base=(--base "$BASE" --base-runs "$RUNNER_TEMP/base")
+          fi
+          python3 .github/scripts/pages.py pr "$RUNNER_TEMP/matrix/matrix.json" \
+            "$RUNNER_TEMP/revision" site --pr "$PR" "${base[@]}" \
+            --revision "$REVISION" --measurement "$MEASUREMENT" --chat-sim "$GITHUB_SHA" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --run-number "$GITHUB_RUN_NUMBER" --time "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      - name: Push to gh-pages
+        run: |
+          said="the point of logos-chat main $REVISION at $MEASUREMENT"
+          if [ "$SUITE" = pr ]; then
+            said="the run of logos-chat#$PR ($REVISION)"
+          fi
+          git -C site add -A
+          if git -C site diff --cached --quiet; then
+            echo "gh-pages already holds $said, or a newer run's."
+            exit 0
+          fi
+          git -C site config user.name "github-actions[bot]"
+          git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C site commit -qm "Publish $said"
+          git -C site push origin gh-pages
