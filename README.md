@@ -43,11 +43,14 @@ revision. To move it, change the revision in both, then run
 `de-mls` and `chat-proto` are spelled in `Cargo.toml` as logos-chat spells them, and move with it.
 
 The workflow `simulate.yml` runs master at another logos-chat revision, started by hand with the
-revision, the suite, and a base revision to compare with or none. The quick suite, for a
-logos-chat pull request, is `50-epochs`, `50-epochs-waku` and `grow-waku-loss-0.5`, `-1` and
-`-5`; the long one adds every other scenario held in `tools/sim/expected`. The run's summary holds
-the comment for the pull request: what each scenario's runs came to, and which moved from the
-base's, or from those `tools/sim/expected` holds when there is no base.
+revision, the suite, and a base revision to compare with or none. The `pr` suite, for a
+logos-chat pull request, runs seeds 0 and 1 of `50-epochs-by-saro-waku-loss-0.1`, `-1` and `-5`,
+a job a run, at the revision and at the base; `main` runs seeds 0 to 19 of those and of `-0`,
+with no base; `long` runs `50-epochs`, `50-epochs-waku` and every other scenario held in
+`tools/sim/expected` but those four. The run's summary holds the comment: for `pr` the verdict
+`tools/sim matrix` says and a cell a rate and seed, for `main` how the runs at each rate ended, and
+for `long` what each scenario's runs came to and which moved from the base's, or from those
+`tools/sim/expected` holds when there is no base.
 
 ## Running it
 

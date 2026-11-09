@@ -1,10 +1,22 @@
 name: Simulate
+# The suite and the revision, so that a run in progress for a revision is
+# found by its title.
+run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr != '' && format(' for logos-chat#{0}', inputs.pr) || '' }}
 
-# Runs chat-sim's master at a logos-chat revision it is handed: the quick
-# suite for a logos-chat pull request, the long one for main. Handed a base
-# revision too, it runs the suite there beside it, and the comment says which
-# runs moved; without one, it holds the runs to tools/sim/expected. Started by
-# hand until an app can start it from logos-chat and post the comment there.
+# Runs chat-sim's master at a logos-chat revision it is handed, in one of three
+# suites. pr and main run the goal, a group of 51 that saro grows toward epoch
+# 50 (tools/sim/scenarios/50-epochs-by-saro-waku-loss-*.json), at rates of
+# loss. pr, for a logos-chat pull request, runs seeds 0 and 1 at 0.1, 1 and 5%,
+# a job a run, at the revision and at the base it is handed. main runs seeds 0
+# to 19 at no loss and at those three, two jobs of ten a rate, and no base.
+# tools/sim matrix pairs each run with the base's of its scenario and seed and
+# says the verdict; the comment is drawn from what it wrote, kept as the
+# artifact matrix. long runs the two scenarios of fifty epochs and every other
+# one tools/sim/expected holds but the goal's, as many runs as it holds, a job
+# a scenario a side, and holds them to the base's runs, or without a base to
+# what is held.
+# Started by hand until an app can start it from logos-chat and post the
+# comment there.
 on:
   workflow_dispatch:
     inputs:
@@ -12,13 +24,13 @@ on:
         description: The logos-chat commit to run, its 40 hex digits
         required: true
       base:
-        description: The logos-chat commit to compare with, its 40 hex digits, or nothing
+        description: The logos-chat commit to compare with, its 40 hex digits, or nothing; main takes none
         required: false
       suite:
         description: The suite to run
         type: choice
-        options: [quick, long]
-        default: quick
+        options: [pr, main, long]
+        default: pr
       pr:
         description: The number of the logos-chat pull request the revision is of, or nothing
         required: false
@@ -72,7 +84,9 @@ jobs:
         run: ${{ fromJSON(needs.plan.outputs.runs) }}
     env:
       REVISION: ${{ matrix.run.revision }}
-      SCENARIOS: ${{ matrix.run.scenarios }}
+      SCENARIO: ${{ matrix.run.scenario }}
+      FROM: ${{ matrix.run.from }}
+      RUNS: ${{ matrix.run.runs }}
     steps:
       - uses: actions/checkout@v4
       - uses: logos-co/setup-nix-cache-action@v1
@@ -99,42 +113,44 @@ jobs:
           cargo=$(grep -o 'logos-chat?rev=[0-9a-f]*' Cargo.lock | sort -u)
           echo "flake.lock pins logos-chat at $flake, Cargo.lock at: $cargo"
           [ "$flake" = "$REVISION" ] && [ "$cargo" = "logos-chat?rev=$REVISION" ]
-      # A revision chat-sim does not build at runs nothing: each of the job's
-      # scenarios says so, for the comment.
-      - name: Mark the scenarios unbuilt
+      # A revision chat-sim does not build at runs nothing: each run the job was
+      # to do says so in the directory the sweep would have given it, for the
+      # comment.
+      - name: Mark the runs unbuilt
         if: ${{ failure() && steps.build.outcome == 'failure' }}
         run: |
-          for scenario in $SCENARIOS; do
-            mkdir -p "$RUNNER_TEMP/sim/${scenario%=*}"
-            echo "chat-sim does not build at $REVISION" > "$RUNNER_TEMP/sim/${scenario%=*}/unbuilt"
+          last=$((FROM + RUNS - 1))
+          for ((number = FROM; number <= last; number++)); do
+            out="$RUNNER_TEMP/sim/$SCENARIO/$(printf '%0*d' "${#last}" "$number")"
+            mkdir -p "$out"
+            echo "chat-sim does not build at $REVISION" > "$out/unbuilt"
           done
-      # Each scenario a sweep, so that compare can read it: NAME=RUNS, as many
-      # runs as tools/sim/expected holds for it, or one. A sweep that does not
-      # go as its scenario expects fails the job after the rest have run.
-      - name: Run the scenarios
+      # Runs FROM to FROM + RUNS - 1 of the scenario's sweep, each with the
+      # seeds it has in a sweep from run 1, and writes their outcomes for
+      # compare. A sweep that does not go as its scenario expects fails the job
+      # once the outcomes are written.
+      - name: Run the scenario
         run: |
           status=0
-          for scenario in $SCENARIOS; do
-            name=${scenario%=*}
-            out="$RUNNER_TEMP/sim/$name"
-            python3 tools/sim sweep "tools/sim/scenarios/$name.json" --runs "${scenario#*=}" \
-              --one-process target/release/harness-run --out "$out" || status=1
-            python3 tools/sim compare --write "$out/outcomes.json" "$out" || status=1
-          done
+          out="$RUNNER_TEMP/sim/$SCENARIO"
+          python3 tools/sim sweep "tools/sim/scenarios/$SCENARIO.json" --from "$FROM" \
+            --runs "$RUNS" --one-process target/release/harness-run --out "$out" || status=1
+          python3 tools/sim compare --write "$out/outcomes.json" "$out" || status=1
           exit "$status"
-      # Each sweep's files and its runs', without each run's group.log,
+      # The sweep's files and its runs', without each run's group.log,
       # plan.json, result.json, runner.out and runner.stderr, in the directory
-      # named for the scenario.
+      # named for the scenario. Each job's under a name of its own: two jobs of
+      # one scenario each wrote a sweep.json.
       - name: Upload the runs' text
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: sim-${{ matrix.run.side }}-${{ strategy.job-index }}
+          name: sim-${{ matrix.run.side }}-${{ matrix.run.scenario }}-${{ matrix.run.from }}
           path: |
             ${{ runner.temp }}/sim/*/sweep.txt
             ${{ runner.temp }}/sim/*/sweep.json
             ${{ runner.temp }}/sim/*/outcomes.json
-            ${{ runner.temp }}/sim/*/unbuilt
+            ${{ runner.temp }}/sim/*/*/unbuilt
             ${{ runner.temp }}/sim/*/*/run.txt
             ${{ runner.temp }}/sim/*/*/run.json
             ${{ runner.temp }}/sim/*/*/report.txt
@@ -153,46 +169,77 @@ jobs:
       REVISION: ${{ needs.plan.outputs.revision }}
       BASE: ${{ needs.plan.outputs.base }}
       PR: ${{ needs.plan.outputs.pr }}
+      RUNS: ${{ needs.plan.outputs.runs }}
       SCENARIOS: ${{ needs.plan.outputs.scenarios }}
     steps:
       - uses: actions/checkout@v4
-      # Merged, each scenario's text lands in a directory of its own however
-      # many jobs uploaded one.
+      # Each job's artifact in a directory of its own, never merged: the jobs
+      # of one scenario each wrote a sweep.json, and what reads a side reads
+      # every run.json under it.
       - name: Download the runs at the revision
         uses: actions/download-artifact@v8
         with:
           pattern: sim-revision-*
           path: ${{ runner.temp }}/revision
-          merge-multiple: true
       - name: Download the runs at the base
         if: ${{ needs.plan.outputs.base != '' }}
         uses: actions/download-artifact@v8
         with:
           pattern: sim-base-*
           path: ${{ runner.temp }}/base
-          merge-multiple: true
-      # compare's rows for each scenario with something to hold its runs to:
-      # the base's runs, or without a base what tools/sim/expected holds.
-      - name: Hold each scenario's runs to the base's, or to what is held
+      # Every run the plan asked for is a cell, so that one whose job uploaded
+      # nothing has no outcome; a side whose jobs uploaded nothing has no runs.
+      - name: Pair the runs, and say what moved
+        if: ${{ needs.plan.outputs.suite != 'long' }}
         run: |
+          mkdir -p "$RUNNER_TEMP/revision" "$RUNNER_TEMP/base"
+          printf '%s\n' "$RUNS" > "$RUNNER_TEMP/asked.json"
+          base=()
+          if [ -n "$BASE" ]; then
+            base=(--base "$RUNNER_TEMP/base")
+          fi
+          python3 tools/sim matrix "$RUNNER_TEMP/revision" "${base[@]}" \
+            --asked "$RUNNER_TEMP/asked.json" --out "$RUNNER_TEMP/matrix.json"
+      - name: Upload the matrix
+        if: ${{ needs.plan.outputs.suite != 'long' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: matrix
+          path: ${{ runner.temp }}/matrix.json
+      # compare's rows for each scenario of the long suite with something to
+      # hold its runs to: the base's runs, or without a base what
+      # tools/sim/expected holds. A side's sweeps are read at any depth: a
+      # pattern that matches one artifact downloads it into the path itself.
+      - name: Hold each scenario's runs to the base's, or to what is held
+        if: ${{ needs.plan.outputs.suite == 'long' }}
+        run: |
+          shopt -s globstar nullglob
           for name in $SCENARIOS; do
-            out="$RUNNER_TEMP/revision/$name"
-            was="tools/sim/expected/$name.json"
-            if [ -n "$BASE" ]; then
-              was="$RUNNER_TEMP/base/$name/outcomes.json"
-            fi
-            if [ -f "$was" ] && [ -f "$out/outcomes.json" ]; then
-              python3 tools/sim compare "$was" "$out" > "$out/compare.txt" 2>&1 || true
-            fi
+            for out in "$RUNNER_TEMP"/revision/**/"$name"; do
+              was="tools/sim/expected/$name.json"
+              if [ -n "$BASE" ]; then
+                bases=("$RUNNER_TEMP"/base/**/"$name"/outcomes.json)
+                was=${bases[0]-}
+              fi
+              if [ -f "$was" ] && [ -f "$out/outcomes.json" ]; then
+                python3 tools/sim compare "$was" "$out" > "$out/compare.txt" 2>&1 || true
+              fi
+            done
           done
       - name: Write the comment
         run: |
-          base=()
-          if [ -n "$BASE" ]; then
-            base=(--base "$BASE" --base-runs "$RUNNER_TEMP/base")
+          given=(--matrix "$RUNNER_TEMP/matrix.json")
+          if [ "$SUITE" = long ]; then
+            given=("$RUNNER_TEMP/revision")
           fi
-          python3 .github/scripts/simulate.py comment "$RUNNER_TEMP/revision" \
-            --suite "$SUITE" --revision "$REVISION" "${base[@]}" --pr "$PR" \
+          if [ -n "$BASE" ]; then
+            given+=(--base "$BASE")
+            if [ "$SUITE" = long ]; then
+              given+=(--base-runs "$RUNNER_TEMP/base")
+            fi
+          fi
+          python3 .github/scripts/simulate.py comment "${given[@]}" \
+            --suite "$SUITE" --revision "$REVISION" --pr "$PR" \
             --expected tools/sim/expected --chat-sim "$GITHUB_SHA" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             > "$RUNNER_TEMP/comment.md"
