@@ -3,17 +3,25 @@ name: Measure main
 # Every hour, dispatches simulate.yml's main suite at logos-chat main's tip
 # when the tip has no point on gh-pages at the chat-sim commit a run measures,
 # logos-chat/main/<tip>/<measurement>/point.json. A point already there means
-# nothing is dispatched, and so does a run at the tip of any suite queued or in
+# nothing is dispatched, and so does a run of main at the tip queued or in
 # progress, which a dispatch would cancel through simulate.yml's concurrency
 # group, and so does a run of main at the tip that ended at
 # this measurement without its point, which a person looks into before the tip
-# runs again. Hourly, as the net under a dispatch from logos-chat
+# runs again. A run of another suite does not hold main back: the concurrency
+# group names the suite. Hourly, as the net under a dispatch from logos-chat
 # on a push to main: the tip gets its point when that dispatch failed or there
 # is none yet, and again when chat-sim's measurement moves, which logos-chat
 # never sees; a merge has its point within the hour and the run's half hour.
-# A run at the tip handed a pr holds nothing back, going or ended: it keeps no
-# point, and its concurrency group is the pull request's. Nor does a run of
-# another branch than the default that ended: it keeps no point either.
+# A run of main at the tip handed a pr holds nothing back, going or ended: it
+# keeps no point, and its concurrency group is the pull request's. Nor does a
+# run of another branch than the default that ended: it keeps no point either.
+# Once each Sunday, in UTC, it dispatches the long suite at the tip as well:
+# the first tick of the day that finds no run of long handed no pr created
+# that day, going or ended, dispatches it, unless the tip has its long run on
+# gh-pages at this measurement, logos-chat/long/<tip>/<measurement>/long.json,
+# or a run of long is queued or in progress. A long run that failed is not
+# tried again that day; a person dispatches it. A tick that cannot list the
+# runs created that day dispatches no long run, and main as it would.
 # .github/scripts/measure.py decides from what the steps before it read.
 on:
   schedule:
@@ -32,7 +40,7 @@ concurrency:
 
 jobs:
   measure:
-    name: Measure main's tip when it has no point
+    name: Measure main's tip when it has no point, and on Sundays run the long suite
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -47,6 +55,9 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
           filter: blob:none
+      - name: Read the tick's time
+        id: tick
+        run: echo "now=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - name: Name the chat-sim commit the runs measure
         id: measured
         run: python3 .github/scripts/simulate.py measurement >> "$GITHUB_OUTPUT"
@@ -67,21 +78,49 @@ jobs:
           gh run list --repo "$GITHUB_REPOSITORY" --workflow simulate.yml --status completed \
             --branch "$BRANCH" --limit 100 --json displayTitle,headSha,url \
             > "$RUNNER_TEMP/ended.json"
+      # Every run created since the start of the tick's day, in UTC, going or
+      # ended, page by page. The API lists no more than 1000 runs of a filter,
+      # so a list short of its total fails the step rather than let a second
+      # run of long through. A step that fails holds back long alone. After the
+      # runs going: one that ended since then is here.
+      - name: List the Simulate runs created since the start of the day
+        id: created
+        continue-on-error: true
+        env:
+          NOW: ${{ steps.tick.outputs.now }}
+        run: |
+          gh api --paginate -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/simulate.yml/runs" \
+            -f created=">=${NOW%%T*}T00:00:00Z" -F per_page=100 > "$RUNNER_TEMP/created-pages.json"
+          jq -s '[.[].workflow_runs[] | {displayTitle: .display_title, createdAt: .created_at, url: .html_url}]' \
+            "$RUNNER_TEMP/created-pages.json" > "$RUNNER_TEMP/created.json"
+          total=$(jq -s '.[0].total_count' "$RUNNER_TEMP/created-pages.json")
+          if [ "$(jq length "$RUNNER_TEMP/created.json")" -lt "$total" ]; then
+            echo "::error::The runs API listed fewer of the runs created today than its total, $total."
+            exit 1
+          fi
       # After the runs are listed: one that ended since then published its
-      # point before it ended.
-      - name: List the points on gh-pages
+      # point, or its long run, before it ended.
+      - name: List the points and the long runs on gh-pages
         run: |
           git fetch -q origin gh-pages
-          git ls-tree -r --name-only origin/gh-pages -- logos-chat/main > "$RUNNER_TEMP/points"
+          git ls-tree -r --name-only origin/gh-pages -- logos-chat/main logos-chat/long \
+            > "$RUNNER_TEMP/points"
       - name: Read logos-chat main's tip, and decide
         id: decide
         env:
           MEASUREMENT: ${{ steps.measured.outputs.measurement }}
+          NOW: ${{ steps.tick.outputs.now }}
+          CREATED: ${{ steps.created.outcome }}
         run: |
           tip=$(gh api repos/logos-messaging/logos-chat/branches/main --jq .commit.sha)
+          created=()
+          if [ "$CREATED" = success ]; then
+            created=(--created "$RUNNER_TEMP/created.json")
+          fi
           python3 .github/scripts/measure.py --tip "$tip" --measurement "$MEASUREMENT" \
             --points "$RUNNER_TEMP/points" --going "$RUNNER_TEMP/going" \
-            --ended "$RUNNER_TEMP/ended.json" --summary "$GITHUB_STEP_SUMMARY" >> "$GITHUB_OUTPUT"
+            --ended "$RUNNER_TEMP/ended.json" "${created[@]}" \
+            --now "$NOW" --summary "$GITHUB_STEP_SUMMARY" >> "$GITHUB_OUTPUT"
       # Given no ref, gh dispatches on the default branch.
       - name: Dispatch the main suite at the tip
         if: ${{ steps.decide.outputs.dispatch == 'true' }}
@@ -90,3 +129,12 @@ jobs:
         run: |
           gh workflow run simulate.yml --repo "$GITHUB_REPOSITORY" \
             -f suite=main -f revision="$REVISION"
+      # Whether main's dispatch went out or not: the one does not wait on the
+      # other.
+      - name: Dispatch the long suite at the tip
+        if: ${{ !cancelled() && steps.decide.outputs.long == 'true' }}
+        env:
+          REVISION: ${{ steps.decide.outputs.revision }}
+        run: |
+          gh workflow run simulate.yml --repo "$GITHUB_REPOSITORY" \
+            -f suite=long -f revision="$REVISION"

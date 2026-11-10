@@ -1171,6 +1171,20 @@ class Comment(Fixture):
         self.assertNotIn("|", out)
         self.assertTrue(out.endswith(f"chat-sim `fedcba9` · [the run]({RUN_URL})\n"))
 
+    def test_links_the_long_run_s_page_and_says_the_build_s_errors_are_on_it(self):
+        report = f"https://logos-messaging.github.io/chat-sim/logos-chat/long/{REVISION}/{BASE}/"
+        foot = f"chat-sim `fedcba9` · [the report]({report}) · [the run]({RUN_URL})\n"
+        _, out, _ = self.comment("--report-url", report)
+        self.assertIn(f"\n\n{foot}", out)
+        self.unbuilt(self.runs)
+        _, out, _ = self.comment("--report-url", report)
+        self.assertIn(
+            "\n\nchat-sim does not build at this revision, so no scenario ran: the build's "
+            "errors are on the report page.\n\n",
+            out,
+        )
+        self.assertTrue(out.endswith(foot))
+
     def test_a_base_chat_sim_does_not_build_at_is_no_base_to_hold_to(self):
         self.unbuilt(self.base_runs)
         _, out, _ = self.comment(*self.with_base)

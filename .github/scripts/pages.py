@@ -16,9 +16,12 @@ point that loses it is drawn again from its point.json. The points are in the or
 runs' numbers, which GitHub gives in the order the runs were started and a re-run keeps;
 `previous` names the point a new one follows. `pr` keeps the newest run of a logos-chat pull
 request in `logos-chat/pr-N/` the same way: its matrix, both sides' runs' text, its `meta.json`
-and its report page. `trend` draws the graph over main, `logos-chat/index.html`, from the
-`point.json` of every point; one it cannot read is left out, with a warning. `closed` names the
-runs of logos-chat's pull requests that are no longer open.
+and its report page. `long` keeps a run of the long suite at a commit of main, held to what is
+expected, in `logos-chat/long/<sha>/<measurement>/` the same way: its `long.json`, each
+scenario's compare output, its runs' text and its page; the newest fifteen long runs keep their
+text. `trend` draws the graph over main, `logos-chat/index.html`, from the `point.json` of every
+point, and links the newest long run; one it cannot read is left out, with a warning. `closed`
+names the runs of logos-chat's pull requests that are no longer open.
 
 The pages run no script, and every text that comes from a run, from a pull request's title or
 from an API is escaped.
@@ -52,6 +55,13 @@ LOGOS_CHAT = "logos-chat"
 # How many of the newest points of main keep their runs' text, about 5 MB a point, in a site
 # Pages holds to 1 GB. Every point keeps its point.json.
 WINDOW = 30
+# How many of the newest long runs keep their text, their runs' and compare's. A long run takes
+# about 10.7 MB while it keeps its text: 9.6 MB of the six held grows' eighteen runs, 7.1 MB of
+# it the three of grow-waku-size-50, on master's CI run 42260983597 without report.json, 0.08 MB
+# of the two runs of fifty epochs, and its page, 1 MB, which shows that text. Fifteen take
+# 160 MB, about the 150 MB of the thirty points, so the two hold under a third of Pages' 1 GB.
+# Every long run keeps its long.json, and a page drawn from it.
+LONG_WINDOW = 15
 # The text of a run the site keeps, and the build's log of one whose job could not build
 # chat-sim. Its report.json, ten times the rest, stays in the artifacts.
 TEXTS = ("run.txt", "report.txt", "run.json", "build.log")
@@ -183,7 +193,7 @@ _SUMMARY = {
     },
     "members_off_trunk": {"median": (int, float, _NONE)},
 }
-# What `write_point` and `write_pr` write.
+# What `write_point`, `write_pr` and `write_long` write.
 _POINT = {
     "logos_chat": (str,),
     "measurement": (str,),
@@ -196,6 +206,18 @@ _POINT = {
     "cells": (list,),
     "summary": (list,),
 }
+_LONG = {
+    "logos_chat": (str,),
+    "measurement": (str,),
+    "chat_sim": (str,),
+    "time": (str,),
+    "run_url": (str,),
+    "run_number": (int,),
+    "scenarios": (list,),
+}
+_LONG_SCENARIO = {"scenario": (str,), "compare": (dict, _NONE), "runs": (list,)}
+_COMPARE = {"verdict": (str,), "counted": (str,)}
+_LONG_RUN = {"run": (int,), "seed": (int,), "unbuilt": (bool,), "outcome": (dict, _NONE)}
 _MERGED = {"number": (int,), "title": (str,)}
 _PREVIOUS = {"logos_chat": (str,), "measurement": (str,), "rerolled": (bool,)}
 _PR_META = {
@@ -438,12 +460,49 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="what the run jobs at the base uploaded, given with --base and only with it",
     )
     pr.set_defaults(command=_pr)
+    held = commands.add_parser(
+        "long",
+        help="keep a run of the long suite at a commit of logos-chat's main",
+        description="Writes the run of the long suite, held to what is expected, to "
+        "logos-chat/long/SHA/MEASUREMENT/ of SITE: long.json, which says what ran and what each "
+        "scenario came to, each scenario's compare output as compare.txt, each run's run.txt, "
+        "report.txt and run.json, or build.log of a job that could not build chat-sim, and the "
+        "page, index.html. What was there is replaced, unless it is the long run of a run of a "
+        f"higher number. Then removes the text of each long run past the newest {LONG_WINDOW}, by "
+        "run number, and draws its page again. Runs of which none was read, built or not, are "
+        "refused.",
+    )
+    _add_ran(held, runs="the run jobs uploaded", matrix=False)
+    held.add_argument(
+        "--compared",
+        metavar="DIR",
+        type=Path,
+        required=True,
+        help="each scenario's compare in <scenario>/, at any depth: its output, compare.txt, and "
+        "the status it exited with, compare.status",
+    )
+    held.add_argument(
+        "--expected",
+        metavar="DIR",
+        type=Path,
+        required=True,
+        help="tools/sim/expected: the outcomes chat-sim holds, a file a scenario",
+    )
+    held.add_argument(
+        "--scenarios",
+        metavar="DIR",
+        type=Path,
+        required=True,
+        help="tools/sim/scenarios: a file a scenario, whose seed is that of run 1 of its sweep",
+    )
+    held.set_defaults(command=_long)
     trend = commands.add_parser(
         "trend",
         help="draw the graph over logos-chat's main",
         description="Writes logos-chat/index.html of SITE, the graph over logos-chat's main, "
-        "from the point.json of each point, in the order of their runs' numbers. A point.json it "
-        f"cannot read is left out, with a warning; points of more than {HUES} rates are refused.",
+        "from the point.json of each point, in the order of their runs' numbers, and a link to "
+        "the long run of the highest run number. A point.json or a long.json it cannot read is "
+        f"left out, with a warning; points of more than {HUES} rates are refused.",
     )
     trend.add_argument("site", metavar="SITE", type=Path, help="the site, as gh-pages holds it")
     trend.set_defaults(command=_trend)
@@ -674,6 +733,49 @@ def write_pr(matrix: dict, runs: Path, base_runs: Optional[Path], site: Path, me
     return meta
 
 
+def write_long(
+    runs: Path,
+    compared: Path,
+    site: Path,
+    facts: dict,
+    swept: Sequence[Tuple[str, int]],
+    scenarios: Path,
+) -> dict:
+    """Writes the run of the long suite `facts` says ran to
+    `logos-chat/long/<sha>/<measurement>/` of `site`, replacing what was there: long.json, each
+    run's text under `runs` at any depth in `<scenario>/<run>/`, its run by number, each
+    scenario's compare output under `compared` at any depth in `<scenario>/compare.txt`, and the
+    page.
+
+    `swept` names the suite's scenarios and how many runs of each it asked for, and `scenarios`
+    holds their files. Runs of which none was read, built or not, are refused. Returns the long
+    run, as `read_long` reads it back.
+    """
+    out = _long_at(site, facts["logos_chat"], facts["measurement"])
+    copies = _texts(runs, out)
+    held = []
+    for name, count in swept:
+        said = None
+        written = next(iter(sorted(compared.glob(f"**/{name}/compare.txt"))), None)
+        if written is not None:
+            copies.append((written, out / name / "compare.txt"))
+            lines = written.read_text(encoding="utf-8", errors="replace").strip().splitlines()
+            said = {"verdict": outcome(written.parent), "counted": lines[-1] if lines else ""}
+        first = _first_seed(scenarios / f"{name}.json")
+        held.append(
+            {"scenario": name, "compare": said, "runs": _long_runs(runs, name, count, first)}
+        )
+    ran = [run for one in held for run in one["runs"]]
+    if not any(run["outcome"] is not None or run["unbuilt"] for run in ran):
+        raise Unreadable("RUNS: no run at the revision was read, and none could not be built")
+    _replace(out, copies)
+    long = {**facts, "scenarios": held}
+    (out / "long.json").write_text(json.dumps(long, indent=1) + "\n", encoding="utf-8")
+    long = read_long(out / "long.json")
+    draw_long(out, long)
+    return long
+
+
 def draw_point(directory: Path, point: dict) -> None:
     """Writes the page of the point in `directory`, its index.html, from `point` and the runs'
     text `directory` keeps: what ran, the pull requests it merged and the point it follows, its
@@ -726,7 +828,7 @@ def draw_point(directory: Path, point: dict) -> None:
     )
     unbuilt = next((cell for cell in point["cells"] if cell["unbuilt"]["head"]), None)
     if unbuilt is not None:
-        body += _build(unbuilt, _run_dir(directory, unbuilt), _run_href(unbuilt), kept)
+        body += _build(_job(unbuilt), _run_dir(directory, unbuilt), _run_href(unbuilt), kept)
     body += _rates_table(directory, point) + '<section id="runs">\n<h2>The runs</h2>\n'
     # The section above shows the build's log once; a run that could not build links its own.
     for name, cells in rows:
@@ -802,7 +904,7 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
         unbuilt = next((cell for cell in matrix["cells"] if cell["unbuilt"]["head"]), None)
         if unbuilt is not None:
             run = _run_href(unbuilt)
-            body += _build(unbuilt, out / "head" / run, f"head/{run}")
+            body += _build(_job(unbuilt), out / "head" / run, f"head/{run}")
     else:
         heats = [
             f'<div>\n<p class="side">the head {_code(head)}</p>\n'
@@ -872,6 +974,98 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
     (out / "index.html").write_text(_page(title, body, _CHARTS + _REPORT), encoding="utf-8")
 
 
+def draw_long(directory: Path, long: dict) -> None:
+    """Writes the page of the long run in `directory`, its index.html, from `long` and the text
+    `directory` keeps: what ran, a row a scenario with what its runs came to and what compare said
+    of them, the build's log once where chat-sim did not build, then a section a scenario with
+    compare's verdict and, while its text is kept, its output, its runs as a table, and each run
+    with the command that runs it again and, while its text is kept, the text and its lines. Every
+    file it links is one `directory` holds."""
+    logos_chat = long["logos_chat"]
+    facts = {"revision": logos_chat, "base": "", "chat_sim": long["chat_sim"]}
+    kept = any(path.is_file() for path in _long_texts(directory, long))
+    body = (
+        f'<p class="muted">{_link("../../../../", "chat-sim")} / '
+        f'{_link("../../../", "Over main")}</p>\n'
+        f"<h1>logos-chat main {_e(logos_chat[:7])}, the long suite, {_e(long['time'][:10])}</h1>\n"
+        f'<p class="facts">main {_commit(LOGOS_CHAT_URL, logos_chat)} · chat-sim '
+        f"{_commit(CHAT_SIM_URL, long['chat_sim'])} · the measurement "
+        f"{_commit(CHAT_SIM_URL, long['measurement'])} · {_link(long['run_url'], 'the run')} · "
+        f"{_when(long)} UTC</p>\n"
+        "<p>The two scenarios of fifty epochs, a run each, and each scenario "
+        "<code>tools/sim/expected</code> holds but the goal's, as many runs as it holds outcomes, "
+        "held to them, at this commit of logos-chat's main. They measure other things than the "
+        "goal: fifty epochs on the library's own timers, a group any member adds to, and one "
+        "held at fifty members. The graph over main draws none of it.</p>\n"
+    )
+    if not kept:
+        body += (
+            f'<p class="muted">The site keeps the text of the newest {LONG_WINDOW} long runs, and '
+            "no longer this one's: the command under each run makes it again.</p>\n"
+        )
+    rows = "".join(
+        f'<tr><td>{_link("#" + one["scenario"], one["scenario"])}</td>'
+        f'<td class="n">{len(one["runs"])}</td><td>{_e(_long_came_to(one))}</td>'
+        f'<td class="{_long_against(one)[0]}">{_e(_long_against(one)[1])}</td></tr>\n'
+        for one in long["scenarios"]
+    )
+    body += (
+        '<section id="held">\n<h2>Held to what is expected</h2>\n'
+        '<div class="wide"><table class="runs">\n'
+        '<thead><tr><th>Scenario</th><th class="n">Runs</th><th>Came to</th>'
+        "<th>Against what is held</th></tr></thead>\n"
+        f"<tbody>\n{rows}</tbody>\n</table></div>\n"
+        '<p class="caption">Came to: each run\'s verdict. Against what is held: the count '
+        "<code>tools/sim compare</code> ends with, each run of the sweep held to the outcome "
+        "expected of it; nothing held where chat-sim holds no outcome of the scenario.</p>\n"
+        "</section>\n"
+    )
+    unbuilt = next(
+        ((one, run) for one in long["scenarios"] for run in one["runs"] if run["unbuilt"]), None
+    )
+    if unbuilt is not None:
+        one, run = unbuilt
+        at = f"{one['scenario']}/{run['run']}"
+        body += _build(one["scenario"], directory / at, f"{at}/", kept)
+    for one in long["scenarios"]:
+        name = one["scenario"]
+        kind, said = _long_against(one)
+        verdict = f'<b class="{kind}">{_e(said)}</b>'
+        if one["compare"] is not None:
+            verdict = (
+                f'<b class="{kind}">{_e(one["compare"]["verdict"])}</b> '
+                f'<span class="muted">{_e(said)}</span>'
+            )
+        elif said == "-":
+            verdict = f'<b class="none">{_e(_long_came_to(one))}</b>'
+        body += (
+            f'<section id="{_e(name)}">\n<h2>{_e(name)}</h2>\n'
+            f'<p class="verdict">{verdict}</p>\n'
+        )
+        if (directory / name / "compare.txt").is_file():
+            body += _shown(directory / name, f"{name}/", "compare.txt")
+        body += _long_runs_table(directory, one)
+        # The section above shows the build's log once; a run that could not build links its own.
+        for run in one["runs"]:
+            at, got = f"{name}/{run['run']}", run["outcome"]
+            kind = "none" if got is None else "muted"
+            body += (
+                f'<details class="run">\n<summary>seed {run["seed"]} '
+                f'<span class="{kind}">{_e(_long_ended(run))}</span></summary>\n'
+            )
+            cell = {"head": got, "unbuilt": {"head": run["unbuilt"]}}
+            body += _side(cell, "head", None, directory / at, f"{at}/", inline=not run["unbuilt"])
+            body += _again({"scenario": name, "run": run["run"], "seed": run["seed"]}, facts)
+            body += "</details>\n"
+        body += "</section>\n"
+    body += (
+        f'<p class="muted">What the page shows: the guide\'s '
+        f'{_link("../../../../guide/reports/#the-pages-of-logos-chats-runs", "Reports")}.</p>\n'
+    )
+    title = f"chat-sim: logos-chat main {logos_chat[:7]}, the long suite"
+    (directory / "index.html").write_text(_page(title, body, _CHARTS + _REPORT), encoding="utf-8")
+
+
 def write_trend(site: Path) -> None:
     """Writes `logos-chat/index.html` of `site`, the graph over logos-chat's main, from each
     point `points` reads, the oldest at the left: of each rate the epochs without a fork and the
@@ -880,7 +1074,8 @@ def write_trend(site: Path) -> None:
 
     Every number it draws is one a point.json holds. A point that measures another chat-sim
     commit than the point before it has a dashed line, and one re-rolled against the point it
-    follows an open marker. Points of more than `HUES` rates are refused.
+    follows an open marker. Points of more than `HUES` rates are refused. Of the long runs it
+    links the one of the highest run number, and draws nothing.
     """
     found = [point for _, point in reversed(points(site))]
     rates = _rates(found)
@@ -891,6 +1086,16 @@ def write_trend(site: Path) -> None:
         f"it grows toward epoch {_TOP}, at each rate of loss, over logos-chat's main: a point for "
         "each of its commits that was measured, the oldest at the left.</p>\n"
     )
+    newest = next(iter(longs(site)), None)
+    if newest is not None:
+        _, long = newest
+        at = f"long/{long['logos_chat']}/{long['measurement']}/"
+        body += (
+            f"<p>{_link(at, 'The newest long run')}, at main {_code(long['logos_chat'])} on "
+            f"{_when(long)} UTC: the two scenarios of fifty epochs and each scenario chat-sim "
+            "holds to what is expected but the goal's, run at main's tip each Sunday. They "
+            "measure other things than the goal, so nothing of them is drawn here.</p>\n"
+        )
     if found:
         body += (
             _epochs_chart(found, rates)
@@ -914,13 +1119,14 @@ def points(site: Path) -> List[Tuple[Path, dict]]:
     """Each point of logos-chat's main `site` holds, its directory and its point.json, the
     newest first by run number. A point.json `read_point` refuses is left out, and a warning on
     standard error says why."""
-    found = []
-    for path in sorted((site / LOGOS_CHAT / "main").glob("*/*/point.json")):
-        try:
-            found.append((path.parent, read_point(path)))
-        except Unreadable as refused:
-            print(f"::warning::{refused}", file=sys.stderr)
-    return sorted(found, key=_newest, reverse=True)
+    return _read_all(sorted((site / LOGOS_CHAT / "main").glob("*/*/point.json")), read_point)
+
+
+def longs(site: Path) -> List[Tuple[Path, dict]]:
+    """Each long run `site` holds, its directory and its long.json, the newest first by run
+    number. A long.json `read_long` refuses is left out, and a warning on standard error says
+    why."""
+    return _read_all(sorted((site / LOGOS_CHAT / "long").glob("*/*/long.json")), read_long)
 
 
 def previous(
@@ -935,21 +1141,23 @@ def previous(
     return None
 
 
-def prune(found: Sequence[Tuple[Path, dict]]) -> List[Path]:
-    """Removes the runs' text from each point of `found` past the newest `WINDOW` by run
-    number, each `<scenario>/<run>/` it empties with it, and returns the directories it removed
-    text from. A point keeps its point.json and every other file."""
+def prune(found: Sequence[Tuple[Path, dict]], window: int = WINDOW) -> List[Path]:
+    """Removes the text from each point or long run of `found` past the newest `window` by run
+    number, its runs' and a long run's compare output, each `<scenario>/<run>/` and
+    `<scenario>/` it empties with it, and returns the directories it removed text from. Each
+    keeps its point.json or long.json and every other file."""
     pruned = []
-    for directory, _ in sorted(found, key=_newest, reverse=True)[WINDOW:]:
+    for directory, _ in sorted(found, key=_newest, reverse=True)[window:]:
         texts = [path for name in TEXTS for path in directory.glob(f"*/*/{name}") if path.is_file()]
+        texts += [path for path in directory.glob("*/compare.txt") if path.is_file()]
         for path in texts:
             path.unlink()
-        for emptied in (
-            *{path.parent for path in texts},
-            *{path.parent.parent for path in texts},
-        ):
-            if not any(emptied.iterdir()):
-                emptied.rmdir()
+        # The deepest first, so that a scenario's directory is emptied of its runs' before it is
+        # looked at.
+        emptied = {path.parent for path in texts} | {path.parent.parent for path in texts}
+        for one in sorted(emptied - {directory}, key=lambda one: len(one.parts), reverse=True):
+            if not any(one.iterdir()):
+                one.rmdir()
         if texts:
             pruned.append(directory)
     return pruned
@@ -1086,6 +1294,28 @@ def read_pr_meta(path: Path) -> dict:
     except Unreadable as refused:
         raise Unreadable(f"{path}: {refused}") from None
     return meta
+
+
+def read_long(path: Path) -> dict:
+    """A long.json, refused unless it is one `write_long` writes, in the directory of its
+    logos-chat commit and its measurement."""
+    long = _json(path)
+    try:
+        _shaped(long, _LONG)
+        _commits(long, "logos_chat", "measurement", "chat_sim")
+        named = (path.parent.parent.name, path.parent.name)
+        if (long["logos_chat"], long["measurement"]) != named:
+            raise Unreadable("logos_chat and measurement do not name its directory")
+        _ran(long)
+        seen = set()
+        for number, one in enumerate(long["scenarios"]):
+            _long_scenario(one, f"scenarios[{number}]")
+            if one["scenario"] in seen:
+                raise Unreadable(f"scenarios[{number}] is a second of {one['scenario']}")
+            seen.add(one["scenario"])
+    except Unreadable as refused:
+        raise Unreadable(f"{path}: {refused}") from None
+    return long
 
 
 def _report(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
@@ -1263,6 +1493,52 @@ def _pr(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     return 0
 
 
+def _long(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    _check_facts(parser, args)
+    for flag, directory in (
+        ("--compared", args.compared),
+        ("--expected", args.expected),
+        ("--scenarios", args.scenarios),
+    ):
+        if not directory.is_dir():
+            parser.error(f"{flag}: no such directory: {directory}")
+    found = longs(args.site)
+    out = _long_at(args.site, args.revision, args.measurement)
+    there = next((long for directory, long in found if directory == out), None)
+    if there is not None and there["run_number"] > args.run_number:
+        print(
+            f"Kept {out.relative_to(args.site)}/: it holds the long run of run "
+            f"{there['run_number']}, newer than run {args.run_number}."
+        )
+        return 0
+    try:
+        long = write_long(
+            args.runs,
+            args.compared,
+            args.site,
+            {
+                "logos_chat": args.revision,
+                "measurement": args.measurement,
+                "chat_sim": args.chat_sim,
+                "time": args.time,
+                "run_url": args.run_url,
+                "run_number": args.run_number,
+            },
+            simulate.scenarios("long", args.expected),
+            args.scenarios,
+        )
+    except Unreadable as refused:
+        parser.error(str(refused))
+    kept = [(out, long), *((at, one) for at, one in found if at != out)]
+    for directory in prune(kept, LONG_WINDOW):
+        print(
+            f"Removed the text of {directory.relative_to(args.site)}/: past the newest "
+            f"{LONG_WINDOW} long runs."
+        )
+        draw_long(directory, next(one for at, one in kept if at == directory))
+    return 0
+
+
 def _trend(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     try:
         write_trend(args.site)
@@ -1292,11 +1568,16 @@ def _closed(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     return 0
 
 
-def _add_ran(command: argparse.ArgumentParser, runs: str) -> None:
-    """The arguments that say what a run of simulate.yml ran, and what it came to."""
-    command.add_argument(
-        "matrix", metavar="MATRIX", type=Path, help="the matrix tools/sim matrix wrote of the runs"
-    )
+def _add_ran(command: argparse.ArgumentParser, runs: str, matrix: bool = True) -> None:
+    """The arguments that say what a run of simulate.yml ran, and what it came to: with `matrix`,
+    the matrix of its runs."""
+    if matrix:
+        command.add_argument(
+            "matrix",
+            metavar="MATRIX",
+            type=Path,
+            help="the matrix tools/sim matrix wrote of the runs",
+        )
     command.add_argument(
         "runs",
         metavar="RUNS",
@@ -1322,6 +1603,16 @@ def _add_ran(command: argparse.ArgumentParser, runs: str) -> None:
 
 def _check_ran(parser: argparse.ArgumentParser, args: argparse.Namespace) -> dict:
     """The matrix of a run, once what the command was handed of it is checked."""
+    _check_facts(parser, args)
+    try:
+        return read_matrix(args.matrix)
+    except Unreadable as refused:
+        parser.error(f"MATRIX: {refused}")
+
+
+def _check_facts(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """Refuses what a command was handed of what a run ran unless each is of its form, and its
+    runs are a directory."""
     for flag, sha in (
         ("--revision", args.revision),
         ("--measurement", args.measurement),
@@ -1337,14 +1628,63 @@ def _check_ran(parser: argparse.ArgumentParser, args: argparse.Namespace) -> dic
         parser.error(f"--time: {args.time!r} is not of the form 2026-10-22T07:30:00Z")
     if not args.runs.is_dir():
         parser.error(f"RUNS: no such directory: {args.runs}")
-    try:
-        return read_matrix(args.matrix)
-    except Unreadable as refused:
-        parser.error(f"MATRIX: {refused}")
 
 
 def _point_at(site: Path, logos_chat: str, measurement: str) -> Path:
     return site / LOGOS_CHAT / "main" / logos_chat / measurement
+
+
+def _long_at(site: Path, logos_chat: str, measurement: str) -> Path:
+    return site / LOGOS_CHAT / "long" / logos_chat / measurement
+
+
+def _long_runs(runs: Path, name: str, count: int, first: int) -> List[dict]:
+    """Runs 1 to `count` of the sweep of `name` under `runs`, at any depth, run 1 of seed `first`:
+    each its seed, whether its job could not build chat-sim, and its outcome as `compare --write`
+    wrote it in outcomes.json, or `None`. A job of the long suite sweeps its scenario whole from
+    run 1, so the outcomes are its runs' in order; one of another seed than its run's is
+    refused."""
+    swept = next((path for path in sorted(runs.glob(f"**/{name}")) if path.is_dir()), runs / name)
+    written = swept / "outcomes.json"
+    outcomes = _json(written) if written.is_file() else []
+    if not isinstance(outcomes, list):
+        raise Unreadable(f"{written}: not a list of the outcomes compare --write writes")
+    for number, one in enumerate(outcomes):
+        try:
+            _outcome(one, f"[{number}]")
+        except Unreadable as refused:
+            raise Unreadable(f"{written}: {refused}") from None
+        if one["seed"] != first + number:
+            raise Unreadable(
+                f"{written}: [{number}] is of seed {one['seed']}, and run {number + 1} of seed "
+                f"{first + number}"
+            )
+    numbered = {int(path.name): path for path in swept.glob("*") if _RUN.fullmatch(path.name)}
+    return [
+        {
+            "run": number,
+            "seed": first + number - 1,
+            "unbuilt": number in numbered and (numbered[number] / "unbuilt").is_file(),
+            "outcome": outcomes[number - 1] if number <= len(outcomes) else None,
+        }
+        for number in range(1, count + 1)
+    ]
+
+
+def _long_texts(directory: Path, long: dict) -> List[Path]:
+    """Where the text of a long run would be: each scenario's compare output, and each run's."""
+    return [
+        path
+        for one in long["scenarios"]
+        for path in (
+            directory / one["scenario"] / "compare.txt",
+            *(
+                directory / one["scenario"] / str(run["run"]) / name
+                for run in one["runs"]
+                for name in TEXTS
+            ),
+        )
+    ]
 
 
 def _texts(runs: Path, out: Path) -> List[Tuple[Path, Path]]:
@@ -1380,6 +1720,18 @@ def _ids(cell: dict) -> Optional[Tuple[str, str]]:
     if outcome is None or None in (outcome["conversation"], outcome["members_digest"]):
         return None
     return outcome["conversation"], outcome["members_digest"]
+
+
+def _read_all(paths: Sequence[Path], read: Callable[[Path], dict]) -> List[Tuple[Path, dict]]:
+    """Each of `paths` as `read` reads it, and its directory, the newest first by run number. One
+    `read` refuses is left out, and a warning on standard error says why."""
+    found = []
+    for path in paths:
+        try:
+            found.append((path.parent, read(path)))
+        except Unreadable as refused:
+            print(f"::warning::{refused}", file=sys.stderr)
+    return sorted(found, key=_newest, reverse=True)
 
 
 def _newest(found: Tuple[Path, dict]) -> tuple:
@@ -1457,6 +1809,28 @@ def _named(point: dict, where: str) -> None:
         raise Unreadable(f"{where}.run_url is not an http(s) address")
 
 
+def _long_scenario(one: object, where: str) -> None:
+    """Refuses a scenario of a long run unless it is one `write_long` writes: its runs from 1,
+    each of its seed with its outcome where it has one, and compare's verdict where it ran."""
+    _shaped(one, _LONG_SCENARIO, where)
+    if _SCENARIO.fullmatch(one["scenario"]) is None:
+        raise Unreadable(f"{where}.scenario {one['scenario']!r} is not the name of a scenario")
+    if one["compare"] is not None:
+        _shaped(one["compare"], _COMPARE, f"{where}.compare")
+        if one["compare"]["verdict"] not in _CLASS:
+            raise Unreadable(f"{where}.compare.verdict is none of compare's")
+    if not one["runs"]:
+        raise Unreadable(f"{where}.runs is empty")
+    for number, run in enumerate(one["runs"]):
+        _shaped(run, _LONG_RUN, f"{where}.runs[{number}]")
+        if run["run"] != number + 1:
+            raise Unreadable(f"{where}.runs[{number}].run is not run {number + 1}")
+        if run["outcome"] is not None:
+            _outcome(run["outcome"], f"{where}.runs[{number}].outcome")
+            if run["outcome"]["seed"] != run["seed"]:
+                raise Unreadable(f"{where}.runs[{number}].outcome is not of the run's seed")
+
+
 def _seed(one: object, where: str) -> None:
     _shaped(one, _SEED, where)
     if _SCENARIO.fullmatch(one["scenario"]) is None:
@@ -1472,8 +1846,8 @@ def _commits(held: dict, *fields: str, where: str = "") -> None:
 
 
 def _ran(held: dict) -> None:
-    """Refuses a point or a pull request's meta.json unless the address of its run and its time
-    are of their form."""
+    """Refuses a point, a long run or a pull request's meta.json unless the address of its run
+    and its time are of their form."""
     if _URL.fullmatch(held["run_url"]) is None:
         raise Unreadable("run_url is not an http(s) address")
     try:
@@ -2018,12 +2392,15 @@ def _side(
 ) -> str:
     """A side's run of a cell, its text kept in `run` and linked at `href`: what it came to, its
     lines and who was off the trunk as its run.json has them, and its text, linked and, with
-    `inline`, shown; or why it has no outcome, with the build's log of a job that could not build
-    chat-sim."""
+    `inline`, shown; or why it has no outcome, with what text it left or the build's log of a job
+    that could not build chat-sim."""
     drawn = "<div>\n" + ("" if named is None else f'<p class="side">{named}</p>\n')
     outcome = cell[side]
     if outcome is None and not cell["unbuilt"][side]:
-        return drawn + "<p>no outcome</p>\n</div>\n"
+        drawn += "<p>no outcome</p>\n" + _files(run, href)
+        if inline:
+            drawn += "".join(_folded(run, name) for name in ("run.txt", "report.txt"))
+        return drawn + "</div>\n"
     if outcome is None:
         shown = _shown(run, href, "build.log") if inline else _files(run, href)
         return drawn + "<p>does not build</p>\n" + shown + "</div>\n"
@@ -2139,18 +2516,84 @@ def _runs_table(directory: Path, cells: Sequence[dict]) -> str:
     )
 
 
-def _build(cell: dict, run: Path, href: str, kept: bool = True) -> str:
-    """The section of the build's log of a job that could not build chat-sim, that of `cell`'s
-    run, kept in `run` and linked at `href`; without `kept`, of a point whose text the site no
-    longer keeps, it says so in the log's place."""
+def _build(job: str, run: Path, href: str, kept: bool = True) -> str:
+    """The section of the build's log of a job that could not build chat-sim, the job that was
+    to run what `job` says, its log kept in `run` and linked at `href`; without `kept`, of a run
+    whose text the site no longer keeps, it says so in the log's place."""
     log = '<p class="muted">The site no longer keeps its log.</p>\n'
     if kept:
         log = _shown(run, href, "build.log")
     return (
         '<section id="build">\n<h2>The build\'s log</h2>\n'
-        f"<p>Of the job that was to run {_e(cell['rate'] or cell['scenario'])}, seed "
-        f"{cell['seed']}: no scenario ran.</p>\n" + log + "</section>\n"
+        f"<p>Of the job that was to run {_e(job)}: no scenario ran.</p>\n" + log + "</section>\n"
     )
+
+
+def _job(cell: dict) -> str:
+    """What the job of `cell`'s run was to run: its rate, or its scenario, and its seed."""
+    return f"{cell['rate'] or cell['scenario']}, seed {cell['seed']}"
+
+
+def _long_runs_table(directory: Path, one: dict) -> str:
+    """A row for each run of a scenario of a long run: its seed, how it ended, what its grow
+    came to, and its wall time while its run.json is kept."""
+    rows = []
+    for run in one["runs"]:
+        got = run["outcome"]
+        wall = _wall(_run_json(directory / one["scenario"] / str(run["run"]) / "run.json"))
+        rows.append(
+            f'<tr><td class="n">{_number(run["seed"])}</td>'
+            f"<td>{_e(_long_ended(run))}</td>"
+            f"<td>{_e('-' if got is None else got['came_to'])}</td>"
+            f'<td class="n">{"-" if wall is None else _seconds(wall)}</td></tr>\n'
+        )
+    return (
+        '<div class="wide"><table class="runs">\n'
+        '<thead><tr><th class="n">seed</th><th>how it ended</th><th>what the grow came to</th>'
+        '<th class="n">wall time</th></tr>'
+        f"</thead>\n<tbody>\n{''.join(rows)}</tbody>\n</table></div>\n"
+    )
+
+
+def _long_ended(run: dict) -> str:
+    """How a run of a long run ended: its verdict, or why it has no outcome."""
+    if run["outcome"] is not None:
+        return run["outcome"]["verdict"] or "no verdict"
+    return "does not build" if run["unbuilt"] else "no outcome"
+
+
+def _long_came_to(one: dict) -> str:
+    """What the runs of a scenario of a long run came to, as the comment says it, or that chat-sim
+    does not build where none has an outcome and a job could not build it."""
+    now = _long_outcomes(one)
+    if now is None and any(run["unbuilt"] for run in one["runs"]):
+        return "does not build"
+    return simulate.came_to(now)
+
+
+def _long_against(one: dict) -> Tuple[str, str]:
+    """What compare said of the runs of a scenario of a long run, as the comment says it, and its
+    class."""
+    said = one["compare"]
+    counted = None if said is None else said["counted"]
+    kind = "muted" if said is None else _CLASS[said["verdict"]]
+    return kind, simulate.compare_count(_long_outcomes(one), counted, "nothing held")
+
+
+def _long_outcomes(one: dict) -> Optional[List[dict]]:
+    """The outcomes of the runs of a scenario of a long run, in order, or `None` where none has
+    one."""
+    return [run["outcome"] for run in one["runs"] if run["outcome"] is not None] or None
+
+
+def _first_seed(path: Path) -> int:
+    """The seed of run 1 of a sweep of the scenario in `path`: its `seed`, 0 where it has none.
+    Run k of a sweep has that seed plus k - 1."""
+    scenario = _json(path)
+    seed = scenario.get("seed", 0) if isinstance(scenario, dict) else None
+    if type(seed) is not int or seed < 0:
+        raise Unreadable(f"{path}: its seed is not a whole number from 0")
+    return seed
 
 
 def _again(cell: dict, facts: dict) -> str:

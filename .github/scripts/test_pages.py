@@ -1652,6 +1652,9 @@ class Pages(LogosChat):
         for link in parsed.links:
             if link.startswith("https://") or "guide/" in link:
                 continue
+            if link.startswith("#"):
+                self.assertIn(link[1:], parsed.ids)
+                continue
             target = directory / link
             with self.subTest(link=link):
                 self.assertTrue((target / "index.html" if link.endswith("/") else target).is_file())
@@ -1982,6 +1985,428 @@ class Pages(LogosChat):
         self.assertNotIn(line, report.rows)
         self.assertIn(f"../main/{sha(1)}/{MEASUREMENT}/", report.links)
         self.assertIn(f"{GOAL.format(1)}/1/run.txt", Parsed(self.drawn(self.at(sha(2)))).links)
+
+
+EXPECTED = ROOT / "tools" / "sim" / "expected"
+SCENARIOS = ROOT / "tools" / "sim" / "scenarios"
+# The outcome of seed 0 of 50-epochs.json, on master's CI run 42121862497.
+FIFTY = {
+    "seed": 0,
+    "network_seed": None,
+    "conversation": "def2b1dd40",
+    "members_digest": "1f228bfa64e58b9a",
+    "verdict": "whole",
+    "at_tip": 51,
+    "seated": 51,
+    "virtual_s": 3494.75,
+    "trunk_epoch": None,
+    "ended": None,
+    "lines_off_trunk": None,
+    "members_off_trunk": None,
+    "came_to": "as expected",
+    "stopped": None,
+}
+# What compare printed of grow-waku-loss-5's three runs on master's CI run 42260983597, cut to
+# its first row.
+COMPARED = (
+    "run  seed  change     verdict                 at the tip  seconds  came to\n"
+    "  1     0  same       split at epoch 3          31 of 38   2583.7  5 main branches ran side "
+    "by side: trunk at epoch 12, 5 main, 7 sub, 7 fell behind, 4 behind at the end, 3 never "
+    "joined\n"
+    "3 of 3 runs came out as expected\n"
+)
+# The row of grow-waku-loss-5 on a long run's page, its runs as tools/sim/expected holds them.
+LOSS_5 = [
+    "grow-waku-loss-5",
+    "3",
+    "split at epoch 3, split at epoch 5, split at epoch 5",
+    "3 of 3 runs came out as expected",
+]
+
+
+class Long(LogosChat):
+    """A run of the long suite at a commit of main, as long keeps it and draws its page."""
+
+    # Pages' helpers, without its tests.
+    drawn, folds, nothing = Pages.drawn, Pages.folds, Pages.nothing
+    stands_alone = Pages.stands_alone
+
+    def suite(self) -> List[Tuple[str, int]]:
+        return simulate.scenarios("long", EXPECTED)
+
+    def long_uploaded(self, unbuilt: bool = False) -> Tuple[Path, Path]:
+        """What the run jobs of a long run uploaded, a job a scenario, each run with its run.txt,
+        report.txt, run.json and report.json and each sweep its outcomes, those tools/sim/expected
+        holds or fifty epochs whole; and what compare wrote of each scenario it holds. Where
+        chat-sim did not build, each run's unbuilt marker and the build's log."""
+        self.made += 1
+        runs, compared = self.scratch / f"long-{self.made}", self.scratch / f"compared-{self.made}"
+        compared.mkdir()
+        for name, count in self.suite():
+            sweep = runs / f"sim-revision-{name}-1" / name
+            held = EXPECTED / f"{name}.json"
+            outcomes = json.loads(held.read_text("utf-8")) if held.is_file() else [FIFTY] * count
+            for number in range(1, count + 1):
+                run = sweep / str(number)
+                if unbuilt:
+                    write(run / "unbuilt", f"chat-sim does not build at {REVISION}\n")
+                    write(run / "build.log", LOG)
+                    continue
+                verdict = outcomes[number - 1]["verdict"]
+                write(run / "run.json", json.dumps({"verdict": verdict, "wall_s": 60.5 * number}))
+                for text in ("run.txt", "report.txt", "report.json"):
+                    write(run / text, f"{text} of {name}/{number}\n")
+            if unbuilt:
+                continue
+            write(sweep / "outcomes.json", json.dumps(outcomes))
+            if held.is_file():
+                write(compared / name / "compare.txt", COMPARED)
+                write(compared / name / "compare.status", "0\n")
+        return runs, compared
+
+    def long(
+        self,
+        revision: str = REVISION,
+        minute: int = 0,
+        run_number: int = 1,
+        uploaded: Optional[Tuple[Path, Path]] = None,
+    ) -> str:
+        """Writes the long run of a run at `revision`, and returns what the command printed."""
+        runs, compared = self.long_uploaded() if uploaded is None else uploaded
+        given = self.given(runs, compared, revision, minute, run_number)
+        status, out, err = self.run_pages("long", *given)
+        self.assertEqual(status, 0, err)
+        return out
+
+    def given(
+        self, runs: Path, compared: Path, revision: str, minute: int, run_number: int
+    ) -> List[str]:
+        return [
+            str(runs),
+            str(self.site),
+            "--compared",
+            str(compared),
+            "--expected",
+            str(EXPECTED),
+            "--scenarios",
+            str(SCENARIOS),
+            "--revision",
+            revision,
+            "--measurement",
+            MEASUREMENT,
+            *self.ran(run_number, minute),
+        ]
+
+    def held(self, revision: str = REVISION) -> Path:
+        return self.site / "logos-chat" / "long" / revision / MEASUREMENT
+
+    def test_a_long_run_keeps_what_each_scenario_came_to_its_compare_and_runs_text_alone(self):
+        self.long()
+
+        out = self.held()
+        texts = [
+            f"{name}/{number}/{text}"
+            for name, count in self.suite()
+            for number in range(1, count + 1)
+            for text in ("report.txt", "run.json", "run.txt")
+        ]
+        compared = [f"{name}/compare.txt" for name, _ in self.suite() if name.startswith("grow")]
+        self.assertEqual(self.files(out), sorted(["index.html", "long.json", *texts, *compared]))
+        long = pages.read_long(out / "long.json")
+        self.assertEqual(
+            {key: value for key, value in long.items() if key != "scenarios"},
+            {
+                "logos_chat": REVISION,
+                "measurement": MEASUREMENT,
+                "chat_sim": SHA,
+                "time": time(0),
+                "run_url": RUN_URL,
+                "run_number": 1,
+            },
+        )
+        names = [name for name, _ in self.suite()]
+        self.assertEqual([one["scenario"] for one in long["scenarios"]], names)
+        loss = next(one for one in long["scenarios"] if one["scenario"] == "grow-waku-loss-5")
+        self.assertEqual(
+            loss["compare"],
+            {"verdict": pages.AS_EXPECTED, "counted": "3 of 3 runs came out as expected"},
+        )
+        held = json.loads((EXPECTED / "grow-waku-loss-5.json").read_text("utf-8"))
+        self.assertEqual(
+            loss["runs"],
+            [
+                {"run": n + 1, "seed": n, "unbuilt": False, "outcome": one}
+                for n, one in enumerate(held)
+            ],
+        )
+        self.assertEqual(long["scenarios"][0]["compare"], None)
+
+    def test_the_page_says_what_ran_and_each_scenario_s_verdict_runs_and_command_to_run_again(
+        self,
+    ):
+        runs, compared = self.long_uploaded()
+        loss = runs / "sim-revision-grow-waku-loss-5-1" / "grow-waku-loss-5"
+        write(loss / "1" / "run.json", json.dumps({"grow": GROW, "wall_s": 189.4}))
+        self.long(uploaded=(runs, compared))
+
+        out = self.held()
+        parsed = self.stands_alone(out)
+        self.assertEqual(parsed.h1, [f"logos-chat main {REVISION[:7]}, the long suite, 2026-11-09"])
+        for link in (
+            f"{pages.LOGOS_CHAT_URL}/commit/{REVISION}",
+            f"{pages.CHAT_SIM_URL}/commit/{SHA}",
+            f"{pages.CHAT_SIM_URL}/commit/{MEASUREMENT}",
+            RUN_URL,
+            "../../../",
+        ):
+            self.assertIn(link, parsed.links)
+        self.assertIn(LOSS_5, parsed.rows)
+        self.assertIn(["50-epochs", "1", "whole", "nothing held"], parsed.rows)
+        self.assertTrue({name for name, _ in self.suite()} <= parsed.ids)
+        self.assertIn(COMPARED, parsed.text)
+        self.assertIn("grow-waku-loss-5/compare.txt", parsed.links)
+        held = json.loads((EXPECTED / "grow-waku-loss-5.json").read_text("utf-8"))
+        self.assertIn(["0", "split at epoch 3", held[0]["came_to"], "3 min 9 s"], parsed.rows)
+        self.assertIn(["1", "split at epoch 5", held[1]["came_to"], "2 min 1 s"], parsed.rows)
+        self.assertIn("never joined: tomo, peer14", parsed.text)
+        self.assertIn("run.txt of grow-waku-loss-5/1\n", parsed.text)
+        self.assertIn("grow-waku-loss-5/1/run.json", parsed.links)
+        self.assertNotIn("grow-waku-loss-5/1/report.json", parsed.links)
+        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
+        for name, count in self.suite():
+            for number in range(1, count + 1):
+                cell = {"scenario": name, "run": number, "seed": number - 1}
+                self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+        self.assertEqual(len(self.folds(out)), sum(count for _, count in self.suite()))
+        self.assertNotIn("build", parsed.ids)
+
+    def test_a_run_with_no_outcome_has_its_seed_and_the_command_and_links_the_text_it_left(self):
+        runs, compared = self.long_uploaded()
+        # 50-epochs could not build, 50-epochs-waku's job uploaded nothing, grow-waku-loss-0.1's
+        # compare --write wrote no outcomes, and grow-waku-loss-0.5's sweep stopped after run 2.
+        fifty = runs / "sim-revision-50-epochs-1" / "50-epochs"
+        shutil.rmtree(fifty)
+        write(fifty / "1" / "unbuilt", f"chat-sim does not build at {REVISION}\n")
+        write(fifty / "1" / "build.log", LOG)
+        shutil.rmtree(runs / "sim-revision-50-epochs-waku-1")
+        lost = runs / "sim-revision-grow-waku-loss-0.1-1" / "grow-waku-loss-0.1"
+        (lost / "outcomes.json").unlink()
+        shutil.rmtree(compared / "grow-waku-loss-0.1")
+        stopped = runs / "sim-revision-grow-waku-loss-0.5-1" / "grow-waku-loss-0.5"
+        shutil.rmtree(stopped / "3")
+        two = json.loads((stopped / "outcomes.json").read_text("utf-8"))[:2]
+        write(stopped / "outcomes.json", json.dumps(two))
+        self.long(uploaded=(runs, compared))
+
+        out = self.held()
+        parsed = self.stands_alone(out)
+        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
+        for name, count in self.suite():
+            for number in range(1, count + 1):
+                cell = {"scenario": name, "run": number, "seed": number - 1}
+                with self.subTest(scenario=name, run=number):
+                    self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+        self.assertEqual(len(self.folds(out)), sum(count for _, count in self.suite()))
+        self.assertIn((False, "seed 0 does not build"), self.folds(out))
+        for row in (
+            ["50-epochs", "1", "does not build", "-"],
+            ["50-epochs-waku", "1", "no outcome", "-"],
+            ["grow-waku-loss-0.1", "3", "no outcome", "-"],
+            ["0", "no outcome", "-", "1 min"],
+            ["2", "no outcome", "-", "-"],
+        ):
+            self.assertIn(row, parsed.rows)
+        for text in ("run.txt", "report.txt", "run.json"):
+            self.assertIn(f"grow-waku-loss-0.1/1/{text}", parsed.links)
+        self.assertIn("run.txt of grow-waku-loss-0.1/1\n", parsed.text)
+
+    def test_a_scenario_s_own_seed_is_that_of_its_first_run_and_an_outcome_of_another_is_refused(
+        self,
+    ):
+        scenarios = self.scratch / "scenarios"
+        shutil.copytree(SCENARIOS, scenarios)
+        fifty = json.loads((scenarios / "50-epochs.json").read_text("utf-8"))
+        write(scenarios / "50-epochs.json", json.dumps({**fifty, "seed": 7}))
+        runs, compared = self.long_uploaded()
+        sweep = runs / "sim-revision-50-epochs-1" / "50-epochs"
+        write(sweep / "outcomes.json", json.dumps([{**FIFTY, "seed": 7}]))
+        given = self.given(runs, compared, REVISION, 0, 1)
+        given[given.index("--scenarios") + 1] = str(scenarios)
+        status, _, err = self.run_pages("long", *given)
+        self.assertEqual(status, 0, err)
+
+        long = pages.read_long(self.held() / "long.json")
+        self.assertEqual(long["scenarios"][0]["runs"][0]["seed"], 7)
+        cell = {"scenario": "50-epochs", "run": 1, "seed": 7}
+        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
+        self.assertIn("\n".join(simulate.again(cell, facts)), Parsed(self.drawn(self.held())).text)
+        write(sweep / "outcomes.json", json.dumps([FIFTY]))
+        status, _, err = self.run_pages("long", *given)
+        self.assertEqual(status, 2)
+        self.assertIn("[0] is of seed 0, and run 1 of seed 7", err)
+        write(scenarios / "50-epochs.json", json.dumps({**fifty, "seed": "7"}))
+        status, _, err = self.run_pages("long", *given)
+        self.assertEqual(status, 2)
+        self.assertIn("50-epochs.json: its seed is not a whole number from 0", err)
+
+    def test_every_text_of_a_run_and_of_compare_is_escaped(self):
+        runs, compared = self.long_uploaded()
+        loss = runs / "sim-revision-grow-waku-loss-5-1" / "grow-waku-loss-5"
+        for text in ("run.txt", "report.txt"):
+            write(loss / "1" / text, f"{MARKUP}\n")
+        outcomes = json.loads((loss / "outcomes.json").read_text("utf-8"))
+        outcomes[0]["came_to"] = MARKUP
+        write(loss / "outcomes.json", json.dumps(outcomes))
+        write(compared / "grow-waku-loss-5" / "compare.txt", f"{MARKUP}\n{COMPARED}")
+        self.long(uploaded=(runs, compared))
+
+        page = self.drawn(self.held())
+        self.assertNotIn("<script", page)
+        self.assertNotIn("script", Parsed(page).tags)
+        # Each text once, and what the run came to in its row and in its fold.
+        self.assertEqual(Parsed(page).text.count(MARKUP), 5)
+
+    def test_where_chat_sim_did_not_build_the_build_s_log_is_shown_once_and_each_run_links_its(
+        self,
+    ):
+        self.long(uploaded=self.long_uploaded(unbuilt=True))
+
+        out = self.held()
+        parsed = self.stands_alone(out)
+        self.assertEqual(parsed.text.count(LOG), 1)
+        self.assertIn("build", parsed.ids)
+        self.assertIn("Of the job that was to run 50-epochs: no scenario ran.", parsed.text)
+        each = [
+            f"{name}/{number}/build.log"
+            for name, count in self.suite()
+            for number in range(1, count + 1)
+        ]
+        self.assertEqual(self.files(out), sorted(["index.html", "long.json", *each]))
+        logs = [link for link in parsed.links if link.endswith("build.log")]
+        self.assertEqual(sorted(logs), sorted([each[0], *each]))
+        self.assertIn(["grow-waku-loss-5", "3", "does not build", "-"], parsed.rows)
+        self.assertNotIn("was not uploaded", parsed.text)
+
+    def test_runs_of_which_none_was_read_built_or_not_and_a_command_line_short_of_one_are_refused(
+        self,
+    ):
+        empty, compared = self.nothing(), self.nothing()
+        status, _, err = self.run_pages("long", *self.given(empty, compared, REVISION, 0, 1))
+        self.assertEqual(status, 2)
+        self.assertIn("RUNS: no run at the revision was read, and none could not be built", err)
+        self.assertFalse((self.site / "logos-chat" / "long").exists())
+        runs, compared = self.long_uploaded()
+        given = self.given(runs, compared, REVISION, 0, 1)
+        for flag in ("--compared", "--expected", "--scenarios"):
+            with self.subTest(flag=flag):
+                changed = list(given)
+                changed[changed.index(flag) + 1] = str(self.scratch / "missing")
+                status, _, err = self.run_pages("long", *changed)
+                self.assertEqual(status, 2)
+                self.assertIn(f"{flag}: no such directory", err)
+        status, _, err = self.run_pages("long", *given[:-2])
+        self.assertEqual(status, 2)
+        self.assertIn("--time", err)
+
+    def test_the_long_run_of_a_newer_run_is_kept_against_an_older_one_and_a_re_run_replaces(self):
+        self.long(run_number=2, minute=2)
+        self.assertEqual(
+            self.long(run_number=1, minute=1),
+            f"Kept logos-chat/long/{REVISION}/{MEASUREMENT}/: it holds the long run of run 2, "
+            "newer than run 1.\n",
+        )
+        self.assertEqual(pages.read_long(self.held() / "long.json")["run_number"], 2)
+        write(self.held() / "stale.txt", "left from before\n")
+        self.long(run_number=2, minute=3)
+        self.assertNotIn("stale.txt", self.files(self.held()))
+        self.assertEqual(pages.read_long(self.held() / "long.json")["time"], time(3))
+        self.long(run_number=3, minute=4)
+        self.assertEqual(pages.read_long(self.held() / "long.json")["run_number"], 3)
+
+    def test_a_long_json_that_long_does_not_write_is_refused_and_its_run_replaced(self):
+        self.long()
+        long = json.loads((self.held() / "long.json").read_text("utf-8"))
+
+        def scenario(**changed) -> dict:
+            return dict(long, scenarios=[dict(long["scenarios"][2], **changed)])
+
+        def run(**changed) -> dict:
+            one = long["scenarios"][2]
+            return scenario(runs=[dict(one["runs"][0], **changed), *one["runs"][1:]])
+
+        for refused, said in (
+            ({**long, "run_number": "1"}, "run_number"),
+            ({**long, "logos_chat": BASE}, "do not name its directory"),
+            ({**long, "extra": 1}, "extra"),
+            (scenario(scenario="../up"), "is not the name of a scenario"),
+            (scenario(compare={"verdict": "fine", "counted": ""}), "is none of compare's"),
+            (scenario(runs=[]), "runs is empty"),
+            (run(run=2), "is not run 1"),
+            (run(seed="0"), "seed is not of its kind"),
+            (run(seed=1), "outcome is not of the run's seed"),
+            (run(outcome={"seed": 0}), "outcome"),
+            (dict(long, scenarios=long["scenarios"][2:3] * 2), "is a second of"),
+        ):
+            with self.subTest(said=said):
+                write(self.held() / "long.json", json.dumps(refused))
+                with self.assertRaisesRegex(pages.Unreadable, re.escape(said)):
+                    pages.read_long(self.held() / "long.json")
+        write(self.held() / "long.json", json.dumps({**long, "run_number": 9, "time": "now"}))
+        _, _, err = self.run_pages("trend", str(self.site))
+        self.assertIn("long.json: time is not of the form", err)
+        self.long(run_number=1)
+        self.assertEqual(pages.read_long(self.held() / "long.json")["time"], time(0))
+
+    def test_past_the_newest_fifteen_long_runs_each_keeps_long_json_and_a_page_drawn_from_it(self):
+        uploaded = self.long_uploaded()
+        # The commits run from high to low and the times from late to early as the run numbers
+        # rise, so that neither the order of the directories nor that of time is the runs'.
+        printed = [
+            self.long(sha(100 - number), minute=100 - number, run_number=number, uploaded=uploaded)
+            for number in range(1, 18)
+        ]
+        self.assertEqual(printed[:15], [""] * 15)
+        self.assertEqual(
+            printed[15:],
+            [
+                f"Removed the text of logos-chat/long/{sha(100 - number)}/{MEASUREMENT}/: past "
+                "the newest 15 long runs.\n"
+                for number in (1, 2)
+            ],
+        )
+        for number in (1, 2):
+            out = self.held(sha(100 - number))
+            held = sorted(path.name for path in out.iterdir())
+            self.assertEqual(held, ["index.html", "long.json"])
+            parsed = self.stands_alone(out)
+            self.assertFalse([link for link in parsed.links if link.endswith((".txt", ".json"))])
+            self.assertIn("The site keeps the text of the newest 15 long runs", parsed.text)
+            self.assertNotIn(COMPARED, parsed.text)
+            self.assertIn(LOSS_5, parsed.rows)
+            cell = {"scenario": "grow-waku-loss-5", "run": 3, "seed": 2}
+            facts = {"revision": sha(100 - number), "base": "", "chat_sim": SHA}
+            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+        self.assertIn("grow-waku-loss-5/compare.txt", self.files(self.held(sha(97))))
+
+    def test_the_graph_over_main_links_the_newest_long_run_and_draws_nothing_of_it(self):
+        self.point(sha(1), minute=1, run_number=1)
+        self.assertEqual(self.run_pages("trend", str(self.site))[0], 0)
+        alone = (self.site / "logos-chat" / "index.html").read_text("utf-8")
+        self.assertNotIn("long/", alone)
+        self.long(sha(3), minute=3, run_number=3)
+        self.long(sha(2), minute=4, run_number=2)
+        self.assertEqual(self.run_pages("trend", str(self.site))[0], 0)
+
+        page = (self.site / "logos-chat" / "index.html").read_text("utf-8")
+        links = [link for link in Parsed(page).links if link.startswith("long/")]
+        self.assertEqual(links, [f"long/{sha(3)}/{MEASUREMENT}/"])
+        said = (
+            f"The newest long run, at main {sha(3)[:7]} on 2026-11-09 00:03 UTC: the two scenarios "
+            "of fifty epochs and each scenario chat-sim holds to what is expected but the goal's"
+        )
+        self.assertIn(said, Parsed(page).text)
+        self.assertEqual(page.count("<svg"), alone.count("<svg"))
+        self.assertTrue((self.site / "logos-chat" / links[0] / "index.html").is_file())
 
 
 class Closed(LogosChat):

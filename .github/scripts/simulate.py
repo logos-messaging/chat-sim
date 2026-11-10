@@ -400,11 +400,12 @@ def render_main(matrix: dict, facts: dict) -> str:
 def render(
     swept: Sequence[Tuple[str, int]], runs: Path, base_runs: Optional[Path], facts: dict
 ) -> str:
-    """The comment on the long suite: a head, a row for each scenario, and the output of each
-    compare.
+    """The comment on the long suite: a head, a row for each scenario, the links, and the output
+    of each compare.
 
     A run job that could not build chat-sim leaves `unbuilt` in each of its scenarios'
-    directories: with it at the revision no scenario ran, and the comment says so instead.
+    directories: with it at the revision no scenario ran, and the comment says so instead, and
+    where the build's errors are.
     """
     against = (
         f"the base {_commit(facts['base'])}"
@@ -416,11 +417,13 @@ def render(
         f"**chat-sim, the {facts['suite']} suite** at logos-chat {_commit(facts['revision'])}"
         f"{pr}, against {against}"
     )
-    foot = f"chat-sim `{facts['chat_sim'][:7]}` · [the run]({facts['run_url']})"
+    report = f" · [the report]({facts['report_url']})" if facts["report_url"] else ""
+    foot = f"chat-sim `{facts['chat_sim'][:7]}`{report} · [the run]({facts['run_url']})"
     if _unbuilt(runs):
+        where = "on the report page" if facts["report_url"] else "in the run"
         said = (
             "chat-sim does not build at this revision, so no scenario ran: the build's errors "
-            "are in the run."
+            f"are {where}."
         )
         return "".join(f"{line}\n" for line in (head, "", said, "", foot))
     lines = [
@@ -441,8 +444,8 @@ def render(
         swept_at = _swept(runs, name)
         now = _outcomes(swept_at / "outcomes.json")
         compared = _text(swept_at / "compare.txt")
-        said = _against(now, compared, missing)
-        lines.append(f"| `{name}` | {count} | {_came_to(now)} | {said} |")
+        said = compare_count(now, compared, missing)
+        lines.append(f"| `{name}` | {count} | {came_to(now)} | {said} |")
         if compared is not None:
             folded.append((name, compared))
     lines += ["", foot]
@@ -799,13 +802,15 @@ def _rate(rate: Optional[str]) -> str:
     return "-" if rate is None else rate
 
 
-def _came_to(now: Optional[List[dict]]) -> str:
+def came_to(now: Optional[List[dict]]) -> str:
+    """What the runs of a sweep came to, `now` their outcomes: each run's verdict, or `no outcome`
+    without them."""
     if now is None:
         return "no outcome"
     return ", ".join(one.get("verdict") or "no verdict" for one in now)
 
 
-def _against(now: Optional[List[dict]], compared: Optional[str], missing: str) -> str:
+def compare_count(now: Optional[List[dict]], compared: Optional[str], missing: str) -> str:
     """The count compare ends its output with, or why there is no compare."""
     if now is None:
         return "-"

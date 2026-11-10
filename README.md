@@ -30,9 +30,9 @@ drawn from the runs of main.
 | [`tools/sim`](tools/sim/README.md) | Runs a scenario, and sweeps one over seeds and rates |
 | [`tools/forks`](tools/forks/README.md) | Reads the logs of a group's members and says whether the group forked |
 | [`guide`](guide) | The guide, a Starlight site: how a run works, how to run one, and how to read what it finds |
-| `.github/scripts/measure.py` | Says whether `simulate.yml`'s main suite is to run at logos-chat main's tip, from the points on `gh-pages` and the runs going |
+| `.github/scripts/measure.py` | Says whether `simulate.yml`'s main suite is to run at logos-chat main's tip, from the points on `gh-pages` and the runs going, and on Sundays whether its long suite is |
 | `.github/scripts/mock-registry.py` | The KeyPackage registry the peers of a run share |
-| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main and the runs of its pull requests that `simulate.yml` makes, draws the page of each, draws the graph over main from the points, and names the runs of logos-chat's pull requests that are no longer open |
+| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main, its long runs and the runs of its pull requests that `simulate.yml` makes, draws the page of each, draws the graph over main from the points, and names the runs of logos-chat's pull requests that are no longer open |
 | `.github/scripts/simulate.py` | Plans the jobs of `simulate.yml`, names the point of main a `pr` run is placed among, and writes the comment on what they came to |
 
 ## The logos-chat it runs
@@ -59,9 +59,11 @@ before it of the base's hundred newest commits, for `main` how the runs at each 
 `long` what each scenario's runs came to and which moved from the base's, or from those
 `tools/sim/expected` holds when there is no base. Its publish job keeps a `main` run handed no
 `pr` on the Pages
-site as a point of logos-chat's main, with the matrix's cells and summary, and a `pr` run under the
-number of its pull request, with the matrix, each with its runs' text, or the build's log where
-chat-sim did not build, and a page drawn from them, which the comment links; the guide's
+site as a point of logos-chat's main, with the matrix's cells and summary, a `pr` run under the
+number of its pull request, with the matrix, and a `long` run with no base as a long run of
+logos-chat's main, with what each scenario came to and the output of each `compare`, each with its
+runs' text, or the build's log where chat-sim did not build, and a page drawn from them, which the
+comment links; the guide's
 [Reports](https://logos-messaging.github.io/chat-sim/guide/reports/#logos-chats-runs) says what
 they hold and how long. The weekly run of `prune-pages.yml` removes the run of each logos-chat pull
 request that is no longer open, and a dispatch of it handed a `pr` removes that one's.
@@ -69,10 +71,13 @@ request that is no longer open, and a dispatch of it handed a `pr` removes that 
 `measure-main.yml` starts it as well: every hour, it dispatches `main` at logos-chat main's tip,
 unless the tip has its point on `gh-pages` at the chat-sim commit a run measures (the newest that
 touches `crates/`, `Cargo.toml`, `Cargo.lock`, `.cargo/`, `rust-toolchain.toml`, `flake.nix`,
-`flake.lock`, `tools/forks/forks/`, `tools/sim/sim/` or `tools/sim/scenarios/`), a run at the
-tip handed no `pr`, of any suite, is queued or in progress, or such a run of `main` of chat-sim's
-default branch ended at that commit without its point, which a person looks into before starting
-it again by hand.
+`flake.lock`, `tools/forks/forks/`, `tools/sim/sim/` or `tools/sim/scenarios/`), a run of
+`main` at the tip handed no `pr` is queued or in progress, or one of chat-sim's default branch
+ended at that commit without its point, which a
+person looks into before starting it again by hand. Once each Sunday, in UTC, it dispatches `long`
+at the tip as well, unless a run of `long` handed no `pr` was created that day, one is queued or in
+progress, or the tip has its long run on `gh-pages` at that commit. A run of one suite holds back no
+other: the concurrency group of `simulate.yml` names the suite.
 
 ## Running it
 
