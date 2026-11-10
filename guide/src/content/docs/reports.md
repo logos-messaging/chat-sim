@@ -128,14 +128,28 @@ wrote of the runs and a point the matrix's cells and summary, and each keeps eac
 `report.txt` and `run.json`. A run's `report.json`, ten times the rest, stays in the workflow run's
 artifacts.
 
+A `pr` run whose base has its point on `gh-pages` at the measurement runs nothing at the base: a point's
+seeds 0 and 1 are runs 1 and 2 of its sweeps, the runs a pull request asks of the base, so the point's
+cells stand in for the base's, outcomes and ids as the point holds them. A point at another measurement
+never stands in, and nor does one that has no outcome at one of those runs, as where its job uploaded
+nothing, or one the plan cannot read: the jobs at the base run them, and a warning on the run says why.
+When a point stands in, the matrix names it as `base_point`, and the pull request's directory holds
+no `base/`: the point's own directory holds those runs' text while it keeps it. The comment places the
+head's runs among main's twenty seeds of each rate at the point at the base, or else at the newest point
+at the measurement of the base's hundred newest commits that logos-chat's commits API lists, passing over
+one the plan cannot read, with a warning that says why. The matrix
+holds that point as `spread`: a re-rolled cell says whether its epochs are within that point's runs or
+below the lowest, and the title of a re-rolled verdict how many fell below. With no such point, the
+comment has no such column.
+
 | Path | Holds |
 |---|---|
 | `logos-chat/main/<sha>/<measurement>/point.json` | the point of the logos-chat commit `<sha>`, measured by the chat-sim commit `<measurement>` |
 | `logos-chat/main/<sha>/<measurement>/<scenario>/<run>/` | the text of each of the point's runs, `<run>` its number in a sweep of its scenario |
 | `logos-chat/index.html` | the graph over main, drawn again from every point's `point.json` each time a point is written (see [Over main](#over-main)) |
-| `logos-chat/pr-N/matrix.json` | the matrix of the newest run for pull request N, the head's runs beside the base's |
+| `logos-chat/pr-N/matrix.json` | the matrix of the newest run for pull request N, the head's runs beside the base's, or beside main's point at the base |
 | `logos-chat/pr-N/meta.json` | what ran: the pull request's number as `pr`, the `revision` and the `base`, `null` without one, chat-sim's commit as `chat_sim`, the `measurement`, the workflow run's `run_url` and `run_number`, and the `time` it was written, in UTC |
-| `logos-chat/pr-N/head/<scenario>/<run>/`, `logos-chat/pr-N/base/<scenario>/<run>/` | the text of each run at the head and at the base |
+| `logos-chat/pr-N/head/<scenario>/<run>/`, `logos-chat/pr-N/base/<scenario>/<run>/` | the text of each run at the head and at the base; no `base/` when main's point stood in |
 
 The measurement is the newest chat-sim commit that touches what a run measures: `crates/`,
 `Cargo.toml`, `Cargo.lock`, `.cargo/`, `rust-toolchain.toml`, `flake.nix`, `flake.lock`,
@@ -151,7 +165,7 @@ A `point.json` holds what a page of the point draws:
 | `time`, `run_url`, `run_number` | when the point was written, in UTC, and the workflow run's page and number |
 | `merged` | the logos-chat pull requests merged since the point it follows, each its `number` and `title`, from the commits logos-chat's compare API gives between the two: a squash merge's commit is titled `<title> (#N)`, a merge commit's `Merge pull request #N from <branch>` above the title |
 | `previous` | the point it follows, its `logos_chat` and `measurement`, and as `rerolled` whether a run drew other ids than that point's run of its scenario and seed, the group's or the members'; `null` for the first point |
-| `cells` | each run's cell as the matrix holds it: the scenario, the seed, the run, the loss and its rate, the run's outcome as `compare --write` writes one, the epochs without a fork, how the run ended, and whether its job could not build chat-sim. A point has no base, so each field of a base is `null`, and `unbuilt.base` is `false` |
+| `cells` | each run's cell as the matrix holds it, but `below`, which only a pull request's matrix says: the scenario, the seed, the run, the loss and its rate, the run's outcome as `compare --write` writes one, the epochs without a fork, how the run ended, and whether its job could not build chat-sim. A point has no base, so each field of a base is `null`, and `unbuilt.base` is `false` |
 | `summary` | of each rate, how many runs and how each ended, the lowest, median and highest epochs without a fork, and the median of the members off the trunk at the end |
 
 The points are in the order of their workflow runs' numbers, which GitHub gives in the order the runs

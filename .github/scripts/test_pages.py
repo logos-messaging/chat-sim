@@ -25,6 +25,10 @@ ROOT = Path(__file__).resolve().parents[2]
 # What the jobs of the pr suite uploaded at a revision, seeds 0 and 1 of 0.1, 1 and 5% loss, each
 # job's artifact in a directory of its own, cut to what tools/sim matrix reads.
 UPLOADED = ROOT / "tools" / "sim" / "tests" / "fixtures" / "matrix"
+# Main's point at logos-chat fa5282a3, the probe's twenty seeds of each rate, cut to what
+# tools/sim matrix reads.
+POINT = ROOT / "tools" / "sim" / "tests" / "fixtures" / "point.json"
+FA5282A = "fa5282a34405b6975424174858d85e4f261d420a"
 GOAL = "50-epochs-by-saro-waku-loss-{}"
 
 
@@ -448,13 +452,21 @@ class LogosChat(unittest.TestCase):
         scenario, number = GOAL.format(rate), int(seed) + 1
         return side / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
 
-    def matrix(self, head: Path, base: Optional[Path] = None, asked: Sequence[dict] = ()) -> Path:
+    def matrix(
+        self,
+        head: Path,
+        base: Optional[Path] = None,
+        asked: Sequence[dict] = (),
+        *points: str,
+    ) -> Path:
         """The file tools/sim matrix writes of the runs under `head`, beside those under `base`,
-        with each run of the sweeps `asked` of each side a cell."""
+        with each run of the sweeps `asked` of each side a cell, and `points` its flags of
+        main's points."""
         self.made += 1
         out = self.scratch / f"matrix-{self.made}.json"
         command = [sys.executable, str(ROOT / "tools" / "sim"), "matrix", str(head)]
         command += ["--out", str(out)] + ([] if base is None else ["--base", str(base)])
+        command += points
         if asked:
             write(out.with_suffix(".asked"), json.dumps(list(asked)))
             command += ["--asked", str(out.with_suffix(".asked"))]
@@ -542,11 +554,13 @@ class Point(LogosChat):
             [REVISION, MEASUREMENT, SHA, "2026-11-09T01:30:00Z"],
         )
         self.assertEqual((written["run_url"], written["run_number"]), (RUN_URL, 7))
+        self.assertEqual({cell.pop("below") for cell in matrix["cells"]}, {None})
         self.assertEqual(written["cells"], matrix["cells"])
         self.assertEqual(written["summary"], matrix["summary"])
         self.assertEqual(len(written["cells"]), 6)
         self.assertEqual(written["cells"][2]["head"]["conversation"], "def2b1dd40")
         self.assertEqual(pages.read_point(self.at() / "point.json"), written)
+        self.assertEqual(pages.points(self.site), [(self.at(), written)])
 
     def test_each_run_s_text_is_kept_by_its_number_and_its_report_json_is_not(self):
         runs = self.uploaded()
@@ -600,6 +614,7 @@ class Point(LogosChat):
             ),
             ("cells[0].head.conversation is not an id", cell(head=dict(head, conversation="<b>"))),
             ("cells[0] has a base", cell(base=head)),
+            ("cells[0].below is not a field of cells[0]", cell(below=None)),
             (
                 "cells[0].ended.head is not how a run ended",
                 cell(ended={"head": "forked", "base": None}),
@@ -927,6 +942,84 @@ class PullRequest(LogosChat):
         self.assertFalse((out / "base").exists())
         self.assertIsNone(self.meta()["base"])
         self.assertEqual(pages.read_matrix(out / "matrix.json")["verdict"], "no-base")
+
+    def test_a_run_against_main_s_point_at_its_base_keeps_the_head_s_text_and_names_the_point(self):
+        head = self.uploaded()
+        matrix = self.matrix(head, None, (), "--base-point", str(POINT), "--spread", str(POINT))
+        nothing = self.scratch / "base"
+        nothing.mkdir()
+        given = [str(matrix), str(head), str(self.site), "--pr", "316", "--revision", REVISION]
+        given += ["--measurement", MEASUREMENT, "--base", BASE, "--base-runs", str(nothing)]
+        status, _, err = self.run_pages("pr", *given, *self.ran(1, 0))
+
+        self.assertEqual(status, 0, err)
+        out = self.site / "logos-chat" / "pr-316"
+        self.assertEqual(
+            {path.split("/")[0] for path in self.files(out)}, {"head", "matrix.json", "meta.json"}
+        )
+        kept = pages.read_matrix(out / "matrix.json")
+        self.assertEqual((kept["verdict"], kept["base_point"]["logos_chat"]), ("same", FA5282A))
+        self.assertEqual(kept["spread"]["logos_chat"], FA5282A)
+        self.assertEqual(len(kept["spread"]["seeds"]), 60)
+
+    def test_main_s_point_as_point_writes_it_stands_in_for_the_base_s_runs_cell_for_cell(self):
+        runs = self.uploaded()
+        self.point(revision=BASE, runs=runs)
+        written = self.at(BASE) / "point.json"
+        head = self.uploaded(
+            **{"1/1": {"verdict": "split at epoch 5"}, "5/1": {"conversation": "7c3e9a01b2"}}
+        )
+        points = ("--base-point", str(written), "--spread", str(written))
+
+        against_point = pages.read_matrix(self.matrix(head, None, (), *points))
+        against_runs = pages.read_matrix(self.matrix(head, runs))
+
+        self.assertEqual(
+            [cell.pop("below") for cell in against_point["cells"]],
+            [False, False, False, True, False, False],
+        )
+        self.assertEqual({cell.pop("below") for cell in against_runs["cells"]}, {None})
+        self.assertEqual(against_point["cells"], against_runs["cells"])
+        self.assertEqual(
+            (against_point["verdict"], against_point["counts"]), ("hint", against_runs["counts"])
+        )
+        self.assertEqual(
+            against_point["base_point"],
+            {"logos_chat": BASE, "measurement": MEASUREMENT, "run_url": RUN_URL},
+        )
+        self.assertEqual(against_point["spread"]["summary"], pages.read_point(written)["summary"])
+
+    def test_a_matrix_whose_points_are_not_as_tools_sim_writes_them_is_refused(self):
+        points = ("--base-point", str(POINT), "--spread", str(POINT))
+        path = self.matrix(self.uploaded(), None, (), *points)
+        matrix = json.loads(path.read_text(encoding="utf-8"))
+
+        def named(**changed) -> dict:
+            return dict(matrix, base_point=dict(matrix["base_point"], **changed))
+
+        def spread(**changed) -> dict:
+            return dict(matrix, spread=dict(matrix["spread"], **changed))
+
+        seed = matrix["spread"]["seeds"][0]
+        for said, written in (
+            ("base_point is there without a base", dict(matrix, base=None, summary=[])),
+            ("base_point.run_url is not an http(s) address", named(run_url="javascript:x")),
+            ("base_point.measurement is not a commit", named(measurement="f9ae59c")),
+            ("base_point.time is not a field of base_point", named(time="today")),
+            ("spread.seeds[0].ended is not how a run ended", spread(seeds=[dict(seed, ended="x")])),
+            ("spread.seeds[0].epochs is not of its kind", spread(seeds=[dict(seed, epochs="9")])),
+            ("spread.summary[0].loss is missing", spread(summary=[{"scenario": GOAL.format(1)}])),
+            ("spread.logos_chat is not a commit", spread(logos_chat="fa5282a")),
+            (
+                "cells[0].below is not of its kind",
+                dict(matrix, cells=[dict(matrix["cells"][0], below=1)]),
+            ),
+        ):
+            with self.subTest(said=said):
+                write(path, json.dumps(written))
+                with self.assertRaises(pages.Unreadable) as refused:
+                    pages.read_matrix(path)
+                self.assertIn(said, str(refused.exception))
 
     def test_the_run_of_a_newer_run_is_kept_against_an_older_one(self):
         self.pr(run_number=8)

@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from typing import List, Optional, Sequence
 
+import pages
 import simulate
 
 REVISION = "0123456789abcdef0123456789abcdef01234567"
@@ -21,6 +22,14 @@ ROOT = Path(__file__).resolve().parents[2]
 # what tools/sim matrix reads: 0.1% whole and split at epoch 46, 1% split at 18 and 9, 5% split
 # at 8 and 3.
 UPLOADED = ROOT / "tools" / "sim" / "tests" / "fixtures" / "matrix"
+# Main's point at logos-chat fa5282a3, the probe's twenty seeds of each rate, cut to what
+# tools/sim matrix reads: its seeds 0 and 1 of the lossy rates are UPLOADED's runs.
+POINT = ROOT / "tools" / "sim" / "tests" / "fixtures" / "point.json"
+FA5282A = "fa5282a34405b6975424174858d85e4f261d420a"
+POINT_RUN = "https://github.com/logos-messaging/chat-sim/actions/runs/42460360938"
+# The chat-sim commit a run measures, and another.
+MEASUREMENT = "76543210fedcba9876543210fedcba9876543210"
+EARLIER = "00112233445566778899aabbccddeeff00112233"
 
 
 def outcome(seed: int, verdict: Optional[str] = "whole") -> dict:
@@ -53,6 +62,11 @@ def run(*argv: str) -> "tuple[int, str, str]":
 
 def commit(sha: str) -> str:
     return f"[`{sha[:7]}`](https://github.com/logos-messaging/logos-chat/commit/{sha})"
+
+
+def point(sha: str, measurement: str = MEASUREMENT) -> str:
+    """Where on gh-pages main's point at `sha` and `measurement` is."""
+    return f"logos-chat/main/{sha}/{measurement}/point.json"
 
 
 class Fixture(unittest.TestCase):
@@ -172,7 +186,55 @@ class Jobs(unittest.TestCase):
         self.assertEqual(jobs[2]["name"], "base 89abcde: 50-epochs")
 
 
-class Plan(Fixture):
+class GhPages(Fixture):
+    """A checkout, `pages`, whose branch gh-pages holds main's points as pages.py point writes
+    them."""
+
+    def setUp(self):
+        super().setUp()
+        self.pages = self.root / "pages"
+
+    def published(self, runs: Path = UPLOADED, revision: str = BASE) -> List[str]:
+        """What gh-pages lists under logos-chat/main/ once it holds main's point at `revision`
+        and MEASUREMENT besides what it held, as pages.py point writes it of the runs under
+        `runs`, a cell for each run main does."""
+        asked, matrix = self.root / "asked.json", self.root / "matrix.json"
+        write(asked, simulate.jobs("main", revision, "", simulate.scenarios("main", self.expected)))
+        command = [sys.executable, str(ROOT / "tools" / "sim"), "matrix", str(runs)]
+        subprocess.run(command + ["--asked", str(asked), "--out", str(matrix)], check=True)
+        given = [str(matrix), str(runs), str(self.pages), "--revision", revision]
+        given += ["--measurement", MEASUREMENT, "--chat-sim", CHAT_SIM, "--run-url", RUN_URL]
+        given += ["--run-number", "1", "--time", "2026-11-09T00:17:00Z"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(pages.main(["point", *given]), 0)
+        if not (self.pages / ".git").is_dir():
+            self.git("init", "-q", "-b", "gh-pages")
+        self.committed()
+        listed = self.git("ls-tree", "-r", "--name-only", "gh-pages", "--", "logos-chat/main")
+        return listed.splitlines()
+
+    def git(self, *argv: str) -> str:
+        unsigned = ("-c", "commit.gpgsign=false", "-c", "user.name=Saro", "-c", "user.email=s@o")
+        return subprocess.run(
+            ["git", "-C", str(self.pages), *unsigned, *argv],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+
+    def committed(self) -> None:
+        """Commits self.pages as it stands to gh-pages."""
+        self.git("add", "-A")
+        self.git("commit", "-qm", "Publish")
+
+
+class Plan(GhPages):
+    # What the plan warns with of main's point at the base that does not stand in, before why.
+    NOT_STANDING = (
+        "::warning::main's point at the base does not stand in for the base's runs, so its jobs "
+        "run them: "
+    )
+
     def plan(self, suite: str, *extra: str) -> "tuple[int, str, str]":
         return run("plan", "--suite", suite, "--expected", str(self.expected), *extra)
 
@@ -185,7 +247,7 @@ class Plan(Fixture):
             with self.subTest(suite=suite):
                 status, out, _ = self.plan(suite, "--revision", REVISION, *extra)
                 self.assertEqual(status, 0)
-                *handed, runs, scenarios = out.splitlines()
+                *handed, runs, scenarios, stood_in = out.splitlines()
                 base = BASE if "--base" in extra else ""
                 pr = "316" if "--pr" in extra else ""
                 self.assertEqual(
@@ -194,6 +256,135 @@ class Plan(Fixture):
                 self.assertEqual(len(json.loads(runs.removeprefix("runs="))), count)
                 names = [name for name, _ in simulate.scenarios(suite, self.expected)]
                 self.assertEqual(scenarios, f"scenarios={' '.join(names)}")
+                self.assertEqual(stood_in, "point=")
+
+    def listed(self, *paths: str) -> Path:
+        """What the plan job lists of gh-pages under logos-chat/main/, a path a line."""
+        file = self.root / "points"
+        file.write_text("".join(f"{path}\n" for path in paths), encoding="utf-8")
+        return file
+
+    def planned(self, suite: str, listed: Path, *extra: str) -> dict:
+        """What a plan of `suite` handed `listed` prints, by name, its run jobs read, and what
+        it warned with as `warned`."""
+        given = ["--revision", REVISION, "--measurement", MEASUREMENT, "--points", str(listed)]
+        given += ["--pages", "gh-pages", "--tree", str(self.pages)]
+        status, out, err = self.plan(suite, *given, *extra)
+        self.assertEqual(status, 0, err)
+        printed = dict(line.split("=", 1) for line in out.splitlines())
+        return dict(printed, runs=json.loads(printed["runs"]), warned=err)
+
+    def test_a_pr_whose_base_has_main_s_point_at_the_measurement_runs_nothing_at_the_base(self):
+        self.published()
+        text = f"logos-chat/main/{BASE}/{MEASUREMENT}/{simulate.GOAL.format(1)}/1/run.txt"
+        listed = self.listed(text, point(BASE), point(REVISION, EARLIER))
+
+        planned = self.planned("pr", listed, "--base", BASE, "--pr", "316")
+
+        self.assertEqual((planned["point"], planned["base"]), (point(BASE), BASE))
+        self.assertEqual(len(planned["runs"]), 6)
+        self.assertEqual(
+            {(job["side"], job["revision"]) for job in planned["runs"]}, {("revision", REVISION)}
+        )
+        self.assertEqual(planned["warned"], "")
+
+    def test_a_point_with_no_outcome_at_a_run_the_pr_asks_of_the_base_stands_in_for_nothing(self):
+        scenario = simulate.GOAL.format(5)
+        job = f"sim-revision-{scenario}-2"
+        # The job of 5%, seed 1, uploaded nothing, or could not build chat-sim.
+        for unbuilt in (False, True):
+            with self.subTest(unbuilt=unbuilt):
+                runs = self.root / f"runs-{unbuilt}"
+                shutil.copytree(UPLOADED, runs)
+                shutil.rmtree(runs / job)
+                if unbuilt:
+                    (runs / job / scenario / "2").mkdir(parents=True)
+                    (runs / job / scenario / "2" / "unbuilt").write_text("", encoding="utf-8")
+                shutil.rmtree(self.pages, ignore_errors=True)
+                listed = self.listed(*self.published(runs))
+                held = json.loads((self.pages / point(BASE)).read_text(encoding="utf-8"))
+                cell = next(
+                    one for one in held["cells"] if (one["scenario"], one["run"]) == (scenario, 2)
+                )
+                self.assertEqual((cell["head"], cell["unbuilt"]["head"]), (None, unbuilt))
+
+                planned = self.planned("pr", listed, "--base", BASE, "--pr", "316")
+
+                self.assertEqual((planned["point"], len(planned["runs"])), ("", 12))
+                self.assertEqual({job["side"] for job in planned["runs"][6:]}, {"base"})
+                self.assertEqual(
+                    planned["warned"],
+                    f"{self.NOT_STANDING}{point(BASE)} has no outcome at 5% seed 1\n",
+                )
+
+    def test_a_point_that_cannot_be_read_stands_in_for_nothing(self):
+        listed = self.listed(*self.published())
+        held = self.pages / point(BASE)
+        written = json.loads(held.read_text(encoding="utf-8"))
+        for text, said in (
+            (json.dumps(dict(written, run_number="1")), "run_number is not of its kind"),
+            ("not a point\n", "Expecting value: line 1 column 1 (char 0)"),
+        ):
+            with self.subTest(said=said):
+                held.write_text(text, encoding="utf-8")
+                self.committed()
+
+                planned = self.planned("pr", listed, "--base", BASE)
+
+                self.assertEqual((planned["point"], len(planned["runs"])), ("", 12))
+                self.assertEqual(
+                    planned["warned"], f"{self.NOT_STANDING}{point(BASE)} on gh-pages: {said}\n"
+                )
+        self.git("rm", "-q", point(BASE))
+        self.committed()
+
+        planned = self.planned("pr", listed, "--base", BASE)
+
+        self.assertEqual((planned["point"], len(planned["runs"])), ("", 12))
+        self.assertTrue(
+            planned["warned"].startswith(f"{self.NOT_STANDING}{point(BASE)} on gh-pages: fatal: ")
+        )
+
+    def test_a_pr_whose_base_has_no_point_at_the_measurement_runs_at_the_base(self):
+        for listed in (
+            (point(BASE, EARLIER),),
+            (point(REVISION),),
+            (f"logos-chat/main/{BASE}/{MEASUREMENT}/{simulate.GOAL.format(1)}/1/run.txt",),
+            (),
+        ):
+            with self.subTest(listed=listed):
+                planned = self.planned("pr", self.listed(*listed), "--base", BASE)
+                self.assertEqual((planned["point"], len(planned["runs"])), ("", 12))
+                self.assertEqual({job["side"] for job in planned["runs"][6:]}, {"base"})
+
+    def test_a_point_stands_in_for_the_base_of_pr_alone(self):
+        planned = self.planned("long", self.listed(point(BASE)), "--base", BASE)
+
+        self.assertEqual((planned["point"], len(planned["runs"])), ("", 12))
+        self.assertEqual(self.planned("pr", self.listed(point(BASE)))["point"], "")
+
+    def test_refuses_points_without_a_measurement_or_pages_and_a_measurement_not_a_commit(self):
+        listed = self.listed(point(BASE))
+        given = ("--measurement", MEASUREMENT, "--points", str(listed))
+        ref = ("--pages", "gh-pages")
+        for extra, said in (
+            (("--points", str(listed)), "--points: given with --measurement"),
+            (("--measurement", MEASUREMENT), "--points: given with --measurement"),
+            (given, "--points: given with --measurement and --pages"),
+            (ref, "--points: given with --measurement and --pages"),
+            (
+                ("--measurement", "7654321", "--points", str(listed), *ref),
+                "--measurement: '7654321'",
+            ),
+            (
+                ("--measurement", MEASUREMENT, "--points", str(self.root / "nowhere"), *ref),
+                "--points: ",
+            ),
+        ):
+            with self.subTest(extra=extra):
+                status, out, err = self.plan("pr", "--revision", REVISION, "--base", BASE, *extra)
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn(said, err)
 
     def test_refuses_what_is_not_a_full_commit_or_a_pull_request_and_a_base_for_main(self):
         for suite, extra, said in (
@@ -215,6 +406,79 @@ class Plan(Fixture):
                 self.assertEqual(status, 2)
                 self.assertEqual(out, "")
                 self.assertIn(said, err)
+
+
+class Spread(GhPages):
+    """The point of main nearest before a base, from the base's history."""
+
+    def spread(self, history: object, *listed: str) -> "tuple[int, str, str]":
+        """What `spread` says of `history`, as logos-chat's commits API lists it, cut, and of the
+        points `listed` on gh-pages."""
+        (self.root / "history.json").write_text(json.dumps(history), encoding="utf-8")
+        (self.root / "points").write_text("".join(f"{one}\n" for one in listed), "utf-8")
+        return run(
+            "spread",
+            "--measurement",
+            MEASUREMENT,
+            "--points",
+            str(self.root / "points"),
+            "--history",
+            str(self.root / "history.json"),
+            "--pages",
+            "gh-pages",
+            "--tree",
+            str(self.pages),
+        )
+
+    def history(self, *shas: str) -> List[dict]:
+        return [{"sha": sha, "commit": {"message": f"commit {sha[:7]}"}} for sha in shas]
+
+    def test_is_the_newest_commit_of_the_base_s_history_with_a_point_at_the_measurement(self):
+        older, oldest = FA5282A, CHAT_SIM
+        history = self.history(BASE, REVISION, older, oldest)
+        self.published(revision=older)
+        self.published(revision=BASE)
+
+        status, out, _ = self.spread(
+            history, point(REVISION, EARLIER), point(oldest), point(older), point(BASE, EARLIER)
+        )
+
+        self.assertEqual((status, out), (0, f"spread={point(older)}\n"))
+        _, out, _ = self.spread(history, point(BASE), point(older))
+        self.assertEqual(out, f"spread={point(BASE)}\n")
+
+    def test_is_nothing_when_no_commit_of_the_history_has_a_point_at_the_measurement(self):
+        status, out, _ = self.spread(self.history(BASE, REVISION), point(BASE, EARLIER))
+
+        self.assertEqual((status, out), (0, "spread=\n"))
+
+    def test_passes_over_a_point_that_cannot_be_read_and_says_why(self):
+        self.published(revision=FA5282A)
+        listed = self.published(revision=BASE)
+        history = self.history(BASE, REVISION, FA5282A)
+        passed = "::warning::the head's runs are not placed among main's point: "
+        said = "on gh-pages: Expecting value: line 1 column 1 (char 0)"
+        (self.pages / point(BASE)).write_text("not a point\n", encoding="utf-8")
+        self.committed()
+
+        status, out, err = self.spread(history, *listed)
+
+        self.assertEqual((status, out), (0, f"spread={point(FA5282A)}\n"))
+        self.assertEqual(err, f"{passed}{point(BASE)} {said}\n")
+        (self.pages / point(FA5282A)).write_text("not a point\n", encoding="utf-8")
+        self.committed()
+
+        status, out, err = self.spread(history, *listed)
+
+        self.assertEqual((status, out), (0, "spread=\n"))
+        self.assertEqual(err, f"{passed}{point(BASE)} {said}\n{passed}{point(FA5282A)} {said}\n")
+
+    def test_refuses_a_history_that_is_not_a_list_of_commits(self):
+        for history in ({"message": "Not Found"}, [{"sha": "main"}], [{"commit": {}}]):
+            with self.subTest(history=history):
+                status, out, err = self.spread(history)
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn("not a list of commits, each with its sha", err)
 
 
 class Measurement(unittest.TestCase):
@@ -284,11 +548,14 @@ class Measurement(unittest.TestCase):
 class Title(unittest.TestCase):
     """The verdict of a matrix in a few words, from the counts of its cells."""
 
-    def title(self, verdict: str, base: Optional[dict] = None, **counted) -> str:
-        counts = dict.fromkeys(("better", "worse", "re-rolled", "no-outcome"), 0)
+    def title(
+        self, verdict: str, base: Optional[dict] = None, spread: Optional[dict] = None, **counted
+    ) -> str:
+        counts = dict.fromkeys(("better", "worse", "re-rolled", "below", "no-outcome"), 0)
         counts.update({"cells": 6, "compared": 6, **counted})
         base = {"unbuilt": False, "runs": 6} if base is None else base
-        return simulate.title({"verdict": verdict, "counts": counts, "base": base})
+        matrix = {"verdict": verdict, "counts": counts, "base": base, "spread": spread}
+        return simulate.title(matrix)
 
     def test_each_verdict_has_the_title_of_its_check(self):
         for verdict, counted, said in (
@@ -304,6 +571,21 @@ class Title(unittest.TestCase):
         ):
             with self.subTest(verdict=verdict, counted=counted):
                 self.assertEqual(self.title(verdict, **counted), said)
+
+    def test_re_rolled_beside_main_s_spread_says_how_many_fell_below_its_worst_seed(self):
+        spread = {"logos_chat": BASE}
+        for counted, said in (
+            ({"re-rolled": 6, "below": 1}, "1 of 6 below main's worst seed"),
+            ({"re-rolled": 2, "below": 0}, "0 of 6 below main's worst seed"),
+        ):
+            with self.subTest(counted=counted):
+                self.assertEqual(
+                    self.title("re-rolled", spread=spread, **counted),
+                    f"the draws changed, no comparison; {said}",
+                )
+        self.assertEqual(
+            self.title("hint", spread=spread, worse=1, below=1), "worse in 1 of 6 runs, a hint"
+        )
 
     def test_no_base_says_why_there_is_no_comparison(self):
         no_base = {"unbuilt": False, "runs": 0}
@@ -348,12 +630,24 @@ class Drawn(unittest.TestCase):
         (job / scenario / str(number)).mkdir(parents=True)
         (job / scenario / str(number) / "unbuilt").write_text("", encoding="utf-8")
 
-    def matrix(self, head: Path, base: Optional[Path] = None, asked: Sequence[dict] = ()) -> Path:
-        """The file tools/sim matrix writes of the runs under `head`, beside those under `base`,
-        with a cell for each run of the jobs `asked`."""
+    def matrix(
+        self,
+        head: Path,
+        base: Optional[Path] = None,
+        asked: Sequence[dict] = (),
+        base_point: Optional[Path] = None,
+        spread: Optional[Path] = None,
+    ) -> Path:
+        """The file tools/sim matrix writes of the runs under `head`, beside those under `base`
+        or main's point in `base_point`, with a cell for each run of the jobs `asked`, and the
+        head's runs placed among those of the point in `spread`."""
         out = self.root / "matrix.json"
         command = [sys.executable, str(ROOT / "tools" / "sim"), "matrix", str(head)]
         command += ["--out", str(out)] + ([] if base is None else ["--base", str(base)])
+        if base_point is not None:
+            command += ["--base-point", str(base_point)]
+        if spread is not None:
+            command += ["--spread", str(spread)]
         if asked:
             write(self.root / "asked.json", list(asked))
             command += ["--asked", str(self.root / "asked.json")]
@@ -446,6 +740,108 @@ class Drawn(unittest.TestCase):
             "tmp/50-epochs-by-saro-waku-loss-1-seed-1\n```\n",
             fold,
         )
+
+    def test_a_pr_against_main_s_point_at_its_base_names_it_and_shows_main_s_spread(self):
+        head = self.uploaded(
+            "head",
+            **{"1/1": {"verdict": "split at epoch 5"}, "5/0": {"verdict": "split at epoch 4"}},
+        )
+        against_point = self.matrix(head, base_point=POINT, spread=POINT)
+        _, out, _ = self.comment("pr", against_point, "--base", FA5282A)
+        _, against_runs, _ = self.comment("pr", self.matrix(head, UPLOADED), "--base", FA5282A)
+
+        first, blank, header, rule, *_ = out.splitlines()
+        self.assertEqual(
+            first,
+            f"**chat-sim: worse in 2 of 6 runs** at {commit(REVISION)} against its merge base "
+            f"{commit(FA5282A)}, from [main's run of it]({POINT_RUN}) · [the run]({RUN_URL})",
+        )
+        self.assertEqual(
+            header, f"| Loss | Seed 0 | Seed 1 | main's 20 seeds at {commit(FA5282A)} |"
+        )
+        self.assertEqual(rule, "|---|---|---|---|")
+        self.assertEqual(
+            self.rows(out),
+            [
+                "| 0.1% | 50 whole, same | 46, split, same | 2 whole, 18 to 50 |",
+                "| 1% | 18, split, same | 5, split, was 9: worse | 0 whole, 3 to 23 |",
+                "| 5% | 4, split, was 8: worse | 3, split, same | 0 whole, 3 to 18 |",
+            ],
+        )
+        self.assertEqual(
+            [row.rsplit(" | ", 1)[0] + " |" for row in self.rows(out)], self.rows(against_runs)
+        )
+        folds = out.index("\n\nA cell: ")
+        self.assertEqual(out[folds:], against_runs[against_runs.index("\n\nA cell: ") :])
+
+    def test_a_re_rolled_cell_says_whether_its_epochs_are_within_main_s_spread_or_below_it(self):
+        # The sheet's re-rolled state: every head run drew other ids, one pair a seed.
+        seeds = {"0": "7c3e9a01b2", "1": "b19d47e0c5"}
+        drawn = {"0.1/0": 50, "0.1/1": 15, "1/0": 11, "1/1": 20, "5/0": 6, "5/1": 4}
+        head = self.uploaded(
+            "head",
+            **{
+                cell: {"conversation": seeds[cell.split("/")[1]]}
+                | ({} if epochs == 50 else {"verdict": f"split at epoch {epochs}"})
+                for cell, epochs in drawn.items()
+            },
+        )
+        _, out, _ = self.comment(
+            "pr", self.matrix(head, base_point=POINT, spread=POINT), "--base", FA5282A
+        )
+
+        self.assertTrue(
+            out.startswith(
+                "**chat-sim: the draws changed, no comparison; 1 of 6 below main's worst seed** at "
+            )
+        )
+        within = "re-rolled, within main's spread"
+        self.assertEqual(
+            self.rows(out),
+            [
+                f"| 0.1% | 50 whole, {within} | 15, split, re-rolled, below main's spread "
+                "| 2 whole, 18 to 50 |",
+                f"| 1% | 11, split, {within} | 20, split, {within} | 0 whole, 3 to 23 |",
+                f"| 5% | 6, split, {within} | 4, split, {within} | 0 whole, 3 to 18 |",
+            ],
+        )
+        self.assertIn(
+            "\n<details><summary>0.1% loss, seed 1: 15, split, re-rolled, below main's "
+            "spread</summary>\n",
+            out,
+        )
+
+    def test_a_pr_whose_base_has_no_point_shows_the_spread_of_the_nearest_before_it(self):
+        before = json.loads(POINT.read_text(encoding="utf-8"))
+        before["logos_chat"] = CHAT_SIM
+        spread = self.root / "spread.json"
+        spread.write_text(json.dumps(before), encoding="utf-8")
+        matrix = self.matrix(UPLOADED, UPLOADED, spread=spread)
+        _, out, _ = self.comment("pr", matrix, "--base", BASE)
+
+        first, _, header, *_ = out.splitlines()
+        self.assertEqual(
+            first,
+            f"**chat-sim: same as its base, 6 of 6 runs** at {commit(REVISION)} against its merge "
+            f"base {commit(BASE)} · [the run]({RUN_URL})",
+        )
+        self.assertEqual(
+            header, f"| Loss | Seed 0 | Seed 1 | main's 20 seeds at {commit(CHAT_SIM)} |"
+        )
+        self.assertEqual(
+            self.rows(out)[0], "| 0.1% | 50 whole, same | 46, split, same | 2 whole, 18 to 50 |"
+        )
+
+    def test_without_main_s_point_the_column_and_the_note_are_left_out(self):
+        head = self.uploaded(
+            "head", **{"0.1/1": {"conversation": "b19d47e0c5", "verdict": "split at epoch 15"}}
+        )
+        _, out, _ = self.comment("pr", self.matrix(head, UPLOADED), "--base", BASE)
+
+        self.assertTrue(out.startswith("**chat-sim: the draws changed, no comparison** at "))
+        self.assertEqual(out.splitlines()[2], "| Loss | Seed 0 | Seed 1 |")
+        self.assertEqual(self.rows(out)[0], "| 0.1% | 50 whole, same | 15, split, re-rolled |")
+        self.assertNotIn("main's", out.split("\n\nA cell: ")[0])
 
     def test_a_pr_whose_cells_only_drew_other_ids_or_ran_otherwise_is_re_rolled(self):
         head = self.uploaded(
@@ -613,6 +1009,10 @@ class Drawn(unittest.TestCase):
         status, _, err = self.comment("pr", unread)
         self.assertEqual(status, 2)
         self.assertIn(f"--matrix: {unread} is not a matrix tools/sim matrix writes", err)
+        against_point = self.matrix(UPLOADED, base_point=POINT)
+        status, out, err = self.comment("pr", against_point, "--base", BASE)
+        self.assertEqual((status, out), (2, ""))
+        self.assertIn("--matrix: main's point that stood in for the base is not at --base", err)
 
 
 class Comment(Fixture):

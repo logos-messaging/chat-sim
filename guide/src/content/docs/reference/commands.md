@@ -89,7 +89,7 @@ gives every call with its statuses.
 python3 tools/sim run SCENARIO RIG --out DIR [--share ADDRESS]
 python3 tools/sim sweep SCENARIO RIG --out DIR --runs K [--from N] [--share ADDRESS]
 python3 tools/sim compare [--write] EXPECTED OUT
-python3 tools/sim matrix HEAD [--base DIR] [--asked FILE] [--out FILE]
+python3 tools/sim matrix HEAD [--base DIR | --base-point FILE] [--spread FILE] [--asked FILE] [--out FILE]
 nix run .#groupv2-simulation -- run SCENARIO --out DIR [--share ADDRESS]
 ```
 
@@ -100,7 +100,11 @@ process to the outcomes in `EXPECTED` and says of each run `same`, `better`, `wo
 `HEAD` with those under `--base` by scenario and seed, at any depth, and writes as JSON a cell for each with
 its change, a cell too for each run the sweeps in `--asked` ask of each side, and the verdict over the
 cells: `same`, `better`, `worse`, `hint` (one cell worse), `mixed`, `re-rolled`, `no-base`, `no-outcome`
-or `unbuilt`; without a base, each scenario's summary.
+or `unbuilt`; without a base, each scenario's summary. `--base-point` names, in place of `--base`, the
+`point.json` of main's point at the base, whose runs stand in for the base's at the same scenario and seed;
+`--spread` names that of a point whose runs the head's are placed among, and the matrix holds of it the
+summary and each run of the cells' scenarios, of each cell whether the head's epochs are below the lowest
+of the point's, and how many re-rolled cells are.
 [`tools/sim/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#a-matrix-of-a-revisions-runs-beside-its-bases)
 gives its fields and what decides the verdict. `RIG` is
 `--one-process PATH`, the path of `harness-run`. The flake's app `groupv2-simulation` builds the runner
@@ -113,7 +117,7 @@ run chat-cli, which is on the `local-network` branch. `DIR` must not exist.
 |---|---|---|---|
 | 0 | every run went as expected | every run came out as expected, and the sweep has a run for each outcome expected | it wrote the matrix |
 | 1 | a run did not | a run did not, or the runs and the outcomes expected differ in number | |
-| 2 | the command line or the scenario is refused | the sweep or `EXPECTED` cannot be read, `EXPECTED` holds outcomes without the ids and the fields of a `grow` step, or a run was not in one process | a directory is not there, `--asked` cannot be read, or a run cannot be read, was not in one process, or is a second run of a scenario at one seed |
+| 2 | the command line or the scenario is refused | the sweep or `EXPECTED` cannot be read, `EXPECTED` holds outcomes without the ids and the fields of a `grow` step, or a run was not in one process | a directory is not there, `--asked` or a point cannot be read, `--base-point` is given with `--base`, or a run cannot be read, was not in one process, or is a second run of a scenario at one seed |
 | 128 + n | signal n interrupted it | | |
 
 ## harness-run

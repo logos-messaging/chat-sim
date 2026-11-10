@@ -115,11 +115,19 @@ _SIDE = {"runs": (int,), "unbuilt": (int,)}
 _MATRIX = {
     "head": _SIDE,
     "base": (dict, _NONE),
+    "base_point": (dict, _NONE),
     "cells": (list,),
-    "counts": {field: (int,) for field in ("cells", "compared", *_CHANGES, "no-outcome")},
+    "counts": {
+        field: (int,) for field in ("cells", "compared", *_CHANGES, "below", "no-outcome")
+    },
     "verdict": (str,),
     "summary": (list, _NONE),
+    "spread": (dict, _NONE),
 }
+# The point of main a matrix names: the one that stood in for the base's runs, and its spread.
+_NAMED = {"logos_chat": (str,), "measurement": (str,), "run_url": (str,)}
+_SPREAD = {**_NAMED, "summary": (list,), "seeds": (list,)}
+_SEED = {"scenario": (str,), "seed": (int,), "epochs": (int, _NONE), "ended": (str, _NONE)}
 _CELL = {
     "scenario": (str,),
     "seed": (int,),
@@ -133,7 +141,11 @@ _CELL = {
     "epochs": {"head": (int, _NONE), "base": (int, _NONE)},
     "ended": {"head": (str, _NONE), "base": (str, _NONE)},
     "moved": (dict, _NONE),
+    "below": (bool, _NONE),
 }
+# A point keeps a cell of main's matrix but whether it is below a spread, which only a pull
+# request's matrix has.
+_POINT_CELL = {field: kind for field, kind in _CELL.items() if field != "below"}
 _OUTCOME = {
     "seed": (int,),
     "network_seed": (int, _NONE),
@@ -572,7 +584,7 @@ def write_point(
             "measurement": before["measurement"],
             "rerolled": rerolled(before, matrix),
         },
-        "cells": matrix["cells"],
+        "cells": [{field: cell[field] for field in _POINT_CELL} for cell in matrix["cells"]],
         "summary": matrix["summary"],
     }
     _replace(out, copies)
@@ -738,10 +750,23 @@ def read_matrix(path: Path) -> dict:
             raise Unreadable(f"verdict {matrix['verdict']!r} is none of a matrix")
         if (matrix["summary"] is None) != (matrix["base"] is not None):
             raise Unreadable("summary is there without a base, and only without one")
+        if matrix["base_point"] is not None:
+            if matrix["base"] is None:
+                raise Unreadable("base_point is there without a base")
+            _shaped(matrix["base_point"], _NAMED, "base_point")
+            _named(matrix["base_point"], "base_point")
         for number, cell in enumerate(matrix["cells"]):
             _cell(cell, f"cells[{number}]", alone=matrix["base"] is None)
         for number, one in enumerate(matrix["summary"] or ()):
             _summary(one, f"summary[{number}]")
+        if matrix["spread"] is not None:
+            spread = matrix["spread"]
+            _shaped(spread, _SPREAD, "spread")
+            _named(spread, "spread")
+            for number, one in enumerate(spread["summary"]):
+                _summary(one, f"spread.summary[{number}]")
+            for number, one in enumerate(spread["seeds"]):
+                _seed(one, f"spread.seeds[{number}]")
     except Unreadable as refused:
         raise Unreadable(f"{path}: {refused}") from None
     return matrix
@@ -766,7 +791,7 @@ def read_point(path: Path) -> dict:
             _shaped(point["previous"], _PREVIOUS, "previous")
             _commits(point["previous"], "logos_chat", "measurement", where="previous.")
         for number, cell in enumerate(point["cells"]):
-            _cell(cell, f"cells[{number}]", alone=True)
+            _cell(cell, f"cells[{number}]", alone=True, shape=_POINT_CELL)
         for number, one in enumerate(point["summary"]):
             _summary(one, f"summary[{number}]")
     except Unreadable as refused:
@@ -1070,9 +1095,10 @@ def _at(where: str, field: str) -> str:
     return f"{where}.{field}" if where else field
 
 
-def _cell(cell: object, where: str, alone: bool) -> None:
-    """Refuses `cell` unless it is a cell of a matrix; with `alone`, of one without a base."""
-    _shaped(cell, _CELL, where)
+def _cell(cell: object, where: str, alone: bool, shape: dict = _CELL) -> None:
+    """Refuses `cell` unless it is a cell of a matrix, of the fields of `shape`; with `alone`, of
+    one without a base."""
+    _shaped(cell, shape, where)
     if _SCENARIO.fullmatch(cell["scenario"]) is None:
         raise Unreadable(f"{where}.scenario {cell['scenario']!r} is not the name of a scenario")
     if cell["run"] < 1:
@@ -1106,6 +1132,22 @@ def _summary(one: object, where: str) -> None:
     _shaped(one, _SUMMARY, where)
     if _SCENARIO.fullmatch(one["scenario"]) is None:
         raise Unreadable(f"{where}.scenario {one['scenario']!r} is not the name of a scenario")
+
+
+def _named(point: dict, where: str) -> None:
+    """Refuses a point a matrix names unless its commits and the address of its run are of their
+    form."""
+    _commits(point, "logos_chat", "measurement", where=f"{where}.")
+    if _URL.fullmatch(point["run_url"]) is None:
+        raise Unreadable(f"{where}.run_url is not an http(s) address")
+
+
+def _seed(one: object, where: str) -> None:
+    _shaped(one, _SEED, where)
+    if _SCENARIO.fullmatch(one["scenario"]) is None:
+        raise Unreadable(f"{where}.scenario {one['scenario']!r} is not the name of a scenario")
+    if one["ended"] not in (None, *_ENDINGS):
+        raise Unreadable(f"{where}.ended is not how a run ended")
 
 
 def _commits(held: dict, *fields: str, where: str = "") -> None:
