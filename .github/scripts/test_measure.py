@@ -324,13 +324,16 @@ class Title(unittest.TestCase):
 
 
 class Publish(unittest.TestCase):
-    def test_simulate_yml_keeps_a_point_for_a_main_run_handed_no_pr_alone(self):
+    def test_simulate_yml_keeps_a_point_and_links_its_page_for_a_main_run_handed_no_pr_alone(self):
         workflow = (ROOT / ".github" / "workflows" / "simulate.yml").read_text(encoding="utf-8")
         publish = workflow.split("\n  publish:\n", 1)[1].split("\n    runs-on: ", 1)[0]
+        report = workflow.split("\n      - name: Read the report page's address\n", 1)[1]
+        report = report.split("\n        continue-on-error: ", 1)[0]
 
         main = "needs.plan.outputs.suite == 'main'"
-        self.assertEqual(publish.count(main), 1)
-        self.assertIn(f"{main} && needs.plan.outputs.pr == ''", publish)
+        for condition in (publish, report):
+            self.assertEqual(condition.count(main), 1)
+            self.assertIn(f"{main} && needs.plan.outputs.pr == ''", condition)
 
 
 class Branch(unittest.TestCase):

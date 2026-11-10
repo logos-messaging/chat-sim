@@ -1,6 +1,6 @@
 ---
 title: Reports
-description: What CI runs on master and on each pull request, what the site's reports show, how to make a row again on your machine, what the site keeps of logos-chat's runs, and the graph over its main.
+description: What CI runs on master and on each pull request, what the site's reports show, how to make a row again on your machine, what the site keeps of logos-chat's runs, the pages of those runs, and the graph over its main.
 ---
 
 CI runs on every push to master and on every pull request to master. Two of its jobs run simulations in
@@ -125,8 +125,10 @@ the runs of two of its suites under `logos-chat/` of the site: those of `main`, 
 `pr`, seeds 0 and 1 of the three lossy ones at a logos-chat pull request's head and at its base. A pull
 request's run keeps the matrix [`tools/sim matrix`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#a-matrix-of-a-revisions-runs-beside-its-bases)
 wrote of the runs and a point the matrix's cells and summary, and each keeps each run's `run.txt`,
-`report.txt` and `run.json`. A run's `report.json`, ten times the rest, stays in the workflow run's
-artifacts.
+`report.txt` and `run.json`, or, of a job that could not build chat-sim, the build's log, `build.log`,
+which the job uploads beside each run's `unbuilt` marker. A run's `report.json`, ten times the rest,
+stays in the workflow run's artifacts. Each has a page drawn from what it keeps (see
+[The pages of logos-chat's runs](#the-pages-of-logos-chats-runs)), and the comment links it.
 
 A `pr` run whose base has its point on `gh-pages` at the measurement runs nothing at the base: a point's
 seeds 0 and 1 are runs 1 and 2 of its sweeps, the runs a pull request asks of the base, so the point's
@@ -146,10 +148,12 @@ comment has no such column.
 |---|---|
 | `logos-chat/main/<sha>/<measurement>/point.json` | the point of the logos-chat commit `<sha>`, measured by the chat-sim commit `<measurement>` |
 | `logos-chat/main/<sha>/<measurement>/<scenario>/<run>/` | the text of each of the point's runs, `<run>` its number in a sweep of its scenario |
+| `logos-chat/main/<sha>/<measurement>/index.html` | the point's page |
 | `logos-chat/index.html` | the graph over main, drawn again from every point's `point.json` each time a point is written (see [Over main](#over-main)) |
 | `logos-chat/pr-N/matrix.json` | the matrix of the newest run for pull request N, the head's runs beside the base's, or beside main's point at the base |
 | `logos-chat/pr-N/meta.json` | what ran: the pull request's number as `pr`, the `revision` and the `base`, `null` without one, chat-sim's commit as `chat_sim`, the `measurement`, the workflow run's `run_url` and `run_number`, and the `time` it was written, in UTC |
 | `logos-chat/pr-N/head/<scenario>/<run>/`, `logos-chat/pr-N/base/<scenario>/<run>/` | the text of each run at the head and at the base; no `base/` when main's point stood in |
+| `logos-chat/pr-N/index.html` | the report of the run |
 
 The measurement is the newest chat-sim commit that touches what a run measures: `crates/`,
 `Cargo.toml`, `Cargo.lock`, `.cargo/`, `rust-toolchain.toml`, `flake.nix`, `flake.lock`,
@@ -176,12 +180,52 @@ those of the newest run to publish them, by run number: a publish from an older 
 re-run replaces what was there whole. Only a run of chat-sim's default branch keeps a point, and none
 keeps one whose jobs read no run at the revision, built or not, as when logos-chat has no such commit.
 A `main` run handed a `pr` ran at the pull request's head, not at a commit of main: it is not kept.
+A pull request's directory goes once the pull request is no longer open: the weekly run of Prune Pages
+removes each `logos-chat/pr-N/` whose number logos-chat's pulls API does not list among its open pull
+requests, and a dispatch of Prune Pages handed a `pr` removes that pull request's alone.
 
 The newest thirty points by run number keep their runs' text: once a point is written, the runs' text of
 each point older than those is removed, and its `point.json` stays. A point's text is about 5 MB, and
 Pages holds a site of 1 GB. Every publish is a commit on `gh-pages`, so the weekly run of Prune Pages also
 rewrites the branch as one commit of its tree as it stands, and the text a point lets go leaves the
 branch's history too.
+
+## The pages of logos-chat's runs
+
+The publish job draws the page of each run it keeps, `index.html` in its directory, from what it keeps
+there. The comment links it: a `pr` run's for a pull request, and a `main` run's point, where the
+publish job keeps one.
+
+The report of a pull request's run, `logos-chat/pr-N/`:
+
+| Part | Shows |
+|---|---|
+| The head | the pull request's number, the head and its merge base, chat-sim's commit, links to the pull request and to the workflow run, and when, in UTC |
+| The verdict | the comment's verdict line, in its words; where main's point stood in for the base, its words link the point's page, or its `point.json` until the point has a page |
+| The matrix | the head's cells and the base's side by side, a row a rate and a column a seed, coloured as [the newest point](#over-main) is; an outline marks a cell of the head that stands lower (`worse`) or higher (`better`) than the base's. Where the matrix holds a `spread`, main's runs of each rate beside them in the comment's words (`2 whole, 18 to 50`), and a strip for each rate placing the head's two runs among main's twenty seeds of that point by their epochs without a fork |
+| The cells | a fold for each cell, open where it moved: of each side, the run's verdict and what it came to, the lines of its `grow` from `run.json` (each line's kind, the line it forked from, the epoch it forked at, the epoch it reached and its members), who fell behind and at which epoch, who was behind at the end and who never joined, and its `run.txt` and `report.txt`; then the command that runs the cell again, as the comment's fold has it. Where main's point stood in, the base's side is the point's run, with the point's page linked, and its text shown from the point's directory while the point keeps it |
+
+Where chat-sim did not build at the head, the build's log takes the place of the matrix and the cells.
+Every job built the same commit, so the page shows the first job's.
+
+The page of a point, `logos-chat/main/<sha>/<measurement>/`:
+
+| Part | Shows |
+|---|---|
+| The head | the logos-chat commit, the chat-sim commit that ran and the one the runs measure, the workflow run and when; the pull requests the point merged, and the point it follows, linking its page |
+| The matrix | the point's cells, a row a rate and a column a seed, as the newest point is drawn |
+| The rates | of each rate, the runs and how they ended, the lowest, median and highest epochs without a fork, the median of the members off the trunk at the end, and the shortest and the longest wall time of a run, from `run.json` |
+| The runs | a fold a rate: a row a run, with its seed, its epochs without a fork, how it ended, what its `grow` came to and its wall time; and a fold for each run, with its lines, its text and the command that runs it again |
+
+Where a job of the point could not build chat-sim, the page shows the build's log once, and each run that
+could not build links its own. A page runs no script and loads nothing from outside its directory, and
+what a run, a pull request's title or an API says reaches it as text.
+
+When a point past the newest thirty loses its runs' text, its page is drawn again from its
+`point.json` alone, and so is the report of a pull request whose base it stood in for, so that no link
+leads to text the site no longer holds: the command under each run makes it again. A point kept before
+its page was drawn gets one the next time a point is written; until then a report it stood in for links
+its `point.json`, and the report is drawn again with the point's page.
 
 ## Over main
 
@@ -198,7 +242,7 @@ blue of its own, the heavier the loss the darker.
 | Runs whole at 50 epochs | a line a rate of how many runs ended whole, `summary`'s `whole`, toward the goal of every run, broken at a point where none of the rate's runs had an outcome (`no-outcome` is `runs`), as when chat-sim did not build; under the dates the axis shows, the pull requests the point merged |
 | The newest point | the newest point's `cells`, a row a rate and a column a seed: a cell's colour is the epochs its run went without a fork, in bins of ten and 50 alone; a dot marks a run that ended whole, a ring one that ended `behind`, and the cell's hover text is the run's `came_to` |
 | Members off the trunk at the end | a line a rate of the median of the members behind at the end, on a line not the trunk or never joined, `summary`'s `members_off_trunk`; left out until a rate with loss has had every run whole at a point |
-| The points | each point, the newest first: when it was written, its logos-chat commit, the pull requests it merged, each rate's runs whole, what moved against the point before it, the chat-sim commit it measures, and links to its `point.json` and its workflow run |
+| The points | each point, the newest first: when it was written, its logos-chat commit, the pull requests it merged, each rate's runs whole, what moved against the point before it, the chat-sim commit it measures, and links to its page and its workflow run |
 
 Two marks tell a step that is not logos-chat's: a dashed line on a point that measures another chat-sim
 commit than the point before it, and an open marker on a point whose `previous.rerolled` is `true`,

@@ -9,17 +9,19 @@ master and `pr-N` for pull request N. `index` writes the site's landing page, an
 a warning.
 
 `point` keeps a point of logos-chat's main, a run of simulate.yml's main suite: its
-`point.json`, drawn from the run's matrix, and its runs' text, in
+`point.json`, drawn from the run's matrix, its runs' text and its page, in
 `logos-chat/main/<sha>/<measurement>/`. What was there is replaced unless a run of a higher
-number wrote it, and then only the newest thirty points keep their runs' text. The points are in
-the order of their runs' numbers, which GitHub gives in the order the runs were started and a
-re-run keeps; `previous` names the point a new one follows. `pr` keeps the newest run of a
-logos-chat pull request in `logos-chat/pr-N/` the same way: its matrix, both sides' runs' text
-and its `meta.json`. `trend` draws the graph over main, `logos-chat/index.html`, from the
-`point.json` of every point; one it cannot read is left out, with a warning.
+number wrote it, and then only the newest thirty points keep their runs' text: the page of a
+point that loses it is drawn again from its point.json. The points are in the order of their
+runs' numbers, which GitHub gives in the order the runs were started and a re-run keeps;
+`previous` names the point a new one follows. `pr` keeps the newest run of a logos-chat pull
+request in `logos-chat/pr-N/` the same way: its matrix, both sides' runs' text, its `meta.json`
+and its report page. `trend` draws the graph over main, `logos-chat/index.html`, from the
+`point.json` of every point; one it cannot read is left out, with a warning. `closed` names the
+runs of logos-chat's pull requests that are no longer open.
 
-The pages run no script, and every text that comes from a run or from a pull request's title
-is escaped.
+The pages run no script, and every text that comes from a run, from a pull request's title or
+from an API is escaped.
 """
 
 from __future__ import annotations
@@ -36,6 +38,8 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
+import simulate
+
 # The scenarios of the job "Sim in one process", in the order it runs them.
 FIFTY_EPOCHS = ("50-epochs", "50-epochs-waku")
 
@@ -48,8 +52,9 @@ LOGOS_CHAT = "logos-chat"
 # How many of the newest points of main keep their runs' text, about 5 MB a point, in a site
 # Pages holds to 1 GB. Every point keeps its point.json.
 WINDOW = 30
-# The text of a run the site keeps. Its report.json, ten times the rest, stays in the artifacts.
-TEXTS = ("run.txt", "report.txt", "run.json")
+# The text of a run the site keeps, and the build's log of one whose job could not build
+# chat-sim. Its report.json, ten times the rest, stays in the artifacts.
+TEXTS = ("run.txt", "report.txt", "run.json", "build.log")
 # How many rates the graph over main tells apart, a hue of `_STYLE`'s ramp each.
 HUES = 4
 # The repositories whose commits and pull requests a point names.
@@ -61,6 +66,7 @@ _SHA = re.compile(r"[0-9a-f]{40}")
 _URL = re.compile(r"https?://[^\s\"'<>]+")
 _TIME = "%Y-%m-%dT%H:%M:%SZ"
 _RUN = re.compile(r"[0-9]+")
+_PR = re.compile(r"[1-9][0-9]*")
 _HEX = re.compile(r"[0-9a-f]+")
 _SCENARIO = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 # How a commit of logos-chat's main names the pull request it merged: a squash merge's title
@@ -283,6 +289,36 @@ font-size:12px;color:var(--muted)}
 .points .merged{white-space:normal;min-width:14rem}
 .points .moved{white-space:normal;font-size:13px;color:var(--muted);min-width:12rem}
 """
+# The report pages, beside the charts' classes.
+_REPORT = """
+.facts code{font-size:13px}
+.verdict{font-size:1.1em}
+.side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
+.heats{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 3rem}
+.sides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));
+gap:0 2.5rem}
+.sides>div{min-width:0}
+details{margin:.75rem 0}
+details.run>summary{font-size:1.1em;font-weight:600}
+summary span{font-weight:normal;margin-left:.4rem}
+details.text>summary{font-size:13px;color:var(--muted)}
+.who{font-size:14px;margin:.4rem 0}
+.lines,.runs,.rates{font-size:14px}
+.lines th,.lines td{padding:.15rem 1rem .15rem 0}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates th[colspan]{text-align:center}
+.rates td,.runs td.n{white-space:nowrap}
+.spread{margin-top:18px}
+.spread th,.spread td{height:30px;padding:0 .75rem 0 0;border:0;font-size:13px;
+vertical-align:middle;white-space:nowrap}
+.spread th{font-weight:normal;color:var(--muted)}
+.cell .outline{fill:none;stroke-width:2.5}
+.worse .outline{stroke:var(--bad)}
+.better .outline{stroke:var(--good)}
+.tick{stroke:var(--line)}
+.seed{fill:var(--muted);fill-opacity:.55}
+.head{fill:var(--fg);stroke:var(--bg);stroke-width:2}
+"""
 
 
 class Unreadable(Exception):
@@ -345,11 +381,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "point",
         help="keep a point of logos-chat's main",
         description="Writes the point of a run of the main suite to "
-        "logos-chat/main/SHA/MEASUREMENT/ of SITE: point.json and each run's run.txt, "
-        "report.txt and run.json. What was there is replaced, unless it is the point of a run "
-        "of a higher number. Then removes the runs' text of each point past the newest "
-        f"{WINDOW}, by run number. A matrix that read no run at the revision, built or not, is "
-        "refused.",
+        "logos-chat/main/SHA/MEASUREMENT/ of SITE: point.json, each run's run.txt, report.txt "
+        "and run.json, or build.log of a job that could not build chat-sim, and the point's "
+        "page, index.html. What was there is replaced, unless it is the point of a run of a "
+        f"higher number. Then removes the runs' text of each point past the newest {WINDOW}, by "
+        "run number, and draws again the page of each point that loses it or has none, and the "
+        "report of each pull request such a point stood in for. A matrix that read no run at "
+        "the revision, built or not, is refused.",
     )
     _add_ran(point, runs="the run jobs uploaded")
     point.add_argument(
@@ -385,9 +423,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "pr",
         help="keep the run of a logos-chat pull request",
         description="Writes the run of the pr suite for a logos-chat pull request to "
-        "logos-chat/pr-N/ of SITE: the matrix, each run's run.txt, report.txt and run.json "
-        "at the revision under head/ and at the base under base/, and meta.json. What was "
-        "there is replaced, unless it is a run of a higher number.",
+        "logos-chat/pr-N/ of SITE: the matrix, each run's run.txt, report.txt and run.json, or "
+        "build.log of a job that could not build chat-sim, at the revision under head/ and at "
+        "the base under base/, meta.json, and the report page, index.html. What was there is "
+        "replaced, unless it is a run of a higher number.",
     )
     _add_ran(pr, runs="the run jobs at the revision uploaded")
     pr.add_argument("--pr", metavar="N", type=int, required=True, help="the pull request")
@@ -408,6 +447,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     trend.add_argument("site", metavar="SITE", type=Path, help="the site, as gh-pages holds it")
     trend.set_defaults(command=_trend)
+    closed = commands.add_parser(
+        "closed",
+        help="name the runs of logos-chat's pull requests that are no longer open",
+        description="Prints each logos-chat/pr-N of SITE whose pull request is no longer open, a "
+        "line each, the lowest number first: with --open, each whose N the file does not list, "
+        "and with --pr, that pull request's alone. A line of the file, or a pr, that is not the "
+        "number of a pull request is refused.",
+    )
+    closed.add_argument("site", metavar="SITE", type=Path, help="the site, as gh-pages holds it")
+    which = closed.add_mutually_exclusive_group(required=True)
+    which.add_argument(
+        "--open",
+        metavar="FILE",
+        type=Path,
+        help="the numbers of logos-chat's open pull requests, one a line, as its pulls API "
+        "lists them",
+    )
+    which.add_argument("--pr", metavar="N", help="the number of a pull request that closed")
+    closed.set_defaults(command=_closed)
     args = parser.parse_args(argv)
     return args.command(parser, args)
 
@@ -527,6 +585,7 @@ def write_index(site: Path) -> None:
         "<ul>\n"
         f"<li>{_link('guide/', 'Guide')}</li>\n"
         f"<li>{_link('reports/', 'Reports')}</li>\n"
+        f"<li>{_link('logos-chat/', 'logos-chat over main')}</li>\n"
         "</ul>\n"
     )
     (site / "index.html").write_text(_page("chat-sim", body), encoding="utf-8")
@@ -566,8 +625,9 @@ def write_point(
     matrix: dict, runs: Path, site: Path, facts: dict, merged: List[dict], before: Optional[dict]
 ) -> dict:
     """Writes the point of `matrix`, a matrix of a run of main, to
-    `logos-chat/main/<sha>/<measurement>/` of `site`, replacing what was there: point.json, and
-    each run's text under `runs` at any depth in `<scenario>/<run>/`, its run by number.
+    `logos-chat/main/<sha>/<measurement>/` of `site`, replacing what was there: point.json, each
+    run's text under `runs` at any depth in `<scenario>/<run>/`, its run by number, and the
+    point's page.
 
     `facts` says what ran, `merged` the pull requests of logos-chat merged since `before`, the
     point it follows, or `None`. Returns the point, as `read_point` reads it back.
@@ -589,14 +649,16 @@ def write_point(
     }
     _replace(out, copies)
     (out / "point.json").write_text(json.dumps(point, indent=1) + "\n", encoding="utf-8")
-    return read_point(out / "point.json")
+    point = read_point(out / "point.json")
+    draw_point(out, point)
+    return point
 
 
 def write_pr(matrix: dict, runs: Path, base_runs: Optional[Path], site: Path, meta: dict) -> dict:
     """Writes the run of a logos-chat pull request to `logos-chat/pr-N/` of `site`, replacing
     what was there: `matrix` as matrix.json, each run's text under `runs` in
     `head/<scenario>/<run>/` and under `base_runs` in `base/<scenario>/<run>/`, at any depth and
-    each run by number, and `meta`, which says what ran, as meta.json.
+    each run by number, `meta`, which says what ran, as meta.json, and the report page.
 
     Returns `meta`, as `read_pr_meta` reads it back.
     """
@@ -607,7 +669,207 @@ def write_pr(matrix: dict, runs: Path, base_runs: Optional[Path], site: Path, me
     _replace(out, copies)
     (out / "matrix.json").write_text(json.dumps(matrix, indent=1) + "\n", encoding="utf-8")
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
-    return read_pr_meta(out / "meta.json")
+    meta = read_pr_meta(out / "meta.json")
+    draw_pr(out, matrix, meta)
+    return meta
+
+
+def draw_point(directory: Path, point: dict) -> None:
+    """Writes the page of the point in `directory`, its index.html, from `point` and the runs'
+    text `directory` keeps: what ran, the pull requests it merged and the point it follows, its
+    cells as a heatmap, how each rate's runs ended, and each run with the command that runs it
+    again and, while its text is kept, the text, its lines and its wall time; where chat-sim did
+    not build, the build's log, once. Every file it links is one `directory` holds."""
+    logos_chat, measured, before = point["logos_chat"], point["measurement"], point["previous"]
+    facts = {"revision": logos_chat, "base": "", "chat_sim": point["chat_sim"]}
+    rows = _by_rate(point["cells"])
+    merged = ", ".join(
+        _link(f"{LOGOS_CHAT_URL}/pull/{one['number']}", f"#{one['number']}")
+        + f" {_e(one['title'])}"
+        for one in point["merged"]
+    )
+    follows = "It is the first point."
+    if before is not None:
+        at = f"../../{before['logos_chat']}/{before['measurement']}/"
+        follows = (
+            f"It follows the point of main {_link(at, before['logos_chat'][:7], code=True)} at "
+            f"chat-sim {_code(before['measurement'])}"
+        )
+        follows += ", and its runs drew other ids: re-rolled." if before["rerolled"] else "."
+    body = (
+        f'<p class="muted">{_link("../../../../", "chat-sim")} / '
+        f'{_link("../../../", "Over main")}</p>\n'
+        f"<h1>logos-chat main {_e(logos_chat[:7])}, {_e(point['time'][:10])}</h1>\n"
+        f'<p class="facts">main {_commit(LOGOS_CHAT_URL, logos_chat)} · chat-sim '
+        f"{_commit(CHAT_SIM_URL, point['chat_sim'])} · the measurement "
+        f"{_commit(CHAT_SIM_URL, measured)} · {_link(point['run_url'], 'the run')} · "
+        f"{_when(point)} UTC</p>\n"
+        f"<p>Pull requests merged since the point it follows: {merged or _NONE_MERGED}. "
+        f"{follows}</p>\n"
+    )
+    texts = [_run_dir(directory, cell) / name for cell in point["cells"] for name in TEXTS]
+    kept = any(path.is_file() for path in texts)
+    if not kept:
+        body += (
+            f'<p class="muted">The site keeps the runs\' text of the newest {WINDOW} points, and '
+            "no longer this one's: the command under each run makes it again.</p>\n"
+        )
+    body += (
+        '<section class="chart" id="matrix">\n<h2>The matrix</h2>\n'
+        + _heatmap(rows, "The point's runs")
+        + _heat_legend()
+        + '<p class="caption">A row a rate and a column a seed: a cell\'s colour is the epochs '
+        "its run went without a fork; a dot marks a run that ended whole, a ring one that ended "
+        "one group with members behind, and no mark one that split or stalled. Its hover text is "
+        "how the run came out.</p>\n"
+        "</section>\n"
+    )
+    unbuilt = next((cell for cell in point["cells"] if cell["unbuilt"]["head"]), None)
+    if unbuilt is not None:
+        body += _build(unbuilt, _run_dir(directory, unbuilt), _run_href(unbuilt), kept)
+    body += _rates_table(directory, point) + '<section id="runs">\n<h2>The runs</h2>\n'
+    # The section above shows the build's log once; a run that could not build links its own.
+    for name, cells in rows:
+        listed = [cells[seed] for seed in sorted(cells)]
+        body += (
+            f'<details>\n<summary>{_e(name)} <span class="muted">{len(listed)} runs</span>'
+            "</summary>\n"
+            + _runs_table(directory, listed)
+            + "".join(
+                f'<details class="run">\n<summary>seed {cell["seed"]} <span class="muted">'
+                f"{_e(simulate.words(cell, False))}</span></summary>\n"
+                + _side(
+                    cell,
+                    "head",
+                    None,
+                    _run_dir(directory, cell),
+                    _run_href(cell),
+                    inline=not cell["unbuilt"]["head"],
+                )
+                + _again(cell, facts)
+                + "</details>\n"
+                for cell in listed
+            )
+            + "</details>\n"
+        )
+    body += (
+        "</section>\n"
+        f'<p class="muted">What the page shows: the guide\'s '
+        f'{_link("../../../../guide/reports/#the-pages-of-logos-chats-runs", "Reports")}.</p>\n'
+    )
+    title = f"chat-sim: logos-chat main {logos_chat[:7]}"
+    (directory / "index.html").write_text(_page(title, body, _CHARTS + _REPORT), encoding="utf-8")
+
+
+def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
+    """Writes the report page of the run of a logos-chat pull request kept in `out`, its
+    index.html, from `matrix` and `meta`, which `out` holds, and the runs' text it keeps: the
+    verdict as the comment says it; the head's cells and the base's as heatmaps, and where the
+    matrix has main's spread, where the head's runs fall among main's; then each cell's runs at
+    both sides, with their text and lines, and the command that runs the cell again. Where
+    chat-sim did not build at the head, the build's log takes the place of the cells, and where
+    main's point stood in for the base's runs, the point's page, or its point.json until it has
+    one, is linked in theirs, and its runs' text is shown from the point's directory while the
+    point keeps it."""
+    head, base, point = meta["revision"], meta["base"], matrix["base_point"]
+    facts = {"revision": head, "base": base or "", "chat_sim": meta["chat_sim"]}
+    against = simulate.compares(matrix)
+    rows = _by_rate(matrix["cells"])
+    at = page = there = None
+    if point is not None:
+        at = f"../main/{point['logos_chat']}/{point['measurement']}/"
+        there = _point_at(out.parent.parent, point["logos_chat"], point["measurement"])
+        page = at if (there / "index.html").is_file() else at + "point.json"
+    # As the comment has it: a head that did not build was held to no point.
+    stood = None if matrix["verdict"] == "unbuilt" else point
+    verdict = simulate.ran_at(facts, stood, _code, lambda words, _: _link(page, words))
+    said = [
+        f"head {_commit(LOGOS_CHAT_URL, head)}",
+        "no base" if base is None else f"merge base {_commit(LOGOS_CHAT_URL, base)}",
+        f"chat-sim {_commit(CHAT_SIM_URL, meta['chat_sim'])}",
+        _link(f"{LOGOS_CHAT_URL}/pull/{meta['pr']}", "the pull request"),
+        _link(meta["run_url"], "the run"),
+        f"{_when(meta)} UTC",
+    ]
+    body = (
+        f'<p class="muted">{_link("../../", "chat-sim")} / {_link("../", "Over main")}</p>\n'
+        f"<h1>logos-chat #{meta['pr']}</h1>\n"
+        f'<p class="facts">{" · ".join(said)}</p>\n'
+        f'<p class="verdict"><b>{_e(simulate.headline(matrix))}</b> '
+        f'<span class="muted">{verdict}</span></p>\n'
+    )
+    if matrix["verdict"] == "unbuilt":
+        unbuilt = next((cell for cell in matrix["cells"] if cell["unbuilt"]["head"]), None)
+        if unbuilt is not None:
+            run = _run_href(unbuilt)
+            body += _build(unbuilt, out / "head" / run, f"head/{run}")
+    else:
+        heats = [
+            f'<div>\n<p class="side">the head {_code(head)}</p>\n'
+            + _heatmap(rows, "The head's runs", "head", against)
+            + "</div>\n"
+        ]
+        if matrix["base"] is not None:
+            named = f"the base {_code(base)}"
+            if at is not None:
+                named = f"main's point at {_link(page, point['logos_chat'][:7], code=True)}"
+            heats.append(
+                f'<div>\n<p class="side">{named}</p>\n'
+                + _heatmap(rows, "The base's runs", "base")
+                + "</div>\n"
+            )
+        if matrix["spread"] is not None:
+            heats.append(_spread(matrix["spread"], rows))
+        changes = {cell["change"] for cell in matrix["cells"]}
+        outlined = [
+            (_cell_key(f"bin2 {change}", "outline"), f"{change} than the base")
+            for change in ("worse", "better")
+            if change in changes
+        ]
+        body += (
+            '<section class="chart" id="matrix">\n<h2>The matrix</h2>\n'
+            f'<div class="heats">\n{"".join(heats)}</div>\n'
+            + _heat_legend(*outlined)
+            + '<p class="caption">A row a rate and a column a seed: a cell\'s colour is the epochs '
+            "its run went without a fork; a dot marks a run that ended whole, a ring one that "
+            "ended one group with members behind, and no mark one that split or stalled. An "
+            "outline marks a run of the head that stands lower or higher than the base's. A "
+            "cell's hover text is how the run came out.</p>\n"
+            + _strips(matrix["spread"], rows, against)
+            + "</section>\n"
+            '<section id="cells">\n<h2>The cells</h2>\n'
+        )
+        moved = sorted(matrix["cells"], key=lambda cell: cell["change"] not in ("better", "worse"))
+        for cell in moved:
+            run = _run_href(cell)
+            named = f"the head {_code(head)}"
+            sides = _side(cell, "head", named, out / "head" / run, f"head/{run}")
+            if matrix["base"] is not None and at is None:
+                named = f"the base {_code(base)}"
+                sides += _side(cell, "base", named, out / "base" / run, f"base/{run}")
+            elif at is not None:
+                named = f"main's point at {_link(page, point['logos_chat'][:7], code=True)}"
+                kept = any((there / run / name).is_file() for name in TEXTS)
+                sides += _side(cell, "base", named, there / run, at + run, inline=kept)
+            kind = {"worse": "bad", "better": "good"}.get(cell["change"] or "", "muted")
+            if cell["head"] is None:
+                kind = "none"
+            opened = " open" if cell["change"] in ("better", "worse") else ""
+            body += (
+                f'<details class="run"{opened}>\n<summary>{_e(cell["rate"] or "-")} loss, seed '
+                f'{cell["seed"]} <span class="{kind}">{_e(simulate.words(cell, against))}</span>'
+                "</summary>\n"
+                f'<div class="sides">\n{sides}</div>\n'
+                + _again(cell, facts)
+                + "</details>\n"
+            )
+        body += "</section>\n"
+    body += (
+        f'<p class="muted">What the page shows: the guide\'s '
+        f'{_link("../../guide/reports/#the-pages-of-logos-chats-runs", "Reports")}.</p>\n'
+    )
+    title = f"chat-sim: logos-chat #{meta['pr']}"
+    (out / "index.html").write_text(_page(title, body, _CHARTS + _REPORT), encoding="utf-8")
 
 
 def write_trend(site: Path) -> None:
@@ -691,6 +953,16 @@ def prune(found: Sequence[Tuple[Path, dict]]) -> List[Path]:
         if texts:
             pruned.append(directory)
     return pruned
+
+
+def pull_requests(site: Path) -> List[int]:
+    """The numbers of the logos-chat pull requests whose run `site` keeps in
+    `logos-chat/pr-N/`, the lowest first."""
+    return sorted(
+        int(directory.name.removeprefix("pr-"))
+        for directory in (site / LOGOS_CHAT).glob("pr-*")
+        if directory.is_dir() and _PR.fullmatch(directory.name.removeprefix("pr-"))
+    )
 
 
 def rerolled(was: dict, now: dict) -> bool:
@@ -907,11 +1179,33 @@ def _point(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         )
     except Unreadable as refused:
         parser.error(str(refused))
-    for directory in prune([(out, point), *((at, one) for at, one in found if at != out)]):
+    kept = [(out, point), *((at, one) for at, one in found if at != out)]
+    pruned = prune(kept)
+    for directory in pruned:
         print(
             f"Removed the runs' text of {directory.relative_to(args.site)}/: past the newest "
             f"{WINDOW} points."
         )
+    # A point kept before its page was drawn has none, and the graph's list links it.
+    drawn = [
+        directory
+        for directory, _ in kept
+        if directory in pruned or not (directory / "index.html").is_file()
+    ]
+    for directory, one in kept:
+        if directory in drawn:
+            draw_point(directory, one)
+    # A pull request's page links the page and the runs' text of main's point that stood in for
+    # its base, where the point has them.
+    for directory in sorted((args.site / LOGOS_CHAT).glob("pr-*")):
+        try:
+            ran = read_matrix(directory / "matrix.json")
+            meta = read_pr_meta(directory / "meta.json")
+        except Unreadable:
+            continue
+        at = ran["base_point"]
+        if at and _point_at(args.site, at["logos_chat"], at["measurement"]) in drawn:
+            draw_pr(directory, ran, meta)
     return 0
 
 
@@ -974,6 +1268,27 @@ def _trend(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         write_trend(args.site)
     except Unreadable as refused:
         parser.error(str(refused))
+    return 0
+
+
+def _closed(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    held = pull_requests(args.site)
+    if args.pr is not None:
+        if _PR.fullmatch(args.pr) is None:
+            parser.error(f"--pr: {args.pr!r} is not the number of a pull request")
+        gone = [number for number in held if number == int(args.pr)]
+    else:
+        try:
+            listed = args.open.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError) as error:
+            parser.error(f"--open: {error}")
+        refused = next((line for line in listed if _PR.fullmatch(line) is None), None)
+        if refused is not None:
+            parser.error(f"--open: {refused!r} is not the number of a pull request")
+        still = {int(line) for line in listed}
+        gone = [number for number in held if number not in still]
+    for number in gone:
+        print(f"{LOGOS_CHAT}/pr-{number}")
     return 0
 
 
@@ -1288,36 +1603,13 @@ def _newest_chart(point: dict, rates: Sequence[Tuple[object, str]]) -> str:
         cells = {cell["seed"]: cell for cell in point["cells"] if _rate(cell) == rate}
         if cells:
             rows.append((name, cells))
-    seeds = sorted({seed for _, cells in rows for seed in cells})
-    side, size = 56, 38
-    width, height = side + size * len(seeds), 18 + 30 * len(rows)
-    drawn = [_svg(width, height, "The newest point's runs")]
-    drawn.append('<text class="axis small" x="0" y="11">seed</text>')
-    for column, seed in enumerate(seeds):
-        x = side + size * column + size / 2
-        drawn.append(
-            f'<text class="axis small" x="{x:.1f}" y="11" text-anchor="middle">{seed}</text>'
-        )
-    for row, (name, cells) in enumerate(rows):
-        y = 18 + 30 * row
-        drawn.append(f'<text class="label" x="0" y="{y + 18}">{_e(name)}</text>')
-        for column, seed in enumerate(seeds):
-            if seed in cells:
-                drawn.append(_cell_drawn(cells[seed], name, side + size * column, y))
-    drawn.append("</svg>")
     when = _when(point)
     return (
         '<section class="chart" id="newest">\n<h2>The newest point</h2>\n'
         f'<p class="caption">{when} UTC, main {_e(point["logos_chat"][:7])}: a row a rate and a '
         "column a seed.</p>\n"
-        + "\n".join(drawn)
-        + "\n"
-        + _legend(
-            *((_cell_key(f"bin{number}"), name) for number, name in enumerate(_BINS)),
-            (_cell_key("bin5", "whole"), "whole"),
-            (_cell_key("bin5", "behind"), "one group, members behind"),
-            (_cell_key("empty"), "no outcome"),
-        )
+        + _heatmap(rows, "The newest point's runs")
+        + _heat_legend()
         + '<p class="caption">A cell\'s colour is the epochs its run went without a fork; a dot '
         "marks a run that ended whole, a ring one that ended one group with members behind, and "
         "no mark one that split or stalled. Its hover text is how the run came out.</p>\n"
@@ -1379,7 +1671,7 @@ def _points_list(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> 
             f"{whole}"
             f'<td class="moved">{_e(_what_moved(found, number, rates))}</td>'
             f"<td>{_link(f'{CHAT_SIM_URL}/commit/{measured}', measured[:7], code=True)}{tag}</td>"
-            f"<td>{_link(f'main/{logos_chat}/{measured}/point.json', 'point')} · "
+            f"<td>{_link(f'main/{logos_chat}/{measured}/', 'point')} · "
             f"{_link(point['run_url'], 'the run')}</td>"
             "</tr>\n"
         )
@@ -1543,13 +1835,16 @@ def _panel(found: Sequence[dict], hue: int, rate: object, name: str) -> str:
     return f'<div class="panel">\n{titled}\n' + "\n".join(drawn) + "\n</div>\n"
 
 
-def _cell_drawn(cell: dict, name: str, x: float, y: float) -> str:
-    """A cell of the newest point: its epochs without a fork in a bin's colour, a dot for a run
-    that ended whole, a ring for one that ended behind, and how it came out as its title."""
-    outcome, epochs, ended = cell["head"], cell["epochs"]["head"], cell["ended"]["head"]
+def _cell_drawn(
+    cell: dict, name: str, x: float, y: float, side: str = "head", against: bool = False
+) -> str:
+    """A cell at `side`: its epochs without a fork in a bin's colour, a dot for a run that ended
+    whole, a ring for one that ended behind, and how it came out as its title; with `against`, an
+    outline on a run of the head better or worse than the base's."""
+    outcome, epochs, ended = cell[side], cell["epochs"][side], cell["ended"][side]
     said = f"{name}, seed {cell['seed']}"
     if outcome is None:
-        why = "chat-sim did not build" if cell["unbuilt"]["head"] else "no outcome"
+        why = "chat-sim did not build" if cell["unbuilt"][side] else "no outcome"
         kind, shown, said = "empty", "-", f"{said} · {why}"
     else:
         kind = "empty" if epochs is None else f"bin{min(epochs // 10, len(_BINS) - 1)}"
@@ -1559,16 +1854,397 @@ def _cell_drawn(cell: dict, name: str, x: float, y: float) -> str:
         said += f" · {outcome['came_to']}"
     mark = {"whole": "whole", "behind": "behind"}.get(ended or "")
     centre = x + (15 if mark else 18)
+    moved = against and side == "head" and cell["change"] in ("better", "worse")
+    if moved:
+        kind, said = f"{kind} {cell['change']}", f"{said} · {cell['change']} than the base"
     drawn = (
         f'<g class="cell {kind}"><title>{_e(said)}</title>'
         f'<rect x="{x + 1:.1f}" y="{y + 1}" width="36" height="26" rx="4"/>'
         f'<text x="{centre:.1f}" y="{y + 18}" text-anchor="middle">{shown}</text>'
     )
+    if moved:
+        drawn += (
+            f'<rect class="outline" x="{x + 1:.1f}" y="{y + 1}" width="36" height="26" rx="4"/>'
+        )
     if mark == "whole":
         drawn += f'<circle class="whole" cx="{x + 29:.1f}" cy="{y + 14}" r="3"/>'
     if mark == "behind":
         drawn += f'<circle class="behind" cx="{x + 29:.1f}" cy="{y + 14}" r="2.5"/>'
     return drawn + "</g>"
+
+
+def _by_rate(cells: Sequence[dict]) -> List[Tuple[str, Dict[int, dict]]]:
+    """The cells a row a rate, as `_rate` keys it, in their order, each row its name and its
+    cells by seed."""
+    rows: Dict[object, Tuple[str, Dict[int, dict]]] = {}
+    for cell in cells:
+        rows.setdefault(_rate(cell), (cell["rate"] or cell["scenario"], {}))[1][cell["seed"]] = cell
+    return list(rows.values())
+
+
+def _heatmap(
+    rows: Sequence[Tuple[str, Dict[int, dict]]],
+    label: str,
+    side: str = "head",
+    against: bool = False,
+) -> str:
+    """The cells of `rows` at `side` as a heatmap, a row a rate and a column a seed; with
+    `against`, a run of the head that is better or worse than the base's outlined."""
+    seeds = sorted({seed for _, cells in rows for seed in cells})
+    left, size = 56, 38
+    width, height = left + size * len(seeds), 18 + 30 * len(rows)
+    drawn = [_svg(width, height, label)]
+    drawn.append('<text class="axis small" x="0" y="11">seed</text>')
+    for column, seed in enumerate(seeds):
+        x = left + size * column + size / 2
+        drawn.append(
+            f'<text class="axis small" x="{x:.1f}" y="11" text-anchor="middle">{seed}</text>'
+        )
+    for row, (name, cells) in enumerate(rows):
+        y = 18 + 30 * row
+        drawn.append(f'<text class="label" x="0" y="{y + 18}">{_e(name)}</text>')
+        for column, seed in enumerate(seeds):
+            if seed in cells:
+                drawn.append(
+                    _cell_drawn(cells[seed], name, left + size * column, y, side, against)
+                )
+    drawn.append("</svg>")
+    return "\n".join(drawn) + "\n"
+
+
+def _heat_legend(*extra: Tuple[str, str]) -> str:
+    """The legend of a heatmap: the bins of the epochs without a fork, the marks, and `extra`."""
+    return _legend(
+        *((_cell_key(f"bin{number}"), name) for number, name in enumerate(_BINS)),
+        (_cell_key("bin5", "whole"), "whole"),
+        (_cell_key("bin5", "behind"), "one group, members behind"),
+        (_cell_key("empty"), "no outcome"),
+        *extra,
+    )
+
+
+def _spread(spread: dict, rows: Sequence[Tuple[str, Dict[int, dict]]]) -> str:
+    """The column beside the heatmaps of main's runs in `spread`, a row a rate of `rows`, as the
+    comment's column has them."""
+    listed = "".join(
+        f"<tr><th>{_e(name)}</th>"
+        f"<td>{_e(simulate.spread_of(spread, next(iter(cells.values()))['scenario']))}</td></tr>\n"
+        for name, cells in rows
+    )
+    return (
+        f'<div>\n<p class="side">main\'s {_e(simulate.spread_seeds(spread))} at '
+        f"{_code(spread['logos_chat'])}</p>\n"
+        f'<table class="spread"><tbody>\n{listed}</tbody></table>\n</div>\n'
+    )
+
+
+def _strips(
+    spread: Optional[dict], rows: Sequence[Tuple[str, Dict[int, dict]]], against: bool
+) -> str:
+    """A strip a rate placing the head's runs of `rows` among the runs of main's point that
+    `spread` holds, by the epochs without a fork; nothing without a spread."""
+    if spread is None:
+        return ""
+    drawn = [
+        f'<p class="side">Where the head\'s runs fall among main\'s '
+        f"{_e(simulate.spread_seeds(spread))} at "
+        f"{_code(spread['logos_chat'])}, by the epochs without a fork: main's runs small, stacked "
+        "where they meet, and the head's large.</p>\n"
+    ]
+    for name, cells in rows:
+        scenario = next(iter(cells.values()))["scenario"]
+        mains = [
+            one
+            for one in spread["seeds"]
+            if one["scenario"] == scenario and one["epochs"] is not None
+        ]
+        heads = [cells[seed] for seed in sorted(cells) if cells[seed]["epochs"]["head"] is not None]
+        drawn.append(_strip(name, mains, heads, against))
+    return "".join(drawn)
+
+
+def _strip(name: str, mains: Sequence[dict], heads: Sequence[dict], against: bool) -> str:
+    """The strip of one rate: an axis of the epochs without a fork, main's runs on it as small
+    marks and the head's as large ones, each with how it came out as its hover text."""
+    left, plot, gap = 56, 440, 7
+    top = max(
+        [_TOP]
+        + [one["epochs"] for one in mains]
+        + [cell["epochs"]["head"] for cell in heads]
+    )
+    stacked: Dict[int, int] = {}
+    for one in mains:
+        stacked[one["epochs"]] = stacked.get(one["epochs"], 0) + 1
+    axis = 12 + gap * (max(stacked.values(), default=1) - 1)
+
+    def x(epochs: int) -> float:
+        return left + epochs / top * plot
+
+    drawn = [_svg(left + plot + 12, axis + 22, f"The head's runs at {name} among main's")]
+    drawn.append(f'<text class="label" x="0" y="{axis + 4}">{_e(name)}</text>')
+    drawn.append(f'<line class="tick" x1="{left}" x2="{left + plot}" y1="{axis}" y2="{axis}"/>')
+    for tick in range(0, top + 1, 10):
+        drawn.append(
+            f'<line class="tick" x1="{x(tick):.1f}" x2="{x(tick):.1f}" y1="{axis + 3}" '
+            f'y2="{axis + 7}"/>'
+        )
+        drawn.append(
+            f'<text class="axis small" x="{x(tick):.1f}" y="{axis + 18}" '
+            f'text-anchor="middle">{tick}</text>'
+        )
+    seen: Dict[int, int] = {}
+    for one in mains:
+        seen[one["epochs"]] = seen.get(one["epochs"], 0) + 1
+        said = f"main, seed {one['seed']} · {one['epochs']} epochs without a fork"
+        if one["ended"] is not None:
+            said += f", {one['ended']}"
+        drawn.append(
+            f"<g><title>{_e(said)}</title>"
+            f'<circle class="seed" cx="{x(one["epochs"]):.1f}" '
+            f'cy="{axis - gap * (seen[one["epochs"]] - 1)}" r="3.5"/></g>'
+        )
+    for cell in heads:
+        said = f"the head, seed {cell['seed']} · {simulate.words(cell, against)}"
+        drawn.append(
+            f"<g><title>{_e(said)}</title>"
+            f'<circle class="head" cx="{x(cell["epochs"]["head"]):.1f}" cy="{axis}" r="6"/></g>'
+        )
+    drawn.append("</svg>")
+    return "\n".join(drawn) + "\n"
+
+
+def _side(
+    cell: dict, side: str, named: Optional[str], run: Path, href: str, inline: bool = True
+) -> str:
+    """A side's run of a cell, its text kept in `run` and linked at `href`: what it came to, its
+    lines and who was off the trunk as its run.json has them, and its text, linked and, with
+    `inline`, shown; or why it has no outcome, with the build's log of a job that could not build
+    chat-sim."""
+    drawn = "<div>\n" + ("" if named is None else f'<p class="side">{named}</p>\n')
+    outcome = cell[side]
+    if outcome is None and not cell["unbuilt"][side]:
+        return drawn + "<p>no outcome</p>\n</div>\n"
+    if outcome is None:
+        shown = _shown(run, href, "build.log") if inline else _files(run, href)
+        return drawn + "<p>does not build</p>\n" + shown + "</div>\n"
+    drawn += f"<p>{_e(outcome['verdict'] or 'no verdict')} · {_e(outcome['came_to'])}</p>\n"
+    if inline:
+        drawn += _grown(_run_json(run / "run.json"))
+    drawn += _files(run, href)
+    if inline:
+        drawn += "".join(_folded(run, name) for name in ("run.txt", "report.txt"))
+    return drawn + "</div>\n"
+
+
+def _grown(report: Optional[dict]) -> str:
+    """The lines of a run's grow as a table, and who fell behind, who was behind at the end and
+    who never joined, as `report`, its run.json, has them; nothing where it has no lines."""
+    grow = report.get("grow") if report is not None else None
+    lines = grow.get("lines") if isinstance(grow, dict) else None
+    if not isinstance(lines, list) or not all(isinstance(line, dict) for line in lines):
+        return ""
+    rows = "".join(
+        f'<tr><td class="n">{number}</td><td>{_e(_word(line.get("kind")))}</td>'
+        + "".join(
+            f'<td class="n">{_count(line.get(field))}</td>'
+            for field in ("from", "forked_at", "epoch")
+        )
+        + f'<td class="n">{_count(_size(line.get("members")))}</td></tr>\n'
+        for number, line in enumerate(lines)
+    )
+    drawn = (
+        '<div class="wide"><table class="lines">\n'
+        '<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th>'
+        '<th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr>'
+        f"</thead>\n<tbody>\n{rows}</tbody>\n</table></div>\n"
+    )
+    fell = [
+        f"{one['name']} at epoch {_count(one.get('epoch'))}"
+        for one in _listed(grow.get("fell_behind"))
+        if isinstance(one, dict) and isinstance(one.get("name"), str)
+    ]
+    for said, names in (
+        ("fell behind", fell),
+        ("behind at the end", _names(grow.get("behind"))),
+        ("never joined", _names(grow.get("never_joined"))),
+    ):
+        if names:
+            drawn += f'<p class="who">{said}: {_e(", ".join(names))}</p>\n'
+    return drawn
+
+
+def _rates_table(directory: Path, point: dict) -> str:
+    """How each rate's runs of a point ended, its epochs without a fork, its members off the
+    trunk, and its runs' wall time while their run.json is kept."""
+    rows = []
+    for one in point["summary"]:
+        walls = [
+            _wall(_run_json(_run_dir(directory, cell) / "run.json"))
+            for cell in point["cells"]
+            if cell["scenario"] == one["scenario"]
+        ]
+        timed = [wall for wall in walls if wall is not None]
+        took = "-"
+        if timed:
+            low, high = _seconds(min(timed)), _seconds(max(timed))
+            took = low if low == high else f"{low} to {high}"
+        epochs = one["epochs"]
+        counted = [one["runs"], *(one[ended] for ended in _ENDINGS), one["no-outcome"]]
+        counted += [epochs["lowest"], epochs["median"], epochs["highest"]]
+        counted.append(one["members_off_trunk"]["median"])
+        rows.append(
+            f"<tr><td>{_e(one['rate'] or one['scenario'])}</td>"
+            + "".join(f'<td class="n">{_number(value)}</td>' for value in counted)
+            + f"<td>{took}</td></tr>\n"
+        )
+    return (
+        '<section id="rates">\n<h2>The rates</h2>\n'
+        '<div class="wide"><table class="rates">\n<thead><tr><th rowspan="2">Loss</th>'
+        + "".join(
+            f'<th rowspan="2" class="n">{said}</th>'
+            for said in ("Runs", "Whole", "Behind", "Split", "Stalled", "No outcome")
+        )
+        + '<th colspan="3">Epochs without a fork</th>'
+        '<th rowspan="2" class="n">Off the trunk at the end, median</th>'
+        "<th rowspan=\"2\">A run's wall time</th></tr>\n"
+        '<tr><th class="n">lowest</th><th class="n">median</th><th class="n">highest</th></tr>'
+        f"</thead>\n<tbody>\n{''.join(rows)}</tbody>\n</table></div>\n"
+        '<p class="caption">Whole: one group, every member in it, at epoch 50; behind: one group, '
+        "some members behind; stalled: one group that stopped growing short of 50; split: it "
+        "forked. Off the trunk: behind at the end, on a line not the trunk, or never joined. A "
+        "run's wall time is the runner's, while its run.json is kept.</p>\n"
+        "</section>\n"
+    )
+
+
+def _runs_table(directory: Path, cells: Sequence[dict]) -> str:
+    """A row for each run of a rate of a point: its seed, its epochs without a fork, how it
+    ended, what its grow came to, and its wall time while its run.json is kept."""
+    rows = []
+    for cell in cells:
+        outcome = cell["head"]
+        ended = cell["ended"]["head"] or ("-" if outcome else simulate.words(cell, False))
+        wall = _wall(_run_json(_run_dir(directory, cell) / "run.json"))
+        rows.append(
+            f'<tr><td class="n">{cell["seed"]}</td>'
+            f'<td class="n">{_number(cell["epochs"]["head"])}</td><td>{_e(ended)}</td>'
+            f"<td>{_e('-' if outcome is None else outcome['came_to'])}</td>"
+            f'<td class="n">{"-" if wall is None else _seconds(wall)}</td></tr>\n'
+        )
+    return (
+        '<div class="wide"><table class="runs">\n'
+        '<thead><tr><th class="n">seed</th><th class="n">epochs without a fork</th>'
+        "<th>how it ended</th><th>what the grow came to</th><th class=\"n\">wall time</th></tr>"
+        f"</thead>\n<tbody>\n{''.join(rows)}</tbody>\n</table></div>\n"
+    )
+
+
+def _build(cell: dict, run: Path, href: str, kept: bool = True) -> str:
+    """The section of the build's log of a job that could not build chat-sim, that of `cell`'s
+    run, kept in `run` and linked at `href`; without `kept`, of a point whose text the site no
+    longer keeps, it says so in the log's place."""
+    log = '<p class="muted">The site no longer keeps its log.</p>\n'
+    if kept:
+        log = _shown(run, href, "build.log")
+    return (
+        '<section id="build">\n<h2>The build\'s log</h2>\n'
+        f"<p>Of the job that was to run {_e(cell['rate'] or cell['scenario'])}, seed "
+        f"{cell['seed']}: no scenario ran.</p>\n" + log + "</section>\n"
+    )
+
+
+def _again(cell: dict, facts: dict) -> str:
+    """The command that runs a cell again, as the comment's fold has it."""
+    return (
+        '<p class="side">Run it again:</p>\n'
+        f"<pre>{_e(chr(10).join(simulate.again(cell, facts)))}</pre>\n"
+    )
+
+
+def _files(run: Path, href: str) -> str:
+    """A link to each of a run's text files `run` keeps, or nothing where it keeps none."""
+    kept = [name for name in TEXTS if (run / name).is_file()]
+    if not kept:
+        return ""
+    return '<p class="file">' + " · ".join(_link(href + name, name) for name in kept) + "</p>\n"
+
+
+def _shown(run: Path, href: str, name: str) -> str:
+    """A text file of a run as the page shows it: a link to it, and its text."""
+    if not (run / name).is_file():
+        return f'<p class="file">{_e(name)} <span class="muted">was not uploaded</span></p>\n'
+    text = _e((run / name).read_text(encoding="utf-8", errors="replace"))
+    return f'<p class="file">{_link(href + name, name)}</p>\n<pre>{text}</pre>\n'
+
+
+def _folded(run: Path, name: str) -> str:
+    """A text file of a run in a fold, or nothing where `run` does not keep it."""
+    if not (run / name).is_file():
+        return ""
+    text = _e((run / name).read_text(encoding="utf-8", errors="replace"))
+    return f'<details class="text">\n<summary>{_e(name)}</summary>\n<pre>{text}</pre>\n</details>\n'
+
+
+def _run_json(path: Path) -> Optional[dict]:
+    """A run's run.json, or `None` where it is not kept or is not an object."""
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return None
+    return report if isinstance(report, dict) else None
+
+
+def _wall(report: Optional[dict]) -> Optional[float]:
+    """The seconds of wall time a run took, as its run.json says, or `None`."""
+    wall = None if report is None else report.get("wall_s")
+    return wall if isinstance(wall, (int, float)) and not isinstance(wall, bool) else None
+
+
+def _run_dir(directory: Path, cell: dict) -> Path:
+    return directory / cell["scenario"] / str(cell["run"])
+
+
+def _run_href(cell: dict) -> str:
+    return f"{cell['scenario']}/{cell['run']}/"
+
+
+def _listed(value: object) -> list:
+    return value if isinstance(value, list) else []
+
+
+def _names(value: object) -> List[str]:
+    return [one for one in _listed(value) if isinstance(one, str)]
+
+
+def _word(value: object) -> str:
+    return value if isinstance(value, str) else "-"
+
+
+def _count(value: object) -> str:
+    return str(value) if isinstance(value, int) and not isinstance(value, bool) else "-"
+
+
+def _size(value: object) -> Optional[int]:
+    return len(value) if isinstance(value, list) else None
+
+
+def _seconds(value: float) -> str:
+    """A wall time as the page shows it: 0.4 s, 45 s, or 3 min 9 s."""
+    if value < 1:
+        return f"{value:.1f} s"
+    if round(value) < 60:
+        return f"{round(value)} s"
+    minutes, seconds = divmod(round(value), 60)
+    return f"{minutes} min {seconds} s" if seconds else f"{minutes} min"
+
+
+def _code(sha: str) -> str:
+    return f"<code>{_e(sha[:7])}</code>"
+
+
+def _commit(repository: str, sha: str) -> str:
+    """A link to a commit of `repository`, by its short sha."""
+    return _link(f"{repository}/commit/{sha}", sha[:7], code=True)
 
 
 def _ends(ends: List[dict], x: float, lowest: float) -> List[str]:
@@ -1880,6 +2556,8 @@ def _cell_key(kind: str, mark: str = "") -> str:
         drawn += '<circle class="whole" cx="11" cy="8" r="3"/>'
     if mark == "behind":
         drawn += '<circle class="behind" cx="11" cy="8" r="2.5"/>'
+    if mark == "outline":
+        drawn += '<rect class="outline" x="1" y="1" width="20" height="14" rx="3"/>'
     return drawn + "</svg>"
 
 

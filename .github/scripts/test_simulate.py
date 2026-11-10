@@ -954,6 +954,37 @@ class Drawn(unittest.TestCase):
                     "No scenario ran: the build's errors are in the run.\n",
                 )
 
+    def test_a_head_chat_sim_does_not_build_at_points_to_the_report_page_when_given(self):
+        head = self.root / "head"
+        self.unbuilt(head, "1", 0)
+        given = ("--base", BASE, "--report-url", REPORT_URL)
+        _, out, _ = self.comment("pr", self.matrix(head, UPLOADED), *given)
+
+        self.assertEqual(
+            out,
+            f"**chat-sim does not build against this commit** at {commit(REVISION)} against its "
+            f"merge base {commit(BASE)} · [the report]({REPORT_URL}) · [the run]({RUN_URL})\n\n"
+            "No scenario ran: the build's errors are on the report page.\n",
+        )
+
+    def test_main_links_its_point_s_page_when_given(self):
+        page = f"https://logos-messaging.github.io/chat-sim/logos-chat/main/{REVISION}/{CHAT_SIM}/"
+        _, out, _ = self.comment("main", self.matrix(UPLOADED), "--report-url", page)
+
+        self.assertEqual(
+            out.splitlines()[0],
+            f"**chat-sim: 6 runs** at {commit(REVISION)} · [the report]({page}) · "
+            f"[the run]({RUN_URL})",
+        )
+
+    def test_refuses_a_report_url_a_markdown_link_cannot_hold_as_it_is(self):
+        matrix = self.matrix(UPLOADED)
+        for url in ("javascript:alert(1)", "https://example.org/a b", f"{REPORT_URL})[x](y", ""):
+            with self.subTest(url=url):
+                status, out, err = self.comment("pr", matrix, "--report-url", url)
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn("--report-url: ", err.splitlines()[-1])
+
     def test_main_is_a_row_a_rate_with_how_its_runs_ended_and_their_epochs(self):
         status, out, _ = self.comment("main", self.matrix(UPLOADED))
 

@@ -10,9 +10,10 @@ import unittest
 import xml.etree.ElementTree as ElementTree
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import pages
+import simulate
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
 RUN_URL = "https://github.com/logos-messaging/chat-sim/actions/runs/42"
@@ -382,12 +383,13 @@ class Index(Site):
         self.assertEqual(parsed.links, ["../", COMMIT_URL, "pr-12/", RUN_URL])
         self.assertTrue((self.site / "reports" / "pr-12" / "index.html").is_file())
 
-    def test_the_landing_page_holds_two_links_the_guide_and_the_reports(self):
+    def test_the_landing_page_holds_three_links_the_guide_the_reports_and_the_graph_over_main(self):
         self.index()
         parsed = Parsed(self.page("index.html"))
-        self.assertEqual(parsed.links, ["guide/", "reports/"])
+        self.assertEqual(parsed.links, ["guide/", "reports/", "logos-chat/"])
         self.assertIn("Guide", parsed.text)
         self.assertIn("Reports", parsed.text)
+        self.assertIn("logos-chat over main", parsed.text)
         self.assertIn("chat-sim", parsed.text)
 
     def test_an_empty_site_gets_its_pages_and_nojekyll(self):
@@ -575,13 +577,13 @@ class Point(LogosChat):
             for run in (1, 2)
             for name in ("report.txt", "run.json", "run.txt")
         ]
-        self.assertEqual(self.files(self.at()), sorted(["point.json", *texts]))
+        self.assertEqual(self.files(self.at()), sorted(["index.html", "point.json", *texts]))
         for name in ("run.txt", "report.txt", "run.json"):
             self.assertEqual(
                 (self.at() / GOAL.format(5) / "2" / name).read_bytes(),
                 (runs / GOAL.format(5) / "02" / name).read_bytes(),
             )
-        self.assertEqual(list(self.site.rglob("*.html")), [])
+        self.assertEqual(list(self.site.rglob("*.html")), [self.at() / "index.html"])
 
     def test_a_point_json_that_point_does_not_write_is_refused(self):
         self.point()
@@ -781,7 +783,7 @@ class Point(LogosChat):
                 report.with_name(name).unlink()
             write(report.with_name("unbuilt"), "chat-sim does not build\n")
         self.point(runs=unbuilt)
-        self.assertEqual(self.files(self.at()), ["point.json"])
+        self.assertEqual(self.files(self.at()), ["index.html", "point.json"])
         self.assertEqual([cell["unbuilt"]["head"] for cell in self.read()["cells"]], [True] * 6)
 
     def test_the_point_of_a_newer_run_is_kept_against_an_older_one(self):
@@ -858,7 +860,7 @@ class Window(LogosChat):
                     self.assertEqual(sorted(path.name for path in point.iterdir()), held)
                     self.assertEqual(held, ["index.html", "point.json"])
                 else:
-                    self.assertEqual(len(held), 1 if number == 2 else 19)
+                    self.assertEqual(len(held), 2 if number == 2 else 20)
                 self.assertIn("point.json", held)
                 pages.read_point(point / "point.json")
 
@@ -878,7 +880,7 @@ class Window(LogosChat):
                 commits=None if minute == 0 else self.commits(),
             )
         self.assertEqual(self.files(refused), [f"{GOAL.format(1)}/1/run.txt", "point.json"])
-        self.assertEqual(len(self.files(self.at(sha(0)))), 1)
+        self.assertEqual(self.files(self.at(sha(0))), ["index.html", "point.json"])
 
 
 class PullRequest(LogosChat):
@@ -914,7 +916,8 @@ class PullRequest(LogosChat):
             for run in (1, 2)
             for name in ("report.txt", "run.json", "run.txt")
         ]
-        self.assertEqual(self.files(out), sorted(["matrix.json", "meta.json", *texts]))
+        kept = ["index.html", "matrix.json", "meta.json", *texts]
+        self.assertEqual(self.files(out), sorted(kept))
         self.assertEqual(
             (out / "head" / GOAL.format(1) / "2" / "run.json").read_bytes(),
             self.run_json(head, "1/1").read_bytes(),
@@ -934,7 +937,7 @@ class PullRequest(LogosChat):
                 "time": "2026-11-09T09:41:00Z",
             },
         )
-        self.assertEqual(list(self.site.rglob("*.html")), [])
+        self.assertEqual(list(self.site.rglob("*.html")), [out / "index.html"])
 
     def test_a_run_without_a_base_has_no_base_side(self):
         self.pr(base=None)
@@ -955,7 +958,8 @@ class PullRequest(LogosChat):
         self.assertEqual(status, 0, err)
         out = self.site / "logos-chat" / "pr-316"
         self.assertEqual(
-            {path.split("/")[0] for path in self.files(out)}, {"head", "matrix.json", "meta.json"}
+            {path.split("/")[0] for path in self.files(out)},
+            {"head", "index.html", "matrix.json", "meta.json"},
         )
         kept = pages.read_matrix(out / "matrix.json")
         self.assertEqual((kept["verdict"], kept["base_point"]["logos_chat"]), ("same", FA5282A))
@@ -1383,7 +1387,7 @@ class Trend(LogosChat):
         self.assertEqual(parsed.rows[1][3:6], ["0.1%", "1%", "5%"])
         pulls = [link for link in parsed.links if "/pull/" in link]
         self.assertEqual(pulls, [f"{pages.LOGOS_CHAT_URL}/pull/{n}" for n in (321, 318)])
-        self.assertIn(f"main/{sha(3)}/{MOVED}/point.json", parsed.links)
+        self.assertIn(f"main/{sha(3)}/{MOVED}/", parsed.links)
         self.assertIn(f"{pages.CHAT_SIM_URL}/commit/{MOVED}", parsed.links)
 
     def test_a_pull_request_s_title_is_escaped(self):
@@ -1544,6 +1548,495 @@ class Trend(LogosChat):
         self.assertEqual(notes, [(dashed[1], f"chat-sim moved: {moved_to(12)[:7]}")])
         moved = [title for title, _ in self.markers(whole) if "chat-sim moved to" in title]
         self.assertEqual(len(moved), 3 * 3)
+
+# The grow of the probe's run at 5% loss, seed 0, as its run.json has it, but its rounds; the
+# fixture's is cut to what tools/sim matrix reads.
+GROW = {
+    "ended": "no member took part",
+    "trunk_epoch": 14,
+    "main": 3,
+    "lines": [
+        {
+            "epoch": 14,
+            "forked_at": None,
+            "from": None,
+            "kind": "trunk",
+            "members": ["saro", "raya", "pax", "mira", "kes", "peer7", "peer9", "peer11"]
+            + ["peer12", "peer13", "peer15"],
+        },
+        {"epoch": 8, "forked_at": 8, "from": 0, "kind": "main", "members": ["peer8"]},
+        {"epoch": 11, "forked_at": 11, "from": 0, "kind": "main", "members": ["peer10"]},
+    ],
+    "fell_behind": [
+        {"epoch": 5, "name": "mira"},
+        {"epoch": 6, "name": "kes"},
+        {"epoch": 6, "name": "peer7"},
+        {"epoch": 7, "name": "peer8"},
+        {"epoch": 8, "name": "peer9"},
+        {"epoch": 10, "name": "peer10"},
+        {"epoch": 13, "name": "saro"},
+    ],
+    "behind": ["saro", "mira", "kes", "peer7", "peer9"],
+    "never_joined": ["tomo", "peer14"],
+    "removed": [],
+}
+MARKUP = '<script>alert("run")</script> & </pre>'
+# The log of a build of harness-run that failed, as the run job keeps it.
+LOG = (
+    "   Compiling harness v0.1.0 (/home/runner/work/chat-sim/chat-sim/crates/harness)\n"
+    "error[E0061]: this method takes 3 arguments but 2 arguments were supplied\n"
+    "   --> crates/harness/src/runner.rs:489:35\n"
+    "489 |         harness.client_mut(0).group_add_signers(&convo, &joiners);\n"
+    "error: could not compile `harness` (lib) due to 1 previous error\n"
+)
+
+
+class Pages(LogosChat):
+    """The report page of a pull request's run and the page of main's point, as pr and point
+    draw them from what they keep."""
+
+    def moved(self, **edits: dict) -> Path:
+        """The runs at a head whose 1% seed 1 split at epoch 5 and 5% seed 0 at epoch 4, sooner
+        than the fixture's 9 and 8, and the fields `edits` gives a run changed."""
+        sooner = {"1/1": {"verdict": "split at epoch 5"}, "5/0": {"verdict": "split at epoch 4"}}
+        for cell, changed in edits.items():
+            sooner[cell] = dict(sooner.get(cell, {}), **changed)
+        return self.uploaded(**sooner)
+
+    def pr(self, head: Path, matrix: Path, base: Path, revision: str = BASE) -> Path:
+        """Writes the run of pull request 316 at REVISION against `revision`, its base, and
+        returns its directory."""
+        given = [str(matrix), str(head), str(self.site), "--pr", "316", "--revision", REVISION]
+        given += ["--measurement", MEASUREMENT, "--base", revision, "--base-runs", str(base)]
+        status, _, err = self.run_pages("pr", *given, *self.ran(1, 0))
+        self.assertEqual(status, 0, err)
+        return self.site / "logos-chat" / "pr-316"
+
+    def nothing(self) -> Path:
+        """What the base's side uploads where main's point stands in for it: nothing."""
+        self.made += 1
+        empty = self.scratch / f"nothing-{self.made}"
+        empty.mkdir()
+        return empty
+
+    def drawn(self, directory: Path) -> str:
+        return (directory / "index.html").read_text(encoding="utf-8")
+
+    def charts(self, directory: Path) -> Dict[str, ElementTree.Element]:
+        """Each chart of the page of `directory`, by what it is labelled, parsed as XML."""
+        found = re.findall(r'<svg[^>]* role="img".*?</svg>', self.drawn(directory), re.S)
+        return {svg.get("aria-label"): svg for svg in map(ElementTree.fromstring, found)}
+
+    def cells(self, svg: ElementTree.Element) -> List[ElementTree.Element]:
+        return [group for group in svg.iter(f"{SVG}g") if group.get("class", "").startswith("cell")]
+
+    def folds(self, directory: Path) -> List[Tuple[bool, str]]:
+        """Each run's fold of the page of `directory`: whether it is open, and its summary."""
+        fold = r'<details class="run"( open)?>\n<summary>(.*?)</summary>'
+        found = re.findall(fold, self.drawn(directory))
+        return [(opened == " open", Parsed(summary).text) for opened, summary in found]
+
+    def stands_alone(self, directory: Path) -> Parsed:
+        """The page of `directory`, held to what every page is: it parses as HTML and its SVGs as
+        XML, it runs no script and loads nothing, its colours are its style block's alone, and
+        each link of its own leads to a file or a page the site holds, the guide's aside."""
+        self.assertEqual(self.run_pages("index", str(self.site))[0], 0)
+        self.assertEqual(self.run_pages("trend", str(self.site))[0], 0)
+        page = self.drawn(directory)
+        parsed = Parsed(page)
+        for svg in re.findall(r"<svg.*?</svg>", page, re.S):
+            ElementTree.fromstring(svg)
+        self.assertFalse({"script", "link", "img", "iframe", "object"} & parsed.tags)
+        self.assertIsNone(re.search(r"<[^>]* on[a-z]+=", page))
+        self.assertIsNone(re.search(r' (style|fill|stroke|color|src)="', page))
+        for link in parsed.links:
+            if link.startswith("https://") or "guide/" in link:
+                continue
+            target = directory / link
+            with self.subTest(link=link):
+                self.assertTrue((target / "index.html" if link.endswith("/") else target).is_file())
+        return parsed
+
+    def test_the_report_page_says_the_verdict_as_the_comment_does_and_draws_both_sides(self):
+        base = self.uploaded(**{"5/0": {"grow": GROW}})
+        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
+
+        parsed = self.stands_alone(out)
+        self.assertEqual(parsed.h1, ["logos-chat #316"])
+        verdict = self.drawn(out).split('<p class="verdict">', 1)[1].split("</p>", 1)[0]
+        self.assertEqual(
+            Parsed(verdict).text,
+            f"chat-sim: worse in 2 of 6 runs at {REVISION[:7]} against its merge base {BASE[:7]}",
+        )
+        self.assertEqual(
+            simulate.headline(pages.read_matrix(out / "matrix.json")),
+            "chat-sim: worse in 2 of 6 runs",
+        )
+        for link in (
+            f"{pages.LOGOS_CHAT_URL}/commit/{REVISION}",
+            f"{pages.LOGOS_CHAT_URL}/commit/{BASE}",
+            f"{pages.CHAT_SIM_URL}/commit/{SHA}",
+            f"{pages.LOGOS_CHAT_URL}/pull/316",
+            RUN_URL,
+        ):
+            self.assertIn(link, parsed.links)
+
+    def test_the_head_s_cells_and_the_base_s_are_drawn_side_by_side_and_a_change_outlined(self):
+        base = self.uploaded()
+        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
+
+        charts = self.charts(out)
+        head, was = self.cells(charts["The head's runs"]), self.cells(charts["The base's runs"])
+        self.assertEqual(len(head + was), 12)
+        shown = [[cell.find(f"{SVG}text").text for cell in side] for side in (head, was)]
+        self.assertEqual(
+            shown, [["50", "46", "18", "5", "4", "3"], ["50", "46", "18", "9", "8", "3"]]
+        )
+        outlined = [
+            cell.find(f"{SVG}title").text.split(" · ")
+            for cell in head + was
+            if cell.find(f"{SVG}rect[@class='outline']") is not None
+        ]
+        self.assertEqual(
+            [(said[0], said[1], said[-1]) for said in outlined],
+            [
+                ("1%, seed 1", "5 epochs without a fork", "worse than the base"),
+                ("5%, seed 0", "4 epochs without a fork", "worse than the base"),
+            ],
+        )
+        self.assertEqual(
+            [cell.get("class") for cell in head if "worse" in cell.get("class")],
+            ["cell bin0 worse", "cell bin0 worse"],
+        )
+        self.assertEqual([label for label in charts if " among " in label], [])
+        self.assertIn("worse than the base", Parsed(self.drawn(out)).text)
+
+    def test_each_cell_holds_both_sides_runs_their_text_and_lines_and_the_command_to_run_it(self):
+        base = self.uploaded(**{"5/0": {"grow": GROW}})
+        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
+
+        matrix = pages.read_matrix(out / "matrix.json")
+        self.assertEqual(
+            self.folds(out),
+            [
+                (True, "1% loss, seed 1 5, split, was 9: worse"),
+                (True, "5% loss, seed 0 4, split, was 8: worse"),
+            ]
+            + [
+                (False, f"{cell['rate']} loss, seed {cell['seed']} {simulate.words(cell, True)}")
+                for cell in matrix["cells"]
+                if cell["change"] != "worse"
+            ],
+        )
+        parsed = Parsed(self.drawn(out))
+        for side in ("head", "base"):
+            for name in ("run.txt", "report.txt", "run.json"):
+                self.assertIn(f"{side}/{GOAL.format(1)}/2/{name}", parsed.links)
+        self.assertFalse([link for link in parsed.links if link.endswith("report.json")])
+        scenario = GOAL.format(1)
+        self.assertIn(f"run.txt of sim-revision-{scenario}-2/{scenario}/2\n", parsed.text)
+        grown = [["0", "trunk", "-", "-", "14", "11"], ["1", "main", "0", "8", "8", "1"]]
+        grown.append(["2", "main", "0", "11", "11", "1"])
+        at = parsed.rows.index(grown[0])
+        self.assertEqual(
+            parsed.rows[at - 1 : at + 3],
+            [["line", "kind", "from", "forked at", "epoch", "members"], *grown],
+        )
+        for said in (
+            "fell behind: mira at epoch 5, kes at epoch 6, peer7 at epoch 6, peer8 at epoch 7, "
+            "peer9 at epoch 8, peer10 at epoch 10, saro at epoch 13",
+            "behind at the end: saro, mira, kes, peer7, peer9",
+            "never joined: tomo, peer14",
+        ):
+            self.assertIn(said, parsed.text)
+        facts = {"revision": REVISION, "base": BASE, "chat_sim": SHA}
+        for cell in matrix["cells"]:
+            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+
+    def test_where_main_s_point_stood_in_the_base_links_its_page_and_the_head_falls_among_it(self):
+        self.point(revision=BASE, runs=self.uploaded())
+        stood = self.at(BASE)
+        points = ("--base-point", str(stood / "point.json"), "--spread", str(POINT))
+        out = self.pr(self.moved(), self.matrix(self.moved(), None, (), *points), self.nothing())
+
+        parsed = self.stands_alone(out)
+        page = f"../main/{BASE}/{MEASUREMENT}/"
+        self.assertIn(page, parsed.links)
+        matrix = pages.read_matrix(out / "matrix.json")
+        facts = {"revision": REVISION, "base": BASE, "chat_sim": SHA, "report_url": ""}
+        line = simulate.render_pr(matrix, dict(facts, run_url=RUN_URL)).splitlines()[0]
+        said = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", line).replace("**", "").replace("`", "")
+        verdict = self.drawn(out).split('<p class="verdict">', 1)[1].split("</p>", 1)[0]
+        self.assertEqual(Parsed(verdict).text + " · the run", said)
+        self.assertIn(", from main's run of it", said)
+        self.assertIn(f"main's point at {BASE[:7]}", parsed.text)
+        self.assertIn(f"{page}{GOAL.format(1)}/2/run.txt", parsed.links)
+        self.assertFalse([link for link in parsed.links if link.startswith("base/")])
+        self.assertFalse((out / "base").exists())
+        charts = self.charts(out)
+        self.assertEqual(len(self.cells(charts["The base's runs"])), 6)
+        said = f"Where the head's runs fall among main's 20 seeds at {FA5282A[:7]}"
+        self.assertIn(said, parsed.text)
+        self.assertIn(f"main's 20 seeds at {FA5282A[:7]}", parsed.text)
+        spread = [row for row in parsed.rows if len(row) == 2]
+        self.assertEqual(
+            spread,
+            [
+                [rate, simulate.spread_of(matrix["spread"], GOAL.format(rate[:-1]))]
+                for rate in ("0.1%", "1%", "5%")
+            ],
+        )
+        self.assertEqual(spread[0], ["0.1%", "2 whole, 18 to 50"])
+        for rate in ("0.1%", "1%", "5%"):
+            with self.subTest(rate=rate):
+                strip = charts[f"The head's runs at {rate} among main's"]
+                seeds = strip.findall(f".//{SVG}circle[@class='seed']")
+                heads = [
+                    (group.find(f"{SVG}title").text, float(group.find(f"{SVG}circle").get("cx")))
+                    for group in strip.iter(f"{SVG}g")
+                    if group.find(f"{SVG}circle[@class='head']") is not None
+                ]
+                self.assertEqual(len(seeds), 20)
+                cells = [cell for cell in matrix["cells"] if cell["rate"] == rate]
+                self.assertEqual(
+                    heads,
+                    [
+                        (
+                            f"the head, seed {cell['seed']} · {simulate.words(cell, True)}",
+                            56 + cell["epochs"]["head"] / 50 * 440,
+                        )
+                        for cell in cells
+                    ],
+                )
+
+    def test_a_point_that_stood_in_before_it_had_a_page_is_linked_by_its_point_json_until_then(
+        self,
+    ):
+        self.point(revision=BASE, runs=self.uploaded())
+        (self.at(BASE) / "index.html").unlink()
+        points = ("--base-point", str(self.at(BASE) / "point.json"))
+        out = self.pr(self.moved(), self.matrix(self.moved(), None, (), *points), self.nothing())
+
+        at = f"../main/{BASE}/{MEASUREMENT}/"
+        links = self.stands_alone(out).links
+        self.assertNotIn(at, links)
+        self.assertEqual(links.count(at + "point.json"), 2 + 6)
+        self.point(sha(2), minute=2, run_number=2, commits=self.commits())
+        self.assertTrue((self.at(BASE) / "index.html").is_file())
+        links = self.stands_alone(out).links
+        self.assertNotIn(at + "point.json", links)
+        self.assertEqual(links.count(at), 2 + 6)
+
+    def test_where_chat_sim_did_not_build_the_build_s_log_takes_the_place_of_the_cells(self):
+        head = self.scratch / "unbuilt"
+        for rate in ("0.1", "1", "5"):
+            for number in (1, 2):
+                scenario = GOAL.format(rate)
+                run = head / f"sim-revision-{scenario}-{number}" / scenario / str(number)
+                write(run / "unbuilt", f"chat-sim does not build at {REVISION}\n")
+                write(run / "build.log", LOG)
+        asked = [
+            {"scenario": GOAL.format(rate), "from": 1, "runs": 2} for rate in ("0.1", "1", "5")
+        ]
+        base = self.uploaded()
+        out = self.pr(head, self.matrix(head, base, asked), base)
+
+        parsed = self.stands_alone(out)
+        self.assertIn(
+            f"chat-sim does not build against this commit at {REVISION[:7]} against its merge "
+            f"base {BASE[:7]}",
+            parsed.text,
+        )
+        self.assertIn("build", parsed.ids)
+        self.assertFalse({"matrix", "cells"} & parsed.ids)
+        self.assertIn(LOG, parsed.text)
+        self.assertIn(f"head/{GOAL.format('0.1')}/1/build.log", parsed.links)
+        self.assertEqual(
+            [path for path in self.files(out) if path.startswith("head/")],
+            sorted(
+                f"head/{GOAL.format(rate)}/{number}/build.log"
+                for rate in ("0.1", "1", "5")
+                for number in (1, 2)
+            ),
+        )
+
+    def test_every_text_of_a_run_is_escaped(self):
+        head = self.moved(**{"1/1": {"verdict": f"split at epoch 5 {MARKUP}"}})
+        for name in ("run.txt", "report.txt"):
+            write(self.run_json(head, "1/1").with_name(name), f"{MARKUP}\n")
+        base = self.uploaded()
+        out = self.pr(head, self.matrix(head, base), base)
+
+        page = self.drawn(out)
+        self.assertNotIn("<script", page)
+        self.assertNotIn("script", Parsed(page).tags)
+        self.assertEqual(Parsed(page).text.count(MARKUP), 3)
+
+    def test_a_point_s_page_draws_its_cells_its_rates_and_each_run_with_its_text_and_lines(self):
+        self.point(sha(1), minute=1, run_number=1)
+        timed = {"5/0": {"grow": GROW, "wall_s": 0.916510242}, "1/1": {"wall_s": 189.4}}
+        runs = self.uploaded(**timed)
+        write(self.run_json(runs, "1/0").with_name("run.txt"), f"{MARKUP}\n")
+        merged = self.commits(f"{TITLE} (#321)", "chore: bump the toolchain (#318)")
+        self.point(sha(2), minute=2, run_number=2, runs=runs, commits=merged)
+
+        at, point = self.at(sha(2)), self.read(sha(2))
+        parsed = self.stands_alone(at)
+        self.assertEqual(parsed.h1, [f"logos-chat main {sha(2)[:7]}, 2026-11-09"])
+        self.assertIn(f"#321 {TITLE}, #318 chore: bump the toolchain", parsed.text)
+        self.assertIn(f"{pages.LOGOS_CHAT_URL}/pull/321", parsed.links)
+        self.assertIn(f"../../{sha(1)}/{MEASUREMENT}/", parsed.links)
+        self.assertNotIn("<script", self.drawn(at))
+        self.assertIn(MARKUP, parsed.text)
+        cells = self.cells(self.charts(at)["The point's runs"])
+        self.assertEqual(
+            [cell.find(f"{SVG}title").text for cell in cells],
+            [
+                f"{cell['rate']}, seed {cell['seed']} · {cell['epochs']['head']} epochs without a "
+                f"fork · {cell['head']['came_to']}"
+                for cell in point["cells"]
+            ],
+        )
+        rates = [row for row in parsed.rows if len(row) == 12 and row[0].endswith("%")]
+        self.assertEqual(
+            [row[:10] + row[11:] for row in rates],
+            [
+                ["0.1%", "2", "1", "0", "1", "0", "0", "46", "48", "50", "-"],
+                ["1%", "2", "0", "0", "2", "0", "0", "9", "13.5", "18", "3 min 9 s"],
+                ["5%", "2", "0", "0", "2", "0", "0", "3", "5.5", "8", "0.9 s"],
+            ],
+        )
+        runs_of_5 = [row for row in parsed.rows if len(row) == 5 and row[-1] == "0.9 s"]
+        self.assertEqual([row[:2] for row in runs_of_5], [["0", "8"]])
+        self.assertIn("never joined: tomo, peer14", parsed.text)
+        self.assertIn(f"{GOAL.format(5)}/1/run.json", parsed.links)
+        facts = {"revision": sha(2), "base": "", "chat_sim": SHA}
+        for cell in point["cells"]:
+            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+
+    def test_a_point_that_did_not_build_shows_its_log_once_and_past_the_window_says_it_is_gone(
+        self,
+    ):
+        unbuilt = self.scratch / "unbuilt"
+        for rate in ("0.1", "1", "5"):
+            for number in (1, 2):
+                scenario = GOAL.format(rate)
+                run = unbuilt / f"sim-revision-{scenario}-{number}" / scenario / str(number)
+                write(run / "unbuilt", f"chat-sim does not build at {sha(1)}\n")
+                write(run / "build.log", LOG)
+        asked = [
+            {"scenario": GOAL.format(rate), "from": 1, "runs": 2} for rate in ("0.1", "1", "5")
+        ]
+        matrix = self.matrix(unbuilt, None, asked)
+        self.point(sha(1), minute=1, run_number=1, runs=unbuilt, matrix=matrix)
+
+        first = self.at(sha(1))
+        parsed = self.stands_alone(first)
+        self.assertEqual(parsed.text.count(LOG), 1)
+        each = [
+            f"{GOAL.format(rate)}/{number}/build.log"
+            for rate in ("0.1", "1", "5")
+            for number in (1, 2)
+        ]
+        logs = [link for link in parsed.links if link.endswith("build.log")]
+        self.assertEqual(sorted(logs), sorted([each[0], *each]))
+        self.assertNotIn("was not uploaded", parsed.text)
+        runs = self.uploaded()
+        matrix = self.matrix(runs)
+        for number in range(2, 32):
+            given = dict(runs=runs, matrix=matrix, commits=self.commits())
+            self.point(sha(number), minute=number, run_number=number, **given)
+
+        self.assertEqual(self.files(first), ["index.html", "point.json"])
+        parsed = self.stands_alone(first)
+        self.assertNotIn(LOG, parsed.text)
+        self.assertNotIn("was not uploaded", parsed.text)
+        self.assertEqual(parsed.text.count("The site no longer keeps its log."), 1)
+        self.assertEqual([link for link in parsed.links if link.endswith("build.log")], [])
+
+    def test_past_the_window_a_point_s_page_and_a_page_it_stood_in_for_are_drawn_again(self):
+        runs = self.uploaded(**{"5/0": {"grow": GROW}})
+        matrix = self.matrix(runs)
+        self.point(sha(1), minute=1, run_number=1, runs=runs, matrix=matrix)
+        first = self.at(sha(1))
+        head = self.uploaded()
+        stood = self.matrix(head, None, (), "--base-point", str(first / "point.json"))
+        out = self.pr(head, stood, self.nothing(), revision=sha(1))
+        text = f"../main/{sha(1)}/{MEASUREMENT}/{GOAL.format(1)}/1/run.txt"
+        self.assertIn(text, Parsed(self.drawn(out)).links)
+        line = ["1", "main", "0", "8", "8", "1"]
+        self.assertIn(line, Parsed(self.drawn(out)).rows)
+        self.assertIn(f"{GOAL.format(1)}/1/run.txt", Parsed(self.drawn(first)).links)
+
+        for number in range(2, 32):
+            given = dict(runs=runs, matrix=matrix, commits=self.commits())
+            self.point(sha(number), minute=number, run_number=number, **given)
+
+        self.assertEqual(self.files(first), ["index.html", "point.json"])
+        parsed = self.stands_alone(first)
+        self.assertFalse([link for link in parsed.links if link.endswith((".txt", ".json"))])
+        self.assertIn("The site keeps the runs' text of the newest 30 points", parsed.text)
+        self.assertEqual(len(self.cells(self.charts(first)["The point's runs"])), 6)
+        report = self.stands_alone(out)
+        self.assertNotIn(text, report.links)
+        self.assertNotIn(line, report.rows)
+        self.assertIn(f"../main/{sha(1)}/{MEASUREMENT}/", report.links)
+        self.assertIn(f"{GOAL.format(1)}/1/run.txt", Parsed(self.drawn(self.at(sha(2)))).links)
+
+
+class Closed(LogosChat):
+    """The runs of logos-chat's pull requests that closed, as closed names them."""
+
+    def held(self, *numbers: int) -> None:
+        for number in numbers:
+            write(self.site / "logos-chat" / f"pr-{number}" / "meta.json", "{}\n")
+
+    def opened(self, text: str) -> Path:
+        self.made += 1
+        listed = self.scratch / f"open-{self.made}.txt"
+        write(listed, text)
+        return listed
+
+    def closed(self, *argv: str) -> Tuple[int, str, str]:
+        return self.run_pages("closed", str(self.site), *argv)
+
+    def test_each_run_whose_pull_request_the_open_list_leaves_out_is_named_lowest_first(self):
+        self.held(316, 4, 321, 300)
+        (self.site / "logos-chat" / "pr-x").mkdir()
+        write(self.site / "logos-chat" / "pr-7", "not a directory\n")
+        status, out, _ = self.closed("--open", str(self.opened("321\n316\n")))
+        self.assertEqual((status, out), (0, "logos-chat/pr-4\nlogos-chat/pr-300\n"))
+
+    def test_with_no_pull_request_open_every_run_is_named(self):
+        self.held(4, 300)
+        status, out, _ = self.closed("--open", str(self.opened("")))
+        self.assertEqual((status, out), (0, "logos-chat/pr-4\nlogos-chat/pr-300\n"))
+
+    def test_a_pr_names_that_pull_request_s_run_alone_where_the_site_holds_it(self):
+        self.held(4, 300)
+        self.assertEqual(self.closed("--pr=300")[:2], (0, "logos-chat/pr-300\n"))
+        self.assertEqual(self.closed("--pr=999")[:2], (0, ""))
+
+    def test_a_site_without_a_run_of_a_pull_request_names_none(self):
+        self.assertEqual(self.closed("--open", str(self.opened("316\n")))[:2], (0, ""))
+
+    def test_a_pr_or_a_line_that_is_not_the_number_of_a_pull_request_is_refused(self):
+        self.held(4, 300)
+        for value in ("", "0", "05", "-3", "3 ", "1e3", "\u0663", "300;rm -rf ."):
+            with self.subTest(pr=value):
+                status, out, err = self.closed(f"--pr={value}")
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn("--pr: ", err.splitlines()[-1])
+        for text in ("316\nabc\n", "316\n\n321\n", " 316\n", "\u0663\n"):
+            with self.subTest(text=text):
+                status, out, err = self.closed("--open", str(self.opened(text)))
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn("--open: ", err.splitlines()[-1])
+        self.assertEqual(self.closed()[0], 2)
+        self.assertEqual(self.closed("--pr=4", "--open", str(self.opened("")))[0], 2)
+        held = self.files(self.site / "logos-chat")
+        self.assertEqual(held, ["pr-300/meta.json", "pr-4/meta.json"])
+
 
 if __name__ == "__main__":
     unittest.main()

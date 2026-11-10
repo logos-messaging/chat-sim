@@ -20,10 +20,11 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # holds but the goal's, as many runs as it holds, a job a scenario a side, and
 # holds them to the base's runs, or without a base to what is held.
 # The publish job keeps a main run on the Pages site as a point of main,
-# logos-chat/main/<sha>/<measurement>/, and draws the graph over main,
-# logos-chat/index.html, from every point again; it keeps a pr run for a pull
-# request in logos-chat/pr-<N>/. Each keeps its runs' text; the long suite
-# keeps nothing.
+# logos-chat/main/<sha>/<measurement>/, with the point's page, and draws the
+# graph over main, logos-chat/index.html, from every point again; it keeps a pr
+# run for a pull request in logos-chat/pr-<N>/, with its report page. Each
+# keeps its runs' text, and the build's log of a job that could not build
+# chat-sim; the long suite keeps nothing. The comment links the page.
 # Main's points are a series the site shares, so only a run of the default
 # branch keeps one; a pr run keeps its pull request's run from any branch.
 # A main run handed a pr ran at the pull request's head, not at a commit of
@@ -163,17 +164,21 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: harness-run
+      # Its output is kept as build.log, for the report of a revision chat-sim
+      # does not build at.
       - name: Build harness-run
         id: build
+        shell: bash
         run: |
-          cargo build --release -p harness --bin harness-run
+          cargo build --release -p harness --bin harness-run 2>&1 | tee "$RUNNER_TEMP/build.log"
           flake=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
           cargo=$(grep -o 'logos-chat?rev=[0-9a-f]*' Cargo.lock | sort -u)
-          echo "flake.lock pins logos-chat at $flake, Cargo.lock at: $cargo"
+          echo "flake.lock pins logos-chat at $flake, Cargo.lock at: $cargo" \
+            | tee -a "$RUNNER_TEMP/build.log"
           [ "$flake" = "$REVISION" ] && [ "$cargo" = "logos-chat?rev=$REVISION" ]
       # A revision chat-sim does not build at runs nothing: each run the job was
       # to do says so in the directory the sweep would have given it, for the
-      # comment.
+      # comment, beside the build's log, for the report.
       - name: Mark the runs unbuilt
         if: ${{ failure() && steps.build.outcome == 'failure' }}
         run: |
@@ -182,6 +187,8 @@ jobs:
             out="$RUNNER_TEMP/sim/$SCENARIO/$(printf '%0*d' "${#last}" "$number")"
             mkdir -p "$out"
             echo "chat-sim does not build at $REVISION" > "$out/unbuilt"
+            # CARGO_TERM_COLOR puts colour codes in the log; the page shows it as text.
+            sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' "$RUNNER_TEMP/build.log" > "$out/build.log"
           done
       # Runs FROM to FROM + RUNS - 1 of the scenario's sweep, each with the
       # seeds it has in a sweep from run 1, and writes their outcomes for
@@ -197,8 +204,9 @@ jobs:
           exit "$status"
       # The sweep's files and its runs', without each run's group.log,
       # plan.json, result.json, runner.out and runner.stderr, in the directory
-      # named for the scenario. Each job's under a name of its own: two jobs of
-      # one scenario each wrote a sweep.json.
+      # named for the scenario, or the build's log beside each unbuilt marker.
+      # Each job's under a name of its own: two jobs of one scenario each wrote
+      # a sweep.json.
       - name: Upload the runs' text
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -209,6 +217,7 @@ jobs:
             ${{ runner.temp }}/sim/*/sweep.json
             ${{ runner.temp }}/sim/*/outcomes.json
             ${{ runner.temp }}/sim/*/*/unbuilt
+            ${{ runner.temp }}/sim/*/*/build.log
             ${{ runner.temp }}/sim/*/*/run.txt
             ${{ runner.temp }}/sim/*/*/run.json
             ${{ runner.temp }}/sim/*/*/report.txt
@@ -222,6 +231,11 @@ jobs:
     # outcome.
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: read              # read the Pages site's address
+
     env:
       SUITE: ${{ needs.plan.outputs.suite }}
       REVISION: ${{ needs.plan.outputs.revision }}
@@ -231,6 +245,7 @@ jobs:
       SCENARIOS: ${{ needs.plan.outputs.scenarios }}
       POINT: ${{ needs.plan.outputs.point }}
       SPREAD: ${{ needs.plan.outputs.spread }}
+      MEASUREMENT: ${{ needs.plan.outputs.measurement }}
     steps:
       - uses: actions/checkout@v4
       # Each job's artifact in a directory of its own, never merged: the jobs
@@ -307,7 +322,32 @@ jobs:
               fi
             done
           done
+      # The page the publish job writes, where it writes one, as its condition
+      # has it: a pull request's report, or main's point. The site's address
+      # is read as guide.yml reads it. Without it the comment goes out with no
+      # link, and the publish runs all the same.
+      - name: Read the report page's address
+        id: report
+        if: >-
+          ${{ (needs.plan.outputs.suite == 'pr' && needs.plan.outputs.pr != '') ||
+          (needs.plan.outputs.suite == 'main' && needs.plan.outputs.pr == '' &&
+          github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url="$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .html_url)" || {
+            echo "::error::The Pages API gave no address for $GITHUB_REPOSITORY's site, so the comment does not link the report: is GitHub Pages on?"
+            exit 1
+          }
+          page="logos-chat/main/$REVISION/$MEASUREMENT/"
+          if [ "$SUITE" = pr ]; then
+            page="logos-chat/pr-$PR/"
+          fi
+          echo "url=${url%/}/$page" >> "$GITHUB_OUTPUT"
       - name: Write the comment
+        env:
+          REPORT_URL: ${{ steps.report.outputs.url }}
         run: |
           given=(--matrix "$RUNNER_TEMP/matrix.json")
           if [ "$SUITE" = long ]; then
@@ -318,6 +358,9 @@ jobs:
             if [ "$SUITE" = long ]; then
               given+=(--base-runs "$RUNNER_TEMP/base")
             fi
+          fi
+          if [ -n "$REPORT_URL" ]; then
+            given+=(--report-url "$REPORT_URL")
           fi
           python3 .github/scripts/simulate.py comment "${given[@]}" \
             --suite "$SUITE" --revision "$REVISION" --pr "$PR" \

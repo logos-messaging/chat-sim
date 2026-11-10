@@ -5,10 +5,16 @@ name: Prune Pages
 # Closing a pull request prunes; the weekly run sweeps up any report a publish
 # recreated after its pull request closed.
 #
-# The weekly run and a dispatch also rewrite gh-pages as one commit of its
-# tree as it stands. Every publish is a commit, so the branch would otherwise
-# keep in its history the runs' text of every point of logos-chat's main,
-# about 5 MB a point, long after the tree let it go past the newest thirty.
+# logos-chat/pr-<N>/ holds the run of logos-chat's pull request N, its report
+# page among it. The weekly run removes each whose pull request logos-chat's
+# public API no longer lists as open; a dispatch handed a pr removes that one
+# pull request's, and nothing else, for logos-chat's closed event.
+#
+# The weekly run and a dispatch handed no pr also rewrite gh-pages as one
+# commit of its tree as it stands. Every publish is a commit, so the branch
+# would otherwise keep in its history the runs' text of every point of
+# logos-chat's main, about 5 MB a point, long after the tree let it go past
+# the newest thirty.
 #
 # pull_request_target runs this file from the base branch with a write token,
 # and it never checks out the pull request's code.
@@ -19,13 +25,17 @@ on:
   schedule:
     - cron: "23 4 * * 1"
   workflow_dispatch:
+    inputs:
+      pr:
+        description: The number of the logos-chat pull request whose run to remove, or nothing
+        required: false
 
 permissions:
   contents: read
 
 jobs:
   prune:
-    name: Prune closed pull requests' reports
+    name: Prune closed pull requests' pages
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -41,7 +51,8 @@ jobs:
 
     steps:
       # The default branch, whose .github/scripts/pages.py writes the list of
-      # the reports again.
+      # the reports again and names the runs of logos-chat's closed pull
+      # requests.
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -53,7 +64,13 @@ jobs:
           ref: gh-pages
           path: site
 
+      - name: Name the committer
+        run: |
+          git -C site config user.name "github-actions[bot]"
+          git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Remove closed pull requests' reports
+        if: ${{ !inputs.pr }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,18 +93,53 @@ jobs:
           fi
           python3 .github/scripts/pages.py index site
           git -C site add -A
-          git -C site config user.name "github-actions[bot]"
-          git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git -C site commit -qm "Prune the reports of closed pull requests: ${removed[*]}"
-          git -C site push origin gh-pages
           echo "Pruned: ${removed[*]}"
+
+      # The pr is read from the environment, never written into the script:
+      # whoever dispatched the run chose it, and pages.py refuses one that is
+      # not the number of a pull request.
+      - name: Remove the runs of logos-chat's closed pull requests
+        if: ${{ github.event_name != 'pull_request_target' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PR" ]; then
+            given=(--pr="$PR")
+          else
+            gh api --paginate "repos/logos-messaging/logos-chat/pulls?state=open&per_page=100" \
+              --jq '.[].number' > "$RUNNER_TEMP/open.txt"
+            given=(--open "$RUNNER_TEMP/open.txt")
+          fi
+          python3 .github/scripts/pages.py closed site "${given[@]}" > "$RUNNER_TEMP/closed.txt"
+          mapfile -t closed < "$RUNNER_TEMP/closed.txt"
+          if [ ${#closed[@]} -eq 0 ]; then
+            echo "No run of a closed logos-chat pull request is on gh-pages."
+            exit 0
+          fi
+          git -C site rm -rq "${closed[@]}"
+          git -C site commit -qm "Prune the runs of logos-chat's closed pull requests: ${closed[*]#logos-chat/pr-}"
+          echo "Pruned: ${closed[*]}"
+
+      # Whatever a step before it committed, though a later one failed.
+      - name: Push to gh-pages
+        if: ${{ !cancelled() }}
+        run: |
+          if [ "$(git -C site rev-list --count origin/gh-pages..HEAD)" -eq 0 ]; then
+            echo "Nothing was pruned."
+            exit 0
+          fi
+          git -C site push origin gh-pages
 
       # In the publish queue, so no publish lands between the read and the
       # push; the lease refuses the push all the same if one did. Pages serves
       # the branch as pushed and builds once. The checkout is shallow, so the
       # head's parent is read from the commit itself.
       - name: Rewrite gh-pages as one commit of its tree
-        if: ${{ github.event_name != 'pull_request_target' }}
+        if: ${{ github.event_name != 'pull_request_target' && !inputs.pr }}
         shell: bash
         run: |
           set -euo pipefail
@@ -96,8 +148,6 @@ jobs:
             echo "gh-pages is one commit already."
             exit 0
           fi
-          git -C site config user.name "github-actions[bot]"
-          git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           one="$(git -C site commit-tree -m "Rewrite gh-pages as one commit of its tree" "$head^{tree}")"
           git -C site push --force-with-lease="refs/heads/gh-pages:$head" origin "$one:refs/heads/gh-pages"
           echo "gh-pages is now one commit, $one, of the tree of $head."

@@ -27,10 +27,9 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Collection, List, Optional, Sequence, Tuple
+from typing import Callable, Collection, List, Optional, Sequence, Tuple
 
 import measure
-import pages
 
 # The goal's scenario at a rate of loss in percent. Its files set no seed, so that run k of a
 # sweep has seed k - 1.
@@ -63,6 +62,10 @@ MATRIX = {"head", "base", "base_point", "cells", "counts", "verdict", "summary",
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _PR = re.compile(r"[1-9][0-9]*")
+# An address a Markdown link can hold as it is.
+_URL = re.compile(r"https?://[^\s()<>]+")
+# What the verdict line says of a revision chat-sim does not build at.
+_UNBUILT = "chat-sim does not build against this commit"
 
 # The title of each verdict but `no-base`, from the counts of the matrix's cells.
 _TITLES = {
@@ -315,6 +318,20 @@ def title(matrix: dict) -> str:
     return "no outcome at the base, no comparison"
 
 
+def headline(matrix: dict) -> str:
+    """What the verdict line of a run says of `matrix`: chat-sim, and its verdict in a few
+    words."""
+    if matrix["verdict"] == "unbuilt":
+        return _UNBUILT
+    return f"chat-sim: {title(matrix)}"
+
+
+def compares(matrix: dict) -> bool:
+    """Whether `matrix` holds the head's runs to a base's: it has a base, and a cell of it was
+    compared."""
+    return matrix["base"] is not None and matrix["counts"]["compared"] > 0
+
+
 def render_pr(matrix: dict, facts: dict) -> str:
     """The comment on a pull request: the verdict, a row a rate and a cell a seed, beside them
     main's spread where the matrix has one, what a cell says, and under it a fold for each cell
@@ -323,21 +340,21 @@ def render_pr(matrix: dict, facts: dict) -> str:
         return _unbuilt_comment(facts)
     cells, spread = matrix["cells"], matrix["spread"]
     seeds = sorted({cell["seed"] for cell in cells})
-    against = matrix["base"] is not None and matrix["counts"]["compared"] > 0
+    against = compares(matrix)
     columns = [f"Seed {seed}" for seed in seeds]
     if spread is not None:
         columns.append(_spread_head(spread))
     lines = [
-        _verdict_line(f"chat-sim: {title(matrix)}", facts, matrix["base_point"]),
+        _verdict_line(headline(matrix), facts, matrix["base_point"]),
         "",
         "| Loss | " + " | ".join(columns) + " |",
         "|---" * (len(columns) + 1) + "|",
     ]
     for rate, row in _rows(cells):
-        said = {cell["seed"]: _said(cell, against) for cell in row}
+        said = {cell["seed"]: words(cell, against) for cell in row}
         shown = [said.get(seed, "-") for seed in seeds]
         if spread is not None:
-            shown.append(_spread_of(spread, row[0]["scenario"]))
+            shown.append(spread_of(spread, row[0]["scenario"]))
         lines.append(f"| {rate} | " + " | ".join(shown) + " |")
     lines += ["", _PR_FOOT]
     for cell in cells:
@@ -345,13 +362,13 @@ def render_pr(matrix: dict, facts: dict) -> str:
         lines += [
             "",
             f"<details{opened}><summary>{_rate(cell['rate'])} loss, seed {cell['seed']}: "
-            f"{_said(cell, against)}</summary>",
+            f"{words(cell, against)}</summary>",
             "",
             f"- **head** {_commit(facts['revision'])} · {_ran(cell, 'head')}",
         ]
         if facts["base"]:
             lines.append(f"- **base** {_commit(facts['base'])} · {_ran(cell, 'base')}")
-        lines += ["", "```sh", *_again(cell, facts), "```", "", "</details>"]
+        lines += ["", "```sh", *again(cell, facts), "```", "", "</details>"]
     return "".join(f"{line}\n" for line in lines)
 
 
@@ -509,6 +526,9 @@ def _not_standing(
 def _read_point(tree: Path, ref: str, where: str) -> Tuple[Optional[dict], str]:
     """Main's point at `where` on `ref` of `tree` as pages.py reads a point, and `""`; or `None`,
     and where the point is and why it cannot be read."""
+    # pages.py imports this module.
+    import pages
+
     read = subprocess.run(
         ["git", "-C", str(tree), "cat-file", "blob", f"{ref}:{where}"], capture_output=True
     )
@@ -555,6 +575,8 @@ def _spread(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
 
 def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     _check_handed(parser, args)
+    if args.report_url is not None and _URL.fullmatch(args.report_url) is None:
+        parser.error(f"--report-url: {args.report_url!r} is not an http(s) address")
     facts = {
         "suite": args.suite,
         "revision": args.revision,
@@ -647,24 +669,40 @@ def _part(suite: str, name: str, first: int, count: int) -> str:
     return f"{rate} seeds {first - 1} to {first + count - 2}"
 
 
+def ran_at(
+    facts: dict,
+    point: Optional[dict],
+    commit: Callable[[str], str],
+    link: Callable[[str, dict], str],
+) -> str:
+    """What the verdict line says after its verdict: the commit that ran and the merge base it
+    was held to, and the point of main whose runs stood in for the base's where one did, each
+    commit as `commit` draws it and the words that name the point as `link` draws them."""
+    said = f"at {commit(facts['revision'])}"
+    if facts["base"]:
+        said += f" against its merge base {commit(facts['base'])}"
+    if point is not None:
+        named = link("main's run of it", point)
+        said += f", from {named}"
+    return said
+
+
 def _verdict_line(said: str, facts: dict, point: Optional[dict] = None) -> str:
     """The verdict line: what was said, of which commit against which, the point of main whose
     runs stood in for the base's where one did, and the links."""
-    line = f"**{said}** at {_commit(facts['revision'])}"
-    if facts["base"]:
-        line += f" against its merge base {_commit(facts['base'])}"
-    if point is not None:
-        line += f", from [main's run of it]({point['run_url']})"
+    run = ran_at(facts, point, _commit, lambda words, at: f"[{words}]({at['run_url']})")
+    line = f"**{said}** {run}"
     if facts["report_url"]:
         line += f" · [the report]({facts['report_url']})"
     return line + f" · [the run]({facts['run_url']})"
 
 
 def _unbuilt_comment(facts: dict) -> str:
+    where = "on the report page" if facts["report_url"] else "in the run"
     lines = [
-        _verdict_line("chat-sim does not build against this commit", facts),
+        _verdict_line(_UNBUILT, facts),
         "",
-        "No scenario ran: the build's errors are in the run.",
+        f"No scenario ran: the build's errors are {where}.",
     ]
     return "".join(f"{line}\n" for line in lines)
 
@@ -679,7 +717,7 @@ def _rows(cells: List[dict]) -> List[Tuple[str, List[dict]]]:
     return rows
 
 
-def _said(cell: dict, against: bool) -> str:
+def words(cell: dict, against: bool) -> str:
     """A cell in a few words: the head's epochs without a fork and how it ended, then its
     change, with what moved where it is better or worse, and where it is re-rolled beside main's
     spread whether the head's epochs are within it or below it; and with `against`, why a cell
@@ -698,14 +736,19 @@ def _said(cell: dict, against: bool) -> str:
     return f"{said}, {_missing(cell, 'base')} at the base" if against else said
 
 
+def spread_seeds(spread: dict) -> str:
+    """How many seeds of a rate main ran in `spread`: `20 seeds`, or `seeds` where its rates
+    ran other counts."""
+    runs = {one["runs"] for one in spread["summary"]}
+    return f"{runs.pop()} seeds" if len(runs) == 1 else "seeds"
+
+
 def _spread_head(spread: dict) -> str:
     """The head of the column of main's spread: how many seeds of a rate main ran, and where."""
-    runs = {one["runs"] for one in spread["summary"]}
-    seeds = f"{runs.pop()} seeds" if len(runs) == 1 else "seeds"
-    return f"main's {seeds} at {_commit(spread['logos_chat'])}"
+    return f"main's {spread_seeds(spread)} at {_commit(spread['logos_chat'])}"
 
 
-def _spread_of(spread: dict, scenario: str) -> str:
+def spread_of(spread: dict, scenario: str) -> str:
     """Main's runs of a scenario in a few words: how many ended whole, and the lowest and the
     highest epochs without a fork."""
     one = next((one for one in spread["summary"] if one["scenario"] == scenario), None)
@@ -736,7 +779,7 @@ def _missing(cell: dict, side: str) -> str:
     return "does not build" if cell["unbuilt"][side] else "no outcome"
 
 
-def _again(cell: dict, facts: dict) -> List[str]:
+def again(cell: dict, facts: dict) -> List[str]:
     """The commands that run a cell again, at the head or at the base."""
     pins = f"# move both pins to {facts['revision']}"
     if facts["base"]:

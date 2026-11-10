@@ -32,7 +32,7 @@ drawn from the runs of main.
 | [`guide`](guide) | The guide, a Starlight site: how a run works, how to run one, and how to read what it finds |
 | `.github/scripts/measure.py` | Says whether `simulate.yml`'s main suite is to run at logos-chat main's tip, from the points on `gh-pages` and the runs going |
 | `.github/scripts/mock-registry.py` | The KeyPackage registry the peers of a run share |
-| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main and the runs of its pull requests that `simulate.yml` makes, and draws the graph over main from the points |
+| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main and the runs of its pull requests that `simulate.yml` makes, draws the page of each, draws the graph over main from the points, and names the runs of logos-chat's pull requests that are no longer open |
 | `.github/scripts/simulate.py` | Plans the jobs of `simulate.yml`, names the point of main a `pr` run is placed among, and writes the comment on what they came to |
 
 ## The logos-chat it runs
@@ -60,9 +60,11 @@ before it of the base's hundred newest commits, for `main` how the runs at each 
 `tools/sim/expected` holds when there is no base. Its publish job keeps a `main` run handed no
 `pr` on the Pages
 site as a point of logos-chat's main, with the matrix's cells and summary, and a `pr` run under the
-number of its pull request, with the matrix, each with its runs' text; the guide's
+number of its pull request, with the matrix, each with its runs' text, or the build's log where
+chat-sim did not build, and a page drawn from them, which the comment links; the guide's
 [Reports](https://logos-messaging.github.io/chat-sim/guide/reports/#logos-chats-runs) says what
-they hold and how long.
+they hold and how long. The weekly run of `prune-pages.yml` removes the run of each logos-chat pull
+request that is no longer open, and a dispatch of it handed a `pr` removes that one's.
 
 `measure-main.yml` starts it as well: every hour, it dispatches `main` at logos-chat main's tip,
 unless the tip has its point on `gh-pages` at the chat-sim commit a run measures (the newest that
