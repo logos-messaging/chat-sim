@@ -3,6 +3,11 @@ import { defineConfig } from "astro/config";
 import remarkMermaid from "./src/plugins/remark-mermaid.mjs";
 
 // SITE and BASE come from the deploy, which serves the guide under guide/ of the repository's Pages site.
+// The graph over logos-chat's main lives beside the guide on that site, so its link is a full address: one
+// starting with / would take the guide's base. A build for no site, as `npm run dev`, has no page to link.
+const guide = process.env.SITE && new URL(`${process.env.BASE ?? ""}/`, process.env.SITE);
+const overMain = guide ? [{ label: "Over main", link: new URL("../logos-chat/", guide).href }] : [];
+
 export default defineConfig({
   site: process.env.SITE,
   base: process.env.BASE ?? "/",
@@ -25,6 +30,7 @@ export default defineConfig({
             { slug: "read-the-report" },
             { slug: "simulations" },
             { slug: "reports" },
+            ...overMain,
           ],
         },
         {

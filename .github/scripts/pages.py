@@ -15,7 +15,8 @@ number wrote it, and then only the newest thirty points keep their runs' text. T
 the order of their runs' numbers, which GitHub gives in the order the runs were started and a
 re-run keeps; `previous` names the point a new one follows. `pr` keeps the newest run of a
 logos-chat pull request in `logos-chat/pr-N/` the same way: its matrix, both sides' runs' text
-and its `meta.json`.
+and its `meta.json`. `trend` draws the graph over main, `logos-chat/index.html`, from the
+`point.json` of every point; one it cannot read is left out, with a warning.
 
 The pages run no script, and every text that comes from a run or from a pull request's title
 is escaped.
@@ -26,6 +27,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import math
 import re
 import shutil
 import sys
@@ -48,6 +50,11 @@ LOGOS_CHAT = "logos-chat"
 WINDOW = 30
 # The text of a run the site keeps. Its report.json, ten times the rest, stays in the artifacts.
 TEXTS = ("run.txt", "report.txt", "run.json")
+# How many rates the graph over main tells apart, a hue of `_STYLE`'s ramp each.
+HUES = 4
+# The repositories whose commits and pull requests a point names.
+LOGOS_CHAT_URL = "https://github.com/logos-messaging/logos-chat"
+CHAT_SIM_URL = "https://github.com/logos-messaging/chat-sim"
 
 _KEY = re.compile(r"master|pr-([1-9][0-9]*)")
 _SHA = re.compile(r"[0-9a-f]{40}")
@@ -77,6 +84,16 @@ _FIELDS = {
     "sweeps": int,
 }
 _CLASS = {AS_EXPECTED: "good", NOT_AS_EXPECTED: "bad", NO_OUTCOME: "none"}
+# The epoch the goal's runs grow toward, the top of the scale of epochs without a fork, and the
+# bins of a cell's epochs: ten epochs each, and the top alone.
+_TOP = 50
+_BINS = ("0 to 9", "10 to 19", "20 to 29", "30 to 39", "40 to 49", "50")
+_NONE_MERGED = '<span class="muted">none</span>'
+# The width of a chart of the graph over main, the room a label of its axis of time takes, and
+# about the width of a character of its text.
+_WIDTH = 820
+_ROOM = 44
+_CHAR = 6.2
 
 # What `tools/sim matrix` writes, as the field of each kind, or a shape of its own.
 _NONE = type(None)
@@ -174,11 +191,19 @@ _PR_META = {
     "time": (str,),
 }
 
+# The rates are one blue ramp, the heavier the loss the darker, and so are the six bins of a
+# cell's epochs without a fork; each bin's ink is the light or the dark one.
 _STYLE = """
 :root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;
---line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700}
+--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--grid:#e6e9ed;
+--band:rgba(57,135,229,.18);--rate-1:#86b6ef;--rate-2:#3987e5;--rate-3:#1c5cab;
+--rate-4:#0d366b;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;
+--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
 @media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;
---box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922}}
+--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;
+--grid:#21262d;--band:rgba(109,167,236,.22);--rate-1:#b7d3f6;--rate-2:#6da7ec;
+--rate-3:#2a78d6;--rate-4:#184f95;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;
+--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
 body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
 background:var(--bg);font:15px/1.5 system-ui,sans-serif}
 a{color:var(--link)}
@@ -198,6 +223,53 @@ summary{cursor:pointer}
 .good{color:var(--good)}
 .bad{color:var(--bad)}
 .none{color:var(--none)}
+"""
+# The graph over main, in the colours of `_STYLE`.
+_CHARTS = """
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.band{fill:var(--band)}
+.measure{stroke:var(--muted);stroke-dasharray:3 3}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.s1{--hue:var(--rate-1)}
+.s2{--hue:var(--rate-2)}
+.s3{--hue:var(--rate-3)}
+.s4{--hue:var(--rate-4)}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.marker.open{fill:var(--bg);stroke:var(--hue)}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+.points td{white-space:nowrap;font-variant-numeric:tabular-nums}
+.points th[colspan]{text-align:center}
+.points .merged{white-space:normal;min-width:14rem}
+.points .moved{white-space:normal;font-size:13px;color:var(--muted);min-width:12rem}
 """
 
 
@@ -315,6 +387,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="what the run jobs at the base uploaded, given with --base and only with it",
     )
     pr.set_defaults(command=_pr)
+    trend = commands.add_parser(
+        "trend",
+        help="draw the graph over logos-chat's main",
+        description="Writes logos-chat/index.html of SITE, the graph over logos-chat's main, "
+        "from the point.json of each point, in the order of their runs' numbers. A point.json it "
+        f"cannot read is left out, with a warning; points of more than {HUES} rates are refused.",
+    )
+    trend.add_argument("site", metavar="SITE", type=Path, help="the site, as gh-pages holds it")
+    trend.set_defaults(command=_trend)
     args = parser.parse_args(argv)
     return args.command(parser, args)
 
@@ -515,6 +596,44 @@ def write_pr(matrix: dict, runs: Path, base_runs: Optional[Path], site: Path, me
     (out / "matrix.json").write_text(json.dumps(matrix, indent=1) + "\n", encoding="utf-8")
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     return read_pr_meta(out / "meta.json")
+
+
+def write_trend(site: Path) -> None:
+    """Writes `logos-chat/index.html` of `site`, the graph over logos-chat's main, from each
+    point `points` reads, the oldest at the left: of each rate the epochs without a fork and the
+    runs whole, the newest point's cells, the members off the trunk once a rate has had every run
+    whole, and the list of the points, the newest first.
+
+    Every number it draws is one a point.json holds. A point that measures another chat-sim
+    commit than the point before it has a dashed line, and one re-rolled against the point it
+    follows an open marker. Points of more than `HUES` rates are refused.
+    """
+    found = [point for _, point in reversed(points(site))]
+    rates = _rates(found)
+    body = (
+        f'<p class="muted">{_link("../", "chat-sim")} / {_link("../guide/", "Guide")}</p>\n'
+        "<h1>Over main</h1>\n"
+        '<p class="lead">How many epochs a group of logos-chat clients lasts as one group while '
+        f"it grows toward epoch {_TOP}, at each rate of loss, over logos-chat's main: a point for "
+        "each of its commits that was measured, the oldest at the left.</p>\n"
+    )
+    if found:
+        body += (
+            _epochs_chart(found, rates)
+            + _whole_chart(found, rates)
+            + _newest_chart(found[-1], rates)
+            + (_off_chart(found, rates) if _reached(found) else "")
+            + _points_list(found, rates)
+        )
+    else:
+        body += "<p>No point of main has been kept yet.</p>\n"
+    body += (
+        f'<p class="muted">What a point holds: the guide\'s '
+        f'{_link("../guide/reports/#logos-chats-runs", "Reports")}.</p>\n'
+    )
+    out = site / LOGOS_CHAT / "index.html"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(_page("chat-sim: over main", body, _CHARTS), encoding="utf-8")
 
 
 def points(site: Path) -> List[Tuple[Path, dict]]:
@@ -825,6 +944,14 @@ def _pr(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     return 0
 
 
+def _trend(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    try:
+        write_trend(args.site)
+    except Unreadable as refused:
+        parser.error(str(refused))
+    return 0
+
+
 def _add_ran(command: argparse.ArgumentParser, runs: str) -> None:
     """The arguments that say what a run of simulate.yml ran, and what it came to."""
     command.add_argument(
@@ -1036,6 +1163,691 @@ def _fifty(run: Path, name: str, show: Callable[..., str]) -> str:
     return head + show(name, "run.txt") + show(name, "report.txt")
 
 
+def _rates(found: Sequence[dict]) -> List[Tuple[object, str]]:
+    """Each rate the points summarise, as `_rate` keys it, in the order of its loss, and the
+    name the page gives it; refused when there are more than `HUES`."""
+    seen: Dict[object, dict] = {}
+    for point in found:
+        for one in point["summary"]:
+            seen.setdefault(_rate(one), one)
+    ordered = sorted(
+        seen.values(), key=lambda one: (one["loss"] is None, one["loss"] or 0, one["scenario"])
+    )
+    if len(ordered) > HUES:
+        raise Unreadable(f"the points hold {len(ordered)} rates, and the page tells {HUES} apart")
+    return [(_rate(one), one["rate"] or one["scenario"]) for one in ordered]
+
+
+def _rate(held: dict) -> object:
+    """The rate a summary or a cell is of: its loss, so that a scenario renamed at the same loss
+    goes on as the same line, or its scenario where it has none."""
+    return held["scenario"] if held["loss"] is None else held["loss"]
+
+
+def _epochs_chart(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> str:
+    """The first chart: a panel a rate, the median of the epochs without a fork as a line and
+    the band from the lowest to the highest."""
+    return (
+        '<section class="chart" id="epochs">\n<h2>Epochs without a fork</h2>\n'
+        + _legend(
+            (_line_key(2), "the median of the runs"),
+            (_band_key(), "the lowest run to the highest"),
+            *_marks(found),
+        )
+        + '<div class="panels">\n'
+        + "".join(_panel(found, hue, *rate) for hue, rate in enumerate(rates, 1))
+        + "</div>\n"
+        '<p class="caption">How many epochs each run went without a fork: the first split\'s, '
+        "else the trunk's. It moves with every change for the better, where the runs whole below "
+        "can show none yet. A dashed line marks a point that measures another chat-sim commit "
+        "than the point before it, so that the step is chat-sim's, not logos-chat's; an open "
+        "marker a point re-rolled, whose runs drew other ids than those of the point it follows, "
+        "so that every seed's run is another run, and moved whether or not logos-chat did.</p>\n"
+        "</section>\n"
+    )
+
+
+def _whole_chart(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> str:
+    """The second chart: a line a rate of how many runs ended whole."""
+    runs = max((one["runs"] for point in found for one in point["summary"]), default=0)
+    return (
+        '<section class="chart" id="whole">\n'
+        f"<h2>Runs whole at {_TOP} epochs{_of_runs(found)}</h2>\n"
+        + _legend(
+            *((_line_key(hue), name) for hue, (_, name) in enumerate(rates, 1)),
+            (_goal_key(), "the goal"),
+            *_marks(found),
+        )
+        + _over(
+            found,
+            rates,
+            _whole,
+            _whole_said,
+            top=runs,
+            plot=240,
+            label=f"Runs whole at {_TOP} epochs",
+            goal=runs,
+            merged=True,
+            noted=True,
+        )
+        + '<p class="caption">How many runs of each rate ended whole: one group, every member in '
+        f"it, at epoch {_TOP}. The goal is every line at the top. A line breaks at a point where "
+        "none of the rate's runs had an outcome, as when chat-sim did not build. Under the dates "
+        "the axis shows, the pull requests of logos-chat the point merged, which a marker's hover "
+        "text names too.</p>\n"
+        "</section>\n"
+    )
+
+
+def _newest_chart(point: dict, rates: Sequence[Tuple[object, str]]) -> str:
+    """The third chart: the cells of the newest point, a row a rate and a column a seed."""
+    rows = []
+    for rate, name in rates:
+        cells = {cell["seed"]: cell for cell in point["cells"] if _rate(cell) == rate}
+        if cells:
+            rows.append((name, cells))
+    seeds = sorted({seed for _, cells in rows for seed in cells})
+    side, size = 56, 38
+    width, height = side + size * len(seeds), 18 + 30 * len(rows)
+    drawn = [_svg(width, height, "The newest point's runs")]
+    drawn.append('<text class="axis small" x="0" y="11">seed</text>')
+    for column, seed in enumerate(seeds):
+        x = side + size * column + size / 2
+        drawn.append(
+            f'<text class="axis small" x="{x:.1f}" y="11" text-anchor="middle">{seed}</text>'
+        )
+    for row, (name, cells) in enumerate(rows):
+        y = 18 + 30 * row
+        drawn.append(f'<text class="label" x="0" y="{y + 18}">{_e(name)}</text>')
+        for column, seed in enumerate(seeds):
+            if seed in cells:
+                drawn.append(_cell_drawn(cells[seed], name, side + size * column, y))
+    drawn.append("</svg>")
+    when = _when(point)
+    return (
+        '<section class="chart" id="newest">\n<h2>The newest point</h2>\n'
+        f'<p class="caption">{when} UTC, main {_e(point["logos_chat"][:7])}: a row a rate and a '
+        "column a seed.</p>\n"
+        + "\n".join(drawn)
+        + "\n"
+        + _legend(
+            *((_cell_key(f"bin{number}"), name) for number, name in enumerate(_BINS)),
+            (_cell_key("bin5", "whole"), "whole"),
+            (_cell_key("bin5", "behind"), "one group, members behind"),
+            (_cell_key("empty"), "no outcome"),
+        )
+        + '<p class="caption">A cell\'s colour is the epochs its run went without a fork; a dot '
+        "marks a run that ended whole, a ring one that ended one group with members behind, and "
+        "no mark one that split or stalled. Its hover text is how the run came out.</p>\n"
+        "</section>\n"
+    )
+
+
+def _off_chart(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> str:
+    """The fourth chart: a line a rate of the median of the members off the trunk at the end."""
+    medians = [
+        one["members_off_trunk"]["median"]
+        for point in found
+        for one in point["summary"]
+        if one["members_off_trunk"]["median"] is not None
+    ]
+    return (
+        '<section class="chart" id="off">\n<h2>Members off the trunk at the end</h2>\n'
+        + _legend(
+            *((_line_key(hue), name) for hue, (_, name) in enumerate(rates, 1)), *_marks(found)
+        )
+        + _over(
+            found,
+            rates,
+            lambda one: one["members_off_trunk"]["median"],
+            lambda one: f"a median of {_number(one['members_off_trunk']['median'])} members off "
+            "the trunk at the end",
+            top=max(medians, default=0),
+            plot=150,
+            label="Members off the trunk at the end",
+        )
+        + '<p class="caption">Behind at the end, on a line not the trunk, or never joined: the '
+        "median of each rate's runs. The other half of the goal, once a rate has every run "
+        "whole.</p>\n"
+        "</section>\n"
+    )
+
+
+def _points_list(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> str:
+    """The list of the points, the newest first."""
+    rows = []
+    for number in reversed(range(len(found))):
+        point = found[number]
+        logos_chat, measured = point["logos_chat"], point["measurement"]
+        merged = "<br>".join(
+            _link(f"{LOGOS_CHAT_URL}/pull/{one['number']}", f"#{one['number']}")
+            + f" {_e(one['title'])}"
+            for one in point["merged"]
+        )
+        whole = "".join(
+            f"<td>{_number(None if one is None else _whole(one))}</td>"
+            for one in (_rate_at(point, rate) for rate, _ in rates)
+        )
+        tag = ' <span class="muted">moved</span>' if _moved(found, number) else ""
+        rows.append(
+            "<tr>"
+            f"<td>{_when(point)}</td>"
+            f"<td>{_link(f'{LOGOS_CHAT_URL}/commit/{logos_chat}', logos_chat[:7], code=True)}</td>"
+            f'<td class="merged">{merged or _NONE_MERGED}</td>'
+            f"{whole}"
+            f'<td class="moved">{_e(_what_moved(found, number, rates))}</td>'
+            f"<td>{_link(f'{CHAT_SIM_URL}/commit/{measured}', measured[:7], code=True)}{tag}</td>"
+            f"<td>{_link(f'main/{logos_chat}/{measured}/point.json', 'point')} · "
+            f"{_link(point['run_url'], 'the run')}</td>"
+            "</tr>\n"
+        )
+    heads = "".join(f"<th>{_e(name)}</th>" for _, name in rates)
+    return (
+        '<section id="points">\n<h2>The points</h2>\n'
+        '<div class="wide"><table class="points">\n'
+        "<thead><tr><th>When (UTC)</th><th>main</th><th>Pull requests merged</th>"
+        f'<th colspan="{len(rates)}">Runs whole{_of_runs(found)}</th><th>What moved</th>'
+        "<th>chat-sim</th><th></th></tr>\n"
+        f"<tr><th></th><th></th><th></th>{heads}<th></th><th></th><th></th></tr></thead>\n"
+        f"<tbody>\n{''.join(rows)}</tbody>\n"
+        "</table></div>\n"
+        '<p class="caption">What moved is against the point before it: each rate\'s runs whole '
+        "and median of epochs without a fork where they changed, or that none of its runs had an "
+        "outcome. chat-sim is the commit the point measures.</p>\n"
+        "</section>\n"
+    )
+
+
+def _over(
+    found: Sequence[dict],
+    rates: Sequence[Tuple[object, str]],
+    value: Callable[[dict], Optional[float]],
+    hover: Callable[[dict], str],
+    top: float,
+    plot: int,
+    label: str,
+    goal: Optional[int] = None,
+    merged: bool = False,
+    noted: bool = False,
+) -> str:
+    """A chart over the points: a line a rate of what `value` reads of the rate's summary at each
+    point, a marker on each with `hover` in its title, and the rate and its newest value at the
+    end of its line, on a scale from 0 to `top`. With `goal`, a dashed line at it; with `merged`,
+    the pull requests each point merged under its date; with `noted`, the commit chat-sim moved
+    to over each dashed line of a point at another measurement."""
+    left, right, above, below = 36, 96, 28 if noted else 14, 44 if merged else 28
+    xs = _xs(len(found), left, _WIDTH - left - right)
+    reach = _reach(xs)
+    ticks = _ticks(top)
+    bottom = above + plot
+    height = bottom + below
+
+    def y(held: float) -> float:
+        return bottom - held / ticks[-1] * plot
+
+    drawn = [_svg(_WIDTH, height, label)]
+    for tick in ticks:
+        drawn.append(
+            f'<line class="grid" x1="{left}" x2="{_WIDTH - right}" y1="{y(tick):.1f}" '
+            f'y2="{y(tick):.1f}"/>'
+        )
+        drawn.append(
+            f'<text class="axis" x="{left - 8}" y="{y(tick) + 4:.1f}" text-anchor="end">'
+            f"{tick}</text>"
+        )
+    every = _every(xs)
+    for number in range(len(found))[::-1][::every]:
+        drawn.append(_date(found[number], xs[number], bottom + 16, "middle"))
+        if merged:
+            room = every * (xs[1] - xs[0]) if len(xs) > 1 else _WIDTH
+            drawn.append(
+                f'<text class="axis small" x="{xs[number]:.1f}" y="{bottom + 30}" '
+                f'text-anchor="middle">{_e(_merged(found[number], room))}</text>'
+            )
+    for number in range(len(found)):
+        if _moved(found, number):
+            drawn.append(_measure(xs[number], above, bottom))
+    if goal is not None:
+        drawn.append(
+            f'<line class="measure" x1="{left}" x2="{_WIDTH - right + 10}" y1="{y(goal):.1f}" '
+            f'y2="{y(goal):.1f}"/>'
+        )
+        drawn.append(
+            f'<text class="note" x="{left + 14}" y="{y(goal) - 8:.1f}">the goal</text>'
+        )
+    if noted:
+        # The goal is the top of the scale, so its label is in the notes' row.
+        taken = 0 if goal is None else left + 14 + len("the goal") * _CHAR + 8
+        drawn += _notes(found, xs, above - 10, taken)
+    ends = []
+    for hue, (rate, name) in enumerate(rates, 1):
+        held = [_rate_at(point, rate) for point in found]
+        values = [None if one is None else value(one) for one in held]
+        drawn.append(f'<g class="s{hue}">')
+        line = _path(xs, values, y)
+        if line:
+            drawn.append(f'<path class="series" d="{line}"/>')
+        for number, one in enumerate(held):
+            if values[number] is not None:
+                said = f"{_said(found, number)} · {name}: {hover(one)}"
+                opened = _rerolled(found[number])
+                drawn.append(_marker(xs[number], y(values[number]), said, opened, reach))
+        drawn.append("</g>")
+        last = next((v for v in reversed(values) if v is not None), None)
+        if last is not None:
+            ends.append({"hue": hue, "name": name, "value": last, "y": y(last), "at": y(last)})
+    drawn += _ends(ends, xs[-1], bottom + 4)
+    drawn.append("</svg>")
+    return "\n".join(drawn) + "\n"
+
+
+def _panel(found: Sequence[dict], hue: int, rate: object, name: str) -> str:
+    """A panel of the first chart: of one rate, the median of the epochs without a fork as a
+    line, and the band from the lowest to the highest."""
+    width, plot, left, right, above, below = 196, 120, 28, 12, 10, 22
+    xs = _xs(len(found), left, width - left - right)
+    reach = _reach(xs)
+    held = [_rate_at(point, rate) for point in found]
+    epochs = [None if one is None else one["epochs"] for one in held]
+    top = max([_TOP] + [one["highest"] for one in epochs if one and one["highest"] is not None])
+    bottom = above + plot
+
+    def y(epoch: float) -> float:
+        return bottom - epoch / top * plot
+
+    drawn = [_svg(width, bottom + below, f"Epochs without a fork at {name}")]
+    for tick in (0, _TOP // 2, _TOP):
+        drawn.append(
+            f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y(tick):.1f}" '
+            f'y2="{y(tick):.1f}"/>'
+        )
+        drawn.append(
+            f'<text class="axis small" x="{left - 6}" y="{y(tick) + 4:.1f}" '
+            f'text-anchor="end">{tick}</text>'
+        )
+    if len(found) > 1:
+        drawn.append(_date(found[0], xs[0], bottom + 15, "start", "axis small"))
+    newest = "end" if len(found) > 1 else "middle"
+    drawn.append(_date(found[-1], xs[-1], bottom + 15, newest, "axis small"))
+    for number in range(len(found)):
+        if _moved(found, number):
+            drawn.append(_measure(xs[number], above, bottom))
+    spans = [
+        None if one is None or None in (one["lowest"], one["highest"]) else one for one in epochs
+    ]
+    for run in _runs(spans):
+        highs = [(xs[number], y(spans[number]["highest"])) for number in run]
+        lows = [(xs[number], y(spans[number]["lowest"])) for number in reversed(run)]
+        if len(run) == 1:
+            (x, high), (_, low) = highs[0], lows[0]
+            highs, lows = [(x - 4, high), (x + 4, high)], [(x + 4, low), (x - 4, low)]
+        corners = " ".join(f"{x:.1f},{at:.1f}" for x, at in highs + lows)
+        drawn.append(f'<polygon class="band" points="{corners}"/>')
+    medians = [None if one is None else one["median"] for one in epochs]
+    drawn.append(f'<g class="s{hue}">')
+    line = _path(xs, medians, y)
+    if line:
+        drawn.append(f'<path class="series" d="{line}"/>')
+    for number, one in enumerate(epochs):
+        if medians[number] is not None:
+            said = (
+                f"{_said(found, number)} · {name}: median {_number(one['median'])}, lowest "
+                f"{_number(one['lowest'])}, highest {_number(one['highest'])}"
+            )
+            opened = _rerolled(found[number])
+            drawn.append(_marker(xs[number], y(medians[number]), said, opened, reach))
+    drawn.append("</g>\n</svg>")
+    titled = f"<p>{_rate_key(hue)}{_e(name)}</p>"
+    return f'<div class="panel">\n{titled}\n' + "\n".join(drawn) + "\n</div>\n"
+
+
+def _cell_drawn(cell: dict, name: str, x: float, y: float) -> str:
+    """A cell of the newest point: its epochs without a fork in a bin's colour, a dot for a run
+    that ended whole, a ring for one that ended behind, and how it came out as its title."""
+    outcome, epochs, ended = cell["head"], cell["epochs"]["head"], cell["ended"]["head"]
+    said = f"{name}, seed {cell['seed']}"
+    if outcome is None:
+        why = "chat-sim did not build" if cell["unbuilt"]["head"] else "no outcome"
+        kind, shown, said = "empty", "-", f"{said} · {why}"
+    else:
+        kind = "empty" if epochs is None else f"bin{min(epochs // 10, len(_BINS) - 1)}"
+        shown = "-" if epochs is None else str(epochs)
+        if epochs is not None:
+            said += f" · {epochs} epochs without a fork"
+        said += f" · {outcome['came_to']}"
+    mark = {"whole": "whole", "behind": "behind"}.get(ended or "")
+    centre = x + (15 if mark else 18)
+    drawn = (
+        f'<g class="cell {kind}"><title>{_e(said)}</title>'
+        f'<rect x="{x + 1:.1f}" y="{y + 1}" width="36" height="26" rx="4"/>'
+        f'<text x="{centre:.1f}" y="{y + 18}" text-anchor="middle">{shown}</text>'
+    )
+    if mark == "whole":
+        drawn += f'<circle class="whole" cx="{x + 29:.1f}" cy="{y + 14}" r="3"/>'
+    if mark == "behind":
+        drawn += f'<circle class="behind" cx="{x + 29:.1f}" cy="{y + 14}" r="2.5"/>'
+    return drawn + "</g>"
+
+
+def _ends(ends: List[dict], x: float, lowest: float) -> List[str]:
+    """The rate and its newest value at the end of each line, pushed apart where two meet."""
+    gap = 14
+    ends.sort(key=lambda one: one["y"])
+    for before, one in zip(ends, ends[1:]):
+        one["at"] = max(one["at"], before["at"] + gap)
+    if ends and ends[-1]["at"] > lowest:
+        ends[-1]["at"] = lowest
+        for one, after in zip(ends[-2::-1], ends[::-1]):
+            one["at"] = min(one["at"], after["at"] - gap)
+    drawn = []
+    for one in ends:
+        drawn.append(f'<g class="s{one["hue"]}">')
+        if abs(one["at"] - one["y"]) > 1:
+            drawn.append(
+                f'<line class="leader" x1="{x + 7:.1f}" y1="{one["y"]:.1f}" x2="{x + 17:.1f}" '
+                f'y2="{one["at"]:.1f}"/>'
+            )
+        drawn.append(
+            f'<rect class="key" x="{x + 18:.1f}" y="{one["at"] - 1.5:.1f}" width="10" height="3" '
+            'rx="1.5"/>'
+        )
+        drawn.append(
+            f'<text class="label" x="{x + 32:.1f}" y="{one["at"] + 4:.1f}">'
+            f"{_e(one['name'])} {_number(one['value'])}</text>"
+        )
+        drawn.append("</g>")
+    return drawn
+
+
+def _what_moved(found: Sequence[dict], number: int, rates: Sequence[Tuple[object, str]]) -> str:
+    """What a point changed against the point before it: of each rate the runs whole and the
+    median of the epochs without a fork, where either moved, or why none of its runs had an
+    outcome where the point before had one; and the two marks."""
+    if number == 0:
+        return "the first point"
+    point, before = found[number], found[number - 1]
+    said = []
+    for rate, name in rates:
+        now, was = _rate_at(point, rate), _rate_at(before, rate)
+        if now is None or was is None:
+            continue
+        if _whole(now) is None:
+            if _whole(was) is not None:
+                said.append(f"{name} {_why(point, rate)}")
+            continue
+        moved = []
+        if _whole(now) != _whole(was):
+            moved.append(f"whole {_number(_whole(was))} to {_number(_whole(now))}")
+        if now["epochs"]["median"] != was["epochs"]["median"]:
+            moved.append(
+                f"median {_number(was['epochs']['median'])} to {_number(now['epochs']['median'])}"
+            )
+        if moved:
+            said.append(f"{name} {', '.join(moved)}")
+    if _rerolled(point):
+        said.append("re-rolled")
+    if _moved(found, number):
+        said.append("chat-sim moved")
+    return " · ".join(said) or "nothing"
+
+
+def _said(found: Sequence[dict], number: int) -> str:
+    """A point as a marker's title names it."""
+    point = found[number]
+    merged = ", ".join(f"#{one['number']}" for one in point["merged"]) or "none"
+    said = f"{_when(point)} UTC · main {point['logos_chat'][:7]} · merged {merged}"
+    if _moved(found, number):
+        said += f" · chat-sim moved to {point['measurement'][:7]}"
+    if _rerolled(point):
+        said += " · re-rolled: the ids differ from the previous point's"
+    return said
+
+
+def _rate_at(point: dict, rate: object) -> Optional[dict]:
+    """The summary of a rate at a point, or `None` where the point has no run of it."""
+    return next((one for one in point["summary"] if _rate(one) == rate), None)
+
+
+def _whole(one: dict) -> Optional[int]:
+    """The runs of a rate's summary that ended whole, or `None` where none had an outcome."""
+    return None if one["no-outcome"] == one["runs"] else one["whole"]
+
+
+def _whole_said(one: dict) -> str:
+    said = f"{one['whole']} of {one['runs']} whole"
+    if one["no-outcome"]:
+        said += f", {one['no-outcome']} with no outcome"
+    return said
+
+
+def _why(point: dict, rate: object) -> str:
+    """Why none of a rate's runs at a point had an outcome, as its cells say."""
+    cells = [cell for cell in point["cells"] if _rate(cell) == rate]
+    if cells and all(cell["unbuilt"]["head"] for cell in cells):
+        return "chat-sim did not build"
+    return "no outcome"
+
+
+def _moved(found: Sequence[dict], number: int) -> bool:
+    """Whether a point measures another chat-sim commit than the point before it."""
+    return number > 0 and found[number]["measurement"] != found[number - 1]["measurement"]
+
+
+def _rerolled(point: dict) -> bool:
+    return point["previous"] is not None and point["previous"]["rerolled"]
+
+
+def _reached(found: Sequence[dict]) -> bool:
+    """Whether a rate with loss has had every run whole at a point: its line of runs whole at the
+    top. Without loss the line is at the top from the first point."""
+    return any(
+        one["loss"] and one["runs"] and one["whole"] == one["runs"]
+        for point in found
+        for one in point["summary"]
+    )
+
+
+def _of_runs(found: Sequence[dict]) -> str:
+    """`, of N` where every rate of every point has N runs, else nothing."""
+    runs = {one["runs"] for point in found for one in point["summary"]}
+    return f", of {runs.pop()}" if len(runs) == 1 else ""
+
+
+def _merged(point: dict, room: float) -> str:
+    """The pull requests a point merged as its date's second line, cut to the first and how many
+    more where they would take more than `room`."""
+    numbers = [f"#{one['number']}" for one in point["merged"]]
+    said = ", ".join(numbers)
+    # About the width of a character of the axis's small text.
+    if len(said) * 5.6 > room * 0.95 and len(numbers) > 1:
+        said = f"{numbers[0]} +{len(numbers) - 1}"
+    return said
+
+
+def _xs(count: int, left: float, width: float) -> List[float]:
+    if count == 1:
+        return [left + width / 2]
+    return [left + number * width / (count - 1) for number in range(count)]
+
+
+def _every(xs: Sequence[float]) -> int:
+    """How many points one date of the axis of time stands for, so that dates keep `_ROOM`
+    apart."""
+    if len(xs) < 2:
+        return 1
+    return max(1, math.ceil(_ROOM / (xs[1] - xs[0])))
+
+
+def _reach(xs: Sequence[float]) -> float:
+    """How far from a marker its hover reaches: 10, or half the way to the next point's, so
+    that a marker drawn later does not take the hover of the one before it."""
+    return 10 if len(xs) < 2 else min(10, (xs[1] - xs[0]) / 2)
+
+
+def _notes(found: Sequence[dict], xs: Sequence[float], y: float, taken: float) -> List[str]:
+    """The commit chat-sim moved to, over the dashed line of each point at another measurement,
+    left out where it would start before `taken`, run into the note before it or past the
+    chart, the line and the markers' hover text saying it all the same."""
+    drawn = []
+    for number in range(len(found)):
+        if not _moved(found, number):
+            continue
+        said = f"chat-sim moved: {found[number]['measurement'][:7]}"
+        start = xs[number] - len(said) * _CHAR / 2
+        if start < taken or start + len(said) * _CHAR > _WIDTH:
+            continue
+        taken = start + len(said) * _CHAR + 8
+        drawn.append(
+            f'<text class="note" x="{xs[number]:.1f}" y="{y}" text-anchor="middle">'
+            f"{_e(said)}</text>"
+        )
+    return drawn
+
+
+def _ticks(top: float) -> List[int]:
+    """The ticks of a scale from 0 to `top` or just past it: at most six, a step of 1, 2 or 5
+    times a power of ten apart."""
+    top, step = max(top, 1), 1
+    while math.ceil(top / step) > 5:
+        step = step * 5 // 2 if str(step)[0] == "2" else step * 2
+    return list(range(0, math.ceil(top / step) * step + 1, step))
+
+
+def _path(xs: Sequence[float], values: Sequence[Optional[float]], y: Callable) -> str:
+    """The path of a line through the values, broken where a point has none."""
+    drawn, pen = [], "M"
+    for x, value in zip(xs, values):
+        if value is None:
+            pen = "M"
+            continue
+        drawn.append(f"{pen}{x:.1f} {y(value):.1f}")
+        pen = "L"
+    return " ".join(drawn)
+
+
+def _runs(values: Sequence[Optional[object]]) -> List[List[int]]:
+    """The numbers of the values in runs of consecutive ones that are not `None`."""
+    found: List[List[int]] = []
+    for number, value in enumerate(values):
+        if value is None:
+            continue
+        if found and found[-1][-1] == number - 1:
+            found[-1].append(number)
+        else:
+            found.append([number])
+    return found
+
+
+def _svg(width: float, height: float, label: str) -> str:
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+        f'width="{width}" height="{height}" role="img" aria-label="{_e(label)}">'
+    )
+
+
+def _marker(x: float, y: float, said: str, opened: bool, reach: float) -> str:
+    """A point on a line, its title `said` in hover that reaches `reach` from it, open where it
+    was re-rolled."""
+    return (
+        f"<g><title>{_e(said)}</title>"
+        f'<circle class="hit" cx="{x:.1f}" cy="{y:.1f}" r="{reach:.1f}"/>'
+        f'<circle class="marker{" open" if opened else ""}" cx="{x:.1f}" cy="{y:.1f}" '
+        f'r="{5 if opened else 4}"/></g>'
+    )
+
+
+def _measure(x: float, above: float, bottom: float) -> str:
+    return f'<line class="measure" x1="{x:.1f}" x2="{x:.1f}" y1="{above}" y2="{bottom}"/>'
+
+
+def _date(point: dict, x: float, y: float, anchor: str, kind: str = "axis") -> str:
+    return (
+        f'<text class="{kind}" x="{x:.1f}" y="{y}" text-anchor="{anchor}">'
+        f"{_e(point['time'][5:10])}</text>"
+    )
+
+
+def _legend(*items: Tuple[str, str]) -> str:
+    """A legend: each item a key drawn and the words it stands for."""
+    return (
+        '<p class="legend">'
+        + "".join(f"<span>{key}{_e(said)}</span>" for key, said in items)
+        + "</p>\n"
+    )
+
+
+def _marks(found: Sequence[dict]) -> List[Tuple[str, str]]:
+    """The keys of the two marks, each where a point has it."""
+    marks = []
+    if any(_moved(found, number) for number in range(len(found))):
+        marks.append((_moved_key(), "the measurement moved: another chat-sim commit"))
+    if any(_rerolled(point) for point in found):
+        marks.append((_rerolled_key(), "re-rolled: the ids differ from the previous point's"))
+    return marks
+
+
+def _line_key(hue: int) -> str:
+    return (
+        f'<svg class="s{hue}" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">'
+        '<line class="series" x1="1" x2="21" y1="5" y2="5"/>'
+        '<circle class="key" cx="11" cy="5" r="4"/></svg>'
+    )
+
+
+def _rate_key(hue: int) -> str:
+    return (
+        f'<svg class="s{hue}" width="14" height="6" viewBox="0 0 14 6" aria-hidden="true">'
+        '<rect class="key" x="0" y="1.5" width="14" height="3" rx="1.5"/></svg>'
+    )
+
+
+def _band_key() -> str:
+    return (
+        '<svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">'
+        '<rect class="band" x="1" y="1" width="20" height="8"/></svg>'
+    )
+
+
+def _goal_key() -> str:
+    return (
+        '<svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">'
+        '<line class="measure" x1="1" x2="21" y1="5" y2="5"/></svg>'
+    )
+
+
+def _moved_key() -> str:
+    return (
+        '<svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true">'
+        '<line class="measure" x1="11" x2="11" y1="0" y2="14"/></svg>'
+    )
+
+
+def _rerolled_key() -> str:
+    return (
+        '<svg class="s2" width="22" height="12" viewBox="0 0 22 12" aria-hidden="true">'
+        '<circle class="marker open" cx="11" cy="6" r="4.5"/></svg>'
+    )
+
+
+def _cell_key(kind: str, mark: str = "") -> str:
+    drawn = (
+        f'<svg class="cell {kind}" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true">'
+        '<rect x="0" y="0" width="22" height="16" rx="3"/>'
+    )
+    if mark == "whole":
+        drawn += '<circle class="whole" cx="11" cy="8" r="3"/>'
+    if mark == "behind":
+        drawn += '<circle class="behind" cx="11" cy="8" r="2.5"/>'
+    return drawn + "</svg>"
+
+
+def _number(value: Optional[float]) -> str:
+    """A count or a median as the page shows it: 6, 38.5, or `-` for none."""
+    if value is None:
+        return "-"
+    return f"{value:g}" if isinstance(value, float) else str(value)
+
+
 def _heading(meta: dict) -> str:
     return " ".join(part for part in (meta["name"], meta["title"]) if part)
 
@@ -1067,7 +1879,7 @@ def _e(text: str) -> str:
     return html.escape(text, quote=True)
 
 
-def _page(title: str, body: str) -> str:
+def _page(title: str, body: str, style: str = "") -> str:
     return (
         "<!doctype html>\n"
         '<html lang="en">\n'
@@ -1076,7 +1888,7 @@ def _page(title: str, body: str) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         '<meta name="color-scheme" content="light dark">\n'
         f"<title>{_e(title)}</title>\n"
-        f"<style>{_STYLE}</style>\n"
+        f"<style>{_STYLE}{style}</style>\n"
         "</head>\n"
         "<body>\n"
         f"{body}"

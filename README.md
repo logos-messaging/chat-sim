@@ -17,8 +17,9 @@ logos-chat's `feat/local-network`.
 
 CI publishes the [guide](https://logos-messaging.github.io/chat-sim/guide/) to the
 repository's [Pages site](https://logos-messaging.github.io/chat-sim/), with a report of its
-simulations for master and for each open pull request, and the runs of logos-chat that
-`simulate.yml` keeps.
+simulations for master and for each open pull request, the runs of logos-chat that
+`simulate.yml` keeps, and the [graph over logos-chat's main](https://logos-messaging.github.io/chat-sim/logos-chat/)
+drawn from the runs of main.
 
 ## Layout
 
@@ -31,7 +32,7 @@ simulations for master and for each open pull request, and the runs of logos-cha
 | [`guide`](guide) | The guide, a Starlight site: how a run works, how to run one, and how to read what it finds |
 | `.github/scripts/measure.py` | Says whether `simulate.yml`'s main suite is to run at logos-chat main's tip, from the points on `gh-pages` and the runs going |
 | `.github/scripts/mock-registry.py` | The KeyPackage registry the peers of a run share |
-| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main and the runs of its pull requests that `simulate.yml` makes |
+| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main and the runs of its pull requests that `simulate.yml` makes, and draws the graph over main from the points |
 | `.github/scripts/simulate.py` | Plans the jobs of `simulate.yml` and writes the comment on what they came to |
 
 ## The logos-chat it runs

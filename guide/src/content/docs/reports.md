@@ -1,6 +1,6 @@
 ---
 title: Reports
-description: What CI runs on master and on each pull request, what the site's reports show, how to make a row again on your machine, and what the site keeps of logos-chat's runs.
+description: What CI runs on master and on each pull request, what the site's reports show, how to make a row again on your machine, what the site keeps of logos-chat's runs, and the graph over its main.
 ---
 
 CI runs on every push to master and on every pull request to master. Two of its jobs run simulations in
@@ -132,6 +132,7 @@ artifacts.
 |---|---|
 | `logos-chat/main/<sha>/<measurement>/point.json` | the point of the logos-chat commit `<sha>`, measured by the chat-sim commit `<measurement>` |
 | `logos-chat/main/<sha>/<measurement>/<scenario>/<run>/` | the text of each of the point's runs, `<run>` its number in a sweep of its scenario |
+| `logos-chat/index.html` | the graph over main, drawn again from every point's `point.json` each time a point is written (see [Over main](#over-main)) |
 | `logos-chat/pr-N/matrix.json` | the matrix of the newest run for pull request N, the head's runs beside the base's |
 | `logos-chat/pr-N/meta.json` | what ran: the pull request's number as `pr`, the `revision` and the `base`, `null` without one, chat-sim's commit as `chat_sim`, the `measurement`, the workflow run's `run_url` and `run_number`, and the `time` it was written, in UTC |
 | `logos-chat/pr-N/head/<scenario>/<run>/`, `logos-chat/pr-N/base/<scenario>/<run>/` | the text of each run at the head and at the base |
@@ -167,6 +168,30 @@ each point older than those is removed, and its `point.json` stays. A point's te
 Pages holds a site of 1 GB. Every publish is a commit on `gh-pages`, so the weekly run of Prune Pages also
 rewrites the branch as one commit of its tree as it stands, and the text a point lets go leaves the
 branch's history too.
+
+## Over main
+
+[Over main](../../logos-chat/) draws the points of main, the oldest at the left, in the order of their
+run numbers. The publish job draws it again from every `point.json` of the site once it has written a
+point, and leaves out, with a warning, a `point.json` it cannot read. It lives beside this guide and not
+in it, since a publish of the guide replaces `guide/` whole. Every number it draws is one a `point.json`
+holds. A rate is a loss, so a scenario renamed at the same loss goes on as its line, and each rate has a
+blue of its own, the heavier the loss the darker.
+
+| Part | Shows |
+|---|---|
+| Epochs without a fork | a panel a rate: of each point, the median of the epochs its runs went without a fork, the first split's or else the trunk's, as a line, and the band from the lowest run to the highest, from `summary`'s `epochs` |
+| Runs whole at 50 epochs | a line a rate of how many runs ended whole, `summary`'s `whole`, toward the goal of every run, broken at a point where none of the rate's runs had an outcome (`no-outcome` is `runs`), as when chat-sim did not build; under the dates the axis shows, the pull requests the point merged |
+| The newest point | the newest point's `cells`, a row a rate and a column a seed: a cell's colour is the epochs its run went without a fork, in bins of ten and 50 alone; a dot marks a run that ended whole, a ring one that ended `behind`, and the cell's hover text is the run's `came_to` |
+| Members off the trunk at the end | a line a rate of the median of the members behind at the end, on a line not the trunk or never joined, `summary`'s `members_off_trunk`; left out until a rate with loss has had every run whole at a point |
+| The points | each point, the newest first: when it was written, its logos-chat commit, the pull requests it merged, each rate's runs whole, what moved against the point before it, the chat-sim commit it measures, and links to its `point.json` and its workflow run |
+
+Two marks tell a step that is not logos-chat's: a dashed line on a point that measures another chat-sim
+commit than the point before it, and an open marker on a point whose `previous.rerolled` is `true`,
+whose runs drew other ids than those of the point it follows, so that every seed's run is another run
+and moved whether or not logos-chat did. What moved names, of each rate, the runs whole and the median
+epochs without a fork where they changed, or that none of its runs had an outcome, and either mark. A
+marker's hover text names the point, the pull requests it merged and the value. The page runs no script.
 
 ## The guide
 

@@ -16,8 +16,10 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # a scenario a side, and holds them to the base's runs, or without a base to
 # what is held.
 # The publish job keeps a main run on the Pages site as a point of main,
-# logos-chat/main/<sha>/<measurement>/, and a pr run for a pull request in
-# logos-chat/pr-<N>/, each with its runs' text; the long suite keeps nothing.
+# logos-chat/main/<sha>/<measurement>/, and draws the graph over main,
+# logos-chat/index.html, from every point again; it keeps a pr run for a pull
+# request in logos-chat/pr-<N>/. Each keeps its runs' text; the long suite
+# keeps nothing.
 # Main's points are a series the site shares, so only a run of the default
 # branch keeps one; a pr run keeps its pull request's run from any branch.
 # A main run handed a pr ran at the pull request's head, not at a commit of
@@ -304,8 +306,9 @@ jobs:
       MEASUREMENT: ${{ needs.plan.outputs.measurement }}
 
     steps:
-      # The tree that ran, whose .github/scripts/pages.py writes what it ran. It
-      # writes none of the pages the site shares, the default branch's to write.
+      # The tree that ran, whose .github/scripts/pages.py writes what it ran.
+      # The one page the site shares that it writes is the graph over main, and
+      # only a run of the default branch keeps a point and draws it.
       - uses: actions/checkout@v4
 
       # Fails when there is no gh-pages branch, which is made once, by hand.
@@ -364,6 +367,9 @@ jobs:
             --revision "$REVISION" --measurement "$MEASUREMENT" --chat-sim "$GITHUB_SHA" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --run-number "$GITHUB_RUN_NUMBER" --time "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      - name: Draw the graph over main from every point
+        if: ${{ needs.plan.outputs.suite == 'main' }}
+        run: python3 .github/scripts/pages.py trend site
       - name: Write the pull request's run
         if: ${{ needs.plan.outputs.suite == 'pr' }}
         run: |
