@@ -1,6 +1,6 @@
 ---
 title: Reports
-description: What CI runs on master and on each pull request, what the site's reports show, how to make a row again on your machine, what the site keeps of logos-chat's runs, the long run of each Sunday among them, the pages of those runs, and the graph over its main.
+description: What CI runs on master and on each pull request, what the site's reports show, how to make a row again on your machine, what the site keeps of logos-chat's runs, the long run of each Sunday among them, the comment and the check on a logos-chat pull request, the pages of those runs, and the graph over its main.
 ---
 
 CI runs on every push to master and on every pull request to master. Two of its jobs run simulations in
@@ -219,6 +219,46 @@ output, and each older one its `long.json` alone: a long run takes about 10.7 MB
 the thirty points. Every publish is a commit on `gh-pages`, so the weekly run of Prune Pages also
 rewrites the branch as one commit of its tree as it stands, and the text a point or a long run lets go
 leaves the branch's history too.
+
+## The comment and the check
+
+A `pr` run of `simulate.yml` handed a `pr` posts its comment on that logos-chat pull request as
+`chat-sim[bot]`, the GitHub App chat-sim: it edits the App's oldest comment there, or writes one where
+the App has none, so a pull request holds one comment of chat-sim's. A `pr` run handed `check_run`, the
+id of a check run the App made on logos-chat, moves that check to in progress once its runs are planned,
+with the workflow run as its details and the runs at the head as its title, `6 runs in progress`, and
+completes it once the comment is posted, with the comment as its summary and the pull request's report
+page as its details, or the workflow run where the report has no address:
+
+| The verdict | Conclusion | The check's title |
+|---|---|---|
+| `same` | neutral | same as its base, 6 of 6 runs |
+| `better` | success | better in 1 of 6 runs |
+| `worse` | failure | worse in 2 of 6 runs |
+| `hint` | neutral | worse in 1 of 6 runs, a hint |
+| `mixed` | neutral | mixed: 1 better, 1 worse of 6 |
+| `re-rolled` | neutral | the draws changed, no comparison; 1 of 6 below main's worst seed |
+| `unbuilt` | neutral, or failure once required | does not build against this commit |
+| `no-outcome` | neutral, or failure once required | no outcome in 1 of 6 runs |
+| `no-base` | neutral | no base, no comparison |
+
+`re-rolled`'s title says how many runs fell below main's worst seed where the run has main's spread to
+place them among, and stops before the semicolon where it has none. `no-base`'s title is
+`does not build at the base, no comparison` where chat-sim did not build at the base, and
+`no outcome at the base, no comparison` where no run at the base has one.
+
+With chat-sim's repository variable `CHAT_SIM_CHECK_REQUIRED` set to `true`, for when the check is made
+required on logos-chat, a head chat-sim does not build at, or a run with no outcome at the head, fails it;
+any value but `true` or `false` fails the comment job before the check completes. `no-base` stays neutral
+either way: what it lacks is the base's, which the pull request cannot give. The comment and the check go
+out before the publish job writes the run's page: until it and Pages have, their link to the report opens
+the page of the pull request's previous run, or no page yet on its first. The plan job and the comment job
+each mint a token of their own with `actions/create-github-app-token`, for logos-chat alone and the
+permissions their steps need, from the repository variable `CHAT_SIM_APP_CLIENT_ID` and the repository
+secret `CHAT_SIM_APP_PRIVATE_KEY`; the run jobs hold none, and no job hands its token to another. Without
+the variable or the secret, each says so on the run and posts nothing, and the comment is in the run's
+summary alone. A run that is cancelled leaves the check in progress, and so does one whose comment job
+failed, until that job runs again.
 
 ## The pages of logos-chat's runs
 

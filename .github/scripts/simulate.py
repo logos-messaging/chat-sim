@@ -14,7 +14,10 @@ read, whose runs the head's are placed among. `comment` writes the comment in
 Markdown: for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, and for `long`
 a row for each scenario with what `tools/sim compare` said of its runs against the base's, or
 against what `tools/sim/expected` holds when there is no base. `measurement` prints the chat-sim
-commit a run measures.
+commit a run measures. `running` writes the update that moves a check run on logos-chat to in
+progress while the runs go, and `check` the one that completes it with the verdict; `post` says
+where the comment goes on a logos-chat pull request, an edit of the App's comment there or a new
+one, and writes it for GitHub's API.
 """
 
 from __future__ import annotations
@@ -62,6 +65,24 @@ MATRIX = {"head", "base", "base_point", "cells", "counts", "verdict", "summary",
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _PR = re.compile(r"[1-9][0-9]*")
+_CHECK_RUN = re.compile(r"[1-9][0-9]*")
+# logos-chat in GitHub's API, where the comment and the check are.
+ON_LOGOS_CHAT = "repos/logos-messaging/logos-chat"
+# The check's conclusion of each verdict: success where the head's runs stand higher and none
+# lower, failure where two or more stand lower and none higher, and neutral where they say neither.
+CONCLUSIONS = {
+    "better": "success",
+    "worse": "failure",
+    "same": "neutral",
+    "hint": "neutral",
+    "mixed": "neutral",
+    "re-rolled": "neutral",
+    "no-base": "neutral",
+    "unbuilt": "neutral",
+    "no-outcome": "neutral",
+}
+# The verdicts that fail the check once it is required: what went wrong at the head.
+_REQUIRED = ("unbuilt", "no-outcome")
 # An address a Markdown link can hold as it is.
 _URL = re.compile(r"https?://[^\s()<>]+")
 # What the verdict line says of a revision chat-sim does not build at.
@@ -119,6 +140,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "read, stands in for nothing, and a warning on standard error says why.",
     )
     _add_handed(plan)
+    plan.add_argument(
+        "--check-run",
+        default="",
+        help="the id of the check run on logos-chat the run completes, or nothing: for pr, "
+        "given with --pr, and only then",
+    )
     plan.add_argument(
         "--measurement",
         metavar="SHA",
@@ -224,6 +251,77 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--tree", metavar="DIR", type=Path, default=Path(), help="the checkout (default: .)"
     )
     measured.set_defaults(command=_measurement)
+    running = commands.add_parser(
+        "running",
+        help="print the update that moves a check run to in progress",
+        description="Prints, as JSON for GitHub's API, the update of a check run on logos-chat "
+        "while the run jobs go: in progress, --run-url as its details, and as its title how "
+        "many runs the jobs of --asked do at the revision.",
+    )
+    running.add_argument(
+        "--asked",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help="the run jobs as a JSON array, as plan prints them",
+    )
+    running.add_argument("--revision", required=True, help="the logos-chat commit the runs are at")
+    running.add_argument("--base", default="", help="the logos-chat commit to compare with")
+    running.add_argument("--run-url", metavar="URL", required=True, help="the workflow run's page")
+    running.set_defaults(command=_running)
+    check = commands.add_parser(
+        "check",
+        help="print the update that completes a check run with the verdict",
+        description="Prints, as JSON for GitHub's API, the update of a check run on logos-chat "
+        "once the run jobs came to --matrix: completed, with the conclusion of its verdict and "
+        "its title, --comment as its summary, and --report-url as its details, or --run-url "
+        "without it. better is a success, worse a failure, and every other verdict neutral; "
+        "with --required true, unbuilt and no-outcome are failures too.",
+    )
+    check.add_argument(
+        "--matrix",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help="the matrix tools/sim matrix wrote of the runs",
+    )
+    check.add_argument(
+        "--comment", metavar="FILE", type=Path, required=True, help="the comment on the runs"
+    )
+    check.add_argument("--run-url", metavar="URL", required=True, help="the workflow run's page")
+    check.add_argument("--report-url", metavar="URL", help="the page of the run's report")
+    check.add_argument(
+        "--required",
+        default="",
+        help="whether the check is required, true or false, or nothing for false: once it is, a "
+        "revision chat-sim does not build at, or a run with no outcome at it, fails it",
+    )
+    check.set_defaults(command=_check)
+    post = commands.add_parser(
+        "post",
+        help="say where the comment goes on a logos-chat pull request, and write it",
+        description="Prints, as lines for $GITHUB_OUTPUT, the method and the endpoint of "
+        "GitHub's API that put --comment on logos-chat's pull request --pr: an edit of the "
+        "oldest comment of --login among --comments, or else a new comment. Writes what is sent "
+        "to --out.",
+    )
+    post.add_argument(
+        "--comments",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help="the pull request's comments, a JSON array of pages each an array of comments, "
+        "as gh api --paginate --slurp lists them",
+    )
+    post.add_argument("--login", required=True, help="the App's login, its slug and [bot]")
+    post.add_argument("--pr", required=True, help="the logos-chat pull request")
+    post.add_argument(
+        "--comment", metavar="FILE", type=Path, required=True, help="the comment on the runs"
+    )
+    post.add_argument(
+        "--out", metavar="FILE", type=Path, required=True, help="where to write what is sent"
+    )
+    post.set_defaults(command=_post)
     args = parser.parse_args(argv)
     return args.command(parser, args)
 
@@ -330,6 +428,52 @@ def compares(matrix: dict) -> bool:
     """Whether `matrix` holds the head's runs to a base's: it has a base, and a cell of it was
     compared."""
     return matrix["base"] is not None and matrix["counts"]["compared"] > 0
+
+
+def conclusion(verdict: str, required: bool) -> str:
+    """The check's conclusion of `verdict`; with `required`, a head chat-sim does not build at,
+    or a run with no outcome at the head, fails it. `no-base` stays neutral: what it lacks is the
+    base's, which the pull request cannot give."""
+    if required and verdict in _REQUIRED:
+        return "failure"
+    return CONCLUSIONS[verdict]
+
+
+def running(asked: Sequence[dict], facts: dict) -> dict:
+    """The check's update while the runs of the jobs `asked` go: in progress, the workflow run as
+    its details, and how many runs the head does as its title."""
+    runs = sum(job["runs"] for job in asked if job["side"] == "revision")
+    said = f"{runs} runs in progress"
+    return {
+        "status": "in_progress",
+        "details_url": facts["run_url"],
+        "output": {"title": said, "summary": _verdict_line(said, facts)},
+    }
+
+
+def completed(matrix: dict, comment: str, facts: dict, required: bool) -> dict:
+    """The check's update once the runs came to `matrix`: completed, with the conclusion of its
+    verdict, its title, `comment` as its summary, and the report page as its details, or the
+    workflow run without one."""
+    return {
+        "status": "completed",
+        "conclusion": conclusion(matrix["verdict"], required),
+        "details_url": facts["report_url"] or facts["run_url"],
+        "output": {"title": title(matrix), "summary": comment},
+    }
+
+
+def post_to(pages: Sequence[Sequence[dict]], login: str, pr: str) -> Tuple[str, str]:
+    """Where the comment goes on logos-chat's pull request `pr`, as a method and an endpoint of
+    GitHub's API: an edit of the oldest comment of `login` among `pages`, the pull request's
+    comments a page at a time as the API lists them, oldest first; or else a new comment."""
+    mine = (
+        one for page in pages for one in page if (one.get("user") or {}).get("login") == login
+    )
+    found = next(mine, None)
+    if found is None:
+        return "POST", f"{ON_LOGOS_CHAT}/issues/{pr}/comments"
+    return "PATCH", f"{ON_LOGOS_CHAT}/issues/comments/{found['id']}"
 
 
 def render_pr(matrix: dict, facts: dict) -> str:
@@ -486,6 +630,10 @@ def _check_handed(parser: argparse.ArgumentParser, args: argparse.Namespace) -> 
 
 def _plan(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     _check_handed(parser, args)
+    if args.check_run and _CHECK_RUN.fullmatch(args.check_run) is None:
+        parser.error(f"--check-run: {args.check_run!r} is not the id of a check run")
+    if args.check_run and (args.suite != "pr" or not args.pr):
+        parser.error("--check-run: given for pr with --pr, and only then")
     if not ((args.points is None) == (args.measurement is None) == (args.pages is None)):
         parser.error("--points: given with --measurement and --pages, and only with them")
     point = None
@@ -501,7 +649,7 @@ def _plan(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         if why is not None:
             print(f"::warning::{why}", file=sys.stderr)
             point = None
-    for name in ("suite", "revision", "base", "pr"):
+    for name in ("suite", "revision", "base", "pr", "check_run"):
         print(f"{name}={getattr(args, name)}")
     run_at = "" if point else args.base
     print(f"runs={json.dumps(jobs(args.suite, args.revision, run_at, swept))}")
@@ -619,14 +767,89 @@ def _measurement(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     return 0
 
 
+def _running(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    if _SHA.fullmatch(args.revision) is None:
+        parser.error(f"--revision: {args.revision!r} is not a commit's 40 hex digits")
+    if args.base and _SHA.fullmatch(args.base) is None:
+        parser.error(f"--base: {args.base!r} is not a commit's 40 hex digits")
+    try:
+        asked = json.loads(_read(parser, "--asked", args.asked))
+    except ValueError as error:
+        parser.error(f"--asked: {args.asked}: {error}")
+    if not isinstance(asked, list) or not all(
+        isinstance(job, dict)
+        and job.get("side") in ("revision", "base")
+        and _count(job.get("runs"))
+        for job in asked
+    ):
+        parser.error(f"--asked: {args.asked}: not the run jobs plan prints")
+    facts = {
+        "revision": args.revision,
+        "base": args.base,
+        "run_url": args.run_url,
+        "report_url": None,
+    }
+    print(json.dumps(running(asked, facts)))
+    return 0
+
+
+def _check(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    if args.report_url is not None and _URL.fullmatch(args.report_url) is None:
+        parser.error(f"--report-url: {args.report_url!r} is not an http(s) address")
+    if args.required not in ("", "true", "false"):
+        parser.error(f"--required: {args.required!r} is neither true nor false")
+    matrix = _matrix(args.matrix)
+    if matrix is None or matrix["verdict"] not in CONCLUSIONS:
+        parser.error(f"--matrix: {args.matrix} is not a matrix tools/sim matrix writes")
+    comment = _read(parser, "--comment", args.comment)
+    facts = {"run_url": args.run_url, "report_url": args.report_url}
+    print(json.dumps(completed(matrix, comment, facts, args.required == "true")))
+    return 0
+
+
+def _post(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    if _PR.fullmatch(args.pr) is None:
+        parser.error(f"--pr: {args.pr!r} is not the number of a pull request")
+    try:
+        pages = json.loads(_read(parser, "--comments", args.comments))
+    except ValueError as error:
+        parser.error(f"--comments: {args.comments}: {error}")
+    if not isinstance(pages, list) or not all(
+        isinstance(page, list)
+        and all(
+            isinstance(one, dict)
+            and _count(one.get("id"))
+            and isinstance(one.get("user"), (dict, type(None)))
+            for one in page
+        )
+        for page in pages
+    ):
+        parser.error(f"--comments: {args.comments}: not pages of comments, each with its id")
+    body = _read(parser, "--comment", args.comment)
+    method, endpoint = post_to(pages, args.login, args.pr)
+    args.out.write_text(json.dumps({"body": body}), encoding="utf-8")
+    print(f"method={method}")
+    print(f"endpoint={endpoint}")
+    return 0
+
+
+def _count(value: object) -> bool:
+    """Whether `value` is a whole number above zero, as JSON gives one."""
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
 def _check_measurement(parser: argparse.ArgumentParser, sha: str) -> None:
     if _SHA.fullmatch(sha) is None:
         parser.error(f"--measurement: {sha!r} is not a commit's 40 hex digits")
 
 
 def _lines(parser: argparse.ArgumentParser, flag: str, file: Path) -> List[str]:
+    return _read(parser, flag, file).splitlines()
+
+
+def _read(parser: argparse.ArgumentParser, flag: str, file: Path) -> str:
     try:
-        return file.read_text(encoding="utf-8").splitlines()
+        return file.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as error:
         parser.error(f"{flag}: {file}: {error}")
 
