@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -251,7 +252,14 @@ class Plan(GhPages):
                 base = BASE if "--base" in extra else ""
                 pr = "316" if "--pr" in extra else ""
                 self.assertEqual(
-                    handed, [f"suite={suite}", f"revision={REVISION}", f"base={base}", f"pr={pr}"]
+                    handed,
+                    [
+                        f"suite={suite}",
+                        f"revision={REVISION}",
+                        f"base={base}",
+                        f"pr={pr}",
+                        "check_run=",
+                    ],
                 )
                 self.assertEqual(len(json.loads(runs.removeprefix("runs="))), count)
                 names = [name for name, _ in simulate.scenarios(suite, self.expected)]
@@ -383,6 +391,28 @@ class Plan(GhPages):
         ):
             with self.subTest(extra=extra):
                 status, out, err = self.plan("pr", "--revision", REVISION, "--base", BASE, *extra)
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn(said, err)
+
+    def test_hands_on_the_check_run_of_a_pr_run_for_a_pull_request(self):
+        status, out, _ = self.plan(
+            "pr", "--revision", REVISION, "--base", BASE, "--pr", "316", "--check-run", "4242"
+        )
+
+        self.assertEqual(status, 0)
+        self.assertIn("check_run=4242", out.splitlines())
+
+    def test_refuses_a_check_run_that_is_no_id_or_not_of_a_pr_run_for_a_pull_request(self):
+        pr = ("--revision", REVISION, "--pr", "316")
+        for suite, extra, said in (
+            ("pr", (*pr, "--check-run", "0"), "--check-run: '0' is not the id of a check run"),
+            ("pr", (*pr, "--check-run", "42; rm"), "is not the id of a check run"),
+            ("pr", ("--revision", REVISION, "--check-run", "42"), "given for pr with --pr"),
+            ("main", (*pr, "--check-run", "42"), "--check-run: given for pr with --pr, and only"),
+            ("long", (*pr, "--check-run", "42"), "--check-run: given for pr with --pr, and only"),
+        ):
+            with self.subTest(suite=suite, extra=extra):
+                status, out, err = self.plan(suite, *extra)
                 self.assertEqual((status, out), (2, ""))
                 self.assertIn(said, err)
 
@@ -600,6 +630,75 @@ class Title(unittest.TestCase):
         )
 
 
+class Conclusion(unittest.TestCase):
+    """The check's conclusion of a matrix's verdict."""
+
+    def test_each_verdict_has_the_conclusion_of_its_check_and_its_own_once_required(self):
+        table = (
+            ("same", "neutral", "neutral"),
+            ("better", "success", "success"),
+            ("worse", "failure", "failure"),
+            ("hint", "neutral", "neutral"),
+            ("mixed", "neutral", "neutral"),
+            ("re-rolled", "neutral", "neutral"),
+            ("unbuilt", "neutral", "failure"),
+            ("no-outcome", "neutral", "failure"),
+            ("no-base", "neutral", "neutral"),
+        )
+        self.assertEqual({verdict for verdict, *_ in table}, set(simulate.CONCLUSIONS))
+        for verdict, concluded, once_required in table:
+            with self.subTest(verdict=verdict):
+                self.assertEqual(simulate.conclusion(verdict, required=False), concluded)
+                self.assertEqual(simulate.conclusion(verdict, required=True), once_required)
+
+
+class Running(unittest.TestCase):
+    """The check's update while the runs go, from the run jobs the plan printed."""
+
+    def running(self, asked: object, *extra: str) -> "tuple[int, str, str]":
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        file = Path(directory.name) / "asked.json"
+        file.write_text(json.dumps(asked), encoding="utf-8")
+        return run("running", "--asked", str(file), "--run-url", RUN_URL, *extra)
+
+    def test_is_in_progress_with_the_run_as_its_details_and_the_head_s_runs_in_its_title(self):
+        swept = simulate.scenarios("pr", Path())
+        # The base's jobs, and none where main's point stands in for the base's runs.
+        for run_at in (BASE, ""):
+            with self.subTest(run_at=run_at):
+                asked = simulate.jobs("pr", REVISION, run_at, swept)
+                status, out, err = self.running(asked, "--revision", REVISION, "--base", BASE)
+
+                self.assertEqual(status, 0, err)
+                self.assertEqual(
+                    json.loads(out),
+                    {
+                        "status": "in_progress",
+                        "details_url": RUN_URL,
+                        "output": {
+                            "title": "6 runs in progress",
+                            "summary": f"**6 runs in progress** at {commit(REVISION)} against "
+                            f"its merge base {commit(BASE)} · [the run]({RUN_URL})",
+                        },
+                    },
+                )
+
+    def test_refuses_a_revision_not_a_commit_and_jobs_not_as_the_plan_prints_them(self):
+        asked = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
+        for given, extra, said in (
+            (asked, ("--revision", REVISION[:7]), "--revision: '0123456'"),
+            (asked, ("--revision", REVISION, "--base", "main"), "--base: 'main'"),
+            ({"runs": 6}, ("--revision", REVISION), "not the run jobs plan prints"),
+            ([{"side": "head", "runs": 1}], ("--revision", REVISION), "not the run jobs"),
+            ([{"side": "revision", "runs": "1"}], ("--revision", REVISION), "not the run jobs"),
+        ):
+            with self.subTest(extra=extra, given=given):
+                status, out, err = self.running(given, *extra)
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn(said, err)
+
+
 class Drawn(unittest.TestCase):
     """The comment drawn from the matrix tools/sim matrix writes of the runs uploaded."""
 
@@ -676,6 +775,15 @@ class Drawn(unittest.TestCase):
 
     def comment(self, suite: str, matrix: Path, *extra: str) -> "tuple[int, str, str]":
         return run("comment", *self.comment_of(suite, matrix), *extra)
+
+    def check(self, matrix: Path, comment: str, *extra: str) -> dict:
+        """The check's update `check` prints of `matrix`, and `comment` the comment on it."""
+        written = self.root / "comment.md"
+        written.write_text(comment, encoding="utf-8")
+        given = ("--matrix", str(matrix), "--comment", str(written), "--run-url", RUN_URL)
+        status, out, err = run("check", *given, *extra)
+        self.assertEqual(status, 0, err)
+        return json.loads(out)
 
     def rows(self, text: str) -> List[str]:
         return [line for line in text.splitlines() if line.startswith("| ") and "%" in line]
@@ -1019,6 +1127,66 @@ class Drawn(unittest.TestCase):
         self.assertTrue(out.startswith("**chat-sim: no outcome in 1 of 6 runs** at "))
         self.assertEqual(self.rows(out)[1], "| 1% | 2 | 0 | 0 | 1 | 0 | 18 to 18, median 18 |")
 
+    def test_a_pr_worse_in_2_of_6_fails_its_check_with_the_comment_and_the_report(self):
+        head = self.uploaded(
+            "head",
+            **{"1/1": {"verdict": "split at epoch 5"}, "5/0": {"verdict": "split at epoch 4"}},
+        )
+        matrix = self.matrix(head, UPLOADED)
+        given = ("--base", BASE, "--report-url", REPORT_URL)
+        _, comment, _ = self.comment("pr", matrix, *given)
+
+        self.assertEqual(
+            self.check(matrix, comment, "--report-url", REPORT_URL),
+            {
+                "status": "completed",
+                "conclusion": "failure",
+                "details_url": REPORT_URL,
+                "output": {"title": "worse in 2 of 6 runs", "summary": comment},
+            },
+        )
+        self.assertEqual(self.check(matrix, comment)["details_url"], RUN_URL)
+
+    def test_a_head_chat_sim_does_not_build_at_is_neutral_until_the_check_is_required(self):
+        head = self.root / "head"
+        self.unbuilt(head, "1", 0)
+        matrix = self.matrix(head, UPLOADED)
+        _, comment, _ = self.comment("pr", matrix, "--base", BASE)
+        for extra, concluded in (
+            ((), "neutral"),
+            (("--required", "false"), "neutral"),
+            (("--required", "true"), "failure"),
+        ):
+            with self.subTest(extra=extra):
+                checked = self.check(matrix, comment, *extra)
+                self.assertEqual(
+                    (checked["conclusion"], checked["output"]["title"]),
+                    (concluded, "does not build against this commit"),
+                )
+
+    def test_a_check_refuses_no_matrix_a_link_it_cannot_hold_and_a_required_not_true_or_false(self):
+        matrix = self.matrix(UPLOADED, UPLOADED)
+        unread, comment = self.root / "unread.json", self.root / "comment.md"
+        unread.write_text("{}", encoding="utf-8")
+        comment.write_text("**chat-sim: same as its base, 6 of 6 runs**\n", encoding="utf-8")
+        for given, said in (
+            ((unread,), f"--matrix: {unread} is not a matrix tools/sim matrix writes"),
+            ((matrix, "--report-url", "javascript:alert(1)"), "--report-url: "),
+            ((matrix, "--required", "True"), "--required: 'True' is neither true nor false"),
+        ):
+            with self.subTest(given=given):
+                status, out, err = run(
+                    "check",
+                    "--matrix",
+                    *map(str, given),
+                    "--comment",
+                    str(comment),
+                    "--run-url",
+                    RUN_URL,
+                )
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn(said, err)
+
     def test_refuses_a_matrix_for_long_and_runs_or_no_matrix_for_pr_and_main(self):
         matrix = self.matrix(UPLOADED, UPLOADED)
         unread = self.root / "unread.json"
@@ -1208,6 +1376,107 @@ class Comment(Fixture):
             out,
         )
         self.assertEqual(out.count("<details>"), 1)
+
+
+class Post(unittest.TestCase):
+    """Where the comment goes on a logos-chat pull request, from its comments as the API lists
+    them."""
+
+    LOGIN = "chat-sim[bot]"
+    BODY = "**chat-sim: same as its base, 6 of 6 runs**\n"
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        (self.root / "comment.md").write_text(self.BODY, encoding="utf-8")
+
+    def post(self, pages: object) -> "tuple[int, str, str]":
+        """What `post` says of the pull request's comments `pages`, a list of pages."""
+        (self.root / "comments.json").write_text(json.dumps(pages), encoding="utf-8")
+        return run(
+            "post",
+            "--comments",
+            str(self.root / "comments.json"),
+            "--login",
+            self.LOGIN,
+            "--pr",
+            "316",
+            "--comment",
+            str(self.root / "comment.md"),
+            "--out",
+            str(self.root / "posted.json"),
+        )
+
+    def by(self, login: str, number: int) -> dict:
+        return {"id": number, "user": {"login": login}, "body": f"a comment of {login}"}
+
+    def test_edits_the_app_s_oldest_comment_on_whichever_page_it_is(self):
+        pages = [[self.by("saro", 3), self.by("chat-sim", 5)], [self.by(self.LOGIN, 7)]]
+        pages[1].append(self.by(self.LOGIN, 9))
+
+        status, out, _ = self.post(pages)
+
+        self.assertEqual(
+            (status, out),
+            (0, "method=PATCH\nendpoint=repos/logos-messaging/logos-chat/issues/comments/7\n"),
+        )
+        posted = json.loads((self.root / "posted.json").read_text(encoding="utf-8"))
+        self.assertEqual(posted, {"body": self.BODY})
+
+    def test_writes_a_new_comment_where_the_app_has_none(self):
+        # The user of a comment of an account since deleted can be null.
+        others = [self.by("saro", 3), self.by("chat-sim", 5), {"id": 4, "user": None}]
+        for pages in ([[]], [others]):
+            with self.subTest(pages=pages):
+                status, out, _ = self.post(pages)
+
+                self.assertEqual(
+                    (status, out),
+                    (
+                        0,
+                        "method=POST\n"
+                        "endpoint=repos/logos-messaging/logos-chat/issues/316/comments\n",
+                    ),
+                )
+                posted = json.loads((self.root / "posted.json").read_text(encoding="utf-8"))
+                self.assertEqual(posted, {"body": self.BODY})
+
+    def test_refuses_what_is_not_pages_of_comments_each_with_its_id(self):
+        for pages in (
+            {"message": "Not Found"},
+            [self.by(self.LOGIN, 7)],
+            [[{"id": "7"}]],
+            [[{}]],
+            [[{"id": 7, "user": self.LOGIN}]],
+        ):
+            with self.subTest(pages=pages):
+                status, out, err = self.post(pages)
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn("not pages of comments, each with its id", err)
+
+
+class Workflow(unittest.TestCase):
+    """simulate.yml as it is written, a job by its name."""
+
+    def setUp(self):
+        workflow = (ROOT / ".github" / "workflows" / "simulate.yml").read_text(encoding="utf-8")
+        parts = re.split(r"(?m)^  (\w+):\n", workflow.split("\njobs:\n", 1)[1])
+        self.jobs = dict(zip(parts[1::2], parts[2::2]))
+
+    def test_only_the_plan_and_comment_jobs_mint_a_token_and_each_keeps_it_to_its_steps(self):
+        self.assertEqual(list(self.jobs), ["plan", "run", "comment", "publish"])
+        minting = [name for name, job in self.jobs.items() if "create-github-app-token@" in job]
+        keyed = [name for name, job in self.jobs.items() if "secrets." in job]
+        self.assertEqual((minting, keyed), (["plan", "comment"], ["plan", "comment"]))
+        for name in minting:
+            with self.subTest(job=name):
+                used = {
+                    line.strip()
+                    for line in self.jobs[name].splitlines()
+                    if "steps.token.outputs.token" in line
+                }
+                self.assertEqual(used, {"GH_TOKEN: ${{ steps.token.outputs.token }}"})
 
 
 if __name__ == "__main__":

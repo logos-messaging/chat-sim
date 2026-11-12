@@ -33,7 +33,7 @@ drawn from the runs of main.
 | `.github/scripts/measure.py` | Says whether `simulate.yml`'s main suite is to run at logos-chat main's tip, from the points on `gh-pages` and the runs going, and on Sundays whether its long suite is |
 | `.github/scripts/mock-registry.py` | The KeyPackage registry the peers of a run share |
 | `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main, its long runs and the runs of its pull requests that `simulate.yml` makes, draws the page of each, draws the graph over main from the points, and names the runs of logos-chat's pull requests that are no longer open |
-| `.github/scripts/simulate.py` | Plans the jobs of `simulate.yml`, names the point of main a `pr` run is placed among, and writes the comment on what they came to |
+| `.github/scripts/simulate.py` | Plans the jobs of `simulate.yml`, names the point of main a `pr` run is placed among, writes the comment on what they came to, says where it goes on a logos-chat pull request, and writes the updates of the check run there |
 
 ## The logos-chat it runs
 
@@ -46,7 +46,8 @@ revision. To move it, change the revision in both, then run
 `de-mls` and `chat-proto` are spelled in `Cargo.toml` as logos-chat spells them, and move with it.
 
 The workflow `simulate.yml` runs master at another logos-chat revision, started by hand with the
-revision, the suite, and a base revision to compare with or none. The `pr` suite, for a
+revision, the suite, a base revision to compare with or none, the number of the logos-chat pull
+request the revision is of or none, and the id of a check run on it or none. The `pr` suite, for a
 logos-chat pull request, runs seeds 0 and 1 of `50-epochs-by-saro-waku-loss-0.1`, `-1` and `-5`,
 a job a run, at the revision and at the base; `main` runs seeds 0 to 19 of those and of `-0`,
 with no base; `long` runs `50-epochs`, `50-epochs-waku` and every other scenario held in
@@ -67,6 +68,18 @@ comment links; the guide's
 [Reports](https://logos-messaging.github.io/chat-sim/guide/reports/#logos-chats-runs) says what
 they hold and how long. The weekly run of `prune-pages.yml` removes the run of each logos-chat pull
 request that is no longer open, and a dispatch of it handed a `pr` removes that one's.
+
+A `pr` run handed a `pr` also posts its comment on that pull request as the GitHub App chat-sim,
+`chat-sim[bot]`: it edits the App's comment there, or writes one. A `pr` run handed `check_run`,
+the id of a check run the App made on logos-chat, moves that check to in progress once its runs are
+planned and completes it with the verdict: a success when better, a failure when worse in two or
+more runs and better in none, and neutral otherwise, but that a revision chat-sim does not build at,
+or a run with no outcome there, fails it when the repository variable `CHAT_SIM_CHECK_REQUIRED` is
+`true`. The plan job and the comment job each mint a token of their own, for logos-chat alone, from
+the repository variable `CHAT_SIM_APP_CLIENT_ID` and secret `CHAT_SIM_APP_PRIVATE_KEY`; without
+them, nothing is posted and the comment is in the run's summary alone. The guide's
+[Reports](https://logos-messaging.github.io/chat-sim/guide/reports/#the-comment-and-the-check) gives
+each verdict's conclusion and title.
 
 `measure-main.yml` starts it as well: every hour, it dispatches `main` at logos-chat main's tip,
 unless the tip has its point on `gh-pages` at the chat-sim commit a run measures (the newest that
