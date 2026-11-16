@@ -10,7 +10,7 @@ mod group_log;
 mod plan;
 
 use crate::log::{Member, Record};
-use crate::test_client::{Harness, STEP};
+use crate::test_client::{Harness, Inbound, STEP};
 use group_log::Records;
 use libchat::{ChatError, ConversationId, MockClock, SignerKey};
 use network_model::{AppId, Dropped, Kind, Model, Rules, Why, Withhold};
@@ -1042,7 +1042,7 @@ fn alone(member: usize, members: &[usize], held: &[Option<&str>]) -> bool {
 
 /// The state of a member's model: the rules it was started with and holds
 /// now, and what became of the frames that arrived.
-fn network_state(network: &Network, delay_ms: u64, model: &Model) -> Value {
+fn network_state(network: &Network, delay_ms: u64, model: &Model<Inbound>) -> Value {
     let (rules, counts) = (model.rules(), model.counts());
     let hex = |ids: &BTreeSet<AppId>| ids.iter().map(AppId::to_string).collect::<Vec<_>>();
     let withheld = match rules.withhold() {
