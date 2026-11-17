@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "account"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=212cb05fd4260126058bfe698a296d850ae08fa1#212cb05fd4260126058bfe698a296d850ae08fa1"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=d29d9809d0262c48009cf0eaaa2b163945dd08d8#d29d9809d0262c48009cf0eaaa2b163945dd08d8"
 dependencies = [
  "account-log",
  "thiserror",
@@ -14,7 +14,7 @@ dependencies = [
 [[package]]
 name = "account-log"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=212cb05fd4260126058bfe698a296d850ae08fa1#212cb05fd4260126058bfe698a296d850ae08fa1"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=d29d9809d0262c48009cf0eaaa2b163945dd08d8#d29d9809d0262c48009cf0eaaa2b163945dd08d8"
 dependencies = [
  "crypto",
  "hex",
@@ -1362,7 +1362,7 @@ dependencies = [
 [[package]]
 name = "components"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=212cb05fd4260126058bfe698a296d850ae08fa1#212cb05fd4260126058bfe698a296d850ae08fa1"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=d29d9809d0262c48009cf0eaaa2b163945dd08d8#d29d9809d0262c48009cf0eaaa2b163945dd08d8"
 dependencies = [
  "account",
  "account-log",
@@ -1536,7 +1536,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=212cb05fd4260126058bfe698a296d850ae08fa1#212cb05fd4260126058bfe698a296d850ae08fa1"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=d29d9809d0262c48009cf0eaaa2b163945dd08d8#d29d9809d0262c48009cf0eaaa2b163945dd08d8"
 dependencies = [
  "ed25519-dalek",
  "generic-array 1.3.5",
@@ -2926,7 +2926,7 @@ checksum = "52ff2c0fe9bc6cb6b14a0592c2ff4fa9ceb83eea9db979b0487cd054946a2b8f"
 [[package]]
 name = "libchat"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/logos-chat?rev=212cb05fd4260126058bfe698a296d850ae08fa1#212cb05fd4260126058bfe698a296d850ae08fa1"
+source = "git+https://github.com/logos-messaging/logos-chat?rev=d29d9809d0262c48009cf0eaaa2b163945dd08d8#d29d9809d0262c48009cf0eaaa2b163945dd08d8"
 dependencies = [
  "alloy",
  "base64",
@@ -4591,9 +4591,8 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 [[package]]
 name = "sds"
 version = "0.1.0"
-source = "git+https://github.com/logos-messaging/sds-rs?rev=1d431153ccc561bbf689aa7f3cd6e72563337c1f#1d431153ccc561bbf689aa7f3cd6e72563337c1f"
+source = "git+https://github.com/logos-messaging/sds-rs?rev=370c6fbb458f66b42a39f8df948fe5c6b109c896#370c6fbb458f66b42a39f8df948fe5c6b109c896"
 dependencies = [
- "prost",
  "rand_core 0.10.1",
  "sha2 0.11.0",
 ]

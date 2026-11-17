@@ -239,3 +239,42 @@ fn a_delay_holds_a_post_until_the_step_it_is_due_at() {
         );
     }
 }
+
+/// The delivery info a frame arrives with passes a model with it: Pax's reply
+/// names Saro's post by the id the post reached Pax with, and Raya, who lost
+/// the post, fetches it by that id.
+#[test]
+fn a_frame_keeps_its_delivery_info_through_a_model() {
+    let mut harness = TestHarness::<3>::new(|_, _| {});
+    harness.raya().set_model(Model::new(0, "raya"));
+    harness.pax().set_model(Model::new(0, "pax"));
+    let raya = harness.raya().account();
+    let convo = harness
+        .saro()
+        .create_group_convo_v3(&[raya], "", "")
+        .expect("saro create");
+    harness.process_until_label("raya joins", |h| h.raya().convo_count() == 1);
+    let pax = harness.pax().account();
+    harness
+        .saro()
+        .group_add_participants(&convo, &[pax])
+        .expect("saro add");
+    harness.process_until_label("pax joins", |h| {
+        h.pax().convo_count() == 1 && listed(h, &convo, 1) == 3
+    });
+
+    harness
+        .saro()
+        .send_content(&convo, b"lost")
+        .expect("saro send");
+    harness.raya().drop_pending_payloads();
+    harness.process_until_label("pax gets the post", |h| h.pax().check(&convo, b"lost"));
+    // The reply acknowledges the post, so Saro never sends it again.
+    harness
+        .pax()
+        .send_content(&convo, b"reply")
+        .expect("pax send");
+    harness.process_until_label("raya gets both", |h| {
+        h.raya().check(&convo, b"lost") && h.raya().check(&convo, b"reply")
+    });
+}

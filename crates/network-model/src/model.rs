@@ -22,9 +22,9 @@ pub struct Counts {
 }
 
 #[derive(Debug)]
-struct Held {
+struct Held<P> {
     due: Duration,
-    payload: Vec<u8>,
+    payload: P,
     /// Whether the frame is one the counts are of.
     counted: bool,
 }
@@ -32,17 +32,19 @@ struct Held {
 /// A lossy network on the frames one member receives: [`Rules`] that drop
 /// some, and a delay on the rest. It keeps no clock: the time of each call is
 /// handed to it, as a duration from whatever start its caller counts from.
+/// A payload `P` is a frame's bytes and whatever the transport hands over with
+/// them.
 #[derive(Debug)]
-pub struct Model {
+pub struct Model<P> {
     rules: Rules,
     delay: Duration,
     /// In the order they arrived, which is the order they leave in: a frame
     /// due before the one ahead of it waits for it.
-    held: VecDeque<Held>,
+    held: VecDeque<Held<P>>,
     passed: u64,
 }
 
-impl Model {
+impl<P: AsRef<[u8]>> Model<P> {
     /// The model of `member` under `seed`, with every rule off and no delay.
     pub fn new(seed: u64, member: &str) -> Self {
         Self {
@@ -68,9 +70,9 @@ impl Model {
 
     /// Takes the frame `payload` was read as, arriving at `now`. A frame the
     /// rules drop is returned, and any other is held until it is due.
-    pub fn arrive(&mut self, now: Duration, frame: Frame, payload: Vec<u8>) -> Option<Dropped> {
+    pub fn arrive(&mut self, now: Duration, frame: Frame, payload: P) -> Option<Dropped> {
         let counted = !self.rules.owns(&frame);
-        if let Some(dropped) = self.rules.decide(frame, payload.len()) {
+        if let Some(dropped) = self.rules.decide(frame, payload.as_ref().len()) {
             return Some(dropped);
         }
         self.held.push_back(Held {
@@ -87,7 +89,7 @@ impl Model {
     }
 
     /// The payloads due by `now`, in the order they arrived.
-    pub fn take_due(&mut self, now: Duration) -> Vec<Vec<u8>> {
+    pub fn take_due(&mut self, now: Duration) -> Vec<P> {
         let mut due = vec![];
         while let Some(held) = self.held.pop_front_if(|held| held.due <= now) {
             self.passed += u64::from(held.counted);

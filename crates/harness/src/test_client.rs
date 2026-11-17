@@ -1,7 +1,8 @@
 use crate::mem_store::MemStore;
 use crate::test_ident::{AcceptAllAuth, TestIdent};
-use libchat::{AddressedEnvelope, Clock, DeliveryService, GroupV2Config, MockClock};
+use libchat::{AddressedEnvelope, Clock, DeliveryInfo, DeliveryMsgId, DeliveryService};
 use libchat::{ConversationId, Core, IdentityProvider, PayloadOutcome};
+use libchat::{GroupV2Config, MockClock};
 use libchat::{ParticipantId, SignerKey};
 use network_model::{AppId, Dropped, Model, read};
 use std::cell::RefCell;
@@ -55,7 +56,7 @@ pub struct TestClient {
     inbound_errors: Vec<String>,
     tolerate_inbound_errors: bool,
     inbound_filter: Option<Box<InboundFilter>>,
-    model: Option<Model>,
+    model: Option<Model<Inbound>>,
     dropped: Vec<Dropped>,
 }
 
@@ -105,15 +106,15 @@ impl TestClient {
     /// Puts a model of the network between the transport and this client:
     /// every payload the inbound filter lets through arrives at `model`, and
     /// the client is handed what the model lets through once it is due.
-    pub fn set_model(&mut self, model: Model) {
+    pub fn set_model(&mut self, model: Model<Inbound>) {
         self.model = Some(model);
     }
 
-    pub fn model(&self) -> Option<&Model> {
+    pub fn model(&self) -> Option<&Model<Inbound>> {
         self.model.as_ref()
     }
 
-    pub fn model_mut(&mut self) -> Option<&mut Model> {
+    pub fn model_mut(&mut self) -> Option<&mut Model<Inbound>> {
         self.model.as_mut()
     }
 
@@ -124,13 +125,13 @@ impl TestClient {
 
     fn drain_outcomes(&mut self, now: Duration) -> Vec<PayloadOutcome> {
         let mut messages = vec![];
-        while let Some(data) = self.inner.ds().poll() {
+        while let Some((data, info)) = self.inner.ds().poll() {
             if let Some(filter) = self.inbound_filter.as_mut()
                 && !filter(&data)
             {
                 continue;
             }
-            messages.push(data);
+            messages.push(Inbound { data, info });
         }
         if let Some(model) = self.model.as_mut() {
             // The transport hands a client its own frames back, each after
@@ -138,15 +139,16 @@ impl TestClient {
             for app_id in self.app_ids.borrow().iter() {
                 model.rules_mut().add_own(app_id.clone());
             }
-            for data in messages {
-                self.dropped.extend(model.arrive(now, read(&data), data));
+            for inbound in messages {
+                self.dropped
+                    .extend(model.arrive(now, read(&inbound.data), inbound));
             }
             messages = model.take_due(now);
         }
 
         let mut outcomes = vec![];
-        for data in messages {
-            let outcome = match self.inner.handle_payload(&data) {
+        for Inbound { data, info } in messages {
+            let outcome = match self.inner.handle_payload(&data, Some(&info)) {
                 Ok(outcome) => outcome,
                 Err(e) if self.tolerate_inbound_errors => {
                     warn!(id = ?self.signer_key(), error = ?e, "INBOUND ERROR");
@@ -214,6 +216,19 @@ impl TestClient {
 /// transport and read by the client.
 type AppIds = Rc<RefCell<BTreeSet<AppId>>>;
 
+/// A payload as the transport hands it to a client, with its delivery info.
+#[derive(Debug)]
+pub struct Inbound {
+    data: Vec<u8>,
+    info: DeliveryInfo,
+}
+
+impl AsRef<[u8]> for Inbound {
+    fn as_ref(&self) -> &[u8] {
+        &self.data
+    }
+}
+
 /// The broadcaster a client publishes through, keeping the app id of each
 /// frame it publishes and handing the client its own frames back, as a
 /// delivery node does.
@@ -228,9 +243,9 @@ pub struct Publishing {
 }
 
 impl Publishing {
-    /// The next payload on an address this client subscribed to, as
-    /// [`LocalBroadcaster::poll`] hands it.
-    pub fn poll(&mut self) -> Option<Vec<u8>> {
+    /// The next payload on an address this client subscribed to, with its
+    /// delivery info, as [`LocalBroadcaster::poll`] hands it.
+    pub fn poll(&mut self) -> Option<(Vec<u8>, DeliveryInfo)> {
         self.broadcaster.poll()
     }
 }
@@ -238,7 +253,10 @@ impl Publishing {
 impl DeliveryService for Publishing {
     type Error = <LocalBroadcaster as DeliveryService>::Error;
 
-    fn publish(&mut self, envelope: AddressedEnvelope) -> Result<(), Self::Error> {
+    fn publish(
+        &mut self,
+        envelope: AddressedEnvelope,
+    ) -> Result<Option<DeliveryMsgId>, Self::Error> {
         if let Some(app_id) = read(&envelope.data).sender {
             self.app_ids.borrow_mut().insert(app_id);
         }
@@ -247,6 +265,17 @@ impl DeliveryService for Publishing {
 
     fn subscribe(&mut self, delivery_address: &str) -> Result<(), Self::Error> {
         self.broadcaster.subscribe(delivery_address)
+    }
+
+    /// What is fetched comes back through [`Self::poll`], so through the
+    /// client's inbound filter and model like any other payload.
+    fn fetch_messages(
+        &mut self,
+        delivery_address: &str,
+        delivery_msg_ids: &[DeliveryMsgId],
+    ) -> Result<(), Self::Error> {
+        self.broadcaster
+            .fetch_messages(delivery_address, delivery_msg_ids)
     }
 }
 
@@ -425,7 +454,8 @@ impl<const N: usize> TestHarness<N> {
         predicate: impl Fn(&mut TestHarness<N>) -> bool,
     ) {
         info!(label, "Process Until");
-        let timeout = Duration::from_mins(1);
+        // A GroupV3 member finalizes a commit 120 s after it defers it.
+        let timeout = Duration::from_mins(5);
         let step = STEP;
         let mut elapsed = Duration::ZERO;
 
@@ -545,9 +575,45 @@ mod tests {
             delivery_address: "convo".into(),
             data: b"post".to_vec(),
         };
-        publishing.publish(post).unwrap();
+        let id = publishing
+            .publish(post)
+            .unwrap()
+            .expect("a delivery message id");
 
-        assert_eq!(publishing.poll(), Some(b"post".to_vec()));
+        let info = DeliveryInfo {
+            delivery_msg_id: id,
+        };
+        assert_eq!(publishing.poll(), Some((b"post".to_vec(), info)));
+        assert_eq!(publishing.poll(), None);
+    }
+
+    #[test]
+    fn a_client_is_handed_what_it_fetches() {
+        let ds = LocalBroadcaster::new();
+        let mut publishing = Publishing {
+            broadcaster: ds.clone(),
+            publisher: ds.clone(),
+            app_ids: AppIds::default(),
+        };
+        publishing.subscribe("convo").unwrap();
+        let post = AddressedEnvelope {
+            delivery_address: "convo".into(),
+            data: b"post".to_vec(),
+        };
+        let id = publishing
+            .publish(post)
+            .unwrap()
+            .expect("a delivery message id");
+        publishing.poll().expect("the post");
+
+        publishing
+            .fetch_messages("convo", std::slice::from_ref(&id))
+            .unwrap();
+
+        let info = DeliveryInfo {
+            delivery_msg_id: id,
+        };
+        assert_eq!(publishing.poll(), Some((b"post".to_vec(), info)));
         assert_eq!(publishing.poll(), None);
     }
 
