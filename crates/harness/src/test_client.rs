@@ -3,7 +3,7 @@ use crate::test_ident::{AcceptAllAuth, TestIdent};
 use libchat::{AddressedEnvelope, Clock, DeliveryInfo, DeliveryMsgId, DeliveryService};
 use libchat::{ConversationId, Core, IdentityProvider, PayloadOutcome};
 use libchat::{GroupV2Config, MockClock};
-use libchat::{ParticipantId, SignerKey};
+use libchat::{ParticipantId, PublishedId, SignerKey};
 use network_model::{AppId, Dropped, Model, read};
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
@@ -253,10 +253,7 @@ impl Publishing {
 impl DeliveryService for Publishing {
     type Error = <LocalBroadcaster as DeliveryService>::Error;
 
-    fn publish(
-        &mut self,
-        envelope: AddressedEnvelope,
-    ) -> Result<Option<DeliveryMsgId>, Self::Error> {
+    fn publish(&mut self, envelope: AddressedEnvelope) -> Result<PublishedId, Self::Error> {
         if let Some(app_id) = read(&envelope.data).sender {
             self.app_ids.borrow_mut().insert(app_id);
         }
@@ -575,10 +572,9 @@ mod tests {
             delivery_address: "convo".into(),
             data: b"post".to_vec(),
         };
-        let id = publishing
-            .publish(post)
-            .unwrap()
-            .expect("a delivery message id");
+        let PublishedId::Known(id) = publishing.publish(post).unwrap() else {
+            panic!("a delivery message id");
+        };
 
         let info = DeliveryInfo {
             delivery_msg_id: id,
@@ -600,10 +596,9 @@ mod tests {
             delivery_address: "convo".into(),
             data: b"post".to_vec(),
         };
-        let id = publishing
-            .publish(post)
-            .unwrap()
-            .expect("a delivery message id");
+        let PublishedId::Known(id) = publishing.publish(post).unwrap() else {
+            panic!("a delivery message id");
+        };
         publishing.poll().expect("the post");
 
         publishing
