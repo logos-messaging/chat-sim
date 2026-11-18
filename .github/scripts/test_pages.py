@@ -2110,7 +2110,11 @@ class Long(LogosChat):
             for number in range(1, count + 1)
             for text in ("report.txt", "run.json", "run.txt")
         ]
-        compared = [f"{name}/compare.txt" for name, _ in self.suite() if name.startswith("grow")]
+        compared = [
+            f"{name}/compare.txt"
+            for name, _ in self.suite()
+            if (EXPECTED / f"{name}.json").is_file()
+        ]
         self.assertEqual(self.files(out), sorted(["index.html", "long.json", *texts, *compared]))
         long = pages.read_long(out / "long.json")
         self.assertEqual(

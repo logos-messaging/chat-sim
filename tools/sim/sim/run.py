@@ -84,6 +84,7 @@ def run(settings: Settings, watch: Watch) -> dict:
         "stopped": None,
         "steps": len(scenario.steps),
         "steps_done": 0,
+        "group": scenario.group,
         "timers": scenario.timers,
         "preset": scenario.preset,
         "cluster_id": CLUSTER_ID if scenario.preset is None else None,

@@ -14,6 +14,9 @@ from .peers import index_of, name_of
 # chat-cli's two sets of group timers, by the name `--group-commit` takes.
 TIMER_SETS = ("fast", "default")
 
+# The kinds of group a creator creates: GroupV2, and GroupV3.
+GROUPS = ("v2", "v3")
+
 # The durations of the group's settings, by the names the library gives them.
 DURATIONS = (
     "voting_delay",
@@ -176,15 +179,18 @@ class Expect:
 class Scenario:
     """What a run is told to do.
 
-    `timers` names a set, or gives durations in milliseconds over the library's own. `budget`
-    is the seconds each wait may take: a peer's start, the wiring, a batch, a post. `preset`
-    names the fleet preset every node joins, in place of a network of the run's own with
+    `group` is the kind of group the creator creates: `v2`, or `v3` for GroupV3, which removes
+    no member, has no commit candidate, cannot be cut and is run in one process alone. `timers`
+    names a set, or gives durations in milliseconds over the library's own, of a GroupV2 group.
+    `budget` is the seconds each wait may take: a peer's start, the wiring, a batch, a post.
+    `preset` names the fleet preset every node joins, in place of a network of the run's own with
     `max_message_kib` for its largest message. `seed` is what a run in one process draws every
     random number from; a peer that is a process draws from its OS.
     """
 
     members: int
     steps: Tuple[Step, ...]
+    group: str = "v2"
     timers: Union[str, Dict[str, int]] = "fast"
     max_message_kib: int = 512
     preset: Optional[str] = None
@@ -318,6 +324,7 @@ def scenario(said: object) -> Scenario:
         ("members", "steps"),
         (
             "members",
+            "group",
             "timers",
             "max_message_kib",
             "preset",
@@ -330,6 +337,9 @@ def scenario(said: object) -> Scenario:
         ),
     )
     members = _whole(whole, "members", "the scenario", least=1, most=MOST_MEMBERS)
+    group = whole.get("group", Scenario.group)
+    if group not in GROUPS:
+        raise Refused("`group` is not `v2` or `v3`")
     if not isinstance(whole["steps"], list) or not whole["steps"]:
         raise Refused("`steps` is not a list of one step or more")
     network = _network(whole["network"], members) if "network" in whole else None
@@ -345,12 +355,15 @@ def scenario(said: object) -> Scenario:
         raise Refused(f"steps[{grown[0]}] is a `grow` step, and a `grow` step is the only step")
     if grown and "expect" in whole:
         raise Refused("`expect` is said with a `grow` step, which expects no outcome")
+    if group == "v3":
+        _groupv3(steps)
     expect = _expect(whole.get("expect", {}), seated)
     _cuts(steps)
     _two_outcomes(steps, network, expect)
     return Scenario(
         members=members,
         steps=tuple(steps),
+        group=group,
         timers=_timers(whole.get("timers", Scenario.timers)),
         max_message_kib=_whole(
             whole,
@@ -476,6 +489,25 @@ def _sides(said: object, what: str, seated: int) -> Tuple[Tuple[str, ...], Tuple
         if named.count(name) > 1:
             raise Refused(f"`between` of {what} names {name} twice")
     return tuple(said[0]), tuple(said[1])
+
+
+def _groupv3(steps: Sequence[Step]) -> None:
+    """Refuses a step a GroupV3 group cannot take: one that removes members, withholds a commit
+    candidate, or cuts the group, since a frame it sends outside SDS names no sender."""
+    for at, step in enumerate(steps):
+        if isinstance(step, Grow) and step.size is not None:
+            raise Refused(
+                f"steps[{at}] is a `grow` step of a `size`, and a GroupV3 group removes no member"
+            )
+        if isinstance(step, Withhold):
+            raise Refused(
+                f"steps[{at}] is a `withhold` step, and a GroupV3 group has no commit candidate"
+            )
+        if isinstance(step, Cut):
+            raise Refused(
+                f"steps[{at}] is a `cut` step, and no cut stops a GroupV3 frame sent outside SDS, "
+                "which names no sender"
+            )
 
 
 def _cuts(steps: Sequence[Step]) -> None:

@@ -26,6 +26,8 @@ pub(crate) struct Plan {
     /// The names, in the order the members are seated. The first creates the
     /// group.
     pub members: Vec<String>,
+    pub group: Group,
+    /// The timers of a GroupV2 group. A GroupV3 group has timers of its own.
     pub timers: GroupV2Config,
     /// The virtual time the waits of one batch, of one post or of one cut
     /// may take together.
@@ -37,6 +39,15 @@ pub(crate) struct Plan {
     pub network: Option<Network>,
     pub unwaited: Unwaited,
     pub steps: Vec<Step>,
+}
+
+/// The kind of group the creator creates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Group {
+    V2,
+    /// A GroupV3 group, which removes no member, has no commit candidate and
+    /// names no sender on a frame it sends outside SDS.
+    V3,
 }
 
 /// The model of a lossy network that what each member receives goes through.
@@ -100,11 +111,17 @@ impl Plan {
         plan.only(
             "a plan",
             &[
-                "members", "timers", "budget_s", "start", "seed", "network", "unwaited", "steps",
+                "members", "group", "timers", "budget_s", "start", "seed", "network", "unwaited",
+                "steps",
             ],
         )?;
 
         let members = members(plan.get("members")?)?;
+        let group = match plan.fields.get("group").map(|group| group.as_str()) {
+            None | Some(Some("v2")) => Group::V2,
+            Some(Some("v3")) => Group::V3,
+            Some(_) => return Err(Refused("group is not \"v2\" or \"v3\"".into())),
+        };
         let timers = timers(plan.get("timers")?)?;
         let budget = seconds(plan.get("budget_s")?)
             .ok_or_else(|| Refused("budget_s is not a number of seconds, 0 or more".into()))?;
@@ -163,9 +180,27 @@ impl Plan {
                 )));
             }
         }
+        if group == Group::V3 {
+            for (at, step) in steps.iter().enumerate() {
+                let why = match step {
+                    Step::Grow { size: Some(_), .. } => {
+                        "a grow step of a size, and a GroupV3 group removes no member"
+                    }
+                    Step::Withhold { .. } => {
+                        "a withhold step, and a GroupV3 group has no commit candidate"
+                    }
+                    Step::Cut { .. } => {
+                        "a cut step, and no cut stops a GroupV3 frame sent outside SDS, which names no sender"
+                    }
+                    _ => continue,
+                };
+                return Err(Refused(format!("steps[{at}] is {why}")));
+            }
+        }
 
         Ok(Self {
             members,
+            group,
             timers,
             budget,
             start,
@@ -540,6 +575,7 @@ mod tests {
         let plan = Plan::read(&plan().to_string()).expect("the plan is read");
 
         assert_eq!(plan.members, ["saro", "raya", "pax"]);
+        assert_eq!(plan.group, Group::V2);
         assert_eq!(plan.timers.consensus_timeout, Duration::from_millis(250));
         assert_eq!(plan.budget, Duration::from_secs(30));
         assert_eq!(plan.start, Duration::from_secs(1_791_817_445));
@@ -636,6 +672,8 @@ mod tests {
             ("/colour", json!(1), "colour is no field of a plan"),
             ("/members", json!("saro"), "members is not a list"),
             ("/members", json!([]), "members is empty"),
+            ("/group", json!("v4"), "group is not \"v2\" or \"v3\""),
+            ("/group", json!(3), "group is not \"v2\" or \"v3\""),
             (
                 "/members/1",
                 json!("Raya"),
@@ -1037,6 +1075,50 @@ mod tests {
                 format!("steps[1] is a {kind} step, and the plan has no network")
             );
         }
+    }
+
+    #[test]
+    fn a_plan_creates_a_groupv2_group_unless_it_says_groupv3() {
+        let group = |group: Option<Value>| {
+            let mut plan = with("/group", group);
+            plan.as_object_mut().unwrap().remove("network");
+            plan["steps"] = json!([{"step": "seat", "to": 3, "batch": 2}]);
+            Plan::read(&plan.to_string())
+                .expect("the plan is read")
+                .group
+        };
+
+        assert_eq!(group(None), Group::V2);
+        assert_eq!(group(Some(json!("v2"))), Group::V2);
+        assert_eq!(group(Some(json!("v3"))), Group::V3);
+    }
+
+    #[test]
+    fn a_step_a_groupv3_group_cannot_take_is_refused() {
+        let v3 = with("/group", Some(json!("v3")));
+        assert_eq!(
+            refusal(v3.clone()),
+            "steps[2] is a cut step, and no cut stops a GroupV3 frame sent outside SDS, which names no sender"
+        );
+        let mut uncut = v3;
+        uncut["steps"].as_array_mut().unwrap().drain(2..4);
+        assert_eq!(
+            refusal(uncut),
+            "steps[2] is a withhold step, and a GroupV3 group has no commit candidate"
+        );
+        let step = json!({"step": "grow", "epochs": 50, "adders": 3, "branches": 5});
+        let mut sized = step.clone();
+        sized["size"] = json!(6);
+        let mut plan = grown(sized);
+        plan["group"] = json!("v3");
+        assert_eq!(
+            refusal(plan),
+            "steps[0] is a grow step of a size, and a GroupV3 group removes no member"
+        );
+        let mut plan = grown(step);
+        plan["group"] = json!("v3");
+        let read = Plan::read(&plan.to_string()).expect("the plan is read");
+        assert!(matches!(read.steps[..], [Step::Grow { size: None, .. }]));
     }
 
     #[test]

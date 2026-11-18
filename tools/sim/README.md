@@ -144,6 +144,7 @@ them:
 |-------|---------|-------|
 | `members` | | How many peers the run starts, 1 to 65534: every node listens on a TCP port of its own, and the registry on one more. They are named `saro`, `raya`, `pax`, `mira`, `kes` and `tomo`, written in lower case, and from the seventh on `peer7`, `peer8` and so on, in the order they start. `saro` creates the group. |
 | `steps` | | What the members do, in order: one step or more. A later step is named by its place in the list, from 0: a refusal says `steps[2]`. |
+| `group` | `v2` | The group `saro` creates: `v2`, a GroupV2 group, or `v3`, a GroupV3 one. A GroupV3 group is seated in one process alone. It removes no member and has no commit candidate, and the frames it sends outside SDS name no sender for a cut to stop, so a `grow` step of a `size`, a `withhold` step and a `cut` step are refused with it. It commits an add after a timeout of its own, in which `timers` has no part. |
 | `timers` | `fast` | The group timers of every peer: `fast` or `default`, a set of chat-cli's `--group-commit`, or an object of durations in milliseconds by the names the group library gives them, each of which stands over that of the `default` set (see [chat-cli](https://github.com/logos-messaging/chat-sim/blob/local-network/crates/chat-cli/README.md#group-timers)). A duration is a whole number up to 2^64 - 1, the most its flag holds. |
 | `max_message_kib` | `512` | The largest message a node takes, as chat-cli's `--max-message-kib`: 1 to 2^32 - 1, the most the flag holds. Refused with `preset`, which fixes the largest message. |
 | `preset` | | The fleet preset every node joins, by its name, as chat-cli's `--preset`: `logos.test`. Without it the nodes are a network of the run's own (see [On a fleet preset](#on-a-fleet-preset)). A name that is no text, an empty one, or one that holds a character that cannot be printed, as a line break is, is refused. Which names there are is the delivery library's to say. |
@@ -448,6 +449,10 @@ epoch 1000 or a main branch forks off it (see [A group that grows](#a-group-that
 | `grow-waku-loss-5.json` | 5% | 3 |
 | `grow-waku-size-50.json` | none | 3 |
 
+Each but `grow-waku-size-50.json` has a copy whose name ends in `-groupv3`, the same scenario on
+a GroupV3 group, which removes no member. CI sweeps it as many runs as its GroupV2 one, and holds
+it to its own file in `expected/`.
+
 The `50-epochs-by-saro-waku-loss-` ones measure how many epochs a group of 51 lasts as one group.
 Each is `50-epochs-waku-loss.json` (see
 [Fifty epochs as the module runs them](#fifty-epochs-as-the-module-runs-them)) losing the rate its
@@ -610,7 +615,7 @@ token, and is there also when nothing could be sent. `run.txt` is what the run p
 
 | Field | Holds |
 |-------|-------|
-| `members`, `timers`, `max_message_kib`, `budget`, `preset`, `cluster_id` | What the run was given. Of `preset` and `cluster_id` the one that does not apply is `null`, and so is `max_message_kib` on a preset |
+| `members`, `group`, `timers`, `max_message_kib`, `budget`, `preset`, `cluster_id` | What the run was given. Of `preset` and `cluster_id` the one that does not apply is `null`, and so is `max_message_kib` on a preset |
 | `network` | The `network` of the scenario with the seed this run had, or `null` |
 | `wire` | The `wire` of the scenario with the seed this run had, or `null` |
 | `ok` | Whether every step was done and the report is as expected |
@@ -1317,7 +1322,8 @@ a run of processes has them, and `.forks-share.json` in a run given `--share`. `
 | `grow` | What the runner's result says of a `grow` step (see `grow` in [What a run leaves](../../crates/harness/README.md#what-a-run-leaves)). `null` in a run of other steps |
 
 The first line of `run.txt` says that the run was one process, how far the virtual clock went,
-how long that took, and the run's seed. The table of the members has each one's installation id
+how long that took, and the run's seed, and names a GroupV3 group in place of the group timers.
+The table of the members has each one's installation id
 and the count of the frames it rejected. With `network` it has how many frames `arrived` at the
 member's model, and how many of them the model `passed`, `held` at the end and `lost`. Here the
 fifth run of a sweep of `lost-candidate.json`:
@@ -1524,6 +1530,9 @@ runner does it:
 ```console
 sim: error: the scenario has a `grow` step, and only --one-process does one
 ```
+
+A GroupV3 group applies one add of a round: the joiners of the others never join, and a round
+of more than one adder takes its whole `budget`.
 
 A grow expects no outcome: how far the group gets before it parts is what it measures. Its run
 is reported on and not checked, writes no `expect.json`, and goes as expected when the runner

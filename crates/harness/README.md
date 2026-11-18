@@ -1,13 +1,13 @@
 # harness
 
-A GroupV2 group of libchat clients in one process, on a virtual clock, and `harness-run`, which
-does a plan's steps on it. The clients are logos-chat's, at the revision the workspace pins in
-[`Cargo.toml`](../../Cargo.toml); what stands between them is this repository's
-[`network-model`](../network-model/src/lib.rs).
+A GroupV2 or GroupV3 group of libchat clients in one process, on a virtual clock, and
+`harness-run`, which does a plan's steps on it. The clients are logos-chat's, at the revision
+the workspace pins in [`Cargo.toml`](../../Cargo.toml); what stands between them is this
+repository's [`network-model`](../network-model/src/lib.rs).
 
 ## A plan on a virtual clock
 
-`harness-run` seats the members a plan names in one GroupV2 group and does the plan's steps, in
+`harness-run` seats the members a plan names in one group and does the plan's steps, in
 one process and on a virtual clock. Nothing is between the members but the model of a network a
 plan may give each of them, so a run takes the time its work takes and not the time its timers
 count:
@@ -29,6 +29,7 @@ A plan is a JSON object. A field that is not what the tables say is refused by i
 | Field | Holds |
 |-------|-------|
 | `members` | The members' names in the order they are seated, each of lowercase letters and digits, none twice. The first creates the group |
+| `group` | Left out, `"v2"` or `"v3"`: the group the first member creates, GroupV2 when left out. A GroupV3 group removes no member and has no commit candidate, and the frames it sends outside SDS name no sender for a cut to stop, so with `"v3"` a `withhold` step, a `cut` step and a `grow` step of a `size` are refused. It commits an add once its finalize timeout of 120 s has passed, and `timers` has no part in it |
 | `timers` | `"fast"` for the durations the tests of this crate run under, `"default"` for the library's own, or an object of durations in milliseconds over the library's own: `voting_delay`, `consensus_timeout`, `commit_batch_window`, `freeze_duration`, `retry_window`, `backup_takeover_window`, `proposal_expiration`, `recovery_auto_commit_delay`. A set the library refuses is refused with its reason |
 | `budget_s` | The seconds of virtual time, whole or not, that the waits of one batch, of one post or of one cut may take together |
 | `start` | The time the virtual clock starts at, in whole seconds past the Unix epoch. One within the first hour is refused, since a key package's lifetime opens an hour before the time of day, and so is one past the time the clock counts to, which is in the year 2554 |
@@ -101,7 +102,10 @@ later held a state of its own, the one member of a branch; how it came to is not
 refused all round is drawn no more until it holds another state. The draws come from the plan's
 `seed`, on a stream apart from the one `getrandom` hands out: who is drawn follows from the seed and
 from who can be drawn. With `by` in place of `adders` the creator is the one adder of every round
-and adds one member, so that no member on a branch off its line is drawn to add.
+and adds one member, so that no member on a branch off its line is drawn to add. A GroupV3 group
+applies one commit of an epoch: 120 s after the first is deferred, the one of the lowest
+fingerprint of those deferred by then. Of the adds of a round one is applied, the joiners of the
+others never join, and a round of more than one adder runs until the budget runs out.
 
 With `size`, the group holds that many members at most. Each round still seats members of the plan
 not yet seated, so a plan that is to reach `epochs` has a member for each add, and the group stays
@@ -211,7 +215,7 @@ as that got. The plan above left:
 | `stopped` | `null`, or in one line why the steps stopped |
 | `conversation` | The conversation's id, as the records write it |
 | `members[]` | For each member of the plan its `name`, its `installation` and `account` as the records shorten them, whether the steps `seated` it, its `app_id` in hex, `null` until it has published in the conversation, and its `inbound_errors`: how many frames it rejected, by the reason. A member a grow step removed is as it was when the round that removed it was over, when its client was dropped |
-| `members[].network` | In a plan with a `network`, the state of the member's model. The `seed`, `loss`, `welcome_loss` and `delay_ms` it was given. The app ids it is `cut` off from, and those it takes for its `own`: the app id on each frame it published, since a client of the harness is handed its own frames back. `withheld`, `null` until a candidate is withheld from it, then the `app_id` of the candidate's sender, the `seat` of the steward that minted it and `applied`: whether that steward has broadcast a welcome since, as it does for a commit of its own that the group applies. With no batch after the one the candidate was withheld in, that is whether the group applied the candidate. Whether the rule that withholds is `armed`. `frames`: how many `arrived`, and of those how many `passed` to the client, are `held` for the delay or were `dropped`, by the rule that dropped them |
+| `members[].network` | In a plan with a `network`, the state of the member's model. The `seed`, `loss`, `welcome_loss` and `delay_ms` it was given. The app ids it is `cut` off from, and those it takes for its `own`: the app id on each frame it published, since a client of the harness is handed its own frames back. A GroupV3 member's frames sent outside SDS, its beacons, name no sender, so they come back to it as arrivals and can be lost as any other frame can. `withheld`, `null` until a candidate is withheld from it, then the `app_id` of the candidate's sender, the `seat` of the steward that minted it and `applied`: whether that steward has broadcast a welcome since, as it does for a commit of its own that the group applies. With no batch after the one the candidate was withheld in, that is whether the group applied the candidate. Whether the rule that withholds is `armed`. `frames`: how many `arrived`, and of those how many `passed` to the client, are `held` for the delay or were `dropped`, by the rule that dropped them |
 | `members[].dropped[]` | In a plan with a `network`, each frame the member's model dropped: `n` numbers the frames that arrived, from 1, `why` is the rule (`loss`, `welcome_loss`, `cut`, `withheld`), `kind` what the frame is (`welcome`, `candidate`, `group`, `other`) and `bytes` its length. `app_id` is its sender's, left out for a frame that has none, and `seat` that of the steward that minted a commit candidate |
 | `batches[]` | For each batch that was seated its `joiners`, the `members` the group then had, `seated_s`, the virtual seconds from the first try of the add to the last roster, and `wall_s`, the seconds it took on the machine |
 | `posts[]` | For each post its `poster`, how many `readers` were waited on, the names of those that left it `unread` within the budget, and as `read_s` the virtual seconds from the send to each read |

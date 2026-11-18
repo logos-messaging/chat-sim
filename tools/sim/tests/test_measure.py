@@ -166,7 +166,11 @@ class Logs(unittest.TestCase):
         self.assertIsNone(measure.reached("", CONVO, 7))
 
     def test_the_filter_lets_through_what_the_log_is_read_for(self):
-        lets = ("libchat::mls_trace=trace", "libchat::conversation::group_v2=info")
+        lets = (
+            "libchat::mls_trace=trace",
+            "libchat::conversation::group_v2=info",
+            "libchat::conversation::group_v3=info",
+        )
         for target in (*lets, "libchat::inbox_v2=info"):
             self.assertIn(target, measure.LOG_FILTER.split(","))
 

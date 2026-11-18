@@ -72,8 +72,10 @@ def plan(scenario: Scenario) -> dict:
     scenario expects at the tip, and a post by the members it expects to read it.
     """
     names = [name_of(index) for index in range(scenario.members)]
+    group = {} if scenario.group == "v2" else {"group": scenario.group}
     told: dict = {
         "members": names,
+        **group,
         "timers": scenario.timers,
         "budget_s": scenario.budget,
         "start": START,

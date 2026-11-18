@@ -4,11 +4,12 @@ description: Each record logos-chat writes on the log target libchat::mls_trace,
 ---
 
 A record is one log line at `trace` on the target `libchat::mls_trace`: a name, then `key=value` words.
-Every record but `run` is written in the span of the GroupV2 op that wrote it (`groupv2.new`,
+Every record but `run` is written in the span of the op that wrote it, a GroupV2 op (`groupv2.new`,
 `groupv2.new_from_welcome`, `groupv2.send_content`, `groupv2.handle_frame`, `groupv2.wakeup`,
-`groupv2.add_member` or `groupv2.remove_member`), and takes `signer` and `convo` from it. The span's own
-`epoch` is the one the op began at. This page is what logos-chat writes at the revision chat-sim pins in
-`Cargo.toml`.
+`groupv2.add_member` or `groupv2.remove_member`) or a GroupV3 one (`groupv3.new`,
+`groupv3.new_from_welcome`, `groupv3.send_content`, `groupv3.handle_frame`, `groupv3.wakeup` or
+`groupv3.add_member`), and takes `signer` and `convo` from it. The span's own `epoch` is the one the op
+began at. This page is what logos-chat writes at the revision chat-sim pins in `Cargo.toml`.
 
 ```text
 2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178
@@ -42,7 +43,7 @@ an installation a second time is `unreadable` (`decrypt`) then: the key that ope
 
 `run`, `epoch` and `left` decide the verdict; the others draw the page's posts and timeline. In the
 logos-chat tree the records are written in `core/conversations/src/conversation/mls_trace/record.rs`, from
-`core.rs` (`run`) and `conversation/group_v2/trace.rs` (the rest).
+`core.rs` (`run`), `conversation/group_v2/trace.rs` and `conversation/group_v3/trace.rs` (the rest).
 
 `forks` reads two things this revision does not write: `commit` and `by` on an `epoch` record, the commit
 applied to reach the epoch and the installation that committed it, and a `delivery` record on the target
