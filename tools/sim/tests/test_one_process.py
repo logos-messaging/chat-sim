@@ -211,6 +211,10 @@ class Planning(unittest.TestCase):
             },
         )
 
+    def test_a_groupv3_group_is_told_and_a_groupv2_one_left_to_the_runner(self):
+        self.assertEqual(plan_of(group="v3")["group"], "v3")
+        self.assertNotIn("group", plan_of(group="v2"))
+
     def test_durations_are_told_as_the_scenario_has_them(self):
         timers = {"consensus_timeout": 20000, "recovery_auto_commit_delay": 0}
 
@@ -357,6 +361,7 @@ class Running(Scratch):
         self.assertIsNone(report["stopped"])
         self.assertEqual((report["steps_done"], report["steps"]), (2, 2))
         self.assertEqual(report["rig"], "one process")
+        self.assertEqual(report["group"], "v2")
         self.assertEqual(report["virtual_s"], standin_runner.SEATED)
         self.assertGreater(report["wall_s"], 0)
         self.assertEqual(
@@ -678,6 +683,13 @@ class Running(Scratch):
         self.assertEqual((report["ok"], report["nodes"], report["check"]), (False, [], None))
         self.assertIn("\nnot checked: no result of the runner was read\n", self.written())
 
+    def test_a_run_of_a_groupv3_group_reports_its_group(self):
+        report = self.run_of(group="v3")
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        self.assertEqual(report["group"], "v3")
+        self.assertEqual(self.left("plan.json")["group"], "v3")
+
     def test_what_a_run_in_one_process_prints_is_its_report_as_text(self):
         report = self.run_of(network={"seed": 7})
 
@@ -955,6 +967,13 @@ class Render(unittest.TestCase):
         )
         self.assertEqual(
             table.render(modelled).splitlines()[9:], table.render(in_one_process()).splitlines()[9:]
+        )
+
+    def test_a_run_of_a_groupv3_group_names_it_in_place_of_the_timers(self):
+        self.assertEqual(
+            table.render(in_one_process(group="v3")).splitlines()[0],
+            "3 members, GroupV3, one process, 1.350s on a virtual clock in 0.062s of wall time, "
+            "seed 1",
         )
 
     def test_a_largest_message_that_is_not_the_default_is_said_not_to_apply(self):
@@ -1256,6 +1275,14 @@ class CommandLine(Scratch):
         self.assertEqual(
             self.refused("run", str(self.scenario(steps=[GROW])), "--chat-cli", chat_cli),
             "sim: error: the scenario has a `grow` step, and only --one-process does one",
+        )
+
+    def test_a_groupv3_group_is_refused_but_in_one_process(self):
+        chat_cli = str(stand_in(self.scratch))
+        self.assertEqual(
+            self.refused("run", str(self.scenario(group="v3")), "--chat-cli", chat_cli),
+            "sim: error: the scenario's `group` is `v3`, and only --one-process seats a GroupV3 "
+            "group",
         )
 
     def test_a_scenario_on_a_preset_is_refused_in_one_process_and_nothing_is_started(self):

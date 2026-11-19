@@ -1,0 +1,31 @@
+{
+  "members": 51,
+  "group": "v3",
+  "timers": "default",
+  "network": {
+    "seed": 1,
+    "loss": 0.01,
+    "welcome_loss": 0.01,
+    "delay_ms": {
+      "saro": 518, "raya": 600, "pax": 456, "mira": 533, "kes": 644,
+      "tomo": 501, "peer7": 554, "peer8": 400, "peer9": 515, "peer10": 592,
+      "peer11": 447, "peer12": 529, "peer13": 634, "peer14": 498, "peer15": 549,
+      "peer16": 393, "peer17": 513, "peer18": 583, "peer19": 438, "peer20": 526,
+      "peer21": 627, "peer22": 493, "peer23": 545, "peer24": 386, "peer25": 511,
+      "peer26": 576, "peer27": 431, "peer28": 524, "peer29": 622, "peer30": 484,
+      "peer31": 541, "peer32": 373, "peer33": 509, "peer34": 570, "peer35": 424,
+      "peer36": 522, "peer37": 617, "peer38": 474, "peer39": 538, "peer40": 329,
+      "peer41": 506, "peer42": 563, "peer43": 416, "peer44": 520, "peer45": 610,
+      "peer46": 465, "peer47": 536, "peer48": 284, "peer49": 504, "peer50": 557,
+      "peer51": 408
+    }
+  },
+  "steps": [
+    {
+      "step": "grow",
+      "epochs": 50,
+      "by": "saro",
+      "branches": 51
+    }
+  ]
+}

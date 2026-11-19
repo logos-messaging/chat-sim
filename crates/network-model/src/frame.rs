@@ -1,5 +1,7 @@
 //! What a payload is, read as its receiver first reads it.
 
+mod group_v3;
+
 use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
@@ -11,7 +13,8 @@ use libchat::{GroupV2Frame, GroupV2Payload, InboxV2Frame, InviteType};
 use prost::Message;
 
 /// The app id a conversation stamps on the frames it publishes: one byte or
-/// more, written as their lowercase hex.
+/// more, written as their lowercase hex. A GroupV3 member stamps the SDS
+/// sender id, which is the hex of its signer key, and its app id is that key.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AppId(Vec<u8>);
 
@@ -83,7 +86,7 @@ pub struct Frame {
     pub kind: Kind,
     /// The app id of the conversation that published it. A frame that is
     /// none of a group has no sender, and neither has one stamped with no
-    /// app id.
+    /// app id, a GroupV3 frame sent outside SDS among them.
     pub sender: Option<AppId>,
 }
 
@@ -92,8 +95,11 @@ pub fn read(payload: &[u8]) -> Frame {
     let Ok(envelope) = EnvelopeV1::decode(payload) else {
         return OTHER;
     };
-    // The group form first: its bytes decode as an inbox frame too.
+    // The forms of a group first, GroupV2's and then GroupV3's: the bytes of
+    // a GroupV2 frame decode as an inbox frame too, and those of a GroupV3
+    // frame that carries a packet as the invite to a GroupV2 group.
     group_frame(&envelope.payload)
+        .or_else(|| group_v3::frame(&envelope.payload))
         .or_else(|| invite(&envelope.payload))
         .unwrap_or(OTHER)
 }
@@ -137,10 +143,15 @@ fn seat(member_id: &[u8]) -> Option<u32> {
 
 /// The invite to a group an envelope carries to an inbox.
 fn invite(payload: &[u8]) -> Option<Frame> {
-    let InviteType::GroupV2(_) = InboxV2Frame::decode(payload).ok()?.payload? else {
-        return None;
+    let invited = match InboxV2Frame::decode(payload).ok()?.payload? {
+        InviteType::GroupV2(_) => true,
+        // An inbox handshake's bytes decode as one too, with its payload in
+        // the place of the id of the commit that adds the joiner, which an
+        // invite always names.
+        InviteType::GroupV3(invite) => !invite.commit_message_id.is_empty(),
+        InviteType::GroupV1(_) => false,
     };
-    Some(Frame {
+    invited.then_some(Frame {
         kind: Kind::Welcome,
         sender: None,
     })
@@ -148,6 +159,10 @@ fn invite(payload: &[u8]) -> Option<Frame> {
 
 #[cfg(test)]
 mod tests {
+    use super::group_v3::{
+        EncodedFrame, EncryptedSdsMessage, ExternalKind, GroupV3External, GroupV3Header,
+        GroupV3Packet,
+    };
     use super::*;
     use chat_proto::logoschat::encryption::{Doubleratchet, InboxHandshakeV1, Plaintext};
     use de_mls::protos::de_mls::messages::v1::{
@@ -155,6 +170,9 @@ mod tests {
     };
 
     const SARO: &[u8] = b"5a904c11e7";
+    /// Saro's signer key, by which SDS names her as the sender of each
+    /// message she sends to a GroupV3 group.
+    const SARO_SIGNER: &str = "e9b5595356a4e53716989c8644229622fc3422b1d6c29afa8a972f4b2c12ea50";
 
     fn app_id(bytes: &[u8]) -> Option<AppId> {
         Some(AppId::try_from(bytes.to_vec()).unwrap())
@@ -213,6 +231,95 @@ mod tests {
     /// The head of an MLS message: version 1, a private message.
     fn encrypted_by_mls() -> Vec<u8> {
         vec![0, 1, 0, 2, 5, 5, 5, 5]
+    }
+
+    /// The head of an MLS message: version 1, a public message.
+    fn public_by_mls() -> Vec<u8> {
+        vec![0, 1, 0, 1, 5, 5, 5, 5]
+    }
+
+    /// The head of an MLS message: version 1, a welcome.
+    fn welcome_by_mls() -> Vec<u8> {
+        vec![0, 1, 0, 3, 5, 5, 5, 5]
+    }
+
+    /// The SDS header of a message, as SDS writes it.
+    #[derive(Clone, PartialEq, Message)]
+    struct SdsHeader {
+        #[prost(string, tag = "1")]
+        sender_id: String,
+        #[prost(string, tag = "2")]
+        message_id: String,
+        #[prost(string, tag = "3")]
+        channel_id: String,
+        #[prost(uint64, optional, tag = "10")]
+        lamport_timestamp: Option<u64>,
+        #[prost(bytes = "vec", optional, tag = "12")]
+        bloom_filter: Option<Vec<u8>>,
+    }
+
+    fn sds_header(sender: &str) -> SdsHeader {
+        SdsHeader {
+            sender_id: sender.into(),
+            message_id: "3b0d5f6e9a17c2c4b1f0".into(),
+            channel_id: "15c93801b5".into(),
+            lamport_timestamp: Some(1_767_225_600_000),
+            bloom_filter: Some(vec![9; 16]),
+        }
+    }
+
+    /// An envelope on a GroupV3 group's address.
+    fn on_the_group(header: Vec<u8>, payload: Vec<u8>) -> Vec<u8> {
+        let message = EncryptedSdsMessage {
+            encrypted_sds_header: header,
+            payload,
+        };
+        envelope(message.encode_to_vec())
+    }
+
+    /// A packet of `frame` under a header that holds its sender's epoch.
+    fn packet(frame: EncodedFrame) -> Vec<u8> {
+        let header = GroupV3Header {
+            epoch_data: vec![8, 4],
+        };
+        let packet = GroupV3Packet {
+            encrypted_header: header.encode_to_vec(),
+            encoded_frame: Some(frame),
+        };
+        packet.encode_to_vec()
+    }
+
+    /// What `sender` sends to a GroupV3 group through SDS: `content`, which
+    /// a sync has none of.
+    fn through_sds(sender: &str, content: Vec<u8>) -> Vec<u8> {
+        on_the_group(sds_header(sender).encode_to_vec(), content)
+    }
+
+    /// A frame sent to a GroupV3 group outside SDS: its header is empty, and
+    /// so is the packet's.
+    fn outside_sds(kind: ExternalKind) -> Vec<u8> {
+        let external = GroupV3External { kind: Some(kind) };
+        let packet = GroupV3Packet {
+            encrypted_header: vec![],
+            encoded_frame: Some(EncodedFrame::External(external.encode_to_vec())),
+        };
+        on_the_group(vec![], packet.encode_to_vec())
+    }
+
+    /// The invite to a GroupV3 group, which names the commit that adds its
+    /// joiner by `commit`.
+    fn invite_v3(commit: &str) -> Vec<u8> {
+        let mut frame = InboxV2Frame {
+            payload: Some(InviteType::GroupV3(Default::default())),
+        };
+        // libchat exports no name of the invite's type, so its fields are set
+        // in place.
+        if let Some(InviteType::GroupV3(invite)) = &mut frame.payload {
+            invite.welcome_bytes = welcome_by_mls();
+            invite.commit_message_id = commit.into();
+            invite.commit_lamport_timestamp = 1_767_225_600_000;
+        }
+        envelope(frame.encode_to_vec())
     }
 
     #[test]
@@ -342,6 +449,153 @@ mod tests {
             envelope(handshake.encode_to_vec()),
         ] {
             assert_eq!(read(&payload), OTHER, "{payload:?}");
+        }
+    }
+
+    #[test]
+    fn a_groupv3_message_and_sync_name_their_sender_by_its_signer_key() {
+        let post = packet(EncodedFrame::MlsMessage(encrypted_by_mls()));
+        let public = packet(EncodedFrame::MlsMessage(public_by_mls()));
+        let saro: AppId = SARO_SIGNER.parse().unwrap();
+        for content in [post, public, vec![]] {
+            let frame = read(&through_sds(SARO_SIGNER, content.clone()));
+
+            assert_eq!(frame.kind, Kind::Group, "{content:?}");
+            assert_eq!(frame.sender.as_ref(), Some(&saro), "{content:?}");
+        }
+        assert_eq!(saro.to_string(), SARO_SIGNER);
+    }
+
+    #[test]
+    fn a_groupv3_frame_sent_outside_sds_names_no_sender() {
+        for kind in [
+            ExternalKind::Beacon(vec![7; 40]),
+            ExternalKind::Sealed(vec![7; 40]),
+        ] {
+            let frame = read(&outside_sds(kind.clone()));
+
+            assert_eq!(frame.kind, Kind::Group, "{kind:?}");
+            assert_eq!(frame.sender, None, "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn the_invite_to_a_groupv3_group_is_a_welcome_with_no_sender() {
+        let frame = read(&invite_v3("3b0d5f6e9a17c2c4b1f0"));
+
+        assert_eq!(frame.kind, Kind::Welcome);
+        assert_eq!(frame.sender, None);
+    }
+
+    #[test]
+    fn a_groupv3_frame_is_taken_for_neither_a_groupv2_frame_nor_its_invite() {
+        let post = through_sds(
+            SARO_SIGNER,
+            packet(EncodedFrame::MlsMessage(encrypted_by_mls())),
+        );
+        let beacon = outside_sds(ExternalKind::Beacon(vec![7; 40]));
+        let sync = through_sds(SARO_SIGNER, vec![]);
+        for (payload, as_invite) in [(post, true), (beacon, true), (sync, false)] {
+            let carried = EnvelopeV1::decode(payload.as_slice()).unwrap().payload;
+            assert_eq!(group_frame(&carried), None, "{payload:?}");
+            let invited = invite(&carried).is_some();
+            assert_eq!(
+                invited, as_invite,
+                "it decodes as a GroupV2 invite: {payload:?}"
+            );
+
+            assert_eq!(read(&payload).kind, Kind::Group, "{payload:?}");
+        }
+
+        let carried = EnvelopeV1::decode(invite_v3("3b0d").as_slice())
+            .unwrap()
+            .payload;
+        assert_eq!(group_frame(&carried), None);
+        assert_eq!(group_v3::frame(&carried), None);
+    }
+
+    #[test]
+    fn no_groupv2_frame_is_taken_for_a_groupv3_one() {
+        let broadcast = in_the_clear(app_message::Payload::MemberWelcome(welcome()));
+        let request = app_message::Payload::ConversationSyncRequest(ConversationSyncRequest {});
+        let seating = MemberWelcome {
+            welcome_bytes: welcome_by_mls(),
+            conversation_sync_bytes: vec![7; 40],
+            joiner_identities: vec![SARO.to_vec()],
+        };
+        let invites = [welcome(), seating].map(|welcome| InboxV2Frame {
+            payload: Some(InviteType::GroupV2(welcome.encode_to_vec())),
+        });
+        let ratchet = EncryptedPayload {
+            encryption: Some(encrypted_payload::Encryption::Doubleratchet(
+                Doubleratchet {
+                    dh: vec![1; 32].into(),
+                    msg_num: 3,
+                    prev_chain_len: 2,
+                    ciphertext: vec![9; 40].into(),
+                    ..Default::default()
+                },
+            )),
+        };
+
+        for payload in [
+            group(SARO, candidate(&[0, 0, 1, 2])),
+            group(SARO, broadcast),
+            group(SARO, encrypted_by_mls()),
+            group(SARO, in_the_clear(request)),
+            envelope(invites[0].encode_to_vec()),
+            envelope(invites[1].encode_to_vec()),
+            envelope(ratchet.encode_to_vec()),
+        ] {
+            let carried = EnvelopeV1::decode(payload.as_slice()).unwrap().payload;
+            assert_eq!(group_v3::frame(&carried), None, "{payload:?}");
+        }
+    }
+
+    #[test]
+    fn what_is_no_groupv3_frame_is_not_read_as_one() {
+        let post = || packet(EncodedFrame::MlsMessage(encrypted_by_mls()));
+        let beacon = GroupV3External {
+            kind: Some(ExternalKind::Beacon(vec![7; 40])),
+        };
+        let header = |unsaid: fn(&mut SdsHeader)| {
+            let mut header = sds_header(SARO_SIGNER);
+            unsaid(&mut header);
+            header.encode_to_vec()
+        };
+        let unheaded = GroupV3Packet {
+            encrypted_header: welcome_by_mls(),
+            encoded_frame: Some(EncodedFrame::External(beacon.encode_to_vec())),
+        };
+
+        for (header, payload) in [
+            (header(|header| header.message_id.clear()), post()),
+            (header(|header| header.channel_id.clear()), vec![]),
+            // SDS carries no external frame, and an MLS message is never
+            // sent outside it.
+            (
+                header(|_| {}),
+                packet(EncodedFrame::External(beacon.encode_to_vec())),
+            ),
+            (vec![], post()),
+            (
+                vec![],
+                packet(EncodedFrame::External(
+                    GroupV3External::default().encode_to_vec(),
+                )),
+            ),
+            (vec![], unheaded.encode_to_vec()),
+            (vec![], vec![]),
+        ] {
+            let message = EncryptedSdsMessage {
+                encrypted_sds_header: header,
+                payload,
+            };
+            assert_eq!(
+                group_v3::frame(&message.encode_to_vec()),
+                None,
+                "{message:?}"
+            );
         }
     }
 

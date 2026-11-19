@@ -51,8 +51,8 @@ epoch carries a **state**: 8 bytes of a BLAKE2b hash of the MLS epoch authentica
 ## What each member writes
 
 The chat core writes one line per event on the log target `libchat::mls_trace`, at `trace`, in the span of
-the GroupV2 op that wrote it: the span names the member's signing key and the conversation. A line of a run
-of `three.json`, where Saro's wakeup took the group from epoch 0 to 1:
+the GroupV2 or GroupV3 op that wrote it: the span names the member's signing key and the conversation. A
+line of a run of `three.json`, where Saro's wakeup took the group from epoch 0 to 1:
 
 ```text
 2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178

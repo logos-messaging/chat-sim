@@ -1,0 +1,34 @@
+[
+  {
+    "seed": 0,
+    "network_seed": 1,
+    "conversation": "15a00cfb038295fd6463c4f58a947f42",
+    "members_digest": "1f228bfa64e58b9a",
+    "verdict": "whole",
+    "at_tip": 48,
+    "seated": 48,
+    "virtual_s": 5925.65,
+    "trunk_epoch": 47,
+    "ended": "stalled",
+    "lines_off_trunk": 0,
+    "members_off_trunk": 0,
+    "came_to": "no member took part: trunk at epoch 47, 1 main, 0 sub, 1 fell behind, 0 behind at the end, 0 never joined",
+    "stopped": null
+  },
+  {
+    "seed": 1,
+    "network_seed": 2,
+    "conversation": "ecc153091067054925f8d2c3ffd8e793",
+    "members_digest": "e7be2f6a8a13997c",
+    "verdict": "whole, members behind",
+    "at_tip": 47,
+    "seated": 48,
+    "virtual_s": 5925.65,
+    "trunk_epoch": 47,
+    "ended": "stalled",
+    "lines_off_trunk": 0,
+    "members_off_trunk": 1,
+    "came_to": "no member took part: trunk at epoch 47, 1 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined",
+    "stopped": null
+  }
+]

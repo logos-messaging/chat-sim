@@ -125,6 +125,7 @@ of its `budget`, which is why `four.json` sets 33 s in place of 180.
 |---|---|---|
 | `members` | | how many members start |
 | `steps` | | what they do, in order |
+| `group` | `v2` | `v2`, or `v3` for a GroupV3 group, which is run in one process alone, removes no member, has no commit candidate, cannot be cut and keeps no `timers` |
 | `timers` | `fast` | `fast`, `default` (the library's own), or durations in ms over the default set |
 | `budget` | `180` | seconds of the clock the waits of one batch, or of one post, may take |
 | `seed` | `0` | what a run in one process draws every random number from |
@@ -160,6 +161,7 @@ Every field is checked before anything starts. The full format, with every field
 | `grow-waku-loss-*.json` | 200 members on the library's own timers and Waku's delays, any member adding up to three a round, at a loss of 0 to 10% that the name gives in percent; CI sweeps 0, 0.1, 0.5, 1 and 5 |
 | `grow-by-saro-waku-loss-*.json` | the same from 0.01 to 10%, saro alone adding |
 | `grow-waku-size-50.json` | a group held at fifty members toward epoch 1000, at no loss; CI sweeps it |
+| `*-groupv3.json` | each `50-epochs-by-saro-waku-loss-` and `grow-waku-loss-` scenario that CI sweeps, on a GroupV3 group; CI sweeps each as many times as its GroupV2 one |
 | `fifty-sized.json` | 50 members ten at a time, with timers sized for fifty peers on one machine |
 | `lossy-wire.json`, `fleet-five.json` | a wire and a fleet, for the rigs that run chat-cli (see [chat-cli and the local-network branch](#chat-cli-and-the-local-network-branch)) |
 

@@ -60,6 +60,7 @@ WINDOW = 30
 # it the three of grow-waku-size-50, on master's CI run 42260983597 without report.json, 0.08 MB
 # of the two runs of fifty epochs, and its page, 1 MB, which shows that text. Fifteen take
 # 160 MB, about the 150 MB of the thirty points, so the two hold under a third of Pages' 1 GB.
+# That measure holds none of the twenty-three runs of the held `-groupv3` scenarios.
 # Every long run keeps its long.json, and a page drawn from it.
 LONG_WINDOW = 15
 # The text of a run the site keeps, and the build's log of one whose job could not build

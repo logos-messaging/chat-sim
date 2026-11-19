@@ -14,9 +14,12 @@ use tracing_subscriber::layer::{Filter, SubscriberExt};
 
 /// The target the core writes its trace records on.
 pub(crate) const TRACE: &str = "libchat::mls_trace";
-/// The target of the ops' spans, whose fields name the signer and the
-/// conversation a record is about.
-const OPS: &str = "libchat::conversation::group_v2";
+/// The targets of the ops' spans, a GroupV2 group's and a GroupV3 group's,
+/// whose fields name the signer and the conversation a record is about.
+const OPS: [&str; 2] = [
+    "libchat::conversation::group_v2",
+    "libchat::conversation::group_v3",
+];
 
 /// The level `LOG=warn|info|debug` asks of the tracing feed, errors alone
 /// without it.
@@ -54,7 +57,7 @@ impl<'a> MakeWriter<'a> for Buffer {
 /// What a log takes: the trace records, the ops' spans they are written in,
 /// and of everything else what `LOG` asks for.
 pub(crate) fn lines<S: tracing::Subscriber>() -> impl Filter<S> {
-    let ops = filter_fn(|meta| meta.is_span() && meta.target() == OPS);
+    let ops = filter_fn(|meta| meta.is_span() && OPS.contains(&meta.target()));
     Targets::new()
         .with_default(log_level())
         .with_target(TRACE, Level::TRACE)

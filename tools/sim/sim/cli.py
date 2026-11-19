@@ -177,6 +177,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
     if settings.one_process is None and settings.scenario.grows:
         parser.error("the scenario has a `grow` step, and only --one-process does one")
+    if settings.one_process is None and settings.scenario.group == "v3":
+        parser.error(
+            "the scenario's `group` is `v3`, and only --one-process seats a GroupV3 group"
+        )
     if settings.image is None and settings.scenario.wire is not None:
         parser.error("the scenario has `wire`, and only --image puts conditions on the wire")
     number = getattr(args, "first", 1) + getattr(args, "runs", 1) - 1

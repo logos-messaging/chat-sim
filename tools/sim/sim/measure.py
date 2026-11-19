@@ -19,7 +19,8 @@ _UNCHECKED = re.compile(r" libchat::mls_trace: unreadable .*\bwhy=sender\b")
 # What a log has to let through for its records to name their conversation, and for
 # `welcomes` to find anything in it.
 LOG_FILTER = (
-    "warn,libchat::mls_trace=trace,libchat::conversation::group_v2=info,libchat::inbox_v2=info"
+    "warn,libchat::mls_trace=trace,libchat::conversation::group_v2=info,"
+    "libchat::conversation::group_v3=info,libchat::inbox_v2=info"
 )
 
 

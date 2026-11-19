@@ -133,7 +133,7 @@ def _virtual(report: dict) -> str:
     """The report of a run in one process: every duration under its first line is virtual."""
     modelled = report["network"] is not None
     lines = [
-        f"{_members(report['members'])}, {_timers(report['timers'])}, "
+        f"{_members(report['members'])}, {_group(report)}, "
         f"{_clock(report)}{_network(report['network'])}",
         *_outcome(report),
         _load(report["load"]),
@@ -291,6 +291,11 @@ def _delivery(report: dict) -> str:
     if report["preset"] is not None:
         return f"preset {report['preset']}"
     return f"largest message {report['max_message_kib']} KiB"
+
+
+def _group(report: dict) -> str:
+    """The group of a run in one process: GroupV3, or a GroupV2 group by its timers."""
+    return "GroupV3" if report["group"] == "v3" else _timers(report["timers"])
 
 
 def _timers(timers: Union[str, Dict[str, int]]) -> str:

@@ -67,6 +67,7 @@ class Reading(unittest.TestCase):
             Scenario(
                 members=3,
                 steps=(Seat(to=3, batch=10), Post(sender=LAST)),
+                group="v2",
                 timers="fast",
                 max_message_kib=512,
                 preset=None,
@@ -146,6 +147,13 @@ class Reading(unittest.TestCase):
         sized = scenario.scenario(steps(dict(GROW, size=4))).steps
         self.assertEqual(sized, (Grow(epochs=3, adders=2, branches=5, size=4),))
         self.assertEqual(scenario.scenario(steps(dict(by, size=2))).steps[0].size, 2)
+
+    def test_a_scenario_creates_a_groupv2_group_unless_it_says_v3(self):
+        self.assertEqual(scenario.scenario(three()).group, "v2")
+        self.assertEqual(scenario.scenario(three(group="v2")).group, "v2")
+        self.assertEqual(scenario.scenario(three(group="v3")).group, "v3")
+        grown = scenario.scenario(dict(steps(GROW), group="v3"))
+        self.assertEqual((grown.group, grown.steps), ("v3", (Grow(epochs=3, adders=2, branches=5),)))
 
     def test_a_scenario_of_one_member_is_its_creator_alone(self):
         alone = scenario.scenario({"members": 1, "steps": [{"step": "hold", "seconds": 60}]})
@@ -384,9 +392,13 @@ class Reading(unittest.TestCase):
         self.assertEqual(
             kept,
             [
+                "50-epochs-by-saro-waku-loss-0-groupv3.json",
+                "50-epochs-by-saro-waku-loss-0.1-groupv3.json",
                 "50-epochs-by-saro-waku-loss-0.1.json",
                 "50-epochs-by-saro-waku-loss-0.json",
+                "50-epochs-by-saro-waku-loss-1-groupv3.json",
                 "50-epochs-by-saro-waku-loss-1.json",
+                "50-epochs-by-saro-waku-loss-5-groupv3.json",
                 "50-epochs-by-saro-waku-loss-5.json",
                 "50-epochs-waku-loss.json",
                 "50-epochs-waku.json",
@@ -400,13 +412,18 @@ class Reading(unittest.TestCase):
                 "grow-by-saro-waku-loss-1.json",
                 "grow-by-saro-waku-loss-10.json",
                 "grow-by-saro-waku-loss-5.json",
+                "grow-waku-loss-0-groupv3.json",
                 "grow-waku-loss-0.01.json",
+                "grow-waku-loss-0.1-groupv3.json",
                 "grow-waku-loss-0.1.json",
+                "grow-waku-loss-0.5-groupv3.json",
                 "grow-waku-loss-0.5.json",
                 "grow-waku-loss-0.75.json",
                 "grow-waku-loss-0.json",
+                "grow-waku-loss-1-groupv3.json",
                 "grow-waku-loss-1.json",
                 "grow-waku-loss-10.json",
+                "grow-waku-loss-5-groupv3.json",
                 "grow-waku-loss-5.json",
                 "grow-waku-size-50.json",
                 "lossy-wire.json",
@@ -509,6 +526,20 @@ class Reading(unittest.TestCase):
             by = scenario.read(TOOL / "scenarios" / f"grow-by-saro-waku-loss-{percent}.json")
             self.assertEqual(by, dataclasses.replace(drawn, steps=(alone,)), percent)
 
+    def test_each_groupv3_scenario_is_its_groupv2_sibling_on_a_groupv3_group(self):
+        siblings = [
+            *(f"50-epochs-by-saro-waku-loss-{percent}" for percent in (0, 0.1, 1, 5)),
+            *(f"grow-waku-loss-{percent}" for percent in (0, 0.1, 0.5, 1, 5)),
+        ]
+        kept = sorted(file.stem for file in (TOOL / "scenarios").glob("*-groupv3.json"))
+        self.assertEqual(kept, sorted(f"{name}-groupv3" for name in siblings))
+        for name in siblings:
+            with self.subTest(name=name):
+                groupv2 = scenario.read(TOOL / "scenarios" / f"{name}.json")
+                groupv3 = scenario.read(TOOL / "scenarios" / f"{name}-groupv3.json")
+                self.assertEqual(groupv2.group, "v2")
+                self.assertEqual(groupv3, dataclasses.replace(groupv2, group="v3"))
+
     def test_the_scenarios_of_the_network_model_seat_five_members_one_at_a_time(self):
         one_at_a_time = Seat(to=5, batch=1)
         lossy = scenario.read(TOOL / "scenarios" / "lossy.json")
@@ -566,6 +597,10 @@ class Refusals(unittest.TestCase):
                 f"`members` of the scenario is {10**30}, and 65534 is the most",
                 three(members=10**30),
             ),
+            ("`group` is not `v2` or `v3`", three(group="v4")),
+            ("`group` is not `v2` or `v3`", three(group="V3")),
+            ("`group` is not `v2` or `v3`", three(group=3)),
+            ("`group` is not `v2` or `v3`", three(group=None)),
             ("`steps` is not a list of one step or more", three(steps=[])),
             ("`steps` is not a list of one step or more", three(steps=seat)),
             ("`max_message_kib` of the scenario is not a whole number", three(max_message_kib="1")),
@@ -833,6 +868,14 @@ class Refusals(unittest.TestCase):
                 "size removes a member that adds none",
                 three(steps=[dict(grow, size=3)]),
             ),
+            (
+                "steps[0] is a `grow` step of a `size`, and a GroupV3 group removes no member",
+                three(steps=[dict(grow, size=4)], group="v3"),
+            ),
+            (
+                "steps[0] is a `grow` step of a `size`, and a GroupV3 group removes no member",
+                three(steps=[dict(unsaid, by="saro", size=2)], group="v3"),
+            ),
         ]
         for why, said in refusals:
             with self.subTest(why=why, said=said):
@@ -983,6 +1026,11 @@ class Refusals(unittest.TestCase):
                 "steps[3] heals a cut, and no cut is in force by then",
                 modelled(seat, cut(["saro"], ["raya"]), heal, heal),
             ),
+            (
+                "steps[1] is a `cut` step, and no cut stops a GroupV3 frame sent outside SDS, "
+                "which names no sender",
+                dict(modelled(seat, cut(["saro"], ["raya"]), heal), group="v3"),
+            ),
         ]
         for why, said in refusals:
             with self.subTest(why=why, said=said):
@@ -1015,6 +1063,7 @@ class Refusals(unittest.TestCase):
                 "steps[3] is a second `withhold` step, and a run has one",
                 withholding(withhold("raya"), {"step": "seat", "to": 5}),
             ),
+            (f"{it}, and a GroupV3 group has no commit candidate", withholding(group="v3")),
             (f"{it}, and the step after it is not a `seat` step", modelled(seat, withhold())),
             (
                 f"{it}, and the step after it is not a `seat` step",

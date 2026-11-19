@@ -20,6 +20,7 @@ def report(**changed) -> dict:
         "stopped": None,
         "steps": 2,
         "steps_done": 2,
+        "group": "v2",
         "timers": "fast",
         "preset": None,
         "max_message_kib": 512,

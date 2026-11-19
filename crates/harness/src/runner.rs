@@ -14,7 +14,7 @@ use crate::test_client::{Harness, Inbound, STEP};
 use group_log::Records;
 use libchat::{ChatError, ConversationId, MockClock, SignerKey};
 use network_model::{AppId, Dropped, Kind, Model, Rules, Why, Withhold};
-use plan::{Adders, Network, Plan, Step};
+use plan::{Adders, Group, Network, Plan, Step};
 use rand::Rng;
 use rand::seq::index;
 use rand_chacha::ChaCha20Rng;
@@ -296,10 +296,12 @@ impl<'a> Run<'a> {
                 Member::new(client.signer_key(), client.account())
             })
             .collect();
-        let convo = harness
-            .client_mut(0)
-            .create_group_convo_v2(&[], "sim", "")
-            .expect("a client creates a group of its own");
+        let creator = harness.client_mut(0);
+        let convo = match plan.group {
+            Group::V2 => creator.create_group_convo_v2(&[], "sim", ""),
+            Group::V3 => creator.create_group_convo_v3(&[], "sim", ""),
+        };
+        let convo = convo.expect("a client creates a group of its own");
 
         let by_installation = members.iter().enumerate();
         let mut run = Self {
@@ -625,7 +627,8 @@ impl<'a> Run<'a> {
 
     /// The app id `member` stamps its frames of the conversation with, once
     /// it has published one. A member of a run publishes in that conversation
-    /// alone, a joiner first as it joins.
+    /// alone: a GroupV2 joiner first as it joins, a GroupV3 member first when
+    /// it sends through SDS.
     fn app_id(&mut self, member: usize) -> Option<AppId> {
         let app_ids = self.harness.client(member).app_ids();
         assert!(
@@ -1233,6 +1236,47 @@ mod tests {
         assert_eq!(left.written_of("raya", from_pax), ["received"]);
         assert_eq!(left.written_of("raya", from_saro), ["received"]);
         assert_eq!(left.written_of("pax", from_saro), ["received"]);
+    }
+
+    #[test]
+    fn a_groupv3_group_is_seated_and_reads_each_post() {
+        let mut plan = plan(
+            &CAST,
+            json!([
+                {"step": "seat", "to": 3, "batch": 2},
+                {"step": "post", "from": ["pax", "saro", "raya"]},
+            ]),
+        );
+        plan["group"] = json!("v3");
+        plan["budget_s"] = json!(180);
+
+        let left = run_of(&plan);
+        let result = &left.result;
+
+        assert_eq!(result["stopped"], Value::Null);
+        assert_eq!(result["steps_done"], 2);
+        // A member finalizes the commit it defers 120 s after it defers it.
+        let seated_s = result["batches"][0]["seated_s"].as_f64().expect("seconds");
+        assert!(seated_s >= 120.0, "{seated_s}");
+        let records = left.records();
+        for name in CAST {
+            let member = left.member(name);
+            let installation = member["installation"].as_str().expect("an id");
+            // A member's app id, once it has posted, is its signer key, of
+            // which the records write the first eight digits.
+            let app_id = member["app_id"].as_str().expect("an app id");
+            assert!(
+                app_id.len() == 64 && app_id.starts_with(installation),
+                "{member}"
+            );
+            let holds_the_roster = records.iter().any(|record| {
+                record.name == "epoch"
+                    && record.fields["signer"] == installation
+                    && record.fields["convo"] == result["conversation"]
+                    && record.fields["members"] == "3"
+            });
+            assert!(holds_the_roster, "{name}");
+        }
     }
 
     #[test]

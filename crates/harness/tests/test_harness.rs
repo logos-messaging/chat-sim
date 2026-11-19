@@ -8,8 +8,9 @@
 
 use harness::{Harness, TestHarness};
 use libchat::{GroupV2Config, MockClock};
-use network_model::{Dropped, Model, Rules, read};
+use network_model::{AppId, Dropped, Kind, Model, Rules, read};
 use std::cell::RefCell;
+use std::collections::BTreeSet;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -277,4 +278,102 @@ fn a_frame_keeps_its_delivery_info_through_a_model() {
     harness.process_until_label("raya gets both", |h| {
         h.raya().check(&convo, b"lost") && h.raya().check(&convo, b"reply")
     });
+}
+
+/// A model reads each frame of a GroupV3 group as what it is: the invite to a
+/// joiner's inbox is a welcome, and every other frame is the group's. A
+/// member names itself on what it sends through SDS by the hex of its signer
+/// key, which is the one app id it publishes under, so the rules of its model
+/// take those frames for its own and count none of them. Its beacons come
+/// back to it naming no sender, and are counted.
+#[test]
+fn a_model_reads_each_frame_of_a_groupv3_group() {
+    let mut harness = TestHarness::<3>::new(|_, _| {});
+    let handed: Vec<Rc<RefCell<Vec<Vec<u8>>>>> = (0..3).map(|_| Rc::default()).collect();
+    for (member, name) in ["saro", "raya", "pax"].into_iter().enumerate() {
+        let client = harness.client_mut(member);
+        client.set_model(Model::new(0, name));
+        let handed = handed[member].clone();
+        client.set_inbound_filter(move |payload| {
+            handed.borrow_mut().push(payload.to_vec());
+            true
+        });
+    }
+    let invited = [harness.raya().signer_key(), harness.pax().signer_key()];
+    let convo = harness
+        .saro()
+        .create_group_convo_v3(&[], "", "")
+        .expect("saro create");
+    harness
+        .saro()
+        .group_add_signers(&convo, &invited)
+        .expect("saro add");
+    harness.process_until_label("all three join", |h| {
+        (0..3).all(|i| listed(h, &convo, i) == 3)
+    });
+    // A member publishes under its app id once it sends through SDS.
+    for member in 0..3 {
+        harness
+            .client_mut(member)
+            .send_content(&convo, b"post")
+            .expect("send");
+    }
+    harness.process_until_label("each reads the others' posts", |h| {
+        (0..3).all(|i| h.client(i).received_messages().len() == 2)
+    });
+
+    let signers: Vec<AppId> = (0..3)
+        .map(|member| {
+            let key = harness.client(member).signer_key().to_string();
+            key.parse().expect("the hex of a key")
+        })
+        .collect();
+    let (mut signed, mut unsigned) = (0, 0);
+    for (member, welcomes) in [(0, 0), (1, 1), (2, 1)] {
+        let client = harness.client(member);
+        let own = BTreeSet::from([signers[member].clone()]);
+        assert_eq!(client.app_ids(), own, "member {member}");
+        let model = client.model().expect("a model");
+        assert_eq!(model.rules().own(), &own, "member {member}");
+
+        let handed = handed[member].take();
+        let frames: Vec<_> = handed.iter().map(|payload| read(payload)).collect();
+        let welcomed = frames.iter().filter(|frame| frame.kind == Kind::Welcome);
+        assert!(
+            welcomed.clone().all(|frame| frame.sender.is_none()),
+            "member {member}"
+        );
+        assert_eq!(welcomed.count(), welcomes, "member {member}");
+        let of_the_group = frames.iter().filter(|frame| frame.kind != Kind::Welcome);
+        let of_the_group: Vec<_> = of_the_group.collect();
+        assert!(
+            of_the_group.iter().all(|frame| frame.kind == Kind::Group),
+            "member {member}: {of_the_group:?}"
+        );
+        let senders = of_the_group
+            .iter()
+            .filter_map(|frame| frame.sender.as_ref());
+        assert!(senders.clone().all(|sender| signers.contains(sender)));
+        let returned = senders
+            .clone()
+            .filter(|sender| own.contains(sender))
+            .count();
+        assert!(returned > 0, "member {member} is handed none of its own");
+        assert_eq!(
+            model.counts().arrived,
+            (handed.len() - returned) as u64,
+            "member {member}"
+        );
+        signed += senders.count();
+        unsigned += of_the_group
+            .iter()
+            .filter(|frame| frame.sender.is_none())
+            .count();
+    }
+    // What a member sends outside SDS, a beacon of each epoch it enters, names
+    // no sender.
+    assert!(
+        signed > 0 && unsigned > 0,
+        "{signed} signed, {unsigned} not"
+    );
 }
