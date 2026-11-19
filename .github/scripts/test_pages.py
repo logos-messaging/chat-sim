@@ -434,12 +434,19 @@ class LogosChat(unittest.TestCase):
         self.site.mkdir()
         self.made = 0
 
-    def uploaded(self, **edits: dict) -> Path:
-        """A copy of UPLOADED, each run with its run.txt, report.txt and report.json beside its
-        run.json, and the fields `edits` gives a run changed, by its rate and seed."""
+    def uploaded(self, groupv3: bool = False, **edits: dict) -> Path:
+        """A copy of UPLOADED, with `groupv3` each of its runs again as GroupV3's, under the name
+        of the GroupV3 goal at its rate; each run with its run.txt, report.txt and report.json
+        beside its run.json, and the fields `edits` gives a run changed, by its rate and seed, or
+        by its group, rate and seed."""
         self.made += 1
         copy = self.scratch / f"uploaded-{self.made}"
         shutil.copytree(UPLOADED, copy)
+        if groupv3:
+            for report in list(copy.rglob("run.json")):
+                job, scenario, run = report.parts[-4:-1]
+                name = simulate.GOALS["v3"].format(scenario.removeprefix(GOAL.format("")))
+                shutil.copytree(report.parent, copy / job.replace(scenario, name) / name / run)
         for report in copy.rglob("run.json"):
             for name in ("run.txt", "report.txt", "report.json"):
                 write(report.parent / name, f"{name} of {report.parent.relative_to(copy)}\n")
@@ -450,8 +457,11 @@ class LogosChat(unittest.TestCase):
         return copy
 
     def run_json(self, side: Path, cell: str) -> Path:
-        rate, seed = cell.split("/")
-        scenario, number = GOAL.format(rate), int(seed) + 1
+        """The run.json of a cell under `side`, by its rate and seed, `1/0`, a cell of GroupV2's,
+        or by its group, rate and seed, `v3/1/0`."""
+        *named, rate, seed = cell.split("/")
+        goal = simulate.GOALS[named[0]] if named else GOAL
+        scenario, number = goal.format(rate), int(seed) + 1
         return side / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
 
     def matrix(
@@ -564,6 +574,28 @@ class Point(LogosChat):
         self.assertEqual(pages.read_point(self.at() / "point.json"), written)
         self.assertEqual(pages.points(self.site), [(self.at(), written)])
 
+    def test_a_point_of_both_groups_holds_each_group_s_cells_and_summary_in_one_point_json(self):
+        runs = self.uploaded(groupv3=True)
+        matrix = self.matrix(runs)
+        self.point(runs=runs, matrix=matrix)
+        written, matrix = self.read(), json.loads(matrix.read_text(encoding="utf-8"))
+        self.assertEqual({cell.pop("below") for cell in matrix["cells"]}, {None})
+        self.assertEqual(written["cells"], matrix["cells"])
+        self.assertEqual(written["summary"], matrix["summary"])
+        self.assertEqual(
+            [(cell["group"], cell["scenario"], cell["seed"]) for cell in written["cells"]],
+            [
+                (group, simulate.GOALS[group].format(rate), seed)
+                for group in ("v2", "v3")
+                for rate in ("0.1", "1", "5")
+                for seed in (0, 1)
+            ],
+        )
+        self.assertEqual([one["group"] for one in written["summary"]], ["v2"] * 3 + ["v3"] * 3)
+        self.assertEqual(len(self.files(self.at())), 2 + 12 * 3)
+        self.assertEqual(pages.read_point(self.at() / "point.json"), written)
+        self.assertEqual(pages.points(self.site), [(self.at(), written)])
+
     def test_each_run_s_text_is_kept_by_its_number_and_its_report_json_is_not(self):
         runs = self.uploaded()
         # A lone artifact downloads flat, and a run of a sweep of ten or more is named 01.
@@ -615,6 +647,11 @@ class Point(LogosChat):
                 cell(head={k: v for k, v in head.items() if k != "members_digest"}),
             ),
             ("cells[0].head.conversation is not an id", cell(head=dict(head, conversation="<b>"))),
+            ("cells[0].group 'v4' is none of a scenario's", cell(group="v4")),
+            (
+                "summary[0].group 'GroupV3' is none of a scenario's",
+                dict(written, summary=[dict(written["summary"][0], group="GroupV3")]),
+            ),
             ("cells[0] has a base", cell(base=head)),
             ("cells[0].below is not a field of cells[0]", cell(below=None)),
             (
@@ -1012,11 +1049,18 @@ class PullRequest(LogosChat):
             ("base_point.time is not a field of base_point", named(time="today")),
             ("spread.seeds[0].ended is not how a run ended", spread(seeds=[dict(seed, ended="x")])),
             ("spread.seeds[0].epochs is not of its kind", spread(seeds=[dict(seed, epochs="9")])),
-            ("spread.summary[0].loss is missing", spread(summary=[{"scenario": GOAL.format(1)}])),
+            (
+                "spread.summary[0].loss is missing",
+                spread(summary=[{"scenario": GOAL.format(1), "group": "v2"}]),
+            ),
             ("spread.logos_chat is not a commit", spread(logos_chat="fa5282a")),
             (
                 "cells[0].below is not of its kind",
                 dict(matrix, cells=[dict(matrix["cells"][0], below=1)]),
+            ),
+            (
+                "cells[0].group 'v1' is none of a scenario's",
+                dict(matrix, cells=[dict(matrix["cells"][0], group="v1")]),
             ),
         ):
             with self.subTest(said=said):
@@ -1185,11 +1229,15 @@ class Trend(LogosChat):
             re.findall(r"<h2>(.*?)</h2>", page),
             [
                 "Epochs without a fork",
-                "Runs whole at 50 epochs, of 2",
+                "Runs whole at 50 epochs",
                 "The newest point",
                 "Members off the trunk at the end",
                 "The points",
             ],
+        )
+        self.assertEqual(
+            re.findall(r"<h3>(.*?)</h3>", page),
+            ["GroupV2", "GroupV2 runs whole, of 2", "GroupV2", "GroupV2"],
         )
         self.assertEqual(Parsed(page).h1, ["Over main"])
 
@@ -1374,9 +1422,9 @@ class Trend(LogosChat):
         self.assertEqual(
             [row[6] for row in rows],
             [
-                "0.1% whole 1 to 2, median 48 to 50 · chat-sim moved",
-                "1% median 11.5 to 13.5 · re-rolled",
-                "1% median 13.5 to 11.5",
+                "GroupV2 0.1% whole 1 to 2, median 48 to 50 · chat-sim moved",
+                "GroupV2 1% median 11.5 to 13.5 · re-rolled",
+                "GroupV2 1% median 13.5 to 11.5",
                 "the first point",
             ],
         )
@@ -1384,6 +1432,7 @@ class Trend(LogosChat):
         self.assertEqual([row[8] for row in rows], ["point · the run"] * 4)
         self.assertEqual(rows[2][2], f"#321 {TITLE}#318 chore: bump the toolchain")
         self.assertEqual([row[2] for row in (rows[0], rows[1], rows[3])], ["none"] * 3)
+        self.assertEqual(parsed.rows[0][3], "GroupV2 runs whole, of 2")
         self.assertEqual(parsed.rows[1][3:6], ["0.1%", "1%", "5%"])
         pulls = [link for link in parsed.links if "/pull/" in link]
         self.assertEqual(pulls, [f"{pages.LOGOS_CHAT_URL}/pull/{n}" for n in (321, 318)])
@@ -1457,8 +1506,23 @@ class Trend(LogosChat):
         write(self.at() / "point.json", json.dumps(dict(written, summary=summary)))
         status, _, err = self.run_pages("trend", str(self.site))
         self.assertEqual(status, 2)
-        self.assertIn("the points hold 5 rates, and the page tells 4 apart", err.splitlines()[-1])
+        said = "the points hold 5 rates of GroupV2, and the page tells 4 apart"
+        self.assertIn(said, err.splitlines()[-1])
         self.assertFalse((self.site / "logos-chat" / "index.html").exists())
+
+    def test_four_rates_of_each_of_two_groups_are_told_apart_a_hue_each_within_its_group(self):
+        self.point(runs=self.uploaded(groupv3=True))
+        written = self.read()
+        summary = written["summary"] + [
+            dict(one, scenario=simulate.GOALS[one["group"]].format(0), loss=0, rate="0%")
+            for one in written["summary"]
+            if one["rate"] == "0.1%"
+        ]
+        write(self.at() / "point.json", json.dumps(dict(written, summary=summary)))
+        self.trend()
+        panel = r'<div class="panel">\n<p><svg class="(s\d)".*?</svg>(.*?)</p>'
+        hues = [("s1", "0%"), ("s2", "0.1%"), ("s3", "1%"), ("s4", "5%")]
+        self.assertEqual(re.findall(panel, self.page()), hues * 2)
 
     def test_a_point_where_no_run_of_a_rate_had_an_outcome_breaks_the_rate_s_lines(self):
         self.point(sha(1), minute=1, run_number=1)
@@ -1483,22 +1547,27 @@ class Trend(LogosChat):
         self.assertEqual(
             [row[6] for row in rows],
             [
-                "0.1% whole - to 1, median - to 48 · 1% whole - to 0, median - to 13.5 · "
-                "5% whole - to 0, median - to 5.5",
-                "0.1% chat-sim did not build · 1% chat-sim did not build · "
-                "5% chat-sim did not build",
+                "GroupV2 0.1% whole - to 1, median - to 48 · GroupV2 1% whole - to 0, median - to "
+                "13.5 · GroupV2 5% whole - to 0, median - to 5.5",
+                "GroupV2 0.1% chat-sim did not build · GroupV2 1% chat-sim did not build · "
+                "GroupV2 5% chat-sim did not build",
                 "the first point",
             ],
         )
 
     def test_a_rate_whose_scenario_is_renamed_at_a_new_measurement_goes_on_as_its_line(self):
         self.point(sha(1), minute=1, run_number=1)
-        renamed = self.scratch / "renamed"
-        for report in self.uploaded().rglob("run.json"):
+        runs, renamed = self.uploaded(), self.scratch / "renamed"
+        for report in runs.rglob("run.json"):
             job, scenario, run = report.parts[-4:-1]
             name = scenario.replace("50-epochs-by-saro", "fifty-by-saro")
             shutil.copytree(report.parent, renamed / job.replace(scenario, name) / name / run)
-        given = dict(runs=renamed, measurement=MOVED, commits=self.commits())
+        # tools/sim matrix takes a cell's group from its scenario's file, which a renamed one does
+        # not have: the matrix is the runs', its scenarios renamed.
+        matrix = self.matrix(runs)
+        text = matrix.read_text(encoding="utf-8")
+        write(matrix, text.replace("50-epochs-by-saro", "fifty-by-saro"))
+        given = dict(runs=renamed, matrix=matrix, measurement=MOVED, commits=self.commits())
         self.point(sha(2), minute=2, run_number=2, **given)
         named = [one["scenario"] for one in self.read(sha(2), MOVED)["summary"]]
         self.assertEqual(named, [f"fifty-by-saro-waku-loss-{rate}" for rate in ("0.1", "1", "5")])
@@ -1515,6 +1584,78 @@ class Trend(LogosChat):
         self.assertEqual(Parsed(self.page()).rows[1][3:6], ["0.1%", "1%", "5%"])
         cells = [group for group in self.chart("newest").iter(f"{SVG}g") if group.get("class")]
         self.assertEqual(len(cells), 6)
+
+    def test_group_v2_s_lines_go_on_and_group_v3_s_start_at_the_first_point_that_ran_it(self):
+        # The points of main from before it ran GroupV3 name no group.
+        for number in (1, 2, 3):
+            commits = None if number == 1 else self.commits()
+            self.point(sha(number), minute=number, run_number=number, commits=commits)
+            written = self.read(sha(number))
+            for one in written["cells"] + written["summary"]:
+                del one["group"]
+            write(self.at(sha(number)) / "point.json", json.dumps(written))
+        # GroupV3's 0.1% has every run whole, and at the fifth point its 1% seed 1 splits sooner.
+        whole = {"v3/0.1/1": {"verdict": "whole"}}
+        split = dict(whole, **{"v3/1/1": {"verdict": "split at epoch 5"}})
+        for number, edits in ((4, whole), (5, split)):
+            given = dict(runs=self.uploaded(groupv3=True, **edits), commits=self.commits())
+            self.point(sha(number), minute=number, run_number=number, **given)
+
+        self.assertEqual(self.trend(), [])
+        page = self.page()
+        self.assertEqual(
+            re.findall(r"<h3>(.*?)</h3>", page),
+            ["GroupV2", "GroupV3", "GroupV2 runs whole, of 2", "GroupV3 runs whole, of 2"]
+            + ["GroupV2", "GroupV3", "GroupV3"],
+        )
+        panel = r'<div class="panel">\n<p><svg class="(s\d)".*?</svg>(.*?)</p>'
+        self.assertEqual(re.findall(panel, page), [("s1", "0.1%"), ("s2", "1%"), ("s3", "5%")] * 2)
+        self.assertEqual(
+            [svg.get("aria-label") for svg in self.charts("epochs")],
+            [
+                f"Epochs without a fork at {group} {rate}"
+                for group in ("GroupV2", "GroupV3")
+                for rate in ("0.1%", "1%", "5%")
+            ],
+        )
+        groupv2, groupv3 = self.charts("whole")
+        self.assertEqual(
+            [svg.get("aria-label") for svg in (groupv2, groupv3)],
+            ["GroupV2 runs whole at 50 epochs", "GroupV3 runs whole at 50 epochs"],
+        )
+        for svg, count in ((groupv2, 5), (groupv3, 2)):
+            with self.subTest(chart=svg.get("aria-label")):
+                lines = [path.get("d") for path in svg.iter(f"{SVG}path")]
+                drawn = [(line.count("M"), line.count("L")) for line in lines]
+                self.assertEqual(drawn, [(1, count - 1)] * 3)
+        drawn_at = [title.split(" UTC")[0] for title, _ in self.markers(groupv3)]
+        self.assertEqual(drawn_at, ["2026-11-09 00:04", "2026-11-09 00:05"] * 3)
+        said = [title.split(" · ")[-1] for title, _ in self.markers(groupv3)]
+        self.assertEqual(said[:2], ["0.1%: 2 of 2 whole"] * 2)
+        newest = self.charts("newest")
+        self.assertEqual(
+            [svg.get("aria-label") for svg in newest],
+            ["The newest point's GroupV2 runs", "The newest point's GroupV3 runs"],
+        )
+        cells = [[one for one in svg.iter(f"{SVG}g") if one.get("class")] for svg in newest]
+        self.assertEqual([len(one) for one in cells], [6, 6])
+        self.assertEqual(
+            [svg.get("aria-label") for svg in self.charts("off")],
+            ["GroupV3 members off the trunk at the end"],
+        )
+        parsed = Parsed(page)
+        wholes = ["GroupV2 runs whole, of 2", "GroupV3 runs whole, of 2"]
+        self.assertEqual(parsed.rows[0][3:5], wholes)
+        self.assertEqual(parsed.rows[1][3:9], ["0.1%", "1%", "5%"] * 2)
+        rows = parsed.rows[2:]
+        self.assertEqual(
+            [row[3:9] for row in rows],
+            [["1", "0", "0", "2", "0", "0"]] * 2 + [["1", "0", "0", "-", "-", "-"]] * 3,
+        )
+        self.assertEqual(
+            [row[9] for row in rows],
+            ["GroupV3 1% median 13.5 to 11.5", "nothing", "nothing", "nothing", "the first point"],
+        )
 
     def test_a_marker_s_hover_reaches_no_further_than_half_the_way_to_the_next_point(self):
         self.history_of(20)
@@ -1669,11 +1810,12 @@ class Pages(LogosChat):
         verdict = self.drawn(out).split('<p class="verdict">', 1)[1].split("</p>", 1)[0]
         self.assertEqual(
             Parsed(verdict).text,
-            f"chat-sim: worse in 2 of 6 runs at {REVISION[:7]} against its merge base {BASE[:7]}",
+            f"chat-sim: GroupV2 worse in 2 of 6 runs at {REVISION[:7]} against its merge base "
+            f"{BASE[:7]}",
         )
         self.assertEqual(
             simulate.headline(pages.read_matrix(out / "matrix.json")),
-            "chat-sim: worse in 2 of 6 runs",
+            "chat-sim: GroupV2 worse in 2 of 6 runs",
         )
         for link in (
             f"{pages.LOGOS_CHAT_URL}/commit/{REVISION}",
@@ -1689,7 +1831,8 @@ class Pages(LogosChat):
         out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
 
         charts = self.charts(out)
-        head, was = self.cells(charts["The head's runs"]), self.cells(charts["The base's runs"])
+        head = self.cells(charts["The head's GroupV2 runs"])
+        was = self.cells(charts["The base's GroupV2 runs"])
         self.assertEqual(len(head + was), 12)
         shown = [[cell.find(f"{SVG}text").text for cell in side] for side in (head, was)]
         self.assertEqual(
@@ -1722,11 +1865,15 @@ class Pages(LogosChat):
         self.assertEqual(
             self.folds(out),
             [
-                (True, "1% loss, seed 1 5, split, was 9: worse"),
-                (True, "5% loss, seed 0 4, split, was 8: worse"),
+                (True, "GroupV2 1% loss, seed 1 5, split, was 9: worse"),
+                (True, "GroupV2 5% loss, seed 0 4, split, was 8: worse"),
             ]
             + [
-                (False, f"{cell['rate']} loss, seed {cell['seed']} {simulate.words(cell, True)}")
+                (
+                    False,
+                    f"GroupV2 {cell['rate']} loss, seed {cell['seed']} "
+                    f"{simulate.words(cell, True)}",
+                )
                 for cell in matrix["cells"]
                 if cell["change"] != "worse"
             ],
@@ -1777,8 +1924,8 @@ class Pages(LogosChat):
         self.assertFalse([link for link in parsed.links if link.startswith("base/")])
         self.assertFalse((out / "base").exists())
         charts = self.charts(out)
-        self.assertEqual(len(self.cells(charts["The base's runs"])), 6)
-        said = f"Where the head's runs fall among main's 20 seeds at {FA5282A[:7]}"
+        self.assertEqual(len(self.cells(charts["The base's GroupV2 runs"])), 6)
+        said = f"Where the head's GroupV2 runs fall among main's 20 seeds at {FA5282A[:7]}"
         self.assertIn(said, parsed.text)
         self.assertIn(f"main's 20 seeds at {FA5282A[:7]}", parsed.text)
         spread = [row for row in parsed.rows if len(row) == 2]
@@ -1792,7 +1939,7 @@ class Pages(LogosChat):
         self.assertEqual(spread[0], ["0.1%", "2 whole, 18 to 50"])
         for rate in ("0.1%", "1%", "5%"):
             with self.subTest(rate=rate):
-                strip = charts[f"The head's runs at {rate} among main's"]
+                strip = charts[f"The head's runs at GroupV2 {rate} among main's"]
                 seeds = strip.findall(f".//{SVG}circle[@class='seed']")
                 heads = [
                     (group.find(f"{SVG}title").text, float(group.find(f"{SVG}circle").get("cx")))
@@ -1811,6 +1958,93 @@ class Pages(LogosChat):
                         for cell in cells
                     ],
                 )
+
+    def test_a_run_of_both_groups_says_each_group_s_verdict_and_draws_and_folds_them_apart(self):
+        base = self.uploaded(groupv3=True)
+        head = self.uploaded(
+            groupv3=True,
+            **{
+                "v3/1/1": {"verdict": "split at epoch 5"},
+                "v3/5/0": {"verdict": "split at epoch 4"},
+            },
+        )
+        out = self.pr(head, self.matrix(head, base), base)
+
+        self.stands_alone(out)
+        matrix = pages.read_matrix(out / "matrix.json")
+        facts = {"revision": REVISION, "base": BASE, "chat_sim": SHA, "report_url": ""}
+        line = simulate.render_pr(matrix, dict(facts, run_url=RUN_URL)).splitlines()[0]
+        said = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", line).replace("**", "").replace("`", "")
+        verdict = self.drawn(out).split('<p class="verdict">', 1)[1].split("</p>", 1)[0]
+        self.assertEqual(Parsed(verdict).text + " · the run", said)
+        self.assertTrue(
+            said.startswith(
+                "chat-sim: GroupV2 same as its base, 6 of 6 runs; GroupV3 worse in 2 of 6 runs at "
+            ),
+            said,
+        )
+        self.assertEqual(re.findall(r"<h3>(.*?)</h3>", self.drawn(out)), ["GroupV2", "GroupV3"])
+        charts = self.charts(out)
+        self.assertEqual(
+            list(charts),
+            [
+                f"The {side}'s {group} runs"
+                for group in ("GroupV2", "GroupV3")
+                for side in ("head", "base")
+            ],
+        )
+        outlined = [
+            (label, cell.find(f"{SVG}title").text.split(" · ")[0])
+            for label, svg in charts.items()
+            for cell in self.cells(svg)
+            if cell.find(f"{SVG}rect[@class='outline']") is not None
+        ]
+        self.assertEqual(
+            outlined,
+            [("The head's GroupV3 runs", "1%, seed 1"), ("The head's GroupV3 runs", "5%, seed 0")],
+        )
+
+        def fold(cell: dict) -> Tuple[bool, str]:
+            named = f"{simulate.GROUPS[cell['group']]} {cell['rate']} loss, seed {cell['seed']}"
+            return cell["change"] == "worse", f"{named} {simulate.words(cell, True)}"
+
+        worse = [cell for cell in matrix["cells"] if cell["change"] == "worse"]
+        rest = [cell for cell in matrix["cells"] if cell["change"] != "worse"]
+        self.assertEqual([cell["group"] for cell in worse], ["v3", "v3"])
+        self.assertEqual(
+            self.folds(out),
+            [fold(cell) for cell in rest if cell["group"] == "v2"]
+            + [fold(cell) for cell in worse]
+            + [fold(cell) for cell in rest if cell["group"] == "v3"],
+        )
+
+    def test_against_main_s_spread_of_group_v2_alone_group_v3_s_runs_are_placed_among_none(self):
+        base, head = self.uploaded(groupv3=True), self.uploaded(groupv3=True)
+        out = self.pr(head, self.matrix(head, base, (), "--spread", str(POINT)), base)
+
+        parsed = self.stands_alone(out)
+        charts = self.charts(out)
+        strips = [label for label in charts if " among " in label]
+        self.assertEqual(
+            strips,
+            [f"The head's runs at GroupV2 {rate} among main's" for rate in ("0.1%", "1%", "5%")],
+        )
+        for label in strips:
+            seeds = charts[label].findall(f".//{SVG}circle[@class='seed']")
+            self.assertEqual(len(seeds), 20)
+        said = f"Where the head's GroupV2 runs fall among main's 20 seeds at {FA5282A[:7]}"
+        self.assertIn(said, parsed.text)
+        none = f"Main's point at {FA5282A[:7]} holds no GroupV3 runs to place the head's among."
+        self.assertIn(none, parsed.text)
+        matrix = pages.read_matrix(out / "matrix.json")
+        self.assertEqual(
+            [row for row in parsed.rows if len(row) == 2],
+            [
+                [rate, simulate.spread_of(matrix["spread"], GOAL.format(rate[:-1]))]
+                for rate in ("0.1%", "1%", "5%")
+            ]
+            + [[rate, "-"] for rate in ("0.1%", "1%", "5%")],
+        )
 
     def test_a_point_that_stood_in_before_it_had_a_page_is_linked_by_its_point_json_until_then(
         self,
@@ -1891,7 +2125,7 @@ class Pages(LogosChat):
         self.assertIn(f"../../{sha(1)}/{MEASUREMENT}/", parsed.links)
         self.assertNotIn("<script", self.drawn(at))
         self.assertIn(MARKUP, parsed.text)
-        cells = self.cells(self.charts(at)["The point's runs"])
+        cells = self.cells(self.charts(at)["The point's GroupV2 runs"])
         self.assertEqual(
             [cell.find(f"{SVG}title").text for cell in cells],
             [
@@ -1900,13 +2134,13 @@ class Pages(LogosChat):
                 for cell in point["cells"]
             ],
         )
-        rates = [row for row in parsed.rows if len(row) == 12 and row[0].endswith("%")]
+        rates = [row for row in parsed.rows if len(row) == 13 and row[1].endswith("%")]
         self.assertEqual(
-            [row[:10] + row[11:] for row in rates],
+            [row[:11] + row[12:] for row in rates],
             [
-                ["0.1%", "2", "1", "0", "1", "0", "0", "46", "48", "50", "-"],
-                ["1%", "2", "0", "0", "2", "0", "0", "9", "13.5", "18", "3 min 9 s"],
-                ["5%", "2", "0", "0", "2", "0", "0", "3", "5.5", "8", "0.9 s"],
+                ["GroupV2", "0.1%", "2", "1", "0", "1", "0", "0", "46", "48", "50", "-"],
+                ["GroupV2", "1%", "2", "0", "0", "2", "0", "0", "9", "13.5", "18", "3 min 9 s"],
+                ["GroupV2", "5%", "2", "0", "0", "2", "0", "0", "3", "5.5", "8", "0.9 s"],
             ],
         )
         runs_of_5 = [row for row in parsed.rows if len(row) == 5 and row[-1] == "0.9 s"]
@@ -1916,6 +2150,50 @@ class Pages(LogosChat):
         facts = {"revision": sha(2), "base": "", "chat_sim": SHA}
         for cell in point["cells"]:
             self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+
+    def test_a_point_of_both_groups_draws_a_heatmap_a_group_and_names_the_group_of_each_rate(self):
+        self.point(runs=self.uploaded(groupv3=True, **{"v3/1/1": {"verdict": "split at epoch 5"}}))
+
+        parsed = self.stands_alone(self.at())
+        page = self.drawn(self.at())
+        self.assertEqual(re.findall(r"<h3>(.*?)</h3>", page), ["GroupV2", "GroupV3"])
+        charts = self.charts(self.at())
+        self.assertEqual(list(charts), ["The point's GroupV2 runs", "The point's GroupV3 runs"])
+        shown = [
+            [cell.find(f"{SVG}text").text for cell in self.cells(svg)] for svg in charts.values()
+        ]
+        self.assertEqual(
+            shown, [["50", "46", "18", "9", "8", "3"], ["50", "46", "18", "5", "8", "3"]]
+        )
+        named = [
+            f"{group} {rate}" for group in ("GroupV2", "GroupV3") for rate in ("0.1%", "1%", "5%")
+        ]
+        runs = re.findall(r'<details>\n<summary>(.*?) <span class="muted">2 runs</span>', page)
+        self.assertEqual(runs, named)
+        rates = [row[:2] for row in parsed.rows if len(row) == 13 and row[1].endswith("%")]
+        self.assertEqual([" ".join(row) for row in rates], named)
+        self.assertEqual(len(self.folds(self.at())), 12)
+        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
+        for cell in self.read()["cells"]:
+            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+
+    def test_a_point_json_that_names_no_group_is_read_as_written_and_drawn_as_group_v2_s(self):
+        self.point()
+        path, written = self.at() / "point.json", self.read()
+        for one in written["cells"] + written["summary"]:
+            del one["group"]
+        write(path, json.dumps(written))
+
+        point = pages.read_point(path)
+        pages.draw_point(self.at(), point)
+
+        self.assertEqual(point, written)
+        self.assertEqual({pages.group(one) for one in point["cells"] + point["summary"]}, {"v2"})
+        parsed = self.stands_alone(self.at())
+        self.assertEqual(re.findall(r"<h3>(.*?)</h3>", self.drawn(self.at())), ["GroupV2"])
+        self.assertEqual(len(self.cells(self.charts(self.at())["The point's GroupV2 runs"])), 6)
+        rates = [row[:2] for row in parsed.rows if len(row) == 13 and row[1].endswith("%")]
+        self.assertEqual(rates, [["GroupV2", rate] for rate in ("0.1%", "1%", "5%")])
 
     def test_a_point_that_did_not_build_shows_its_log_once_and_past_the_window_says_it_is_gone(
         self,
@@ -1979,7 +2257,7 @@ class Pages(LogosChat):
         parsed = self.stands_alone(first)
         self.assertFalse([link for link in parsed.links if link.endswith((".txt", ".json"))])
         self.assertIn("The site keeps the runs' text of the newest 30 points", parsed.text)
-        self.assertEqual(len(self.cells(self.charts(first)["The point's runs"])), 6)
+        self.assertEqual(len(self.cells(self.charts(first)["The point's GroupV2 runs"])), 6)
         report = self.stands_alone(out)
         self.assertNotIn(text, report.links)
         self.assertNotIn(line, report.rows)

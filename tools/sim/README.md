@@ -478,11 +478,12 @@ as `compare` does. `--asked` names a JSON list of the sweeps asked of each side,
 `scenario`, a file of `tools/sim/scenarios` without `.json`, the run it is `from` and how many
 `runs`, and any other field besides. It writes the matrix as JSON, to standard output or to the
 file `--out` names, and exits 0 when it wrote it and 2 when a directory is not there, `--asked`
-or a point cannot be read, or a run cannot be read, was not in one process, or is a second run of a
-scenario at a seed already read.
+or a point cannot be read, a cell's scenario has no file in `tools/sim/scenarios` that can be read,
+or a run cannot be read, was not in one process, or is a second run of a scenario at a seed already
+read.
 
-A point of main is the `point.json` the Pages site keeps of a run of main's twenty seeds a rate at
-a logos-chat commit, `logos-chat/main/<sha>/<measurement>/point.json` (see the guide's
+A point of main is the `point.json` the Pages site keeps of a run of main's twenty seeds a group's
+rate at a logos-chat commit, `logos-chat/main/<sha>/<measurement>/point.json` (see the guide's
 [Reports](https://logos-messaging.github.io/chat-sim/guide/reports/#logos-chats-runs)). Of it
 `matrix` reads the two commits, `logos_chat` and `measurement`, the address of its run, `run_url`,
 each cell's `scenario`, `seed`, `run`, `loss`, outcome at the head as `compare --write` writes one
@@ -505,10 +506,11 @@ the base's outcome and the head's, where both have one.
 |-------|-------|
 | `head`, `base` | Of each side, how many `runs` were read and how many runs its jobs could not build, as `unbuilt`; `base` is `null` without `--base` or `--base-point`, and with `--base-point` counts the point's runs at the cells alone |
 | `base_point` | With `--base-point`, the point whose runs stood in for the base's: its `logos_chat` and `measurement` commits and its run's `run_url`; else `null` |
-| `cells[]` | For each cell, in the order of its loss, then scenario, then seed: the `scenario`, the `seed`, the `run` of a sweep it is, the `loss` of its network model and that loss in percent as its `rate`, such as `0.1%`; the `head`'s outcome and the `base`'s as `compare --write` writes one, each `null` where the side has no outcome; whether each side's job could not build it, as `unbuilt`; the `change`, `null` where there is none; of each side the `epochs` without a fork, the first split's epoch or else the trunk's, and how the run `ended`; where the cell is better or worse, what `moved`: the `part` of the standing the two runs first stand apart in, `epochs`, `ended`, `lines_off_trunk` or `members_off_trunk`, and the value of each side, else `null`; and whether the head's epochs are `below` the `lowest` epochs of the spread's summary of its scenario, `null` without `--spread`, that lowest, or an outcome at the head |
+| `cells[]` | For each cell, in the order of its group, then loss, then scenario, then seed: the `scenario`, the `group` its scenario creates, `v2` or `v3`, the `seed`, the `run` of a sweep it is, the `loss` of its network model and that loss in percent as its `rate`, such as `0.1%`; the `head`'s outcome and the `base`'s as `compare --write` writes one, each `null` where the side has no outcome; whether each side's job could not build it, as `unbuilt`; the `change`, `null` where there is none; of each side the `epochs` without a fork, the first split's epoch or else the trunk's, and how the run `ended`; where the cell is better or worse, what `moved`: the `part` of the standing the two runs first stand apart in, `epochs`, `ended`, `lines_off_trunk` or `members_off_trunk`, and the value of each side, else `null`; and whether the head's epochs are `below` the `lowest` epochs of the spread's summary of its scenario, `null` without `--spread`, that lowest, or an outcome at the head |
 | `counts` | How many `cells`, how many have a change as `compared`, how many of those are `same`, `changed`, `better`, `worse` and `re-rolled`, how many of the re-rolled are `below` the lowest of the spread's, and how many have no outcome at the head as `no-outcome` |
 | `verdict` | The first verdict of those below that holds |
-| `summary[]` | Without a base, for each scenario: its `scenario`, `loss` and `rate`, how many `runs` and how many of them have no outcome as `no-outcome`, how many ended `whole`, `behind`, `split` and `stalled`, the `lowest`, `median` and `highest` of the `epochs` without a fork, and the `median` of the `members_off_trunk` at the end as `compare` counts them, behind, on a line not the trunk or never joined; `null` with `--base` or `--base-point` |
+| `groups[]` | For each group the cells are of, in its order: the `group`, and the `counts` and the `verdict` of its cells alone, so that one group's cells better do not hide the other's worse |
+| `summary[]` | Without a base, for each scenario: its `scenario`, `group`, `loss` and `rate`, how many `runs` and how many of them have no outcome as `no-outcome`, how many ended `whole`, `behind`, `split` and `stalled`, the `lowest`, `median` and `highest` of the `epochs` without a fork, and the `median` of the `members_off_trunk` at the end as `compare` counts them, behind, on a line not the trunk or never joined; `null` with `--base` or `--base-point` |
 | `spread` | With `--spread`, of that point its `logos_chat` and `measurement` commits and its run's `run_url`; at the scenarios of the cells, its `summary` rows as it holds them; and as `seeds[]`, in its order, each of its runs' `scenario`, `seed`, `epochs` without a fork and how it `ended`, each `null` for a run with no outcome; else `null` |
 
 | Verdict | When |
@@ -1711,7 +1713,7 @@ given it whole and with each field the run reads taken out in turn.
 three runs of a `grow` step, cut to what `compare` reads. `tests/fixtures/matrix/` is what six
 jobs uploaded of seeds 0 and 1 of `50-epochs-by-saro-waku-loss-0.1.json`, `-1` and `-5`, each in
 the directory of its artifact, every `run.json` cut to what `matrix` reads.
-`tests/fixtures/point.json` is the point of main of seeds 0 to 19 of each of the four
+`tests/fixtures/point.json` is the point of main of seeds 0 to 19 of each of the four GroupV2
 `50-epochs-by-saro-waku-loss-` files at logos-chat `fa5282a3`, as `.github/scripts/pages.py point`
 writes it, cut to what `matrix` reads of a point: its seeds 0 and 1 of the three lossy rates are
 the runs of `tests/fixtures/matrix/`.

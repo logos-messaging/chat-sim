@@ -1,5 +1,5 @@
 """The matrix of a revision's runs beside its base's: a cell for each scenario and seed, the
-change of the cell, and the verdict over the cells.
+change of the cell, and the verdict over the cells and over each group's.
 
 A side is what the jobs at one revision uploaded, read at any depth: each run's
 `<scenario>/<run>/run.json`, and `<scenario>/<run>/unbuilt` for each run of a job that could not
@@ -37,6 +37,10 @@ better nor worse, so the cells better or worse beside it decide the verdict, and
 `re-rolled` only when no other cell moved. With no base, a base that did not build, or a base
 with no outcome for any cell, no cell has a change and the head's cells stand alone: `no-base`.
 A cell the base has no outcome for has no change, and the cells that have one decide.
+
+A cell is of the group its scenario's creator creates, GroupV2 or GroupV3, and the verdict over a
+group's cells is the same rule over them alone, so that one group's cells better cannot hide the
+other's worse.
 """
 
 from __future__ import annotations
@@ -81,6 +85,7 @@ _OUTCOME = {
 }
 _SUMMARY = {
     "scenario": (str,),
+    "group": (str,),
     "loss": (int, float, _NONE),
     "rate": (str, _NONE),
     "runs": (int,),
@@ -206,25 +211,25 @@ def matrix(
 ) -> dict:
     """The matrix of `head` beside `base`: of each side how many runs were read and how many
     could not be built, the point of main that stood in for the base's runs, the cells, the count
-    of each change and of the re-rolled cells `below` the spread, the verdict, with no base each
-    scenario's summary, and what it holds of `spread`. `asked` holds the runs asked of each side,
-    each its scenario and its number in a sweep, so that a cell no side has a run of is there all
-    the same.
+    of each change and of the re-rolled cells `below` the spread, the verdict, the same counts and
+    verdict of each group's cells as `groups`, with no base each scenario's summary, and what it
+    holds of `spread`. `asked` holds the runs asked of each side, each its scenario and its number
+    in a sweep, so that a cell no side has a run of is there all the same.
 
     `base` is the base's runs, or a point of main that stands in for them. `spread` is a point of
     main the head's runs are placed among: of it the matrix holds its commits and the address of
     its run, and at the scenarios of the cells its `summary` and as `seeds` each of its runs'
     `scenario`, `seed`, `epochs` without a fork and how it `ended`.
 
-    A cell holds its `scenario`, `seed`, the `run` of a sweep it is, the `loss` of its network
-    model and that loss in percent as its `rate`; the `head`'s outcome and the `base`'s, each
-    `None` where the side has no outcome; whether each side's job could not build it, as
-    `unbuilt`; the `change`, `None` where there is none; for each side the `epochs` without a
-    fork and how the run `ended`; where it is better or worse, the `part` of the standing in
-    which it `moved` and each side's value of it, else `moved` is `None`; and whether the head's
-    epochs are `below` the lowest of the spread's runs of its scenario, `None` without a spread,
-    a lowest or epochs at the head. The cells are in the order of their loss, then scenario,
-    then seed.
+    A cell holds its `scenario`, the `group` its scenario creates, `seed`, the `run` of a sweep
+    it is, the `loss` of its network model and that loss in percent as its `rate`; the `head`'s
+    outcome and the `base`'s, each `None` where the side has no outcome; whether each side's job
+    could not build it, as `unbuilt`; the `change`, `None` where there is none; for each side the
+    `epochs` without a fork and how the run `ended`; where it is better or worse, the `part` of
+    the standing in which it `moved` and each side's value of it, else `moved` is `None`; and
+    whether the head's epochs are `below` the lowest of the spread's runs of its scenario, `None`
+    without a spread, a lowest or epochs at the head. The cells are in the order of their group,
+    then loss, then scenario, then seed, and `groups` in the order of its group.
     """
     # A point's runs are main's twenty seeds a scenario, of which a pull request runs two.
     sides = [head] + ([base] if isinstance(base, Side) else [])
@@ -240,13 +245,10 @@ def matrix(
     cells = sorted(
         (_cell(key, *where[key], head, runs, lowest.get(key[0])) for key in where), key=_order
     )
-    counts = {
-        "cells": len(cells),
-        "compared": sum(cell["change"] is not None for cell in cells),
-        **{change: sum(cell["change"] == change for cell in cells) for change in _CHANGES},
-        "below": sum(cell["change"] == "re-rolled" and cell["below"] is True for cell in cells),
-        "no-outcome": sum(cell["head"] is None for cell in cells),
-    }
+    groups: Dict[str, List[dict]] = {}
+    for cell in cells:
+        groups.setdefault(cell["group"], []).append(cell)
+    counts = _counts(cells)
     return {
         "head": _side(head),
         "base": None if runs is None else _side(runs),
@@ -254,8 +256,24 @@ def matrix(
         "cells": cells,
         "counts": counts,
         "verdict": _verdict(_side(head), counts),
+        "groups": [_judged(group, its, head) for group, its in groups.items()],
         "summary": _summary(cells) if runs is None else None,
         "spread": None if spread is None else _spread(spread, cells),
+    }
+
+
+def _judged(group: str, cells: List[dict], head: Side) -> dict:
+    counts = _counts(cells)
+    return {"group": group, "counts": counts, "verdict": _verdict(_side(head), counts)}
+
+
+def _counts(cells: List[dict]) -> dict:
+    return {
+        "cells": len(cells),
+        "compared": sum(cell["change"] is not None for cell in cells),
+        **{change: sum(cell["change"] == change for cell in cells) for change in _CHANGES},
+        "below": sum(cell["change"] == "re-rolled" and cell["below"] is True for cell in cells),
+        "no-outcome": sum(cell["head"] is None for cell in cells),
     }
 
 
@@ -284,6 +302,7 @@ def _cell(
     epochs = _unforked(head_outcome)
     return {
         "scenario": key[0],
+        "group": _scenario(key[0]).group,
         "seed": key[1],
         "run": number,
         "loss": loss,
@@ -374,7 +393,8 @@ def _rate(loss: Optional[float]) -> Optional[str]:
 
 
 def _order(cell: dict) -> tuple:
-    return (cell["loss"] is None, cell["loss"] or 0, cell["scenario"], cell["seed"])
+    group = scenario.GROUPS.index(cell["group"])
+    return (group, cell["loss"] is None, cell["loss"] or 0, cell["scenario"], cell["seed"])
 
 
 def _verdict(head: dict, counts: dict) -> str:
@@ -397,9 +417,9 @@ def _verdict(head: dict, counts: dict) -> str:
 
 
 def _summary(cells: List[dict]) -> List[dict]:
-    """For each scenario in the order of its cells: how many runs, how each ended, the lowest,
-    median and highest epochs without a fork, and the median of the members off the trunk at the
-    end, as `compare` counts them: behind, on a line not the trunk, or never joined."""
+    """For each scenario in the order of its cells: its group, how many runs, how each ended, the
+    lowest, median and highest epochs without a fork, and the median of the members off the trunk
+    at the end, as `compare` counts them: behind, on a line not the trunk, or never joined."""
     scenarios: Dict[str, List[dict]] = {}
     for cell in cells:
         scenarios.setdefault(cell["scenario"], []).append(cell)
@@ -411,6 +431,7 @@ def _summary(cells: List[dict]) -> List[dict]:
         summary.append(
             {
                 "scenario": name,
+                "group": its[0]["group"],
                 "loss": its[0]["loss"],
                 "rate": its[0]["rate"],
                 "runs": len(its),
