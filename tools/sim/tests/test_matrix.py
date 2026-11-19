@@ -18,6 +18,8 @@ from tests.test_run import Scratch
 
 SCENARIO = "50-epochs-by-saro-waku-loss-1"
 GOAL = "50-epochs-by-saro-waku-loss-{}"
+# The goal on a GroupV3 group.
+GROUPV3 = "50-epochs-by-saro-waku-loss-{}-groupv3"
 # What the jobs of the pr suite uploaded at a revision: seeds 0 and 1 of three rates, as the
 # probe at logos-chat fa5282a3 ran them, each `run.json` cut to what the matrix reads.
 UPLOADED = FIXTURES / "matrix"
@@ -175,6 +177,32 @@ class Verdict(unittest.TestCase):
 
         self.assertEqual((said, counts["cells"]), ("no-outcome", 0))
 
+    def test_each_group_s_cells_have_the_verdict_of_the_same_rule_over_them_alone(self):
+        def both(groupv2: tuple, groupv3: tuple) -> Side:
+            return Side(
+                {
+                    (name.format(1), seed): Run(seed + 1, 0.01, dict(one, seed=seed))
+                    for name, outcomes in ((GOAL, groupv2), (GROUPV3, groupv3))
+                    for seed, one in enumerate(outcomes)
+                }
+            )
+
+        base = both((SPLIT, SPLIT), (SPLIT, SPLIT))
+
+        made = matrix.matrix(both((LATER, SPLIT), (SOONER, SOONER)), base)
+
+        self.assertEqual(made["verdict"], "mixed")
+        self.assertEqual(
+            [(one["group"], one["verdict"]) for one in made["groups"]],
+            [("v2", "better"), ("v3", "worse")],
+        )
+        self.assertEqual(
+            [(one["counts"]["better"], one["counts"]["worse"]) for one in made["groups"]],
+            [(1, 0), (0, 2)],
+        )
+        alone = matrix.matrix(side(SPLIT), side(SPLIT))["groups"]
+        self.assertEqual([(one["group"], one["verdict"]) for one in alone], [("v2", "same")])
+
 
 class Cells(unittest.TestCase):
     def test_a_cell_holds_both_outcomes_its_change_and_each_sides_epochs_and_ending(self):
@@ -184,6 +212,7 @@ class Cells(unittest.TestCase):
             cell,
             {
                 "scenario": SCENARIO,
+                "group": "v2",
                 "seed": 0,
                 "run": 1,
                 "loss": 0.01,
@@ -251,6 +280,12 @@ class Cells(unittest.TestCase):
             matrix.matrix(side(SPLIT), None, [("no-such-scenario", 1)])
         self.assertIn("the scenario no-such-scenario", str(refused.exception))
 
+    def test_a_run_read_of_a_scenario_there_is_no_file_of_is_refused(self):
+        runs = {("no-such-scenario", 0): Run(1, 0.01, dict(SPLIT, seed=0))}
+        with self.assertRaises(compare.Unreadable) as refused:
+            matrix.matrix(Side(runs), None)
+        self.assertIn("the scenario no-such-scenario", str(refused.exception))
+
     def test_the_cells_are_in_the_order_of_their_loss_then_seed(self):
         runs = {
             (GOAL.format(rate), seed): Run(seed + 1, loss, dict(SPLIT, seed=seed))
@@ -265,6 +300,35 @@ class Cells(unittest.TestCase):
             [(0.001, 0), (0.001, 1), (0.01, 0), (0.01, 1), (0.05, 0), (0.05, 1)],
         )
 
+    def test_a_cell_is_of_its_scenario_s_group_and_the_groups_are_in_the_order_of_theirs(self):
+        runs = {
+            (name.format(rate), seed): Run(seed + 1, loss, dict(SPLIT, seed=seed))
+            for name in (GROUPV3, GOAL)
+            for rate, loss in (("1", 0.01), ("0.1", 0.001))
+            for seed in (0, 1)
+        }
+
+        made = matrix.matrix(Side(runs))
+
+        self.assertEqual(
+            [(cell["group"], cell["loss"], cell["seed"]) for cell in made["cells"]],
+            [
+                (group, loss, seed)
+                for group in ("v2", "v3")
+                for loss in (0.001, 0.01)
+                for seed in (0, 1)
+            ],
+        )
+        self.assertEqual(
+            [(one["scenario"], one["group"]) for one in made["summary"]],
+            [
+                (GOAL.format("0.1"), "v2"),
+                (GOAL.format(1), "v2"),
+                (GROUPV3.format("0.1"), "v3"),
+                (GROUPV3.format(1), "v3"),
+            ],
+        )
+
 
 class Summary(unittest.TestCase):
     def test_without_a_base_each_scenario_says_how_its_runs_ended_and_their_epochs(self):
@@ -276,6 +340,7 @@ class Summary(unittest.TestCase):
             summary,
             {
                 "scenario": SCENARIO,
+                "group": "v2",
                 "loss": 0.01,
                 "rate": "1%",
                 "runs": 5,
@@ -396,6 +461,7 @@ class BasePoint(Scratch):
                 ("summary[0] is not a scenario's summary", dict(held, summary=[summary]))
                 for summary in (
                     {key: value for key, value in held["summary"][0].items() if key != "runs"},
+                    {key: value for key, value in held["summary"][0].items() if key != "group"},
                     dict(held["summary"][0], whole="20"),
                     dict(held["summary"][0], epochs={"lowest": 50.0, "median": 50, "highest": 50}),
                     dict(held["summary"][0], epochs={"lowest": 50, "median": 50}),

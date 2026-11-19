@@ -13,7 +13,7 @@ name: Prune Pages
 # The weekly run and a dispatch handed no pr also rewrite gh-pages as one
 # commit of its tree as it stands. Every publish is a commit, so the branch
 # would otherwise keep in its history the runs' text of every point of
-# logos-chat's main, about 5 MB a point, and of every long run, about 10.7 MB
+# logos-chat's main, about 10 MB a point, and of every long run, about 10.7 MB
 # a Sunday, long after the tree let it go past the newest thirty points and
 # fifteen long runs.
 #

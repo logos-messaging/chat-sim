@@ -3,21 +3,21 @@
 
 simulate.yml runs chat-sim at a logos-chat revision it is handed, and at a base revision too when
 it is handed one, in one of three suites. `pr` and `main` run the goal, a group of 51 that saro
-grows toward epoch 50, at rates of loss: `pr` seeds 0 and 1 of the three lossy rates, a job a run,
-at the revision and at the base; `main` seeds 0 to 19 of the four rates, two jobs of ten a rate,
-and no base. `long` runs the two scenarios of fifty epochs and every other one `tools/sim/expected`
-holds but the goal's, a job a scenario a side. `plan` checks what it was handed and prints the run
-jobs: for `pr` none at the base when main's point at the base at the current measurement is on
-gh-pages with an outcome at each run the base's jobs would do, whose runs stand in for the
-base's. `spread` names main's point at the base, or else the nearest before it, that can be
-read, whose runs the head's are placed among. `comment` writes the comment in
-Markdown: for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, and for `long`
-a row for each scenario with what `tools/sim compare` said of its runs against the base's, or
-against what `tools/sim/expected` holds when there is no base. `measurement` prints the chat-sim
-commit a run measures. `running` writes the update that moves a check run on logos-chat to in
-progress while the runs go, and `check` the one that completes it with the verdict; `post` says
-where the comment goes on a logos-chat pull request, an edit of the App's comment there or a new
-one, and writes it for GitHub's API.
+grows toward epoch 50, on GroupV2 and on GroupV3 at rates of loss: `pr` seeds 0 and 1 of the three
+lossy rates, a job a run, at the revision and at the base; `main` seeds 0 to 19 of the four rates,
+two jobs of ten a rate, and no base. `long` runs the two scenarios of fifty epochs and every other
+one `tools/sim/expected` holds but the goal's, a job a scenario a side. `plan` checks what it was
+handed and prints the run jobs: for `pr` none at the base when main's point at the base at the
+current measurement is on gh-pages with an outcome at each run the base's jobs would do, whose
+runs stand in for the base's. `spread` names main's point at the base, or else the nearest before
+it, that can be read, whose runs the head's are placed among. `comment` writes the comment in
+Markdown: for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, each group's
+apart, and for `long` a row for each scenario with what `tools/sim compare` said of its runs
+against the base's, or against what `tools/sim/expected` holds when there is no base.
+`measurement` prints the chat-sim commit a run measures. `running` writes the update that moves a
+check run on logos-chat to in progress while the runs go, and `check` the one that completes it
+with the groups' verdicts; `post` says where the comment goes on a logos-chat pull request, an edit
+of the App's comment there or a new one, and writes it for GitHub's API.
 """
 
 from __future__ import annotations
@@ -34,9 +34,11 @@ from typing import Callable, Collection, List, Optional, Sequence, Tuple
 
 import measure
 
-# The goal's scenario at a rate of loss in percent. Its files set no seed, so that run k of a
-# sweep has seed k - 1.
-GOAL = "50-epochs-by-saro-waku-loss-{}"
+# The goal's scenario of each group at a rate of loss in percent, by the group's name in a
+# scenario. Its files set no seed, so that run k of a sweep has seed k - 1.
+GOALS = {"v2": "50-epochs-by-saro-waku-loss-{}", "v3": "50-epochs-by-saro-waku-loss-{}-groupv3"}
+# What the comment calls each group.
+GROUPS = {"v2": "GroupV2", "v3": "GroupV3"}
 RATES = {"pr": ("0.1", "1", "5"), "main": ("0", "0.1", "1", "5")}
 # How many seeds of each rate a suite runs, from seed 0, and how many of them a job does.
 SEEDS = {"pr": 2, "main": 20}
@@ -61,7 +63,7 @@ MEASURED = (
     "tools/sim/scenarios/",
 )
 # What a matrix of `tools/sim matrix` holds.
-MATRIX = {"head", "base", "base_point", "cells", "counts", "verdict", "summary", "spread"}
+MATRIX = {"head", "base", "base_point", "cells", "counts", "verdict", "groups", "summary", "spread"}
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _PR = re.compile(r"[1-9][0-9]*")
@@ -115,9 +117,9 @@ _PR_FOOT = (
 )
 _OFF = {"lines_off_trunk": "line", "members_off_trunk": "member"}
 _MAIN_FOOT = (
-    f"A row: the runs at a rate of loss, a seed each, by how each ended ({_ENDED}), and how "
-    "many epochs the group stayed one group, from the lowest seed to the highest (50 is the "
-    "goal)."
+    f"A row: the runs of a group at a rate of loss, a seed each, by how each ended ({_ENDED}), "
+    "and how many epochs the group stayed one group, from the lowest seed to the highest (50 is "
+    "the goal)."
 )
 
 
@@ -209,11 +211,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "comment",
         help="write the comment on what the run jobs came to",
         description="Writes the comment in Markdown. For pr and main it is drawn from --matrix: "
-        "for pr the verdict, a row a rate and a cell a seed, and a fold for each cell with its "
-        "runs and the command that runs it again; for main a row a rate with how its runs "
-        "ended. For long it is a row for each scenario from the outcomes.json the run jobs "
-        "uploaded under RUNS and the compare.txt written beside it, and the output of each "
-        "compare.",
+        "for pr the verdict of each group, a row a group's rate and a cell a seed, and a fold for "
+        "each cell with its runs and the command that runs it again; for main a row a group's "
+        "rate with how its runs ended. For long it is a row for each scenario from the "
+        "outcomes.json the run jobs uploaded under RUNS and the compare.txt written beside it, "
+        "and the output of each compare.",
     )
     comment.add_argument(
         "runs",
@@ -329,13 +331,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 def scenarios(suite: str, expected: Path) -> List[Tuple[str, int]]:
     """The scenarios of `suite` and how many runs of each it does.
 
-    For `pr` and `main` the goal's at the suite's rates, as many as its seeds. For `long` the two
-    of fifty epochs and every scenario `expected` holds but the goal's, as many as `expected`
-    holds for each, and one when it holds none.
+    For `pr` and `main` the goal's of each group at the suite's rates, as many as its seeds. For
+    `long` the two of fifty epochs and every scenario `expected` holds but the goal's, as many as
+    `expected` holds for each, and one when it holds none.
     """
     if suite in RATES:
-        return [(GOAL.format(rate), SEEDS[suite]) for rate in RATES[suite]]
-    goal = {GOAL.format(rate) for rate in RATES["main"]}
+        return [
+            (goal.format(rate), SEEDS[suite]) for goal in GOALS.values() for rate in RATES[suite]
+        ]
+    goal = {goal.format(rate) for goal in GOALS.values() for rate in RATES["main"]}
     held = sorted(path.stem for path in expected.glob("*.json") if path.stem not in goal)
     names = FIFTY_EPOCHS + tuple(held)
     return [(name, _held_runs(expected / f"{name}.json") or 1) for name in names]
@@ -402,9 +406,18 @@ def nearest(history: Sequence[str], measurement: str, points: Collection[str]) -
 
 
 def title(matrix: dict) -> str:
-    """The verdict of `matrix` in a few words: how many of its runs moved, and which way; and
-    where they drew other ids beside main's spread, how many fell below main's worst seed."""
-    counts, verdict = matrix["counts"], matrix["verdict"]
+    """The verdict of each group of `matrix` in a few words, after the group's name: how many of
+    its runs moved, and which way; and where they drew other ids beside main's spread, how many
+    fell below main's worst seed. A verdict every group has, of a head chat-sim does not build at
+    or of no base to compare with, is said once."""
+    if matrix["verdict"] in ("unbuilt", "no-base"):
+        return _title(matrix, matrix)
+    return "; ".join(f"{GROUPS[one['group']]} {_title(matrix, one)}" for one in matrix["groups"])
+
+
+def _title(matrix: dict, judged: dict) -> str:
+    """The verdict of `judged`, the matrix or one of its groups, in a few words."""
+    counts, verdict = judged["counts"], judged["verdict"]
     if verdict == "re-rolled" and matrix["spread"] is not None:
         return (_TITLES[verdict] + _BELOW).format(c=counts)
     if verdict != "no-base":
@@ -430,6 +443,14 @@ def compares(matrix: dict) -> bool:
     return matrix["base"] is not None and matrix["counts"]["compared"] > 0
 
 
+def concluded(matrix: dict, required: bool) -> str:
+    """The check's conclusion of `matrix`: a failure where the verdict of a group's runs fails it,
+    else a success where one's succeeds, else neutral, so that one group's runs standing higher
+    cannot hide the other's standing lower."""
+    said = {conclusion(one["verdict"], required) for one in matrix["groups"]}
+    return next((one for one in ("failure", "success") if one in said), "neutral")
+
+
 def conclusion(verdict: str, required: bool) -> str:
     """The check's conclusion of `verdict`; with `required`, a head chat-sim does not build at,
     or a run with no outcome at the head, fails it. `no-base` stays neutral: what it lacks is the
@@ -453,11 +474,11 @@ def running(asked: Sequence[dict], facts: dict) -> dict:
 
 def completed(matrix: dict, comment: str, facts: dict, required: bool) -> dict:
     """The check's update once the runs came to `matrix`: completed, with the conclusion of its
-    verdict, its title, `comment` as its summary, and the report page as its details, or the
-    workflow run without one."""
+    groups' verdicts, its title, `comment` as its summary, and the report page as its details, or
+    the workflow run without one."""
     return {
         "status": "completed",
-        "conclusion": conclusion(matrix["verdict"], required),
+        "conclusion": concluded(matrix, required),
         "details_url": facts["report_url"] or facts["run_url"],
         "output": {"title": title(matrix), "summary": comment},
     }
@@ -477,9 +498,9 @@ def post_to(pages: Sequence[Sequence[dict]], login: str, pr: str) -> Tuple[str, 
 
 
 def render_pr(matrix: dict, facts: dict) -> str:
-    """The comment on a pull request: the verdict, a row a rate and a cell a seed, beside them
-    main's spread where the matrix has one, what a cell says, and under it a fold for each cell
-    with its runs and the command that runs it again."""
+    """The comment on a pull request: the verdict of each group, a row a group's rate and a cell a
+    seed, beside them main's spread where the matrix has one, what a cell says, and under it a
+    fold for each cell with its runs and the command that runs it again."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
     cells, spread = matrix["cells"], matrix["spread"]
@@ -491,21 +512,22 @@ def render_pr(matrix: dict, facts: dict) -> str:
     lines = [
         _verdict_line(headline(matrix), facts, matrix["base_point"]),
         "",
-        "| Loss | " + " | ".join(columns) + " |",
-        "|---" * (len(columns) + 1) + "|",
+        "| Group | Loss | " + " | ".join(columns) + " |",
+        "|---" * (len(columns) + 2) + "|",
     ]
     for rate, row in _rows(cells):
         said = {cell["seed"]: words(cell, against) for cell in row}
         shown = [said.get(seed, "-") for seed in seeds]
         if spread is not None:
             shown.append(spread_of(spread, row[0]["scenario"]))
-        lines.append(f"| {rate} | " + " | ".join(shown) + " |")
+        lines.append(f"| {GROUPS[row[0]['group']]} | {rate} | " + " | ".join(shown) + " |")
     lines += ["", _PR_FOOT]
     for cell in cells:
         opened = " open" if cell["change"] in ("better", "worse") else ""
         lines += [
             "",
-            f"<details{opened}><summary>{_rate(cell['rate'])} loss, seed {cell['seed']}: "
+            f"<details{opened}><summary>{GROUPS[cell['group']]} {_rate(cell['rate'])} loss, seed "
+            f"{cell['seed']}: "
             f"{words(cell, against)}</summary>",
             "",
             f"- **head** {_commit(facts['revision'])} · {_ran(cell, 'head')}",
@@ -517,18 +539,18 @@ def render_pr(matrix: dict, facts: dict) -> str:
 
 
 def render_main(matrix: dict, facts: dict) -> str:
-    """The comment on a point of main: a row a rate with how its runs ended, and the lowest,
-    median and highest epochs without a fork."""
+    """The comment on a point of main: a row a group's rate with how its runs ended, and the
+    lowest, median and highest epochs without a fork."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
     said = f"chat-sim: {matrix['counts']['cells']} runs"
     if matrix["verdict"] == "no-outcome":
-        said = f"chat-sim: {title(matrix)}"
+        said = f"chat-sim: {_title(matrix, matrix)}"
     lines = [
         _verdict_line(said, facts),
         "",
-        "| Loss | Runs | Whole | Behind | Split | Stalled | Epochs without a fork |",
-        "|---|---|---|---|---|---|---|",
+        "| Group | Loss | Runs | Whole | Behind | Split | Stalled | Epochs without a fork |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for one in matrix["summary"]:
         epochs = one["epochs"]
@@ -536,7 +558,8 @@ def render_main(matrix: dict, facts: dict) -> str:
         if epochs["median"] is not None:
             reached = f"{epochs['lowest']} to {epochs['highest']}, median {epochs['median']}"
         counted = " | ".join(str(one[ended]) for ended in ("whole", "behind", "split", "stalled"))
-        lines.append(f"| {_rate(one['rate'])} | {one['runs']} | {counted} | {reached} |")
+        named = f"{GROUPS[one['group']]} | {_rate(one['rate'])}"
+        lines.append(f"| {named} | {one['runs']} | {counted} | {reached} |")
     lines += ["", _MAIN_FOOT]
     return "".join(f"{line}\n" for line in lines)
 
@@ -886,10 +909,16 @@ def _matrix(file: Path) -> Optional[dict]:
 
 
 def _part(suite: str, name: str, first: int, count: int) -> str:
-    """What a job runs, as its name says: a scenario of `long`, else a rate and its seeds."""
+    """What a job runs, as its name says: a scenario of `long`, else a group, a rate and its
+    seeds."""
     if suite == "long":
         return name
-    rate = f"{name.removeprefix(GOAL.format(''))}%"
+    rate = next(
+        f"{GROUPS[group]} {rate}%"
+        for group, goal in GOALS.items()
+        for rate in RATES["main"]
+        if goal.format(rate) == name
+    )
     if count == 1:
         return f"{rate} seed {first - 1}"
     return f"{rate} seeds {first - 1} to {first + count - 2}"

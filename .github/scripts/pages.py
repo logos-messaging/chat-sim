@@ -52,21 +52,21 @@ NO_OUTCOME = "no outcome"
 
 # Where the site keeps what simulate.yml's runs of logos-chat came to.
 LOGOS_CHAT = "logos-chat"
-# How many of the newest points of main keep their runs' text, about 5 MB a point, in a site
-# Pages holds to 1 GB. Every point keeps its point.json.
+# How many of the newest points of main keep their runs' text, about 10 MB a point, 5 MB each
+# group's runs, in a site Pages holds to 1 GB. Every point keeps its point.json.
 WINDOW = 30
 # How many of the newest long runs keep their text, their runs' and compare's. A long run takes
 # about 10.7 MB while it keeps its text: 9.6 MB of the six held grows' eighteen runs, 7.1 MB of
 # it the three of grow-waku-size-50, on master's CI run 42260983597 without report.json, 0.08 MB
 # of the two runs of fifty epochs, and its page, 1 MB, which shows that text. Fifteen take
-# 160 MB, about the 150 MB of the thirty points, so the two hold under a third of Pages' 1 GB.
-# That measure holds none of the twenty-three runs of the held `-groupv3` scenarios.
+# 160 MB, about half the 300 MB of the thirty points, so the two hold under half of Pages' 1 GB.
+# That measure holds none of the fifteen runs of the held `-groupv3` scenarios.
 # Every long run keeps its long.json, and a page drawn from it.
 LONG_WINDOW = 15
 # The text of a run the site keeps, and the build's log of one whose job could not build
 # chat-sim. Its report.json, ten times the rest, stays in the artifacts.
 TEXTS = ("run.txt", "report.txt", "run.json", "build.log")
-# How many rates the graph over main tells apart, a hue of `_STYLE`'s ramp each.
+# How many rates of a group the graph over main tells apart, a hue of `_STYLE`'s ramp each.
 HUES = 4
 # The repositories whose commits and pull requests a point names.
 LOGOS_CHAT_URL = "https://github.com/logos-messaging/logos-chat"
@@ -129,24 +129,27 @@ _VERDICTS = (
     "same",
 )
 _SIDE = {"runs": (int,), "unbuilt": (int,)}
+_COUNTS = {field: (int,) for field in ("cells", "compared", *_CHANGES, "below", "no-outcome")}
 _MATRIX = {
     "head": _SIDE,
     "base": (dict, _NONE),
     "base_point": (dict, _NONE),
     "cells": (list,),
-    "counts": {
-        field: (int,) for field in ("cells", "compared", *_CHANGES, "below", "no-outcome")
-    },
+    "counts": _COUNTS,
     "verdict": (str,),
+    "groups": (list,),
     "summary": (list, _NONE),
     "spread": (dict, _NONE),
 }
+# The counts and the verdict of a group's cells.
+_GROUP = {"group": (str,), "counts": _COUNTS, "verdict": (str,)}
 # The point of main a matrix names: the one that stood in for the base's runs, and its spread.
 _NAMED = {"logos_chat": (str,), "measurement": (str,), "run_url": (str,)}
 _SPREAD = {**_NAMED, "summary": (list,), "seeds": (list,)}
 _SEED = {"scenario": (str,), "seed": (int,), "epochs": (int, _NONE), "ended": (str, _NONE)}
 _CELL = {
     "scenario": (str,),
+    "group": (str,),
     "seed": (int,),
     "run": (int,),
     "loss": (int, float, _NONE),
@@ -163,6 +166,9 @@ _CELL = {
 # A point keeps a cell of main's matrix but whether it is below a spread, which only a pull
 # request's matrix has.
 _POINT_CELL = {field: kind for field, kind in _CELL.items() if field != "below"}
+# A point need not name the group of a cell or a scenario: the points that do not ran GroupV2's
+# alone.
+_UNGROUPED_CELL = {field: kind for field, kind in _POINT_CELL.items() if field != "group"}
 _OUTCOME = {
     "seed": (int,),
     "network_seed": (int, _NONE),
@@ -182,6 +188,7 @@ _OUTCOME = {
 _MOVED = {"part": (str,), "head": (int, str), "base": (int, str)}
 _SUMMARY = {
     "scenario": (str,),
+    "group": (str,),
     "loss": (int, float, _NONE),
     "rate": (str, _NONE),
     "runs": (int,),
@@ -194,6 +201,7 @@ _SUMMARY = {
     },
     "members_off_trunk": {"median": (int, float, _NONE)},
 }
+_UNGROUPED_SUMMARY = {field: kind for field, kind in _SUMMARY.items() if field != "group"}
 # What `write_point`, `write_pr` and `write_long` write.
 _POINT = {
     "logos_chat": (str,),
@@ -503,7 +511,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Writes logos-chat/index.html of SITE, the graph over logos-chat's main, "
         "from the point.json of each point, in the order of their runs' numbers, and a link to "
         "the long run of the highest run number. A point.json or a long.json it cannot read is "
-        f"left out, with a warning; points of more than {HUES} rates are refused.",
+        f"left out, with a warning; points of more than {HUES} rates of a group are refused.",
     )
     trend.add_argument("site", metavar="SITE", type=Path, help="the site, as gh-pages holds it")
     trend.set_defaults(command=_trend)
@@ -780,9 +788,10 @@ def write_long(
 def draw_point(directory: Path, point: dict) -> None:
     """Writes the page of the point in `directory`, its index.html, from `point` and the runs'
     text `directory` keeps: what ran, the pull requests it merged and the point it follows, its
-    cells as a heatmap, how each rate's runs ended, and each run with the command that runs it
-    again and, while its text is kept, the text, its lines and its wall time; where chat-sim did
-    not build, the build's log, once. Every file it links is one `directory` holds."""
+    cells as a heatmap a group, how the runs of each group's rate ended, and each run with the
+    command that runs it again and, while its text is kept, the text, its lines and its wall time;
+    where chat-sim did not build, the build's log, once. Every file it links is one `directory`
+    holds."""
     logos_chat, measured, before = point["logos_chat"], point["measurement"], point["previous"]
     facts = {"revision": logos_chat, "base": "", "chat_sim": point["chat_sim"]}
     rows = _by_rate(point["cells"])
@@ -819,12 +828,15 @@ def draw_point(directory: Path, point: dict) -> None:
         )
     body += (
         '<section class="chart" id="matrix">\n<h2>The matrix</h2>\n'
-        + _heatmap(rows, "The point's runs")
+        + "".join(
+            f"<h3>{_e(called)}</h3>\n" + _heatmap(_by_rate(cells), f"The point's {called} runs")
+            for called, cells in _groups(point["cells"])
+        )
         + _heat_legend()
-        + '<p class="caption">A row a rate and a column a seed: a cell\'s colour is the epochs '
-        "its run went without a fork; a dot marks a run that ended whole, a ring one that ended "
-        "one group with members behind, and no mark one that split or stalled. Its hover text is "
-        "how the run came out.</p>\n"
+        + '<p class="caption">A row a group\'s rate and a column a seed: a cell\'s colour is the '
+        "epochs its run went without a fork; a dot marks a run that ended whole, a ring one that "
+        "ended one group with members behind, and no mark one that split or stalled. Its hover "
+        "text is how the run came out.</p>\n"
         "</section>\n"
     )
     unbuilt = next((cell for cell in point["cells"] if cell["unbuilt"]["head"]), None)
@@ -834,8 +846,9 @@ def draw_point(directory: Path, point: dict) -> None:
     # The section above shows the build's log once; a run that could not build links its own.
     for name, cells in rows:
         listed = [cells[seed] for seed in sorted(cells)]
+        named = f"{simulate.GROUPS[group(listed[0])]} {name}"
         body += (
-            f'<details>\n<summary>{_e(name)} <span class="muted">{len(listed)} runs</span>'
+            f'<details>\n<summary>{_e(named)} <span class="muted">{len(listed)} runs</span>'
             "</summary>\n"
             + _runs_table(directory, listed)
             + "".join(
@@ -867,17 +880,16 @@ def draw_point(directory: Path, point: dict) -> None:
 def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
     """Writes the report page of the run of a logos-chat pull request kept in `out`, its
     index.html, from `matrix` and `meta`, which `out` holds, and the runs' text it keeps: the
-    verdict as the comment says it; the head's cells and the base's as heatmaps, and where the
-    matrix has main's spread, where the head's runs fall among main's; then each cell's runs at
-    both sides, with their text and lines, and the command that runs the cell again. Where
-    chat-sim did not build at the head, the build's log takes the place of the cells, and where
-    main's point stood in for the base's runs, the point's page, or its point.json until it has
-    one, is linked in theirs, and its runs' text is shown from the point's directory while the
-    point keeps it."""
+    verdict as the comment says it; of each group the head's cells and the base's as heatmaps,
+    and where the matrix has main's spread, where the head's runs fall among main's; then of each
+    group each cell's runs at both sides, with their text and lines, and the command that runs
+    the cell again. Where chat-sim did not build at the head, the build's log takes the place of
+    the cells, and where main's point stood in for the base's runs, the point's page, or its
+    point.json until it has one, is linked in theirs, and its runs' text is shown from the point's
+    directory while the point keeps it."""
     head, base, point = meta["revision"], meta["base"], matrix["base_point"]
     facts = {"revision": head, "base": base or "", "chat_sim": meta["chat_sim"]}
     against = simulate.compares(matrix)
-    rows = _by_rate(matrix["cells"])
     at = page = there = None
     if point is not None:
         at = f"../main/{point['logos_chat']}/{point['measurement']}/"
@@ -907,22 +919,27 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
             run = _run_href(unbuilt)
             body += _build(_job(unbuilt), out / "head" / run, f"head/{run}")
     else:
-        heats = [
-            f'<div>\n<p class="side">the head {_code(head)}</p>\n'
-            + _heatmap(rows, "The head's runs", "head", against)
-            + "</div>\n"
-        ]
-        if matrix["base"] is not None:
-            named = f"the base {_code(base)}"
-            if at is not None:
-                named = f"main's point at {_link(page, point['logos_chat'][:7], code=True)}"
-            heats.append(
-                f'<div>\n<p class="side">{named}</p>\n'
-                + _heatmap(rows, "The base's runs", "base")
+        drawn = strips = ""
+        for called, cells in _groups(matrix["cells"]):
+            rows = _by_rate(cells)
+            heats = [
+                f'<div>\n<p class="side">the head {_code(head)}</p>\n'
+                + _heatmap(rows, f"The head's {called} runs", "head", against)
                 + "</div>\n"
-            )
-        if matrix["spread"] is not None:
-            heats.append(_spread(matrix["spread"], rows))
+            ]
+            if matrix["base"] is not None:
+                named = f"the base {_code(base)}"
+                if at is not None:
+                    named = f"main's point at {_link(page, point['logos_chat'][:7], code=True)}"
+                heats.append(
+                    f'<div>\n<p class="side">{named}</p>\n'
+                    + _heatmap(rows, f"The base's {called} runs", "base")
+                    + "</div>\n"
+                )
+            if matrix["spread"] is not None:
+                heats.append(_spread(matrix["spread"], rows))
+            drawn += f'<h3>{_e(called)}</h3>\n<div class="heats">\n{"".join(heats)}</div>\n'
+            strips += _strips(matrix["spread"], rows, against, called)
         changes = {cell["change"] for cell in matrix["cells"]}
         outlined = [
             (_cell_key(f"bin2 {change}", "outline"), f"{change} than the base")
@@ -931,18 +948,22 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
         ]
         body += (
             '<section class="chart" id="matrix">\n<h2>The matrix</h2>\n'
-            f'<div class="heats">\n{"".join(heats)}</div>\n'
+            + drawn
             + _heat_legend(*outlined)
-            + '<p class="caption">A row a rate and a column a seed: a cell\'s colour is the epochs '
-            "its run went without a fork; a dot marks a run that ended whole, a ring one that "
-            "ended one group with members behind, and no mark one that split or stalled. An "
-            "outline marks a run of the head that stands lower or higher than the base's. A "
+            + '<p class="caption">A row a group\'s rate and a column a seed: a cell\'s colour is '
+            "the epochs its run went without a fork; a dot marks a run that ended whole, a ring "
+            "one that ended one group with members behind, and no mark one that split or stalled. "
+            "An outline marks a run of the head that stands lower or higher than the base's. A "
             "cell's hover text is how the run came out.</p>\n"
-            + _strips(matrix["spread"], rows, against)
+            + strips
             + "</section>\n"
             '<section id="cells">\n<h2>The cells</h2>\n'
         )
-        moved = sorted(matrix["cells"], key=lambda cell: cell["change"] not in ("better", "worse"))
+        groups = list(simulate.GROUPS)
+        moved = sorted(
+            matrix["cells"],
+            key=lambda cell: (groups.index(group(cell)), cell["change"] not in ("better", "worse")),
+        )
         for cell in moved:
             run = _run_href(cell)
             named = f"the head {_code(head)}"
@@ -958,10 +979,11 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
             if cell["head"] is None:
                 kind = "none"
             opened = " open" if cell["change"] in ("better", "worse") else ""
+            called = simulate.GROUPS[group(cell)]
             body += (
-                f'<details class="run"{opened}>\n<summary>{_e(cell["rate"] or "-")} loss, seed '
-                f'{cell["seed"]} <span class="{kind}">{_e(simulate.words(cell, against))}</span>'
-                "</summary>\n"
+                f'<details class="run"{opened}>\n<summary>{_e(called)} {_e(cell["rate"] or "-")} '
+                f'loss, seed {cell["seed"]} <span class="{kind}">'
+                f"{_e(simulate.words(cell, against))}</span></summary>\n"
                 f'<div class="sides">\n{sides}</div>\n'
                 + _again(cell, facts)
                 + "</details>\n"
@@ -994,10 +1016,10 @@ def draw_long(directory: Path, long: dict) -> None:
         f"{_commit(CHAT_SIM_URL, long['measurement'])} · {_link(long['run_url'], 'the run')} · "
         f"{_when(long)} UTC</p>\n"
         "<p>The two scenarios of fifty epochs, a run each, and each scenario "
-        "<code>tools/sim/expected</code> holds but the goal's, as many runs as it holds outcomes, "
-        "held to them, at this commit of logos-chat's main. They measure other things than the "
-        "goal: fifty epochs on the library's own timers, a group any member adds to, and one "
-        "held at fifty members. The graph over main draws none of it.</p>\n"
+        "<code>tools/sim/expected</code> holds but the goal's on either group, as many runs as it "
+        "holds outcomes, held to them, at this commit of logos-chat's main. They measure other "
+        "things than the goal: fifty epochs on the library's own timers, a group any member adds "
+        "to, and one held at fifty members. The graph over main draws none of it.</p>\n"
     )
     if not kept:
         body += (
@@ -1069,23 +1091,25 @@ def draw_long(directory: Path, long: dict) -> None:
 
 def write_trend(site: Path) -> None:
     """Writes `logos-chat/index.html` of `site`, the graph over logos-chat's main, from each
-    point `points` reads, the oldest at the left: of each rate the epochs without a fork and the
-    runs whole, the newest point's cells, the members off the trunk once a rate has had every run
-    whole, and the list of the points, the newest first.
+    point `points` reads, the oldest at the left: of each group's rate the epochs without a fork
+    and the runs whole, the newest point's cells, the members off the trunk of a group once a
+    rate of it has had every run whole, and the list of the points, the newest first.
 
     Every number it draws is one a point.json holds. A point that measures another chat-sim
     commit than the point before it has a dashed line, and one re-rolled against the point it
-    follows an open marker. Points of more than `HUES` rates are refused. Of the long runs it
-    links the one of the highest run number, and draws nothing.
+    follows an open marker. Points of more than `HUES` rates of a group are refused. Of the long
+    runs it links the one of the highest run number, and draws nothing.
     """
     found = [point for _, point in reversed(points(site))]
-    rates = _rates(found)
+    groups = [(called, held, _rates(held, called)) for called, held in _apart(found)]
+    reached = [(called, held, rates) for called, held, rates in groups if _reached(held)]
     body = (
         f'<p class="muted">{_link("../", "chat-sim")} / {_link("../guide/", "Guide")}</p>\n'
         "<h1>Over main</h1>\n"
         '<p class="lead">How many epochs a group of logos-chat clients lasts as one group while '
-        f"it grows toward epoch {_TOP}, at each rate of loss, over logos-chat's main: a point for "
-        "each of its commits that was measured, the oldest at the left.</p>\n"
+        f"it grows toward epoch {_TOP}, on GroupV2 and on GroupV3 at each rate of loss, over "
+        "logos-chat's main: a point for each of its commits that was measured, the oldest at the "
+        "left.</p>\n"
     )
     newest = next(iter(longs(site)), None)
     if newest is not None:
@@ -1094,16 +1118,17 @@ def write_trend(site: Path) -> None:
         body += (
             f"<p>{_link(at, 'The newest long run')}, at main {_code(long['logos_chat'])} on "
             f"{_when(long)} UTC: the two scenarios of fifty epochs and each scenario chat-sim "
-            "holds to what is expected but the goal's, run at main's tip each Sunday. They "
-            "measure other things than the goal, so nothing of them is drawn here.</p>\n"
+            "holds to what is expected but the goal's on either group, run at main's tip each "
+            "Sunday. They measure other things than the goal, so nothing of them is drawn "
+            "here.</p>\n"
         )
     if found:
         body += (
-            _epochs_chart(found, rates)
-            + _whole_chart(found, rates)
-            + _newest_chart(found[-1], rates)
-            + (_off_chart(found, rates) if _reached(found) else "")
-            + _points_list(found, rates)
+            _epochs_chart(found, groups)
+            + _whole_chart(groups)
+            + _newest_chart(found[-1], groups)
+            + (_off_chart(reached) if reached else "")
+            + _points_list(found, groups)
         )
     else:
         body += "<p>No point of main has been kept yet.</p>\n"
@@ -1229,6 +1254,12 @@ def read_matrix(path: Path) -> dict:
             _shaped(matrix["base"], _SIDE, "base")
         if matrix["verdict"] not in _VERDICTS:
             raise Unreadable(f"verdict {matrix['verdict']!r} is none of a matrix")
+        for number, one in enumerate(matrix["groups"]):
+            where = f"groups[{number}]"
+            _shaped(one, _GROUP, where)
+            _group(one, where)
+            if one["verdict"] not in _VERDICTS:
+                raise Unreadable(f"{where}.verdict {one['verdict']!r} is none of a matrix")
         if (matrix["summary"] is None) != (matrix["base"] is not None):
             raise Unreadable("summary is there without a base, and only without one")
         if matrix["base_point"] is not None:
@@ -1272,9 +1303,10 @@ def read_point(path: Path) -> dict:
             _shaped(point["previous"], _PREVIOUS, "previous")
             _commits(point["previous"], "logos_chat", "measurement", where="previous.")
         for number, cell in enumerate(point["cells"]):
-            _cell(cell, f"cells[{number}]", alone=True, shape=_POINT_CELL)
+            shape = _POINT_CELL if "group" in cell else _UNGROUPED_CELL
+            _cell(cell, f"cells[{number}]", alone=True, shape=shape)
         for number, one in enumerate(point["summary"]):
-            _summary(one, f"summary[{number}]")
+            _summary(one, f"summary[{number}]", grouped="group" in one)
     except Unreadable as refused:
         raise Unreadable(f"{path}: {refused}") from None
     return point
@@ -1769,6 +1801,7 @@ def _cell(cell: object, where: str, alone: bool, shape: dict = _CELL) -> None:
     _shaped(cell, shape, where)
     if _SCENARIO.fullmatch(cell["scenario"]) is None:
         raise Unreadable(f"{where}.scenario {cell['scenario']!r} is not the name of a scenario")
+    _group(cell, where)
     if cell["run"] < 1:
         raise Unreadable(f"{where}.run {cell['run']} is not that of a run")
     for side in ("head", "base"):
@@ -1796,10 +1829,24 @@ def _outcome(outcome: object, where: str) -> None:
         raise Unreadable(f"{where}.ended is not how a run ended")
 
 
-def _summary(one: object, where: str) -> None:
-    _shaped(one, _SUMMARY, where)
+def _summary(one: object, where: str, grouped: bool = True) -> None:
+    """Refuses `one` unless it is a scenario's summary; without `grouped`, one that names no
+    group."""
+    _shaped(one, _SUMMARY if grouped else _UNGROUPED_SUMMARY, where)
     if _SCENARIO.fullmatch(one["scenario"]) is None:
         raise Unreadable(f"{where}.scenario {one['scenario']!r} is not the name of a scenario")
+    _group(one, where)
+
+
+def _group(held: dict, where: str) -> None:
+    if group(held) not in simulate.GROUPS:
+        raise Unreadable(f"{where}.group {held['group']!r} is none of a scenario's")
+
+
+def group(held: dict) -> str:
+    """The group of a cell or a scenario's summary of a matrix or a point, or of a group's
+    verdict: `v2` where a point names none."""
+    return held.get("group", "v2")
 
 
 def _named(point: dict, where: str) -> None:
@@ -1895,9 +1942,31 @@ def _fifty(run: Path, name: str, show: Callable[..., str]) -> str:
     return head + show(name, "run.txt") + show(name, "report.txt")
 
 
-def _rates(found: Sequence[dict]) -> List[Tuple[object, str]]:
-    """Each rate the points summarise, as `_rate` keys it, in the order of its loss, and the
-    name the page gives it; refused when there are more than `HUES`."""
+def _apart(found: Sequence[dict]) -> List[Tuple[str, List[dict]]]:
+    """Each group the points summarise, in the order of `simulate.GROUPS`: what the page calls
+    it, and each point with the cells and the summary of that group alone, none where the point
+    has no run of it."""
+    held = {group(one) for point in found for one in point["summary"]}
+    return [
+        (
+            called,
+            [
+                dict(
+                    point,
+                    cells=[cell for cell in point["cells"] if group(cell) == key],
+                    summary=[one for one in point["summary"] if group(one) == key],
+                )
+                for point in found
+            ],
+        )
+        for key, called in simulate.GROUPS.items()
+        if key in held
+    ]
+
+
+def _rates(found: Sequence[dict], called: str) -> List[Tuple[object, str]]:
+    """Each rate the points of the group `called` summarise, as `_rate` keys it, in the order of
+    its loss, and the name the page gives it; refused when there are more than `HUES`."""
     seen: Dict[object, dict] = {}
     for point in found:
         for one in point["summary"]:
@@ -1906,19 +1975,23 @@ def _rates(found: Sequence[dict]) -> List[Tuple[object, str]]:
         seen.values(), key=lambda one: (one["loss"] is None, one["loss"] or 0, one["scenario"])
     )
     if len(ordered) > HUES:
-        raise Unreadable(f"the points hold {len(ordered)} rates, and the page tells {HUES} apart")
+        raise Unreadable(
+            f"the points hold {len(ordered)} rates of {called}, and the page tells {HUES} apart"
+        )
     return [(_rate(one), one["rate"] or one["scenario"]) for one in ordered]
 
 
 def _rate(held: dict) -> object:
-    """The rate a summary or a cell is of: its loss, so that a scenario renamed at the same loss
-    goes on as the same line, or its scenario where it has none."""
-    return held["scenario"] if held["loss"] is None else held["loss"]
+    """The rate a summary or a cell is of, within its group: its loss, so that a scenario renamed
+    at the same loss goes on as the same line, or its scenario where it has none."""
+    return group(held), (held["scenario"] if held["loss"] is None else held["loss"])
 
 
-def _epochs_chart(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> str:
-    """The first chart: a panel a rate, the median of the epochs without a fork as a line and
-    the band from the lowest to the highest."""
+def _epochs_chart(
+    found: Sequence[dict], groups: Sequence[Tuple[str, List[dict], List[Tuple[object, str]]]]
+) -> str:
+    """The first chart: of each group of `groups`, as `write_trend` has them, a panel a rate, the
+    median of the epochs without a fork as a line and the band from the lowest to the highest."""
     return (
         '<section class="chart" id="epochs">\n<h2>Epochs without a fork</h2>\n'
         + _legend(
@@ -1926,10 +1999,13 @@ def _epochs_chart(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) ->
             (_band_key(), "the lowest run to the highest"),
             *_marks(found),
         )
-        + '<div class="panels">\n'
-        + "".join(_panel(found, hue, *rate) for hue, rate in enumerate(rates, 1))
-        + "</div>\n"
-        '<p class="caption">How many epochs each run went without a fork: the first split\'s, '
+        + "".join(
+            f'<h3>{_e(called)}</h3>\n<div class="panels">\n'
+            + "".join(_panel(held, hue, *rate, called) for hue, rate in enumerate(rates, 1))
+            + "</div>\n"
+            for called, held, rates in groups
+        )
+        + '<p class="caption">How many epochs each run went without a fork: the first split\'s, '
         "else the trunk's. It moves with every change for the better, where the runs whole below "
         "can show none yet. A dashed line marks a point that measures another chat-sim commit "
         "than the point before it, so that the step is chat-sim's, not logos-chat's; an open "
@@ -1939,29 +2015,36 @@ def _epochs_chart(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) ->
     )
 
 
-def _whole_chart(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> str:
-    """The second chart: a line a rate of how many runs ended whole."""
-    runs = max((one["runs"] for point in found for one in point["summary"]), default=0)
+def _whole_chart(groups: Sequence[Tuple[str, List[dict], List[Tuple[object, str]]]]) -> str:
+    """The second chart: of each group of `groups`, as `write_trend` has them, a line a rate of
+    how many runs ended whole."""
+    drawn = ""
+    for called, held, rates in groups:
+        runs = max((one["runs"] for point in held for one in point["summary"]), default=0)
+        drawn += (
+            f"<h3>{_e(called)} runs whole{_of_runs(held)}</h3>\n"
+            + _legend(
+                *((_line_key(hue), name) for hue, (_, name) in enumerate(rates, 1)),
+                (_goal_key(), "the goal"),
+                *_marks(held),
+            )
+            + _over(
+                held,
+                rates,
+                _whole,
+                _whole_said,
+                top=runs,
+                plot=240,
+                label=f"{called} runs whole at {_TOP} epochs",
+                goal=runs,
+                merged=True,
+                noted=True,
+            )
+        )
     return (
         '<section class="chart" id="whole">\n'
-        f"<h2>Runs whole at {_TOP} epochs{_of_runs(found)}</h2>\n"
-        + _legend(
-            *((_line_key(hue), name) for hue, (_, name) in enumerate(rates, 1)),
-            (_goal_key(), "the goal"),
-            *_marks(found),
-        )
-        + _over(
-            found,
-            rates,
-            _whole,
-            _whole_said,
-            top=runs,
-            plot=240,
-            label=f"Runs whole at {_TOP} epochs",
-            goal=runs,
-            merged=True,
-            noted=True,
-        )
+        f"<h2>Runs whole at {_TOP} epochs</h2>\n"
+        + drawn
         + '<p class="caption">How many runs of each rate ended whole: one group, every member in '
         f"it, at epoch {_TOP}. The goal is every line at the top. A line breaks at a point where "
         "none of the rate's runs had an outcome, as when chat-sim did not build. Under the dates "
@@ -1971,19 +2054,27 @@ def _whole_chart(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> 
     )
 
 
-def _newest_chart(point: dict, rates: Sequence[Tuple[object, str]]) -> str:
-    """The third chart: the cells of the newest point, a row a rate and a column a seed."""
-    rows = []
-    for rate, name in rates:
-        cells = {cell["seed"]: cell for cell in point["cells"] if _rate(cell) == rate}
-        if cells:
-            rows.append((name, cells))
+def _newest_chart(
+    point: dict, groups: Sequence[Tuple[str, List[dict], List[Tuple[object, str]]]]
+) -> str:
+    """The third chart: the cells of the newest point, a heatmap a group of `groups`, as
+    `write_trend` has them, a row a rate and a column a seed."""
+    drawn = ""
+    for called, _, rates in groups:
+        rows = []
+        for rate, name in rates:
+            cells = {cell["seed"]: cell for cell in point["cells"] if _rate(cell) == rate}
+            if cells:
+                rows.append((name, cells))
+        if rows:
+            label = f"The newest point's {called} runs"
+            drawn += f"<h3>{_e(called)}</h3>\n" + _heatmap(rows, label)
     when = _when(point)
     return (
         '<section class="chart" id="newest">\n<h2>The newest point</h2>\n'
-        f'<p class="caption">{when} UTC, main {_e(point["logos_chat"][:7])}: a row a rate and a '
-        "column a seed.</p>\n"
-        + _heatmap(rows, "The newest point's runs")
+        f'<p class="caption">{when} UTC, main {_e(point["logos_chat"][:7])}: a row a group\'s rate '
+        "and a column a seed.</p>\n"
+        + drawn
         + _heat_legend()
         + '<p class="caption">A cell\'s colour is the epochs its run went without a fork; a dot '
         "marks a run that ended whole, a ring one that ended one group with members behind, and "
@@ -1992,38 +2083,49 @@ def _newest_chart(point: dict, rates: Sequence[Tuple[object, str]]) -> str:
     )
 
 
-def _off_chart(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> str:
-    """The fourth chart: a line a rate of the median of the members off the trunk at the end."""
-    medians = [
-        one["members_off_trunk"]["median"]
-        for point in found
-        for one in point["summary"]
-        if one["members_off_trunk"]["median"] is not None
-    ]
+def _off_chart(groups: Sequence[Tuple[str, List[dict], List[Tuple[object, str]]]]) -> str:
+    """The fourth chart: of each group of `groups`, as `write_trend` has them, a line a rate of
+    the median of the members off the trunk at the end."""
+    drawn = ""
+    for called, held, rates in groups:
+        medians = [
+            one["members_off_trunk"]["median"]
+            for point in held
+            for one in point["summary"]
+            if one["members_off_trunk"]["median"] is not None
+        ]
+        drawn += (
+            f"<h3>{_e(called)}</h3>\n"
+            + _legend(
+                *((_line_key(hue), name) for hue, (_, name) in enumerate(rates, 1)), *_marks(held)
+            )
+            + _over(
+                held,
+                rates,
+                lambda one: one["members_off_trunk"]["median"],
+                lambda one: f"a median of {_number(one['members_off_trunk']['median'])} members "
+                "off the trunk at the end",
+                top=max(medians, default=0),
+                plot=150,
+                label=f"{called} members off the trunk at the end",
+            )
+        )
     return (
         '<section class="chart" id="off">\n<h2>Members off the trunk at the end</h2>\n'
-        + _legend(
-            *((_line_key(hue), name) for hue, (_, name) in enumerate(rates, 1)), *_marks(found)
-        )
-        + _over(
-            found,
-            rates,
-            lambda one: one["members_off_trunk"]["median"],
-            lambda one: f"a median of {_number(one['members_off_trunk']['median'])} members off "
-            "the trunk at the end",
-            top=max(medians, default=0),
-            plot=150,
-            label="Members off the trunk at the end",
-        )
+        + drawn
         + '<p class="caption">Behind at the end, on a line not the trunk, or never joined: the '
-        "median of each rate's runs. The other half of the goal, once a rate has every run "
-        "whole.</p>\n"
+        "median of each rate's runs. The other half of the goal, drawn of a group once a rate of "
+        "it has every run whole.</p>\n"
         "</section>\n"
     )
 
 
-def _points_list(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> str:
-    """The list of the points, the newest first."""
+def _points_list(
+    found: Sequence[dict], groups: Sequence[Tuple[str, List[dict], List[Tuple[object, str]]]]
+) -> str:
+    """The list of the points, the newest first, with the runs whole of each group of `groups`, as
+    `write_trend` has them."""
+    rates = [(rate, f"{called} {name}") for called, _, its in groups for rate, name in its]
     rows = []
     for number in reversed(range(len(found))):
         point = found[number]
@@ -2050,19 +2152,23 @@ def _points_list(found: Sequence[dict], rates: Sequence[Tuple[object, str]]) -> 
             f"{_link(point['run_url'], 'the run')}</td>"
             "</tr>\n"
         )
-    heads = "".join(f"<th>{_e(name)}</th>" for _, name in rates)
+    wholes = "".join(
+        f'<th colspan="{len(its)}">{_e(called)} runs whole{_of_runs(held)}</th>'
+        for called, held, its in groups
+    )
+    heads = "".join(f"<th>{_e(name)}</th>" for _, _, its in groups for _, name in its)
     return (
         '<section id="points">\n<h2>The points</h2>\n'
         '<div class="wide"><table class="points">\n'
         "<thead><tr><th>When (UTC)</th><th>main</th><th>Pull requests merged</th>"
-        f'<th colspan="{len(rates)}">Runs whole{_of_runs(found)}</th><th>What moved</th>'
+        f"{wholes}<th>What moved</th>"
         "<th>chat-sim</th><th></th></tr>\n"
         f"<tr><th></th><th></th><th></th>{heads}<th></th><th></th><th></th></tr></thead>\n"
         f"<tbody>\n{''.join(rows)}</tbody>\n"
         "</table></div>\n"
-        '<p class="caption">What moved is against the point before it: each rate\'s runs whole '
-        "and median of epochs without a fork where they changed, or that none of its runs had an "
-        "outcome. chat-sim is the commit the point measures.</p>\n"
+        '<p class="caption">What moved is against the point before it: the runs whole and median '
+        "of epochs without a fork of each group's rate where they changed, or that none of its "
+        "runs had an outcome. chat-sim is the commit the point measures.</p>\n"
         "</section>\n"
     )
 
@@ -2150,9 +2256,9 @@ def _over(
     return "\n".join(drawn) + "\n"
 
 
-def _panel(found: Sequence[dict], hue: int, rate: object, name: str) -> str:
-    """A panel of the first chart: of one rate, the median of the epochs without a fork as a
-    line, and the band from the lowest to the highest."""
+def _panel(found: Sequence[dict], hue: int, rate: object, name: str, called: str) -> str:
+    """A panel of the first chart: of one rate of the group `called`, the median of the epochs
+    without a fork as a line, and the band from the lowest to the highest."""
     width, plot, left, right, above, below = 196, 120, 28, 12, 10, 22
     xs = _xs(len(found), left, width - left - right)
     reach = _reach(xs)
@@ -2164,7 +2270,7 @@ def _panel(found: Sequence[dict], hue: int, rate: object, name: str) -> str:
     def y(epoch: float) -> float:
         return bottom - epoch / top * plot
 
-    drawn = [_svg(width, bottom + below, f"Epochs without a fork at {name}")]
+    drawn = [_svg(width, bottom + below, f"Epochs without a fork at {called} {name}")]
     for tick in (0, _TOP // 2, _TOP):
         drawn.append(
             f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y(tick):.1f}" '
@@ -2248,9 +2354,19 @@ def _cell_drawn(
     return drawn + "</g>"
 
 
+def _groups(cells: Sequence[dict]) -> List[Tuple[str, List[dict]]]:
+    """Each group of `cells`, in the order of `simulate.GROUPS`: what the page calls it, and its
+    cells, in their order."""
+    return [
+        (called, [cell for cell in cells if group(cell) == key])
+        for key, called in simulate.GROUPS.items()
+        if any(group(cell) == key for cell in cells)
+    ]
+
+
 def _by_rate(cells: Sequence[dict]) -> List[Tuple[str, Dict[int, dict]]]:
-    """The cells a row a rate, as `_rate` keys it, in their order, each row its name and its
-    cells by seed."""
+    """The cells a row a group's rate, as `_rate` keys it, in their order, each row the name of
+    its rate and its cells by seed."""
     rows: Dict[object, Tuple[str, Dict[int, dict]]] = {}
     for cell in cells:
         rows.setdefault(_rate(cell), (cell["rate"] or cell["scenario"], {}))[1][cell["seed"]] = cell
@@ -2314,14 +2430,21 @@ def _spread(spread: dict, rows: Sequence[Tuple[str, Dict[int, dict]]]) -> str:
 
 
 def _strips(
-    spread: Optional[dict], rows: Sequence[Tuple[str, Dict[int, dict]]], against: bool
+    spread: Optional[dict], rows: Sequence[Tuple[str, Dict[int, dict]]], against: bool, called: str
 ) -> str:
-    """A strip a rate placing the head's runs of `rows` among the runs of main's point that
-    `spread` holds, by the epochs without a fork; nothing without a spread."""
+    """A strip a rate placing the head's runs of `rows`, of the group `called`, among the runs of
+    main's point that `spread` holds, by the epochs without a fork; nothing without a spread, and
+    a line that says so where it holds no run of the group."""
     if spread is None:
         return ""
+    scenarios = {cell["scenario"] for _, cells in rows for cell in cells.values()}
+    if not any(one["scenario"] in scenarios for one in spread["seeds"]):
+        return (
+            f'<p class="side">Main\'s point at {_code(spread["logos_chat"])} holds no '
+            f"{_e(called)} runs to place the head's among.</p>\n"
+        )
     drawn = [
-        f'<p class="side">Where the head\'s runs fall among main\'s '
+        f'<p class="side">Where the head\'s {_e(called)} runs fall among main\'s '
         f"{_e(simulate.spread_seeds(spread))} at "
         f"{_code(spread['logos_chat'])}, by the epochs without a fork: main's runs small, stacked "
         "where they meet, and the head's large.</p>\n"
@@ -2334,13 +2457,16 @@ def _strips(
             if one["scenario"] == scenario and one["epochs"] is not None
         ]
         heads = [cells[seed] for seed in sorted(cells) if cells[seed]["epochs"]["head"] is not None]
-        drawn.append(_strip(name, mains, heads, against))
+        drawn.append(_strip(name, mains, heads, against, called))
     return "".join(drawn)
 
 
-def _strip(name: str, mains: Sequence[dict], heads: Sequence[dict], against: bool) -> str:
-    """The strip of one rate: an axis of the epochs without a fork, main's runs on it as small
-    marks and the head's as large ones, each with how it came out as its hover text."""
+def _strip(
+    name: str, mains: Sequence[dict], heads: Sequence[dict], against: bool, called: str
+) -> str:
+    """The strip of one rate of the group `called`: an axis of the epochs without a fork, main's
+    runs on it as small marks and the head's as large ones, each with how it came out as its
+    hover text."""
     left, plot, gap = 56, 440, 7
     top = max(
         [_TOP]
@@ -2355,7 +2481,7 @@ def _strip(name: str, mains: Sequence[dict], heads: Sequence[dict], against: boo
     def x(epochs: int) -> float:
         return left + epochs / top * plot
 
-    drawn = [_svg(left + plot + 12, axis + 22, f"The head's runs at {name} among main's")]
+    drawn = [_svg(left + plot + 12, axis + 22, f"The head's runs at {called} {name} among main's")]
     drawn.append(f'<text class="label" x="0" y="{axis + 4}">{_e(name)}</text>')
     drawn.append(f'<line class="tick" x1="{left}" x2="{left + plot}" y1="{axis}" y2="{axis}"/>')
     for tick in range(0, top + 1, 10):
@@ -2452,8 +2578,8 @@ def _grown(report: Optional[dict]) -> str:
 
 
 def _rates_table(directory: Path, point: dict) -> str:
-    """How each rate's runs of a point ended, its epochs without a fork, its members off the
-    trunk, and its runs' wall time while their run.json is kept."""
+    """How the runs of each group's rate of a point ended, their epochs without a fork, their
+    members off the trunk, and their wall time while their run.json is kept."""
     rows = []
     for one in point["summary"]:
         walls = [
@@ -2471,13 +2597,15 @@ def _rates_table(directory: Path, point: dict) -> str:
         counted += [epochs["lowest"], epochs["median"], epochs["highest"]]
         counted.append(one["members_off_trunk"]["median"])
         rows.append(
-            f"<tr><td>{_e(one['rate'] or one['scenario'])}</td>"
+            f"<tr><td>{_e(simulate.GROUPS[group(one)])}</td>"
+            f"<td>{_e(one['rate'] or one['scenario'])}</td>"
             + "".join(f'<td class="n">{_number(value)}</td>' for value in counted)
             + f"<td>{took}</td></tr>\n"
         )
     return (
         '<section id="rates">\n<h2>The rates</h2>\n'
-        '<div class="wide"><table class="rates">\n<thead><tr><th rowspan="2">Loss</th>'
+        '<div class="wide"><table class="rates">\n<thead><tr><th rowspan="2">Group</th>'
+        '<th rowspan="2">Loss</th>'
         + "".join(
             f'<th rowspan="2" class="n">{said}</th>'
             for said in ("Runs", "Whole", "Behind", "Split", "Stalled", "No outcome")
@@ -2531,8 +2659,9 @@ def _build(job: str, run: Path, href: str, kept: bool = True) -> str:
 
 
 def _job(cell: dict) -> str:
-    """What the job of `cell`'s run was to run: its rate, or its scenario, and its seed."""
-    return f"{cell['rate'] or cell['scenario']}, seed {cell['seed']}"
+    """What the job of `cell`'s run was to run: its group and its rate, or its scenario, and its
+    seed."""
+    return f"{simulate.GROUPS[group(cell)]} {cell['rate'] or cell['scenario']}, seed {cell['seed']}"
 
 
 def _long_runs_table(directory: Path, one: dict) -> str:
@@ -2722,8 +2851,8 @@ def _ends(ends: List[dict], x: float, lowest: float) -> List[str]:
 
 
 def _what_moved(found: Sequence[dict], number: int, rates: Sequence[Tuple[object, str]]) -> str:
-    """What a point changed against the point before it: of each rate the runs whole and the
-    median of the epochs without a fork, where either moved, or why none of its runs had an
+    """What a point changed against the point before it: of each group's rate the runs whole and
+    the median of the epochs without a fork, where either moved, or why none of its runs had an
     outcome where the point before had one; and the two marks."""
     if number == 0:
         return "the first point"

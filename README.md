@@ -48,15 +48,17 @@ revision. To move it, change the revision in both, then run
 The workflow `simulate.yml` runs master at another logos-chat revision, started by hand with the
 revision, the suite, a base revision to compare with or none, the number of the logos-chat pull
 request the revision is of or none, and the id of a check run on it or none. The `pr` suite, for a
-logos-chat pull request, runs seeds 0 and 1 of `50-epochs-by-saro-waku-loss-0.1`, `-1` and `-5`,
-a job a run, at the revision and at the base; `main` runs seeds 0 to 19 of those and of `-0`,
-with no base; `long` runs `50-epochs`, `50-epochs-waku` and every other scenario held in
-`tools/sim/expected` but those four. A `pr` run whose base has its point of main on `gh-pages` at
+logos-chat pull request, runs seeds 0 and 1 of `50-epochs-by-saro-waku-loss-0.1`, `-1` and `-5`
+on GroupV2, and of their `-groupv3` copies on GroupV3, a job a run, at the revision and at the
+base; `main` runs seeds 0 to 19 of those and of `-0` and `-0-groupv3`, with no base; `long` runs
+`50-epochs`, `50-epochs-waku` and every other scenario held in `tools/sim/expected` but those
+eight. A `pr` run whose base has its point of main on `gh-pages` at
 the chat-sim commit a run measures, with an outcome at each run it asks of the base, runs nothing
 at the base: main's runs of seeds 0 and 1 are the
-base's. The run's summary holds the comment: for `pr` the verdict `tools/sim matrix` says, a cell a
-rate and seed, and of each rate main's twenty seeds at the point at the base or else the nearest
-before it of the base's hundred newest commits, for `main` how the runs at each rate ended, and for
+base's. The run's summary holds the comment: for `pr` the verdict `tools/sim matrix` says of each
+group, a cell a group's rate and seed, and of each such rate main's twenty seeds at the point at the
+base or else the nearest before it of the base's hundred newest commits, for `main` how the runs of
+each group at each rate ended, and for
 `long` what each scenario's runs came to and which moved from the base's, or from those
 `tools/sim/expected` holds when there is no base. Its publish job keeps a `main` run handed no
 `pr` on the Pages
@@ -72,8 +74,9 @@ request that is no longer open, and a dispatch of it handed a `pr` removes that 
 A `pr` run handed a `pr` also posts its comment on that pull request as the GitHub App chat-sim,
 `chat-sim[bot]`: it edits the App's comment there, or writes one. A `pr` run handed `check_run`,
 the id of a check run the App made on logos-chat, moves that check to in progress once its runs are
-planned and completes it with the verdict: a success when better, a failure when worse in two or
-more runs and better in none, and neutral otherwise, but that a revision chat-sim does not build at,
+planned and completes it with the groups' verdicts: a failure when either group's runs are worse in
+two or more and better in none, else a success when either group's are better, and neutral
+otherwise, but that a revision chat-sim does not build at,
 or a run with no outcome there, fails it when the repository variable `CHAT_SIM_CHECK_REQUIRED` is
 `true`. The plan job and the comment job each mint a token of their own, for logos-chat alone, from
 the repository variable `CHAT_SIM_APP_CLIENT_ID` and secret `CHAT_SIM_APP_PRIVATE_KEY`; without
