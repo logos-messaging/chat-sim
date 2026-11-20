@@ -11,7 +11,7 @@ a warning.
 `point` keeps a point of logos-chat's main, a run of simulate.yml's main suite: its
 `point.json`, drawn from the run's matrix, its runs' text and its page, in
 `logos-chat/main/<sha>/<measurement>/`. What was there is replaced unless a run of a higher
-number wrote it, and then only the newest thirty points keep their runs' text: the page of a
+number wrote it, and then only the newest eleven points keep their runs' text: the page of a
 point that loses it is drawn again from its point.json. The points are in the order of their
 runs' numbers, which GitHub gives in the order the runs were started and a re-run keeps;
 `previous` names the point a new one follows. `pr` keeps the newest run of a logos-chat pull
@@ -52,15 +52,16 @@ NO_OUTCOME = "no outcome"
 
 # Where the site keeps what simulate.yml's runs of logos-chat came to.
 LOGOS_CHAT = "logos-chat"
-# How many of the newest points of main keep their runs' text, about 10 MB a point, 5 MB each
-# group's runs, in a site Pages holds to 1 GB. Every point keeps its point.json.
-WINDOW = 30
+# How many of the newest points of main keep their runs' text, in a site Pages holds to 1 GB. A
+# point takes about 29.6 MB while it keeps its text: 26.7 MB of its 160 runs', 13.4 MB each
+# group's, on master's CI run 44661545505 without report.json, and 2.9 MB of its page, which
+# shows that text. Eleven take 326 MB. Every point keeps its point.json.
+WINDOW = 11
 # How many of the newest long runs keep their text, their runs' and compare's. A long run takes
-# about 10.7 MB while it keeps its text: 9.6 MB of the six held grows' eighteen runs, 7.1 MB of
-# it the three of grow-waku-size-50, on master's CI run 42260983597 without report.json, 0.08 MB
-# of the two runs of fifty epochs, and its page, 1 MB, which shows that text. Fifteen take
-# 160 MB, about half the 300 MB of the thirty points, so the two hold under half of Pages' 1 GB.
-# That measure holds none of the fifteen runs of the held `-groupv3` scenarios.
+# about 10 MB while it keeps its text: 7 MB of the three runs of grow-waku-size-50, 1 MB of the
+# six of grow-waku-loss-0.1 and its `-groupv3`, 1 MB of the sixteen of the 50-epochs-by-saro
+# scenarios, on master's CI run 44661545505 without report.json, and its page, 1 MB, which shows
+# that text. Fifteen take 150 MB, so with the eleven points the two hold under half of Pages' 1 GB.
 # Every long run keeps its long.json, and a page drawn from it.
 LONG_WINDOW = 15
 # The text of a run the site keeps, and the build's log of one whose job could not build
@@ -199,9 +200,19 @@ _SUMMARY = {
         "median": (int, float, _NONE),
         "highest": (int, _NONE),
     },
+    "split_at": {
+        "lowest": (int, _NONE),
+        "median": (int, float, _NONE),
+        "highest": (int, _NONE),
+    },
+    "lines_off_trunk": {"median": (int, float, _NONE)},
     "members_off_trunk": {"median": (int, float, _NONE)},
+    "seated": {"median": (int, float, _NONE)},
 }
-_UNGROUPED_SUMMARY = {field: kind for field, kind in _SUMMARY.items() if field != "group"}
+# A point need not hold how its runs forked: the points that do not are of earlier measurements.
+_FORKS = ("split_at", "lines_off_trunk", "seated")
+_UNFORKED_SUMMARY = {field: kind for field, kind in _SUMMARY.items() if field not in _FORKS}
+_UNGROUPED_SUMMARY = {field: kind for field, kind in _UNFORKED_SUMMARY.items() if field != "group"}
 # What `write_point`, `write_pr` and `write_long` write.
 _POINT = {
     "logos_chat": (str,),
@@ -511,7 +522,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Writes logos-chat/index.html of SITE, the graph over logos-chat's main, "
         "from the point.json of each point, in the order of their runs' numbers, and a link to "
         "the long run of the highest run number. A point.json or a long.json it cannot read is "
-        f"left out, with a warning; points of more than {HUES} rates of a group are refused.",
+        f"left out, with a warning; a group whose newest point has more than {HUES} rates is "
+        "refused.",
     )
     trend.add_argument("site", metavar="SITE", type=Path, help="the site, as gh-pages holds it")
     trend.set_defaults(command=_trend)
@@ -1017,9 +1029,8 @@ def draw_long(directory: Path, long: dict) -> None:
         f"{_when(long)} UTC</p>\n"
         "<p>The two scenarios of fifty epochs, a run each, and each scenario "
         "<code>tools/sim/expected</code> holds but the goal's on either group, as many runs as it "
-        "holds outcomes, held to them, at this commit of logos-chat's main. They measure other "
-        "things than the goal: fifty epochs on the library's own timers, a group any member adds "
-        "to, and one held at fifty members. The graph over main draws none of it.</p>\n"
+        "holds outcomes, held to them, at this commit of logos-chat's main. The graph over main "
+        "draws none of it.</p>\n"
     )
     if not kept:
         body += (
@@ -1097,8 +1108,9 @@ def write_trend(site: Path) -> None:
 
     Every number it draws is one a point.json holds. A point that measures another chat-sim
     commit than the point before it has a dashed line, and one re-rolled against the point it
-    follows an open marker. Points of more than `HUES` rates of a group are refused. Of the long
-    runs it links the one of the highest run number, and draws nothing.
+    follows an open marker. The rates drawn of a group are those of its newest point, and more
+    than `HUES` are refused. Of the long runs it links the one of the highest run number, and
+    draws nothing.
     """
     found = [point for _, point in reversed(points(site))]
     groups = [(called, held, _rates(held, called)) for called, held in _apart(found)]
@@ -1107,9 +1119,9 @@ def write_trend(site: Path) -> None:
         f'<p class="muted">{_link("../", "chat-sim")} / {_link("../guide/", "Guide")}</p>\n'
         "<h1>Over main</h1>\n"
         '<p class="lead">How many epochs a group of logos-chat clients lasts as one group while '
-        f"it grows toward epoch {_TOP}, on GroupV2 and on GroupV3 at each rate of loss, over "
-        "logos-chat's main: a point for each of its commits that was measured, the oldest at the "
-        "left.</p>\n"
+        f"it grows toward epoch {_TOP}, on GroupV2 and on GroupV3 at each rate of loss main runs, "
+        "over logos-chat's main: a point for each of its commits that was measured, the oldest at "
+        "the left.</p>\n"
     )
     newest = next(iter(longs(site)), None)
     if newest is not None:
@@ -1119,7 +1131,7 @@ def write_trend(site: Path) -> None:
             f"<p>{_link(at, 'The newest long run')}, at main {_code(long['logos_chat'])} on "
             f"{_when(long)} UTC: the two scenarios of fifty epochs and each scenario chat-sim "
             "holds to what is expected but the goal's on either group, run at main's tip each "
-            "Sunday. They measure other things than the goal, so nothing of them is drawn "
+            "Sunday. The charts are of main's points alone, so nothing of them is drawn "
             "here.</p>\n"
         )
     if found:
@@ -1275,8 +1287,9 @@ def read_matrix(path: Path) -> dict:
             spread = matrix["spread"]
             _shaped(spread, _SPREAD, "spread")
             _named(spread, "spread")
+            # A pull request's matrix holds main's point as it was, of any shape a point had.
             for number, one in enumerate(spread["summary"]):
-                _summary(one, f"spread.summary[{number}]")
+                _summary(one, f"spread.summary[{number}]", _held_summary(one))
             for number, one in enumerate(spread["seeds"]):
                 _seed(one, f"spread.seeds[{number}]")
     except Unreadable as refused:
@@ -1306,7 +1319,7 @@ def read_point(path: Path) -> dict:
             shape = _POINT_CELL if "group" in cell else _UNGROUPED_CELL
             _cell(cell, f"cells[{number}]", alone=True, shape=shape)
         for number, one in enumerate(point["summary"]):
-            _summary(one, f"summary[{number}]", grouped="group" in one)
+            _summary(one, f"summary[{number}]", _held_summary(one))
     except Unreadable as refused:
         raise Unreadable(f"{path}: {refused}") from None
     return point
@@ -1829,10 +1842,17 @@ def _outcome(outcome: object, where: str) -> None:
         raise Unreadable(f"{where}.ended is not how a run ended")
 
 
-def _summary(one: object, where: str, grouped: bool = True) -> None:
-    """Refuses `one` unless it is a scenario's summary; without `grouped`, one that names no
-    group."""
-    _shaped(one, _SUMMARY if grouped else _UNGROUPED_SUMMARY, where)
+def _held_summary(one: object) -> dict:
+    """The shape of a point's summary of a scenario: one from before the summaries held how the
+    runs forked has none of it, and one from before they named their group has no group too."""
+    if not isinstance(one, dict) or "split_at" in one:
+        return _SUMMARY
+    return _UNFORKED_SUMMARY if "group" in one else _UNGROUPED_SUMMARY
+
+
+def _summary(one: object, where: str, shape: dict = _SUMMARY) -> None:
+    """Refuses `one` unless it is a scenario's summary of `shape`."""
+    _shaped(one, shape, where)
     if _SCENARIO.fullmatch(one["scenario"]) is None:
         raise Unreadable(f"{where}.scenario {one['scenario']!r} is not the name of a scenario")
     _group(one, where)
@@ -1965,18 +1985,20 @@ def _apart(found: Sequence[dict]) -> List[Tuple[str, List[dict]]]:
 
 
 def _rates(found: Sequence[dict], called: str) -> List[Tuple[object, str]]:
-    """Each rate the points of the group `called` summarise, as `_rate` keys it, in the order of
-    its loss, and the name the page gives it; refused when there are more than `HUES`."""
+    """Each rate the newest of the points of the group `called` with a run of it summarises, the
+    rates main runs now, as `_rate` keys it, in the order of its loss, and the name the page gives
+    it; refused when there are more than `HUES`. A rate only older points ran is not drawn."""
+    newest = next((point for point in reversed(found) if point["summary"]), {"summary": []})
     seen: Dict[object, dict] = {}
-    for point in found:
-        for one in point["summary"]:
-            seen.setdefault(_rate(one), one)
+    for one in newest["summary"]:
+        seen.setdefault(_rate(one), one)
     ordered = sorted(
         seen.values(), key=lambda one: (one["loss"] is None, one["loss"] or 0, one["scenario"])
     )
     if len(ordered) > HUES:
         raise Unreadable(
-            f"the points hold {len(ordered)} rates of {called}, and the page tells {HUES} apart"
+            f"the newest point holds {len(ordered)} rates of {called}, and the page tells {HUES} "
+            "apart"
         )
     return [(_rate(one), one["rate"] or one["scenario"]) for one in ordered]
 
@@ -2045,11 +2067,11 @@ def _whole_chart(groups: Sequence[Tuple[str, List[dict], List[Tuple[object, str]
         '<section class="chart" id="whole">\n'
         f"<h2>Runs whole at {_TOP} epochs</h2>\n"
         + drawn
-        + '<p class="caption">How many runs of each rate ended whole: one group, every member in '
-        f"it, at epoch {_TOP}. The goal is every line at the top. A line breaks at a point where "
-        "none of the rate's runs had an outcome, as when chat-sim did not build. Under the dates "
-        "the axis shows, the pull requests of logos-chat the point merged, which a marker's hover "
-        "text names too.</p>\n"
+        + '<p class="caption">How many runs of each rate ended whole: one group, every member '
+        f"that joined at its tip, at epoch {_TOP}. The goal is every line at the top. A line "
+        "breaks at a point where none of the rate's runs had an outcome, as when chat-sim did not "
+        "build. Under the dates the axis shows, the pull requests of logos-chat the point merged, "
+        "which a marker's hover text names too.</p>\n"
         "</section>\n"
     )
 
@@ -2615,10 +2637,10 @@ def _rates_table(directory: Path, point: dict) -> str:
         "<th rowspan=\"2\">A run's wall time</th></tr>\n"
         '<tr><th class="n">lowest</th><th class="n">median</th><th class="n">highest</th></tr>'
         f"</thead>\n<tbody>\n{''.join(rows)}</tbody>\n</table></div>\n"
-        '<p class="caption">Whole: one group, every member in it, at epoch 50; behind: one group, '
-        "some members behind; stalled: one group that stopped growing short of 50; split: it "
-        "forked. Off the trunk: behind at the end, on a line not the trunk, or never joined. A "
-        "run's wall time is the runner's, while its run.json is kept.</p>\n"
+        '<p class="caption">Whole: one group, every member that joined at its tip, at epoch 50; '
+        "behind: one group, some members behind; stalled: one group that stopped growing short of "
+        "50; split: it forked. Off the trunk: behind at the end, on a line not the trunk, or never "
+        "joined. A run's wall time is the runner's, while its run.json is kept.</p>\n"
         "</section>\n"
     )
 

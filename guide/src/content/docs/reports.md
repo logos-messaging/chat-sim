@@ -18,14 +18,14 @@ The report is published when a simulation job fails as well: that is the run who
 most. The output of each `compare` is also in the summary of its job on the CI run.
 
 Every hour, `measure-main.yml` starts `simulate.yml`'s `main` suite at logos-chat main's tip: seeds 0 to
-19 of each `50-epochs-by-saro-waku-loss-` scenario. It starts nothing when the tip already has its point
-on the site, `logos-chat/main/<tip>/<measurement>/point.json`, at the chat-sim commit a run measures
-(see [logos-chat's runs](#logos-chats-runs)), or when a run of `main` at the tip is queued or in
-progress. A run of another suite does not hold it back: `simulate.yml` cancels a run only for a newer
-one of the same suite at the same revision or pull request. A tip with a point at an older measurement
-only is run again: what changed in chat-sim is the reason. A run of `main` at the tip that ended at the
-measurement without its point holds the tip back too: the next would fail where it failed, so the
-summary of the hourly run links it, and the tip runs again when it is started by hand.
+19 of `grow-waku-loss-0`, `-0.5`, `-1` and `-5` and of their `-groupv3` copies. It starts nothing when the
+tip already has its point on the site, `logos-chat/main/<tip>/<measurement>/point.json`, at the chat-sim
+commit a run measures (see [logos-chat's runs](#logos-chats-runs)), or when a run of `main` at the tip is
+queued or in progress. A run of another suite does not hold it back: `simulate.yml` cancels a run only for
+a newer one of the same suite at the same revision or pull request. A tip with a point at an older
+measurement only is run again: what changed in chat-sim is the reason. A run of `main` at the tip that
+ended at the measurement without its point holds the tip back too: the next would fail where it failed, so
+the summary of the hourly run links it, and the tip runs again when it is started by hand.
 A run of `main` handed a `pr` holds the tip back neither going nor ended: it ran at the pull request's
 head and keeps no point, and a run started at the tip does not cancel it. Nor does a run of another
 branch than chat-sim's default that ended: it keeps no point either.
@@ -132,9 +132,10 @@ head. A sweep of `grow-waku-size-50.json` takes the runner over half an hour.
 ## logos-chat's runs
 
 The workflow `simulate.yml` runs chat-sim at a logos-chat revision it is handed, and its publish job keeps
-the runs of three of its suites under `logos-chat/` of the site: those of `main`, seeds 0 to 19 of each
-`50-epochs-by-saro-waku-loss-` file at a commit of logos-chat's main, as a point of main, those of `pr`,
-seeds 0 and 1 of the lossy ones, three a group, at a logos-chat pull request's head and at its base, and
+the runs of three of its suites under `logos-chat/` of the site: those of `main`, seeds 0 to 19 of
+`grow-waku-loss-0`, `-0.5`, `-1` and `-5` and of their `-groupv3` copies at a commit of logos-chat's main,
+as a point of main, those of `pr`, seeds 0 to 2 of the lossy ones, three a group, at a logos-chat pull
+request's head and at its base, and
 those of
 `long` at a commit of logos-chat's main, held to what is expected, as a long run. A pull request's run
 keeps the matrix [`tools/sim matrix`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#a-matrix-of-a-revisions-runs-beside-its-bases)
@@ -146,7 +147,7 @@ has a page drawn from what it keeps (see [The pages of logos-chat's runs](#the-p
 and the comment links it.
 
 A `pr` run whose base has its point on `gh-pages` at the measurement runs nothing at the base: a point's
-seeds 0 and 1 are runs 1 and 2 of its sweeps, the runs a pull request asks of the base, so the point's
+seeds 0 to 2 are runs 1 to 3 of its sweeps, the runs a pull request asks of the base, so the point's
 cells stand in for the base's, outcomes and ids as the point holds them. A point at another measurement
 never stands in, and nor does one that has no outcome at one of those runs, as where its job uploaded
 nothing, or one the plan cannot read: the jobs at the base run them, and a warning on the run says why.
@@ -156,9 +157,12 @@ head's runs among main's twenty seeds of each group's rate at the point at the b
 newest point
 at the measurement of the base's hundred newest commits that logos-chat's commits API lists, passing over
 one the plan cannot read, with a warning that says why. The matrix
-holds that point as `spread`: a re-rolled cell says whether its epochs are within that point's runs or
-below the lowest, and the title of a re-rolled verdict how many fell below. With no such point, the
-comment has no such column.
+holds that point as `spread`, and the comment opens with its runs of the two groups side by side, a row
+a rate: how many split, the epoch of the first fork from the lowest to the highest, and the medians of the
+lines and of the members off the trunk at the end. A re-rolled cell says whether its epochs are within
+that point's runs or below the lowest, and the title of a re-rolled verdict how many fell below. With no
+such point, the comment has no such column, and against a base says why main's runs of the two groups
+are not side by side.
 
 | Path | Holds |
 |---|---|
@@ -190,10 +194,11 @@ A `point.json` holds what a page of the point draws:
 | `merged` | the logos-chat pull requests merged since the point it follows, each its `number` and `title`, from the commits logos-chat's compare API gives between the two: a squash merge's commit is titled `<title> (#N)`, a merge commit's `Merge pull request #N from <branch>` above the title |
 | `previous` | the point it follows, its `logos_chat` and `measurement`, and as `rerolled` whether a run drew other ids than that point's run of its scenario and seed, the group's or the members'; `null` for the first point |
 | `cells` | each run's cell as the matrix holds it, but `below`, which only a pull request's matrix says: the scenario, its group, `v2` or `v3`, the seed, the run, the loss and its rate, the run's outcome as `compare --write` writes one, the epochs without a fork, how the run ended, and whether its job could not build chat-sim. A point has no base, so each field of a base is `null`, and `unbuilt.base` is `false` |
-| `summary` | of each scenario, a group at a rate, its group, how many runs and how each ended, the lowest, median and highest epochs without a fork, and the median of the members off the trunk at the end |
+| `summary` | of each scenario, a group at a rate, its group, how many runs and how each ended, the lowest, median and highest epochs without a fork, the lowest, median and highest epoch of the first fork of the runs that split, and the medians of the lines and of the members off the trunk at the end and of the members seated |
 
 A point that names no group, in its cells or its summary, holds GroupV2's runs alone, and is read and
-drawn as GroupV2's.
+drawn as GroupV2's. A point of an earlier measurement may hold no first fork, lines off the trunk or
+members seated in its summary, and is read as it was written.
 
 A `long.json` holds what the long run's page draws:
 
@@ -216,12 +221,13 @@ A pull request's directory goes once the pull request is no longer open: the wee
 removes each `logos-chat/pr-N/` whose number logos-chat's pulls API does not list among its open pull
 requests, and a dispatch of Prune Pages handed a `pr` removes that pull request's alone.
 
-The newest thirty points by run number keep their runs' text: once a point is written, the runs' text of
-each point older than those is removed, and its `point.json` stays. A point's text is about 10 MB, 5 MB
-a group, and Pages holds a site of 1 GB. The newest fifteen long runs keep their text, their runs' and
-their `compare` output, and each older one its `long.json` alone: a long run takes about 10.7 MB while it
-keeps its text, 7.1 MB of it the three runs of `grow-waku-size-50` and 1 MB its page, so fifteen take
-about half the room of the thirty points. Every publish is a commit on `gh-pages`, so the weekly run of Prune Pages also
+The newest eleven points by run number keep their runs' text: once a point is written, the runs' text of
+each point older than those is removed, and its `point.json` stays. A point takes about 30 MB while it
+keeps its text, 13.4 MB of it each group's runs and 2.9 MB its page, and Pages holds a site of 1 GB. The
+newest fifteen long runs keep their text, their runs' and their `compare` output, and each older one its
+`long.json` alone: a long run takes about 10 MB while it keeps its text, 7 MB of it the three runs of
+`grow-waku-size-50` and 1 MB its page, so the eleven points and the fifteen long runs take under half the
+site. Every publish is a commit on `gh-pages`, so the weekly run of Prune Pages also
 rewrites the branch as one commit of its tree as it stands, and the text a point or a long run lets go
 leaves the branch's history too.
 
@@ -231,25 +237,25 @@ A `pr` run of `simulate.yml` handed a `pr` posts its comment on that logos-chat 
 `chat-sim[bot]`, the GitHub App chat-sim: it edits the App's oldest comment there, or writes one where
 the App has none, so a pull request holds one comment of chat-sim's. A `pr` run handed `check_run`, the
 id of a check run the App made on logos-chat, moves that check to in progress once its runs are planned,
-with the workflow run as its details and the runs at the head as its title, `12 runs in progress`, and
+with the workflow run as its details and the runs at the head as its title, `18 runs in progress`, and
 completes it once the comment is posted, with the comment as its summary and the pull request's report
 page as its details, or the workflow run where the report has no address. Each group has a verdict of its
 own, over its runs alone, and its own conclusion and title:
 
 | The verdict | Conclusion | A group's title |
 |---|---|---|
-| `same` | neutral | same as its base, 6 of 6 runs |
-| `better` | success | better in 1 of 6 runs |
-| `worse` | failure | worse in 2 of 6 runs |
-| `hint` | neutral | worse in 1 of 6 runs, a hint |
-| `mixed` | neutral | mixed: 1 better, 1 worse of 6 |
-| `re-rolled` | neutral | the draws changed, no comparison; 1 of 6 below main's worst seed |
+| `same` | neutral | same as its base, 9 of 9 runs |
+| `better` | success | better in 1 of 9 runs |
+| `worse` | failure | worse in 2 of 9 runs |
+| `hint` | neutral | worse in 1 of 9 runs, a hint |
+| `mixed` | neutral | mixed: 1 better, 1 worse of 9 |
+| `re-rolled` | neutral | the draws changed, no comparison; 1 of 9 below main's worst seed |
 | `unbuilt` | neutral, or failure once required | does not build against this commit |
-| `no-outcome` | neutral, or failure once required | no outcome in 1 of 6 runs |
+| `no-outcome` | neutral, or failure once required | no outcome in 1 of 9 runs |
 | `no-base` | neutral | no base, no comparison |
 
 The check's title is each group's after the group's name, GroupV2's first:
-`GroupV2 same as its base, 6 of 6 runs; GroupV3 worse in 2 of 6 runs`. Its conclusion is a failure where a
+`GroupV2 same as its base, 9 of 9 runs; GroupV3 worse in 2 of 9 runs`. Its conclusion is a failure where a
 group's is, else a success where a group's is, else neutral, so that one group's runs standing higher do
 not hide the other's standing lower. Where every group's verdict is `unbuilt`, or every group's
 `no-base`, the title says it once.
@@ -284,7 +290,7 @@ The report of a pull request's run, `logos-chat/pr-N/`:
 |---|---|
 | The head | the pull request's number, the head and its merge base, chat-sim's commit, links to the pull request and to the workflow run, and when, in UTC |
 | The verdict | the comment's verdict line, in its words; where main's point stood in for the base, its words link the point's page, or its `point.json` until the point has a page |
-| The matrix | of each group, under its name, GroupV2 first: the head's cells and the base's side by side, a row a rate and a column a seed, coloured as [the newest point](#over-main) is; an outline marks a cell of the head that stands lower (`worse`) or higher (`better`) than the base's. Where the matrix holds a `spread`, main's runs of each rate beside them in the comment's words (`2 whole, 18 to 50`), and a strip for each rate placing the head's two runs among main's twenty seeds of that point by their epochs without a fork, or a line that says the point holds no runs of the group |
+| The matrix | of each group, under its name, GroupV2 first: the head's cells and the base's side by side, a row a rate and a column a seed, coloured as [the newest point](#over-main) is; an outline marks a cell of the head that stands lower (`worse`) or higher (`better`) than the base's. Where the matrix holds a `spread`, main's runs of each rate beside them in the comment's words (`2 whole, 18 to 50`), and a strip for each rate placing the head's three runs among main's twenty seeds of that point by their epochs without a fork, or a line that says the point holds no runs of the group |
 | The cells | a fold for each cell, named by its group, rate and seed, GroupV2's first and within a group open and first where it moved: of each side, the run's verdict and what it came to, the lines of its `grow` from `run.json` (each line's kind, the line it forked from, the epoch it forked at, the epoch it reached and its members), who fell behind and at which epoch, who was behind at the end and who never joined, and its `run.txt` and `report.txt`; then the command that runs the cell again, as the comment's fold has it. Where main's point stood in, the base's side is the point's run, with the point's page linked, and its text shown from the point's directory while the point keeps it |
 
 Where chat-sim did not build at the head, the build's log takes the place of the matrix and the cells.
@@ -303,7 +309,7 @@ Where a job of the point could not build chat-sim, the page shows the build's lo
 could not build links its own. A page runs no script and loads nothing from outside its directory, and
 what a run, a pull request's title or an API says reaches it as text.
 
-When a point past the newest thirty loses its runs' text, its page is drawn again from its
+When a point past the newest eleven loses its runs' text, its page is drawn again from its
 `point.json` alone, and so is the report of a pull request whose base it stood in for, so that no link
 leads to text the site no longer holds: the command under each run makes it again. A point kept before
 its page was drawn gets one the next time a point is written; until then a report it stood in for links
@@ -326,13 +332,14 @@ verdicts, the rows and the commands stay, and no link leads to text the site no 
 [Over main](../../logos-chat/) draws the points of main, the oldest at the left, in the order of their
 run numbers. The publish job draws it again from every `point.json` of the site once it has written a
 point or a long run, and leaves out, with a warning, a `point.json` it cannot read. Above the charts it
-links the page of the newest long run by run number, and draws nothing of it: the long suite measures
-other things than the goal. It lives beside this guide and not
+links the page of the newest long run by run number, and draws nothing of it: the charts are of main's
+points alone. It lives beside this guide and not
 in it, since a publish of the guide replaces `guide/` whole. Every number it draws is one a `point.json`
 holds. Each chart draws GroupV2 and GroupV3 apart, each under its name, GroupV2 first, and a group from
 the first point that ran it. A rate is a group's loss, so a scenario renamed at the same loss goes on as
-its line, and each rate of a group has a blue of its own, the heavier the loss the darker. A point that
-names no group is GroupV2's.
+its line, and each rate of a group has a blue of its own, the heavier the loss the darker. The rates
+drawn of a group are those of the newest point that ran it, so a rate main no longer runs leaves the
+charts. A point that names no group is GroupV2's.
 
 | Part | Shows |
 |---|---|

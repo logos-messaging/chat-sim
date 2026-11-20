@@ -4,19 +4,20 @@ name: Simulate
 run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr != '' && format(' for logos-chat#{0}', inputs.pr) || '' }}
 
 # Runs chat-sim's master at a logos-chat revision it is handed, in one of three
-# suites. pr and main run the goal, a group of 51 that saro grows toward epoch
-# 50 (tools/sim/scenarios/50-epochs-by-saro-waku-loss-*.json), on GroupV2 and,
-# in the -groupv3 files, on GroupV3, at rates of loss. pr, for a logos-chat pull
-# request, runs seeds 0 and 1 of each group at 0.1, 1 and 5%, a job a run, at
-# the revision and at the base it is handed; when gh-pages holds main's point at
-# the base at the current measurement, with an outcome at each of those runs,
-# its runs, main's first two seeds, stand in for the base's and no job runs at
-# the base. main runs seeds 0 to 19 of each group at no loss and at those three,
-# two jobs of ten a group's rate, and no base. tools/sim matrix pairs each run
-# with the base's of its scenario and seed and says the verdict of each group,
-# and for pr places the head's runs among main's twenty seeds of the point at
-# the base, or of the nearest before it; the comment is drawn from what it
-# wrote, kept as the artifact matrix. long runs the two scenarios of fifty
+# suites. pr and main run the goal, a group grown toward epoch 50 by up to three
+# members of any branch a round (tools/sim/scenarios/grow-waku-loss-*.json), on
+# GroupV2 and, in the -groupv3 files, on GroupV3, at rates of loss. pr, for a
+# logos-chat pull request, runs seeds 0 to 2 of each group at 0.5, 1 and 5%, a
+# job a run, at the revision and at the base it is handed; when gh-pages holds
+# main's point at the base at the current measurement, with an outcome at each
+# of those runs, its runs, main's first three seeds, stand in for the base's and
+# no job runs at the base. main runs seeds 0 to 19 of each group at no loss and
+# at those three, two jobs of ten a group's rate, and no base. tools/sim matrix
+# pairs each run with the base's of its scenario and seed and says the verdict
+# of each group, and for pr places the head's runs among main's twenty seeds of
+# the point at the base, or of the nearest before it; the comment is drawn from
+# what it wrote, kept as the artifact matrix, and for pr opens with that point's
+# runs of the two groups side by side. long runs the two scenarios of fifty
 # epochs and every other one tools/sim/expected holds but the goal's on either
 # group, as many runs as it holds, a job a scenario a side, and holds them to
 # the base's runs, or without a base to what is held.
@@ -616,7 +617,7 @@ jobs:
           gh api "repos/logos-messaging/logos-chat/compare/$PREVIOUS...$REVISION" \
             > "$RUNNER_TEMP/commits.json"
 
-      - name: Write the point, and prune the text of the points past the newest thirty
+      - name: Write the point, and prune the text of the points past the newest eleven
         if: ${{ needs.plan.outputs.suite == 'main' }}
         run: |
           mkdir -p "$RUNNER_TEMP/revision"

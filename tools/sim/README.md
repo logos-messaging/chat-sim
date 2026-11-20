@@ -510,7 +510,7 @@ the base's outcome and the head's, where both have one.
 | `counts` | How many `cells`, how many have a change as `compared`, how many of those are `same`, `changed`, `better`, `worse` and `re-rolled`, how many of the re-rolled are `below` the lowest of the spread's, and how many have no outcome at the head as `no-outcome` |
 | `verdict` | The first verdict of those below that holds |
 | `groups[]` | For each group the cells are of, in its order: the `group`, and the `counts` and the `verdict` of its cells alone, so that one group's cells better do not hide the other's worse |
-| `summary[]` | Without a base, for each scenario: its `scenario`, `group`, `loss` and `rate`, how many `runs` and how many of them have no outcome as `no-outcome`, how many ended `whole`, `behind`, `split` and `stalled`, the `lowest`, `median` and `highest` of the `epochs` without a fork, and the `median` of the `members_off_trunk` at the end as `compare` counts them, behind, on a line not the trunk or never joined; `null` with `--base` or `--base-point` |
+| `summary[]` | Without a base, for each scenario: its `scenario`, `group`, `loss` and `rate`, how many `runs` and how many of them have no outcome as `no-outcome`, how many ended `whole`, `behind`, `split` and `stalled`, the `lowest`, `median` and `highest` of the `epochs` without a fork and, as `split_at`, of the epoch the runs that split first forked at, and the `median` of the `lines_off_trunk` and of the `members_off_trunk` at the end as `compare` counts them, behind, on a line not the trunk or never joined, and of the members `seated`; `null` with `--base` or `--base-point` |
 | `spread` | With `--spread`, of that point its `logos_chat` and `measurement` commits and its run's `run_url`; at the scenarios of the cells, its `summary` rows as it holds them; and as `seeds[]`, in its order, each of its runs' `scenario`, `seed`, `epochs` without a fork and how it `ended`, each `null` for a run with no outcome; else `null` |
 
 | Verdict | When |
@@ -1715,5 +1715,5 @@ jobs uploaded of seeds 0 and 1 of `50-epochs-by-saro-waku-loss-0.1.json`, `-1` a
 the directory of its artifact, every `run.json` cut to what `matrix` reads.
 `tests/fixtures/point.json` is the point of main of seeds 0 to 19 of each of the four GroupV2
 `50-epochs-by-saro-waku-loss-` files at logos-chat `fa5282a3`, as `.github/scripts/pages.py point`
-writes it, cut to what `matrix` reads of a point: its seeds 0 and 1 of the three lossy rates are
-the runs of `tests/fixtures/matrix/`.
+writes it, cut to what `matrix` reads of a point, with the `summary` `matrix` writes of its cells: its
+seeds 0 and 1 of the three lossy rates are the runs of `tests/fixtures/matrix/`.

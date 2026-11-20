@@ -23,19 +23,32 @@ REVISION = "89abcdef0123456789abcdef0123456789abcdef"
 BASE = "fedcba9876543210fedcba9876543210fedcba98"
 MEASUREMENT = "76543210fedcba9876543210fedcba9876543210"
 ROOT = Path(__file__).resolve().parents[2]
-# What the jobs of the pr suite uploaded at a revision, seeds 0 and 1 of 0.1, 1 and 5% loss, each
-# job's artifact in a directory of its own, cut to what tools/sim matrix reads.
+# What the GroupV2 jobs of a pr suite of HELD_GOALS' goal uploaded at a revision, seeds 0 and 1 of
+# 0.1, 1 and 5% loss, each job's artifact in a directory of its own, cut to what tools/sim matrix
+# reads.
 UPLOADED = ROOT / "tools" / "sim" / "tests" / "fixtures" / "matrix"
 # Main's point at logos-chat fa5282a3, the probe's twenty seeds of each rate, cut to what
 # tools/sim matrix reads.
 POINT = ROOT / "tools" / "sim" / "tests" / "fixtures" / "point.json"
 FA5282A = "fa5282a34405b6975424174858d85e4f261d420a"
 GOAL = "50-epochs-by-saro-waku-loss-{}"
+# The goal of each group, by the group's name in a scenario: UPLOADED holds GroupV2's runs of it,
+# and the tests copy them as GroupV3's.
+HELD_GOALS = {"v2": GOAL, "v3": "50-epochs-by-saro-waku-loss-{}-groupv3"}
 
 
 def write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
+
+
+def unforked(point: dict) -> dict:
+    """`point` as a point of an earlier measurement holds it, whose summaries say nothing of how
+    the runs forked."""
+    for one in point["summary"]:
+        for field in ("split_at", "lines_off_trunk", "seated"):
+            del one[field]
+    return point
 
 
 class Parsed(HTMLParser):
@@ -445,7 +458,7 @@ class LogosChat(unittest.TestCase):
         if groupv3:
             for report in list(copy.rglob("run.json")):
                 job, scenario, run = report.parts[-4:-1]
-                name = simulate.GOALS["v3"].format(scenario.removeprefix(GOAL.format("")))
+                name = HELD_GOALS["v3"].format(scenario.removeprefix(GOAL.format("")))
                 shutil.copytree(report.parent, copy / job.replace(scenario, name) / name / run)
         for report in copy.rglob("run.json"):
             for name in ("run.txt", "report.txt", "report.json"):
@@ -460,7 +473,7 @@ class LogosChat(unittest.TestCase):
         """The run.json of a cell under `side`, by its rate and seed, `1/0`, a cell of GroupV2's,
         or by its group, rate and seed, `v3/1/0`."""
         *named, rate, seed = cell.split("/")
-        goal = simulate.GOALS[named[0]] if named else GOAL
+        goal = HELD_GOALS[named[0]] if named else GOAL
         scenario, number = goal.format(rate), int(seed) + 1
         return side / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
 
@@ -585,7 +598,7 @@ class Point(LogosChat):
         self.assertEqual(
             [(cell["group"], cell["scenario"], cell["seed"]) for cell in written["cells"]],
             [
-                (group, simulate.GOALS[group].format(rate), seed)
+                (group, HELD_GOALS[group].format(rate), seed)
                 for group in ("v2", "v3")
                 for rate in ("0.1", "1", "5")
                 for seed in (0, 1)
@@ -652,6 +665,7 @@ class Point(LogosChat):
                 "summary[0].group 'GroupV3' is none of a scenario's",
                 dict(written, summary=[dict(written["summary"][0], group="GroupV3")]),
             ),
+            ("summary[0] is not an object", dict(written, summary=[5])),
             ("cells[0] has a base", cell(base=head)),
             ("cells[0].below is not a field of cells[0]", cell(below=None)),
             (
@@ -861,13 +875,13 @@ class Point(LogosChat):
 
 
 class Window(LogosChat):
-    def test_past_the_newest_thirty_points_by_run_number_each_loses_its_runs_text_alone(self):
+    def test_past_the_newest_eleven_points_by_run_number_each_loses_its_runs_text_alone(self):
         runs = self.uploaded()
         matrix = self.matrix(runs)
         # The commits run from high to low and the times from late to early as the run numbers
         # rise, so that neither the order of the directories nor that of time is the runs'.
         printed = []
-        for number in range(1, 33):
+        for number in range(1, 14):
             printed.append(
                 self.point(
                     sha(100 - number),
@@ -880,16 +894,16 @@ class Window(LogosChat):
             )
             if number == 1:
                 write(self.at(sha(99)) / "index.html", "a page drawn from point.json\n")
-        self.assertEqual(printed[:30], [""] * 30)
+        self.assertEqual(printed[:11], [""] * 11)
         self.assertEqual(
-            printed[30:],
+            printed[11:],
             [
                 f"Removed the runs' text of logos-chat/main/{sha(100 - number)}/{MEASUREMENT}/: "
-                f"past the newest 30 points.\n"
+                f"past the newest 11 points.\n"
                 for number in (1, 2)
             ],
         )
-        for number in range(1, 33):
+        for number in range(1, 14):
             with self.subTest(number=number):
                 point = self.at(sha(100 - number))
                 held = self.files(point)
@@ -907,7 +921,7 @@ class Window(LogosChat):
         write(refused / GOAL.format(1) / "1" / "run.txt", "a run\n")
         runs = self.uploaded()
         matrix = self.matrix(runs)
-        for minute in range(31):
+        for minute in range(12):
             self.point(
                 sha(minute),
                 minute=minute,
@@ -1053,6 +1067,7 @@ class PullRequest(LogosChat):
                 "spread.summary[0].loss is missing",
                 spread(summary=[{"scenario": GOAL.format(1), "group": "v2"}]),
             ),
+            ("spread.summary[0] is not an object", spread(summary=[None])),
             ("spread.logos_chat is not a commit", spread(logos_chat="fa5282a")),
             (
                 "cells[0].below is not of its kind",
@@ -1497,7 +1512,7 @@ class Trend(LogosChat):
         self.assertIn("No point of main has been kept yet.", Parsed(self.page()).text)
         self.assertEqual(self.svgs(), [])
 
-    def test_points_of_more_rates_than_the_page_has_hues_are_refused(self):
+    def test_a_newest_point_of_more_rates_than_the_page_has_hues_is_refused(self):
         self.point()
         written = self.read()
         summary = written["summary"] + [
@@ -1506,15 +1521,32 @@ class Trend(LogosChat):
         write(self.at() / "point.json", json.dumps(dict(written, summary=summary)))
         status, _, err = self.run_pages("trend", str(self.site))
         self.assertEqual(status, 2)
-        said = "the points hold 5 rates of GroupV2, and the page tells 4 apart"
+        said = "the newest point holds 5 rates of GroupV2, and the page tells 4 apart"
         self.assertIn(said, err.splitlines()[-1])
         self.assertFalse((self.site / "logos-chat" / "index.html").exists())
+
+    def test_the_rates_drawn_are_the_newest_point_s_and_one_only_older_points_ran_is_not(self):
+        self.point(sha(1), minute=1, run_number=1)
+        written = self.read(sha(1))
+        summary = written["summary"] + [
+            dict(written["summary"][0], scenario=f"grow-{n}", loss=0.1 * n, rate=f"{10 * n}%")
+            for n in (1, 2)
+        ]
+        write(self.at(sha(1)) / "point.json", json.dumps(dict(written, summary=summary)))
+        self.point(sha(2), minute=2, run_number=2, commits=self.commits())
+
+        self.assertEqual(self.trend(), [])
+        panel = r'<div class="panel">\n<p><svg class="(s\d)".*?</svg>(.*?)</p>'
+        self.assertEqual(
+            re.findall(panel, self.page()), [("s1", "0.1%"), ("s2", "1%"), ("s3", "5%")]
+        )
+        self.assertNotIn("10%", Parsed(self.page()).text)
 
     def test_four_rates_of_each_of_two_groups_are_told_apart_a_hue_each_within_its_group(self):
         self.point(runs=self.uploaded(groupv3=True))
         written = self.read()
         summary = written["summary"] + [
-            dict(one, scenario=simulate.GOALS[one["group"]].format(0), loss=0, rate="0%")
+            dict(one, scenario=HELD_GOALS[one["group"]].format(0), loss=0, rate="0%")
             for one in written["summary"]
             if one["rate"] == "0.1%"
         ]
@@ -1590,7 +1622,7 @@ class Trend(LogosChat):
         for number in (1, 2, 3):
             commits = None if number == 1 else self.commits()
             self.point(sha(number), minute=number, run_number=number, commits=commits)
-            written = self.read(sha(number))
+            written = unforked(self.read(sha(number)))
             for one in written["cells"] + written["summary"]:
                 del one["group"]
             write(self.at(sha(number)) / "point.json", json.dumps(written))
@@ -1865,8 +1897,16 @@ class Pages(LogosChat):
         self.assertEqual(
             self.folds(out),
             [
-                (True, "GroupV2 1% loss, seed 1 5, split, was 9: worse"),
-                (True, "GroupV2 5% loss, seed 0 4, split, was 8: worse"),
+                (
+                    True,
+                    "GroupV2 1% loss, seed 1 split at 5, 11 lines and 21 of 51 members off the "
+                    "trunk, was split at 9: worse",
+                ),
+                (
+                    True,
+                    "GroupV2 5% loss, seed 0 split at 4, 2 lines and 9 of 15 members off the "
+                    "trunk, was split at 8: worse",
+                ),
             ]
             + [
                 (
@@ -2177,9 +2217,27 @@ class Pages(LogosChat):
         for cell in self.read()["cells"]:
             self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
 
+    def test_a_point_json_of_groups_that_says_nothing_of_how_its_runs_forked_is_read_as_written(
+        self,
+    ):
+        self.point(runs=self.uploaded(groupv3=True))
+        path, written = self.at() / "point.json", unforked(self.read())
+        write(path, json.dumps(written))
+
+        point = pages.read_point(path)
+        pages.draw_point(self.at(), point)
+
+        self.assertEqual(point, written)
+        self.assertEqual(
+            re.findall(r"<h3>(.*?)</h3>", self.drawn(self.at())), ["GroupV2", "GroupV3"]
+        )
+        self.stands_alone(self.at())
+        status, _, err = self.run_pages("trend", str(self.site))
+        self.assertEqual((status, err), (0, ""))
+
     def test_a_point_json_that_names_no_group_is_read_as_written_and_drawn_as_group_v2_s(self):
         self.point()
-        path, written = self.at() / "point.json", self.read()
+        path, written = self.at() / "point.json", unforked(self.read())
         for one in written["cells"] + written["summary"]:
             del one["group"]
         write(path, json.dumps(written))
@@ -2224,7 +2282,7 @@ class Pages(LogosChat):
         self.assertNotIn("was not uploaded", parsed.text)
         runs = self.uploaded()
         matrix = self.matrix(runs)
-        for number in range(2, 32):
+        for number in range(2, 13):
             given = dict(runs=runs, matrix=matrix, commits=self.commits())
             self.point(sha(number), minute=number, run_number=number, **given)
 
@@ -2249,20 +2307,44 @@ class Pages(LogosChat):
         self.assertIn(line, Parsed(self.drawn(out)).rows)
         self.assertIn(f"{GOAL.format(1)}/1/run.txt", Parsed(self.drawn(first)).links)
 
-        for number in range(2, 32):
+        for number in range(2, 13):
             given = dict(runs=runs, matrix=matrix, commits=self.commits())
             self.point(sha(number), minute=number, run_number=number, **given)
 
         self.assertEqual(self.files(first), ["index.html", "point.json"])
         parsed = self.stands_alone(first)
         self.assertFalse([link for link in parsed.links if link.endswith((".txt", ".json"))])
-        self.assertIn("The site keeps the runs' text of the newest 30 points", parsed.text)
+        self.assertIn("The site keeps the runs' text of the newest 11 points", parsed.text)
         self.assertEqual(len(self.cells(self.charts(first)["The point's GroupV2 runs"])), 6)
         report = self.stands_alone(out)
         self.assertNotIn(text, report.links)
         self.assertNotIn(line, report.rows)
         self.assertIn(f"../main/{sha(1)}/{MEASUREMENT}/", report.links)
         self.assertIn(f"{GOAL.format(1)}/1/run.txt", Parsed(self.drawn(self.at(sha(2)))).links)
+
+
+    def test_a_pull_request_s_matrix_whose_spread_predates_the_fork_fields_is_drawn_again(self):
+        runs = self.uploaded()
+        matrix = self.matrix(runs)
+        self.point(sha(1), minute=1, run_number=1, runs=runs, matrix=matrix)
+        first = self.at(sha(1)) / "point.json"
+        flags = ("--base-point", str(first), "--spread", str(first))
+        stood = self.matrix(self.uploaded(), None, (), *flags)
+        # As a pull request's run kept it before main's points held how their runs forked.
+        written = json.loads(stood.read_text("utf-8"))
+        unforked(written["spread"])
+        write(stood, json.dumps(written))
+        out = self.pr(self.uploaded(), stood, self.nothing(), revision=sha(1))
+        text = f"../main/{sha(1)}/{MEASUREMENT}/{GOAL.format(1)}/1/run.txt"
+        self.assertIn(text, Parsed(self.drawn(out)).links)
+
+        for number in range(2, 13):
+            given = dict(runs=runs, matrix=matrix, commits=self.commits())
+            self.point(sha(number), minute=number, run_number=number, **given)
+
+        report = self.stands_alone(out)
+        self.assertNotIn(text, report.links)
+        self.assertIn(f"../main/{sha(1)}/{MEASUREMENT}/", report.links)
 
 
 EXPECTED = ROOT / "tools" / "sim" / "expected"
@@ -2284,21 +2366,21 @@ FIFTY = {
     "came_to": "as expected",
     "stopped": None,
 }
-# What compare printed of grow-waku-loss-5's three runs on master's CI run 42260983597, cut to
-# its first row.
+# What compare printed of 50-epochs-by-saro-waku-loss-5's two runs on master's CI run
+# 44661545505, cut to its first row.
 COMPARED = (
     "run  seed  change     verdict                 at the tip  seconds  came to\n"
-    "  1     0  same       split at epoch 3          31 of 38   2583.7  5 main branches ran side "
-    "by side: trunk at epoch 12, 5 main, 7 sub, 7 fell behind, 4 behind at the end, 3 never "
-    "joined\n"
-    "3 of 3 runs came out as expected\n"
+    "  1     0  same       split at epoch 8           8 of 15   1961.2  no member took part: "
+    "trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined\n"
+    "2 of 2 runs came out as expected\n"
 )
-# The row of grow-waku-loss-5 on a long run's page, its runs as tools/sim/expected holds them.
+# The row of 50-epochs-by-saro-waku-loss-5 on a long run's page, its runs as tools/sim/expected
+# holds them.
 LOSS_5 = [
-    "grow-waku-loss-5",
-    "3",
-    "split at epoch 3, split at epoch 5, split at epoch 5",
-    "3 of 3 runs came out as expected",
+    "50-epochs-by-saro-waku-loss-5",
+    "2",
+    "split at epoch 8, split at epoch 3",
+    "2 of 2 runs came out as expected",
 ]
 
 
@@ -2408,12 +2490,12 @@ class Long(LogosChat):
         )
         names = [name for name, _ in self.suite()]
         self.assertEqual([one["scenario"] for one in long["scenarios"]], names)
-        loss = next(one for one in long["scenarios"] if one["scenario"] == "grow-waku-loss-5")
+        loss = next(one for one in long["scenarios"] if one["scenario"] == LOSS_5[0])
         self.assertEqual(
             loss["compare"],
-            {"verdict": pages.AS_EXPECTED, "counted": "3 of 3 runs came out as expected"},
+            {"verdict": pages.AS_EXPECTED, "counted": "2 of 2 runs came out as expected"},
         )
-        held = json.loads((EXPECTED / "grow-waku-loss-5.json").read_text("utf-8"))
+        held = json.loads((EXPECTED / "50-epochs-by-saro-waku-loss-5.json").read_text("utf-8"))
         self.assertEqual(
             loss["runs"],
             [
@@ -2427,7 +2509,7 @@ class Long(LogosChat):
         self,
     ):
         runs, compared = self.long_uploaded()
-        loss = runs / "sim-revision-grow-waku-loss-5-1" / "grow-waku-loss-5"
+        loss = runs / f"sim-revision-{LOSS_5[0]}-1" / LOSS_5[0]
         write(loss / "1" / "run.json", json.dumps({"grow": GROW, "wall_s": 189.4}))
         self.long(uploaded=(runs, compared))
 
@@ -2446,14 +2528,14 @@ class Long(LogosChat):
         self.assertIn(["50-epochs", "1", "whole", "nothing held"], parsed.rows)
         self.assertTrue({name for name, _ in self.suite()} <= parsed.ids)
         self.assertIn(COMPARED, parsed.text)
-        self.assertIn("grow-waku-loss-5/compare.txt", parsed.links)
-        held = json.loads((EXPECTED / "grow-waku-loss-5.json").read_text("utf-8"))
-        self.assertIn(["0", "split at epoch 3", held[0]["came_to"], "3 min 9 s"], parsed.rows)
-        self.assertIn(["1", "split at epoch 5", held[1]["came_to"], "2 min 1 s"], parsed.rows)
+        self.assertIn("50-epochs-by-saro-waku-loss-5/compare.txt", parsed.links)
+        held = json.loads((EXPECTED / "50-epochs-by-saro-waku-loss-5.json").read_text("utf-8"))
+        self.assertIn(["0", "split at epoch 8", held[0]["came_to"], "3 min 9 s"], parsed.rows)
+        self.assertIn(["1", "split at epoch 3", held[1]["came_to"], "2 min 1 s"], parsed.rows)
         self.assertIn("never joined: tomo, peer14", parsed.text)
-        self.assertIn("run.txt of grow-waku-loss-5/1\n", parsed.text)
-        self.assertIn("grow-waku-loss-5/1/run.json", parsed.links)
-        self.assertNotIn("grow-waku-loss-5/1/report.json", parsed.links)
+        self.assertIn("run.txt of 50-epochs-by-saro-waku-loss-5/1\n", parsed.text)
+        self.assertIn("50-epochs-by-saro-waku-loss-5/1/run.json", parsed.links)
+        self.assertNotIn("50-epochs-by-saro-waku-loss-5/1/report.json", parsed.links)
         facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
         for name, count in self.suite():
             for number in range(1, count + 1):
@@ -2465,7 +2547,8 @@ class Long(LogosChat):
     def test_a_run_with_no_outcome_has_its_seed_and_the_command_and_links_the_text_it_left(self):
         runs, compared = self.long_uploaded()
         # 50-epochs could not build, 50-epochs-waku's job uploaded nothing, grow-waku-loss-0.1's
-        # compare --write wrote no outcomes, and grow-waku-loss-0.5's sweep stopped after run 2.
+        # compare --write wrote no outcomes, and grow-waku-loss-0.1-groupv3's sweep
+        # stopped after run 2.
         fifty = runs / "sim-revision-50-epochs-1" / "50-epochs"
         shutil.rmtree(fifty)
         write(fifty / "1" / "unbuilt", f"chat-sim does not build at {REVISION}\n")
@@ -2474,7 +2557,7 @@ class Long(LogosChat):
         lost = runs / "sim-revision-grow-waku-loss-0.1-1" / "grow-waku-loss-0.1"
         (lost / "outcomes.json").unlink()
         shutil.rmtree(compared / "grow-waku-loss-0.1")
-        stopped = runs / "sim-revision-grow-waku-loss-0.5-1" / "grow-waku-loss-0.5"
+        stopped = runs / "sim-revision-grow-waku-loss-0.1-groupv3-1" / "grow-waku-loss-0.1-groupv3"
         shutil.rmtree(stopped / "3")
         two = json.loads((stopped / "outcomes.json").read_text("utf-8"))[:2]
         write(stopped / "outcomes.json", json.dumps(two))
@@ -2533,13 +2616,13 @@ class Long(LogosChat):
 
     def test_every_text_of_a_run_and_of_compare_is_escaped(self):
         runs, compared = self.long_uploaded()
-        loss = runs / "sim-revision-grow-waku-loss-5-1" / "grow-waku-loss-5"
+        loss = runs / f"sim-revision-{LOSS_5[0]}-1" / LOSS_5[0]
         for text in ("run.txt", "report.txt"):
             write(loss / "1" / text, f"{MARKUP}\n")
         outcomes = json.loads((loss / "outcomes.json").read_text("utf-8"))
         outcomes[0]["came_to"] = MARKUP
         write(loss / "outcomes.json", json.dumps(outcomes))
-        write(compared / "grow-waku-loss-5" / "compare.txt", f"{MARKUP}\n{COMPARED}")
+        write(compared / "50-epochs-by-saro-waku-loss-5" / "compare.txt", f"{MARKUP}\n{COMPARED}")
         self.long(uploaded=(runs, compared))
 
         page = self.drawn(self.held())
@@ -2566,7 +2649,7 @@ class Long(LogosChat):
         self.assertEqual(self.files(out), sorted(["index.html", "long.json", *each]))
         logs = [link for link in parsed.links if link.endswith("build.log")]
         self.assertEqual(sorted(logs), sorted([each[0], *each]))
-        self.assertIn(["grow-waku-loss-5", "3", "does not build", "-"], parsed.rows)
+        self.assertIn([LOSS_5[0], "2", "does not build", "-"], parsed.rows)
         self.assertNotIn("was not uploaded", parsed.text)
 
     def test_runs_of_which_none_was_read_built_or_not_and_a_command_line_short_of_one_are_refused(
@@ -2665,10 +2748,10 @@ class Long(LogosChat):
             self.assertIn("The site keeps the text of the newest 15 long runs", parsed.text)
             self.assertNotIn(COMPARED, parsed.text)
             self.assertIn(LOSS_5, parsed.rows)
-            cell = {"scenario": "grow-waku-loss-5", "run": 3, "seed": 2}
+            cell = {"scenario": "50-epochs-by-saro-waku-loss-5", "run": 2, "seed": 1}
             facts = {"revision": sha(100 - number), "base": "", "chat_sim": SHA}
             self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
-        self.assertIn("grow-waku-loss-5/compare.txt", self.files(self.held(sha(97))))
+        self.assertIn("50-epochs-by-saro-waku-loss-5/compare.txt", self.files(self.held(sha(97))))
 
     def test_the_graph_over_main_links_the_newest_long_run_and_draws_nothing_of_it(self):
         self.point(sha(1), minute=1, run_number=1)

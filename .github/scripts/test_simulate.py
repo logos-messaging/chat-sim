@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 from typing import List, Optional, Sequence
 
 import pages
@@ -19,13 +20,38 @@ CHAT_SIM = "fedcba9876543210fedcba9876543210fedcba98"
 RUN_URL = "https://github.com/logos-messaging/chat-sim/actions/runs/42"
 REPORT_URL = "https://logos-messaging.github.io/chat-sim/logos-chat/pr-316/"
 ROOT = Path(__file__).resolve().parents[2]
-# What the jobs of the pr suite uploaded at a revision, seeds 0 and 1 of its three rates, cut to
-# what tools/sim matrix reads: 0.1% whole and split at epoch 46, 1% split at 18 and 9, 5% split
-# at 8 and 3.
+# What the GroupV2 jobs of HELD_SUITES' pr suite uploaded at a revision, seeds 0 and 1 of its three
+# rates, cut to what tools/sim matrix reads: 0.1% whole and split at epoch 46, 1% split at 18 and
+# 9, 5% split at 8 and 3.
 UPLOADED = ROOT / "tools" / "sim" / "tests" / "fixtures" / "matrix"
 # Main's point at logos-chat fa5282a3, the probe's twenty seeds of each rate, cut to what
 # tools/sim matrix reads: its seeds 0 and 1 of the lossy rates are UPLOADED's runs.
 POINT = ROOT / "tools" / "sim" / "tests" / "fixtures" / "point.json"
+# The goal UPLOADED and POINT hold runs of, a group of 51 that saro grows toward epoch 50, by the
+# group's name in a scenario, and the rates and seeds the suites ran of it.
+HELD_GOALS = {
+    "v2": "50-epochs-by-saro-waku-loss-{}",
+    "v3": "50-epochs-by-saro-waku-loss-{}-groupv3",
+}
+# The lines and the members off the trunk at the end of each of UPLOADED's runs but 0.1% seed 0,
+# which ended whole, by its rate and seed, as a cell says them.
+OFF = {
+    "0.1/1": "1 line and 2 of 51 members off the trunk",
+    "1/0": "7 lines and 18 of 51 members off the trunk",
+    "1/1": "11 lines and 21 of 51 members off the trunk",
+    "5/0": "2 lines and 9 of 15 members off the trunk",
+    "5/1": "16 lines and 42 of 51 members off the trunk",
+}
+# What the comment on a pull request says where main has no point to set the groups side by side.
+NO_SIDES = (
+    "No point of main at this chat-sim's measurement that can be read is among the base's hundred "
+    "newest commits, so main's runs of the two groups are not set side by side."
+)
+HELD_SUITES = {
+    "GOALS": HELD_GOALS,
+    "RATES": {"pr": ("0.1", "1", "5"), "main": ("0", "0.1", "1", "5")},
+    "SEEDS": {"pr": 2, "main": 20},
+}
 FA5282A = "fa5282a34405b6975424174858d85e4f261d420a"
 POINT_RUN = "https://github.com/logos-messaging/chat-sim/actions/runs/42460360938"
 # The chat-sim commit a run measures, and another.
@@ -74,8 +100,8 @@ def with_groupv3(runs: Path, into: Path) -> Path:
     """A copy of `runs` at `into` that holds each run of the goal on GroupV2 again as the run of
     the goal on GroupV3 at its rate and seed, in an artifact of its own."""
     groupv3 = {
-        simulate.GOALS["v2"].format(rate): simulate.GOALS["v3"].format(rate)
-        for rate in simulate.RATES["main"]
+        HELD_GOALS["v2"].format(rate): HELD_GOALS["v3"].format(rate)
+        for rate in HELD_SUITES["RATES"]["main"]
     }
     shutil.copytree(runs, into)
     for file in sorted([*runs.rglob("run.json"), *runs.rglob("unbuilt")]):
@@ -95,9 +121,9 @@ class Fixture(unittest.TestCase):
         held = (
             "50-epochs-by-saro-waku-loss-1",
             "50-epochs-by-saro-waku-loss-1-groupv3",
-            "grow-waku-loss-0.5",
+            "grow-waku-loss-0.1",
             "grow-waku-loss-1",
-            "grow-waku-loss-5",
+            "grow-waku-loss-1-groupv3",
             "grow-waku-size-50",
         )
         for name in held:
@@ -105,16 +131,16 @@ class Fixture(unittest.TestCase):
 
 
 class Scenarios(Fixture):
-    def test_pr_is_two_seeds_of_the_goal_on_each_group_at_each_of_its_three_lossy_rates(self):
+    def test_pr_is_three_seeds_of_the_goal_on_each_group_at_each_of_its_three_lossy_rates(self):
         self.assertEqual(
             simulate.scenarios("pr", self.expected),
             [
-                ("50-epochs-by-saro-waku-loss-0.1", 2),
-                ("50-epochs-by-saro-waku-loss-1", 2),
-                ("50-epochs-by-saro-waku-loss-5", 2),
-                ("50-epochs-by-saro-waku-loss-0.1-groupv3", 2),
-                ("50-epochs-by-saro-waku-loss-1-groupv3", 2),
-                ("50-epochs-by-saro-waku-loss-5-groupv3", 2),
+                ("grow-waku-loss-0.5", 3),
+                ("grow-waku-loss-1", 3),
+                ("grow-waku-loss-5", 3),
+                ("grow-waku-loss-0.5-groupv3", 3),
+                ("grow-waku-loss-1-groupv3", 3),
+                ("grow-waku-loss-5-groupv3", 3),
             ],
         )
 
@@ -122,14 +148,14 @@ class Scenarios(Fixture):
         self.assertEqual(
             simulate.scenarios("main", self.expected),
             [
-                ("50-epochs-by-saro-waku-loss-0", 20),
-                ("50-epochs-by-saro-waku-loss-0.1", 20),
-                ("50-epochs-by-saro-waku-loss-1", 20),
-                ("50-epochs-by-saro-waku-loss-5", 20),
-                ("50-epochs-by-saro-waku-loss-0-groupv3", 20),
-                ("50-epochs-by-saro-waku-loss-0.1-groupv3", 20),
-                ("50-epochs-by-saro-waku-loss-1-groupv3", 20),
-                ("50-epochs-by-saro-waku-loss-5-groupv3", 20),
+                ("grow-waku-loss-0", 20),
+                ("grow-waku-loss-0.5", 20),
+                ("grow-waku-loss-1", 20),
+                ("grow-waku-loss-5", 20),
+                ("grow-waku-loss-0-groupv3", 20),
+                ("grow-waku-loss-0.5-groupv3", 20),
+                ("grow-waku-loss-1-groupv3", 20),
+                ("grow-waku-loss-5-groupv3", 20),
             ],
         )
 
@@ -139,9 +165,9 @@ class Scenarios(Fixture):
             [
                 ("50-epochs", 1),
                 ("50-epochs-waku", 1),
-                ("grow-waku-loss-0.5", 3),
-                ("grow-waku-loss-1", 3),
-                ("grow-waku-loss-5", 3),
+                ("50-epochs-by-saro-waku-loss-1", 3),
+                ("50-epochs-by-saro-waku-loss-1-groupv3", 3),
+                ("grow-waku-loss-0.1", 3),
                 ("grow-waku-size-50", 3),
             ],
         )
@@ -169,30 +195,30 @@ class Jobs(unittest.TestCase):
     def test_pr_is_a_job_a_run_at_the_revision_and_at_the_base(self):
         jobs = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
 
-        self.assertEqual(len(jobs), 24)
+        self.assertEqual(len(jobs), 36)
         self.assertEqual(
-            {(job["side"], job["revision"]) for job in jobs[:12]}, {("revision", REVISION)}
+            {(job["side"], job["revision"]) for job in jobs[:18]}, {("revision", REVISION)}
         )
-        self.assertEqual({(job["side"], job["revision"]) for job in jobs[12:]}, {("base", BASE)})
+        self.assertEqual({(job["side"], job["revision"]) for job in jobs[18:]}, {("base", BASE)})
         self.assertEqual(
-            [(job["scenario"], job["from"], job["runs"]) for job in jobs[:12]],
+            [(job["scenario"], job["from"], job["runs"]) for job in jobs[:18]],
             [
                 (goal.format(rate), first, 1)
                 for goal in simulate.GOALS.values()
-                for rate in ("0.1", "1", "5")
-                for first in (1, 2)
+                for rate in ("0.5", "1", "5")
+                for first in (1, 2, 3)
             ],
         )
         self.assertEqual(
-            [job["name"] for job in jobs[:12]],
+            [job["name"] for job in jobs[:18]],
             [
                 f"head 0123456: {group} {rate}% seed {seed}"
                 for group in ("GroupV2", "GroupV3")
-                for rate in ("0.1", "1", "5")
-                for seed in (0, 1)
+                for rate in ("0.5", "1", "5")
+                for seed in (0, 1, 2)
             ],
         )
-        self.assertEqual(jobs[22]["name"], "base 89abcde: GroupV3 5% seed 0")
+        self.assertEqual(jobs[33]["name"], "base 89abcde: GroupV3 5% seed 0")
 
     def test_main_is_two_jobs_of_ten_runs_a_group_s_rate_and_no_base(self):
         jobs = simulate.jobs("main", REVISION, "", simulate.scenarios("main", Path()))
@@ -204,7 +230,7 @@ class Jobs(unittest.TestCase):
             [
                 (goal.format(rate), first, 10)
                 for goal in simulate.GOALS.values()
-                for rate in ("0", "0.1", "1", "5")
+                for rate in ("0", "0.5", "1", "5")
                 for first in (1, 11)
             ],
         )
@@ -232,10 +258,13 @@ class Jobs(unittest.TestCase):
 
 class GhPages(Fixture):
     """A checkout, `pages`, whose branch gh-pages holds main's points as pages.py point writes
-    them."""
+    them, of the suites as they ran the goal UPLOADED holds the runs of."""
 
     def setUp(self):
         super().setUp()
+        held = mock.patch.multiple(simulate, **HELD_SUITES)
+        held.start()
+        self.addCleanup(held.stop)
         self.pages = self.root / "pages"
         # UPLOADED's runs on each group.
         self.uploaded = with_groupv3(UPLOADED, self.root / "uploaded")
@@ -330,7 +359,7 @@ class Plan(GhPages):
 
     def test_a_pr_whose_base_has_main_s_point_at_the_measurement_runs_nothing_at_the_base(self):
         self.published()
-        text = f"logos-chat/main/{BASE}/{MEASUREMENT}/{simulate.GOALS['v2'].format(1)}/1/run.txt"
+        text = f"logos-chat/main/{BASE}/{MEASUREMENT}/{HELD_GOALS['v2'].format(1)}/1/run.txt"
         listed = self.listed(text, point(BASE), point(REVISION, EARLIER))
 
         planned = self.planned("pr", listed, "--base", BASE, "--pr", "316")
@@ -343,7 +372,7 @@ class Plan(GhPages):
         self.assertEqual(planned["warned"], "")
 
     def test_a_point_with_no_outcome_at_a_run_the_pr_asks_of_the_base_stands_in_for_nothing(self):
-        scenario = simulate.GOALS["v2"].format(5)
+        scenario = HELD_GOALS["v2"].format(5)
         job = f"sim-revision-{scenario}-2"
         # The job of GroupV2 at 5%, seed 1, uploaded nothing, or could not build chat-sim.
         for unbuilt in (False, True):
@@ -414,7 +443,7 @@ class Plan(GhPages):
         for listed in (
             (point(BASE, EARLIER),),
             (point(REVISION),),
-            (f"logos-chat/main/{BASE}/{MEASUREMENT}/{simulate.GOALS['v2'].format(1)}/1/run.txt",),
+            (f"logos-chat/main/{BASE}/{MEASUREMENT}/{HELD_GOALS['v2'].format(1)}/1/run.txt",),
             (),
         ):
             with self.subTest(listed=listed):
@@ -766,8 +795,8 @@ class Running(unittest.TestCase):
                         "status": "in_progress",
                         "details_url": RUN_URL,
                         "output": {
-                            "title": "12 runs in progress",
-                            "summary": f"**12 runs in progress** at {commit(REVISION)} against "
+                            "title": "18 runs in progress",
+                            "summary": f"**18 runs in progress** at {commit(REVISION)} against "
                             f"its merge base {commit(BASE)} · [the run]({RUN_URL})",
                         },
                     },
@@ -804,7 +833,7 @@ class Drawn(unittest.TestCase):
         with_groupv3(UPLOADED, copy) if both else shutil.copytree(UPLOADED, copy)
         for cell, changed in edits.items():
             rate, seed, *group = cell.split("/")
-            scenario = simulate.GOALS[group[0] if group else "v2"].format(rate)
+            scenario = HELD_GOALS[group[0] if group else "v2"].format(rate)
             number = int(seed) + 1
             file = copy / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
             report = json.loads(file.read_text(encoding="utf-8"))
@@ -814,7 +843,7 @@ class Drawn(unittest.TestCase):
 
     def unbuilt(self, side: Path, rate: str, seed: int) -> None:
         """The artifact of the job of a run at `rate` and `seed` as one that could not build."""
-        scenario, number = simulate.GOALS["v2"].format(rate), seed + 1
+        scenario, number = HELD_GOALS["v2"].format(rate), seed + 1
         job = side / f"sim-revision-{scenario}-{number}"
         shutil.rmtree(job, ignore_errors=True)
         (job / scenario / str(number)).mkdir(parents=True)
@@ -845,7 +874,9 @@ class Drawn(unittest.TestCase):
         return out
 
     def pr_jobs(self) -> List[dict]:
-        return simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
+        """The run jobs of pr, as the suite ran the goal UPLOADED holds the runs of."""
+        with mock.patch.multiple(simulate, **HELD_SUITES):
+            return simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
 
     def comment_of(self, suite: str, matrix: Path) -> List[str]:
         """What `comment` is handed for `suite` drawn from `matrix`, but a base."""
@@ -877,7 +908,17 @@ class Drawn(unittest.TestCase):
         return json.loads(out)
 
     def rows(self, text: str) -> List[str]:
-        return [line for line in text.splitlines() if line.startswith("| ") and "%" in line]
+        return [line for line in text.splitlines() if line.startswith("| GroupV")]
+
+    def sides(self, text: str) -> List[str]:
+        """The rows of main's runs of the two groups side by side."""
+        return [line for line in text.splitlines() if re.match(r"\| [0-9.]+% \| ", line)]
+
+    def table_head(self, text: str) -> List[str]:
+        """The header and the rule of the table of the cells."""
+        lines = text.splitlines()
+        at = next(number for number, line in enumerate(lines) if line.startswith("| Group |"))
+        return lines[at : at + 2]
 
     def test_a_pr_two_cells_of_which_split_sooner_than_at_the_base_is_worse_in_2_of_6(self):
         head = self.uploaded(
@@ -887,33 +928,40 @@ class Drawn(unittest.TestCase):
         status, out, _ = self.comment("pr", self.matrix(head, UPLOADED), "--base", BASE)
 
         self.assertEqual(status, 0)
-        first, blank, header, rule, *_ = out.splitlines()
+        first, blank, sides, gap, header, rule, *_ = out.splitlines()
         self.assertEqual(
             first,
             f"**chat-sim: GroupV2 worse in 2 of 6 runs** at {commit(REVISION)} against its merge "
             f"base {commit(BASE)} · [the run]({RUN_URL})",
         )
+        self.assertEqual((blank, sides, gap), ("", NO_SIDES, ""))
         self.assertEqual(
-            (blank, header, rule), ("", "| Group | Loss | Seed 0 | Seed 1 |", "|---|---|---|---|")
+            (header, rule), ("| Group | Loss | Seed 0 | Seed 1 |", "|---|---|---|---|")
         )
         self.assertEqual(
             self.rows(out),
             [
-                "| GroupV2 | 0.1% | 50 whole, same | 46, split, same |",
-                "| GroupV2 | 1% | 18, split, same | 5, split, was 9: worse |",
-                "| GroupV2 | 5% | 4, split, was 8: worse | 3, split, same |",
+                f"| GroupV2 | 0.1% | 50 whole, same | split at 46, {OFF['0.1/1']}, same |",
+                f"| GroupV2 | 1% | split at 18, {OFF['1/0']}, same "
+                f"| split at 5, {OFF['1/1']}, was split at 9: worse |",
+                f"| GroupV2 | 5% | split at 4, {OFF['5/0']}, was split at 8: worse "
+                f"| split at 3, {OFF['5/1']}, same |",
             ],
         )
         self.assertIn(
-            "\n\nA cell: how many epochs the group stayed one group (50 is the goal) · how the run "
-            "ended (whole: one group, everyone in it; behind: one group, some members behind; "
-            "stalled: one group that stopped growing short of 50; split: it forked) · the change "
-            "against the merge base at the same seed",
+            "\n\nA cell: how the run ended (whole: one group, every member that joined at its tip; "
+            "behind: one group, some members behind; stalled: one group that stopped growing short "
+            "of 50; split: it forked), at the epoch of its first fork, or else of the trunk (50 is "
+            "the goal) · the lines and the members off the trunk at the end, of the members "
+            "seated, where there are any (behind, on another line, or never joined) · where it is "
+            "better or worse, what the base's run had of the first of these that moved · the "
+            "change against the merge base at the same seed",
             out,
         )
         self.assertEqual((out.count("<details>"), out.count("<details open>")), (4, 2))
         self.assertIn(
-            "\n<details open><summary>GroupV2 5% loss, seed 0: 4, split, was 8: worse</summary>",
+            "\n<details open><summary>GroupV2 5% loss, seed 0: split at 4, "
+            f"{OFF['5/0']}, was split at 8: worse</summary>",
             out,
         )
         fold = out[out.index("<details open><summary>GroupV2 1% loss, seed 1:") :]
@@ -921,7 +969,8 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             fold.splitlines()[:4],
             [
-                "<details open><summary>GroupV2 1% loss, seed 1: 5, split, was 9: worse</summary>",
+                "<details open><summary>GroupV2 1% loss, seed 1: split at 5, "
+                f"{OFF['1/1']}, was split at 9: worse</summary>",
                 "",
                 f"- **head** {commit(REVISION)} · split at epoch 5 · the trunk reached epoch 50: "
                 "trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never "
@@ -964,17 +1013,22 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             self.rows(out),
             [
-                "| GroupV2 | 0.1% | 50 whole, same | 46, split, same |",
-                "| GroupV2 | 1% | 18, split, same | 9, split, same |",
-                "| GroupV2 | 5% | 8, split, same | 3, split, same |",
-                "| GroupV3 | 0.1% | 50 whole, same | 46, split, same |",
-                "| GroupV3 | 1% | 18, split, same | 5, split, was 9: worse |",
-                "| GroupV3 | 5% | 4, split, was 8: worse | 3, split, same |",
+                f"| GroupV2 | 0.1% | 50 whole, same | split at 46, {OFF['0.1/1']}, same |",
+                f"| GroupV2 | 1% | split at 18, {OFF['1/0']}, same "
+                f"| split at 9, {OFF['1/1']}, same |",
+                f"| GroupV2 | 5% | split at 8, {OFF['5/0']}, same "
+                f"| split at 3, {OFF['5/1']}, same |",
+                f"| GroupV3 | 0.1% | 50 whole, same | split at 46, {OFF['0.1/1']}, same |",
+                f"| GroupV3 | 1% | split at 18, {OFF['1/0']}, same "
+                f"| split at 5, {OFF['1/1']}, was split at 9: worse |",
+                f"| GroupV3 | 5% | split at 4, {OFF['5/0']}, was split at 8: worse "
+                f"| split at 3, {OFF['5/1']}, same |",
             ],
         )
         self.assertEqual((out.count("<details>"), out.count("<details open>")), (10, 2))
         self.assertIn(
-            "\n<details open><summary>GroupV3 5% loss, seed 0: 4, split, was 8: worse</summary>",
+            "\n<details open><summary>GroupV3 5% loss, seed 0: split at 4, "
+            f"{OFF['5/0']}, was split at 8: worse</summary>",
             out,
         )
         self.assertIn(
@@ -997,22 +1051,40 @@ class Drawn(unittest.TestCase):
         _, out, _ = self.comment("pr", against_point, "--base", FA5282A)
         _, against_runs, _ = self.comment("pr", self.matrix(head, UPLOADED), "--base", FA5282A)
 
-        first, blank, header, rule, *_ = out.splitlines()
+        first, blank, sides, *_ = out.splitlines()
         self.assertEqual(
             first,
             f"**chat-sim: GroupV2 worse in 2 of 6 runs** at {commit(REVISION)} against its merge "
             f"base {commit(FA5282A)}, from [main's run of it]({POINT_RUN}) · [the run]({RUN_URL})",
         )
         self.assertEqual(
-            header, f"| Group | Loss | Seed 0 | Seed 1 | main's 20 seeds at {commit(FA5282A)} |"
+            (blank, sides),
+            ("", f"**GroupV2 · GroupV3**, main's 20 seeds of each rate at {commit(FA5282A)}"),
         )
-        self.assertEqual(rule, "|---|---|---|---|---|")
+        self.assertEqual(
+            self.sides(out),
+            [
+                "| 0.1% | 15 of 20 · - | 18 to 46, median 36 · - | 1 · - | 2 of 51 · - |",
+                "| 1% | 20 of 20 · - | 3 to 23, median 12.5 · - | 7 · - | 19 of 51 · - |",
+                "| 5% | 19 of 20 · - | 3 to 18, median 6 · - | 7.5 · - | 32.5 of 44 · - |",
+            ],
+        )
+        self.assertEqual(
+            self.table_head(out),
+            [
+                f"| Group | Loss | Seed 0 | Seed 1 | main's 20 seeds at {commit(FA5282A)} |",
+                "|---|---|---|---|---|",
+            ],
+        )
         self.assertEqual(
             self.rows(out),
             [
-                "| GroupV2 | 0.1% | 50 whole, same | 46, split, same | 2 whole, 18 to 50 |",
-                "| GroupV2 | 1% | 18, split, same | 5, split, was 9: worse | 0 whole, 3 to 23 |",
-                "| GroupV2 | 5% | 4, split, was 8: worse | 3, split, same | 0 whole, 3 to 18 |",
+                f"| GroupV2 | 0.1% | 50 whole, same | split at 46, {OFF['0.1/1']}, same "
+                "| 2 whole, 18 to 50 |",
+                f"| GroupV2 | 1% | split at 18, {OFF['1/0']}, same "
+                f"| split at 5, {OFF['1/1']}, was split at 9: worse | 0 whole, 3 to 23 |",
+                f"| GroupV2 | 5% | split at 4, {OFF['5/0']}, was split at 8: worse "
+                f"| split at 3, {OFF['5/1']}, same | 0 whole, 3 to 18 |",
             ],
         )
         self.assertEqual(
@@ -1020,6 +1092,30 @@ class Drawn(unittest.TestCase):
         )
         folds = out.index("\n\nA cell: ")
         self.assertEqual(out[folds:], against_runs[against_runs.index("\n\nA cell: ") :])
+
+    def test_main_s_runs_side_by_side_count_the_split_of_the_runs_with_an_outcome(self):
+        matrix = self.matrix(self.uploaded("head"), base_point=POINT, spread=POINT)
+        written = json.loads(matrix.read_text("utf-8"))
+        rows = {one["rate"]: one for one in written["spread"]["summary"]}
+        # Main's runs of 1% had no outcome, as where chat-sim did not build, and 15 of 5%'s none.
+        none = {"lowest": None, "median": None, "highest": None}
+        rows["1%"].update(
+            {"no-outcome": 20, "whole": 0, "behind": 0, "split": 0, "stalled": 0, "epochs": none}
+        )
+        rows["1%"].update({"split_at": none, "lines_off_trunk": {"median": None}})
+        rows["1%"].update({"members_off_trunk": {"median": None}, "seated": {"median": None}})
+        rows["5%"].update({"no-outcome": 15, "split": 4, "behind": 1})
+        matrix.write_text(json.dumps(written), encoding="utf-8")
+        _, out, _ = self.comment("pr", matrix, "--base", FA5282A)
+
+        self.assertEqual(
+            self.sides(out)[1:],
+            [
+                "| 1% | - · - | - · - | - · - | - · - |",
+                "| 5% | 4 of 5, 15 with no outcome · - | 3 to 18, median 6 · - | 7.5 · - "
+                "| 32.5 of 44 · - |",
+            ],
+        )
 
     def test_a_re_rolled_cell_says_whether_its_epochs_are_within_main_s_spread_or_below_it(self):
         # The sheet's re-rolled state: every head run drew other ids, one pair a seed.
@@ -1047,15 +1143,17 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             self.rows(out),
             [
-                f"| GroupV2 | 0.1% | 50 whole, {within} | 15, split, re-rolled, below main's "
-                "spread | 2 whole, 18 to 50 |",
-                f"| GroupV2 | 1% | 11, split, {within} | 20, split, {within} | 0 whole, 3 to 23 |",
-                f"| GroupV2 | 5% | 6, split, {within} | 4, split, {within} | 0 whole, 3 to 18 |",
+                f"| GroupV2 | 0.1% | 50 whole, {within} | split at 15, {OFF['0.1/1']}, re-rolled, "
+                "below main's spread | 2 whole, 18 to 50 |",
+                f"| GroupV2 | 1% | split at 11, {OFF['1/0']}, {within} "
+                f"| split at 20, {OFF['1/1']}, {within} | 0 whole, 3 to 23 |",
+                f"| GroupV2 | 5% | split at 6, {OFF['5/0']}, {within} "
+                f"| split at 4, {OFF['5/1']}, {within} | 0 whole, 3 to 18 |",
             ],
         )
         self.assertIn(
-            "\n<details><summary>GroupV2 0.1% loss, seed 1: 15, split, re-rolled, below main's "
-            "spread</summary>\n",
+            f"\n<details><summary>GroupV2 0.1% loss, seed 1: split at 15, {OFF['0.1/1']}, "
+            "re-rolled, below main's spread</summary>\n",
             out,
         )
 
@@ -1067,21 +1165,26 @@ class Drawn(unittest.TestCase):
         matrix = self.matrix(UPLOADED, UPLOADED, spread=spread)
         _, out, _ = self.comment("pr", matrix, "--base", BASE)
 
-        first, _, header, *_ = out.splitlines()
+        first, _, sides, *_ = out.splitlines()
         self.assertEqual(
             first,
             f"**chat-sim: GroupV2 same as its base, 6 of 6 runs** at {commit(REVISION)} against "
             f"its merge base {commit(BASE)} · [the run]({RUN_URL})",
         )
         self.assertEqual(
-            header, f"| Group | Loss | Seed 0 | Seed 1 | main's 20 seeds at {commit(CHAT_SIM)} |"
+            sides, f"**GroupV2 · GroupV3**, main's 20 seeds of each rate at {commit(CHAT_SIM)}"
+        )
+        self.assertEqual(
+            self.table_head(out)[0],
+            f"| Group | Loss | Seed 0 | Seed 1 | main's 20 seeds at {commit(CHAT_SIM)} |",
         )
         self.assertEqual(
             self.rows(out)[0],
-            "| GroupV2 | 0.1% | 50 whole, same | 46, split, same | 2 whole, 18 to 50 |",
+            f"| GroupV2 | 0.1% | 50 whole, same | split at 46, {OFF['0.1/1']}, same "
+            "| 2 whole, 18 to 50 |",
         )
 
-    def test_without_main_s_point_the_column_and_the_note_are_left_out(self):
+    def test_without_main_s_point_the_column_is_left_out_and_the_groups_not_side_by_side(self):
         head = self.uploaded(
             "head", **{"0.1/1": {"conversation": "b19d47e0c5", "verdict": "split at epoch 15"}}
         )
@@ -1090,11 +1193,13 @@ class Drawn(unittest.TestCase):
         self.assertTrue(
             out.startswith("**chat-sim: GroupV2 the draws changed, no comparison** at ")
         )
-        self.assertEqual(out.splitlines()[2], "| Group | Loss | Seed 0 | Seed 1 |")
+        self.assertEqual(out.splitlines()[2], NO_SIDES)
+        self.assertEqual(self.table_head(out)[0], "| Group | Loss | Seed 0 | Seed 1 |")
         self.assertEqual(
-            self.rows(out)[0], "| GroupV2 | 0.1% | 50 whole, same | 15, split, re-rolled |"
+            self.rows(out)[0],
+            f"| GroupV2 | 0.1% | 50 whole, same | split at 15, {OFF['0.1/1']}, re-rolled |",
         )
-        self.assertNotIn("main's", out.split("\n\nA cell: ")[0])
+        self.assertEqual(self.sides(out), [])
 
     def test_a_pr_whose_cells_only_drew_other_ids_or_ran_otherwise_is_re_rolled(self):
         head = self.uploaded(
@@ -1108,13 +1213,15 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             self.rows(out)[1:],
             [
-                "| GroupV2 | 1% | 18, split, changed | 9, split, same |",
-                "| GroupV2 | 5% | 8, split, same | 3, split, re-rolled |",
+                f"| GroupV2 | 1% | split at 18, {OFF['1/0']}, changed "
+                f"| split at 9, {OFF['1/1']}, same |",
+                f"| GroupV2 | 5% | split at 8, {OFF['5/0']}, same "
+                f"| split at 3, {OFF['5/1']}, re-rolled |",
             ],
         )
 
     def test_a_pr_cell_worse_at_the_same_epochs_names_what_moved(self):
-        name = simulate.GOALS["v2"].format("0.1")
+        name = HELD_GOALS["v2"].format("0.1")
         file = UPLOADED / f"sim-revision-{name}-2" / name / "2" / "run.json"
         grow = json.loads(file.read_text(encoding="utf-8"))["grow"]
         grow["lines"][0]["members"].remove("raya")
@@ -1127,8 +1234,8 @@ class Drawn(unittest.TestCase):
         self.assertTrue(out.startswith("**chat-sim: GroupV2 worse in 2 of 6 runs** at "))
         self.assertEqual(
             self.rows(out)[0],
-            "| GroupV2 | 0.1% | 50, behind, was whole: worse "
-            "| 46, split, 3 members off the trunk, was 2: worse |",
+            "| GroupV2 | 0.1% | 50, behind, was 50 whole: worse "
+            "| split at 46, 1 line and 3 of 51 members off the trunk, was 2 members off: worse |",
         )
 
     def test_a_pr_with_a_run_that_left_nothing_at_the_head_has_no_outcome_there(self):
@@ -1137,7 +1244,9 @@ class Drawn(unittest.TestCase):
         _, out, _ = self.comment("pr", self.matrix(head, UPLOADED), "--base", BASE)
 
         self.assertTrue(out.startswith("**chat-sim: GroupV2 no outcome in 1 of 6 runs** at "))
-        self.assertEqual(self.rows(out)[2], "| GroupV2 | 5% | 8, split, same | no outcome |")
+        self.assertEqual(
+            self.rows(out)[2], f"| GroupV2 | 5% | split at 8, {OFF['5/0']}, same | no outcome |"
+        )
         self.assertIn(f"- **head** {commit(REVISION)} · no outcome\n", out)
 
     def test_a_pr_run_whose_job_uploaded_nothing_at_either_side_has_no_outcome(self):
@@ -1152,7 +1261,9 @@ class Drawn(unittest.TestCase):
                 "runs** at "
             )
         )
-        self.assertEqual(self.rows(out)[2], "| GroupV2 | 5% | 8, split, same | no outcome |")
+        self.assertEqual(
+            self.rows(out)[2], f"| GroupV2 | 5% | split at 8, {OFF['5/0']}, same | no outcome |"
+        )
         self.assertIn(f"- **base** {commit(BASE)} · no outcome\n", out)
 
     def test_a_pr_run_whose_job_could_not_build_at_the_head_has_no_outcome_there(self):
@@ -1166,7 +1277,10 @@ class Drawn(unittest.TestCase):
                 "runs** at "
             )
         )
-        self.assertEqual(self.rows(out)[1], "| GroupV2 | 1% | 18, split, same | does not build |")
+        self.assertEqual(
+            self.rows(out)[1],
+            f"| GroupV2 | 1% | split at 18, {OFF['1/0']}, same | does not build |",
+        )
         self.assertIn(f"- **head** {commit(REVISION)} · does not build\n", out)
 
     def test_a_pr_cell_the_base_could_not_build_says_so_and_the_others_are_compared(self):
@@ -1184,8 +1298,10 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             self.rows(out)[1:3],
             [
-                "| GroupV2 | 1% | 18, split, same | 9, split, does not build at the base |",
-                "| GroupV2 | 5% | 4, split, was 8: worse | 3, split, same |",
+                f"| GroupV2 | 1% | split at 18, {OFF['1/0']}, same "
+                f"| split at 9, {OFF['1/1']}, does not build at the base |",
+                f"| GroupV2 | 5% | split at 4, {OFF['5/0']}, was split at 8: worse "
+                f"| split at 3, {OFF['5/1']}, same |",
             ],
         )
         self.assertIn(f"- **base** {commit(BASE)} · does not build\n", out)
@@ -1200,12 +1316,17 @@ class Drawn(unittest.TestCase):
     def test_a_pr_without_a_base_shows_the_heads_cells_and_links_the_report_when_given(self):
         _, out, _ = self.comment("pr", self.matrix(UPLOADED), "--report-url", REPORT_URL)
 
+        first, blank, header, *_ = out.splitlines()
         self.assertEqual(
-            out.splitlines()[0],
+            first,
             f"**chat-sim: no base, no comparison** at {commit(REVISION)} · "
             f"[the report]({REPORT_URL}) · [the run]({RUN_URL})",
         )
-        self.assertEqual(self.rows(out)[0], "| GroupV2 | 0.1% | 50 whole | 46, split |")
+        self.assertEqual((blank, header), ("", "| Group | Loss | Seed 0 | Seed 1 |"))
+        self.assertNotIn(NO_SIDES, out)
+        self.assertEqual(
+            self.rows(out)[0], f"| GroupV2 | 0.1% | 50 whole | split at 46, {OFF['0.1/1']} |"
+        )
         self.assertNotIn("- **base**", out)
         self.assertIn(f"# move both pins to {REVISION}, then\n", out)
 
@@ -1265,14 +1386,18 @@ class Drawn(unittest.TestCase):
         )
         self.assertEqual(
             lines[2],
-            "| Group | Loss | Runs | Whole | Behind | Split | Stalled | Epochs without a fork |",
+            "| Group | Loss | Runs | Whole | Behind | Split | Stalled | Epochs without a fork "
+            "| First fork | Lines off the trunk, median | Members off the trunk, median |",
         )
         self.assertEqual(
             self.rows(out),
             [
-                "| GroupV2 | 0.1% | 2 | 1 | 0 | 1 | 0 | 46 to 50, median 48 |",
-                "| GroupV2 | 1% | 2 | 0 | 0 | 2 | 0 | 9 to 18, median 13.5 |",
-                "| GroupV2 | 5% | 2 | 0 | 0 | 2 | 0 | 3 to 8, median 5.5 |",
+                "| GroupV2 | 0.1% | 2 | 1 | 0 | 1 | 0 | 46 to 50, median 48 | 46 to 46, median 46 "
+                "| 0.5 | 1 of 51 |",
+                "| GroupV2 | 1% | 2 | 0 | 0 | 2 | 0 | 9 to 18, median 13.5 | 9 to 18, median 13.5 "
+                "| 9 | 19.5 of 51 |",
+                "| GroupV2 | 5% | 2 | 0 | 0 | 2 | 0 | 3 to 8, median 5.5 | 3 to 8, median 5.5 "
+                "| 9 | 25.5 of 33 |",
             ],
         )
         self.assertTrue(
@@ -1300,14 +1425,16 @@ class Drawn(unittest.TestCase):
         head = self.uploaded("head")
         shutil.rmtree(head / "sim-revision-50-epochs-by-saro-waku-loss-1-2")
         asked = [
-            {"scenario": simulate.GOALS["v2"].format(rate), "from": 1, "runs": 2}
+            {"scenario": HELD_GOALS["v2"].format(rate), "from": 1, "runs": 2}
             for rate in ("0.1", "1", "5")
         ]
         _, out, _ = self.comment("main", self.matrix(head, None, asked))
 
         self.assertTrue(out.startswith("**chat-sim: no outcome in 1 of 6 runs** at "))
         self.assertEqual(
-            self.rows(out)[1], "| GroupV2 | 1% | 2 | 0 | 0 | 1 | 0 | 18 to 18, median 18 |"
+            self.rows(out)[1],
+            "| GroupV2 | 1% | 2 | 0 | 0 | 1 | 0 | 18 to 18, median 18 | 18 to 18, median 18 | 7 "
+            "| 18 of 51 |",
         )
 
     def test_a_pr_worse_in_2_of_6_fails_its_check_with_the_comment_and_the_report(self):
@@ -1461,10 +1588,10 @@ class Comment(Fixture):
 
     def test_against_the_base_says_what_compare_counted(self):
         write(
-            self.swept(self.runs, "grow-waku-loss-1") / "outcomes.json",
+            self.swept(self.runs, "grow-waku-loss-0.1") / "outcomes.json",
             [outcome(0), outcome(1, "split at epoch 9"), outcome(2, "split at epoch 4")],
         )
-        self.compared("grow-waku-loss-1", "1 of 3 runs came out as expected: 2 worse")
+        self.compared("grow-waku-loss-0.1", "1 of 3 runs came out as expected: 2 worse")
         status, out, _ = self.comment(*self.with_base, "--pr", "316")
         self.assertEqual(status, 0)
         self.assertIn(
@@ -1476,7 +1603,7 @@ class Comment(Fixture):
         self.assertIn("| Scenario | Runs | Came to | Against the base |", out)
         rows = self.rows(out)
         self.assertEqual(
-            rows["grow-waku-loss-1"],
+            rows["grow-waku-loss-0.1"],
             [
                 "3",
                 "whole, split at epoch 9, split at epoch 4",
@@ -1487,7 +1614,7 @@ class Comment(Fixture):
         self.assertIn(f"chat-sim `fedcba9` · [the run]({RUN_URL})", out)
 
     def test_without_a_base_holds_to_what_is_expected_and_says_where_nothing_is(self):
-        self.compared("grow-waku-loss-5", "3 of 3 runs came out as expected")
+        self.compared("grow-waku-size-50", "3 of 3 runs came out as expected")
         status, out, _ = self.comment()
         self.assertEqual(status, 0)
         self.assertIn("against what chat-sim holds in `tools/sim/expected`", out)
@@ -1495,20 +1622,20 @@ class Comment(Fixture):
         rows = self.rows(out)
         self.assertEqual(rows["50-epochs"], ["1", "whole", "nothing held"])
         self.assertEqual(
-            rows["grow-waku-loss-5"],
+            rows["grow-waku-size-50"],
             ["3", "whole, whole, whole", "3 of 3 runs came out as expected"],
         )
 
     def test_a_scenario_with_no_outcome_says_so(self):
         (self.swept(self.runs, "50-epochs") / "outcomes.json").unlink()
         write(
-            self.swept(self.runs, "grow-waku-loss-1") / "outcomes.json",
+            self.swept(self.runs, "grow-waku-loss-0.1") / "outcomes.json",
             [outcome(0), outcome(1, None)],
         )
         _, out, _ = self.comment(*self.with_base)
         rows = self.rows(out)
         self.assertEqual(rows["50-epochs"], ["1", "no outcome", "-"])
-        self.assertEqual(rows["grow-waku-loss-1"][1], "whole, no verdict")
+        self.assertEqual(rows["grow-waku-loss-0.1"][1], "whole, no verdict")
 
     def test_a_revision_chat_sim_does_not_build_at_ran_nothing(self):
         self.unbuilt(self.runs)
@@ -1551,10 +1678,10 @@ class Comment(Fixture):
                 self.assertIn("--base-runs", err)
 
     def test_shows_each_compare_folded_under_the_table(self):
-        compared = self.compared("grow-waku-loss-1", "3 of 3 runs came out as expected")
+        compared = self.compared("grow-waku-loss-0.1", "3 of 3 runs came out as expected")
         _, out, _ = self.comment()
         self.assertIn(
-            "<details><summary><code>grow-waku-loss-1</code></summary>\n\n```\n"
+            "<details><summary><code>grow-waku-loss-0.1</code></summary>\n\n```\n"
             f"{compared}```\n\n</details>\n",
             out,
         )
