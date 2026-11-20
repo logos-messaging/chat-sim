@@ -396,12 +396,13 @@ far a `grow` step got:
 | `ended` | How the `grow` step ended: `split` where the verdict is `split at epoch N`; `stalled` where the trunk stopped short of the epoch the step grew toward, which is any ending but `the trunk reached epoch N`; `whole` where the verdict is `whole`; `behind` otherwise |
 | `lines_off_trunk` | The lines whose kind is not `trunk`: main and sub |
 | `members_off_trunk` | The members behind at the end, on a line not the trunk, or never joined, each counted once: the names in the grow's `behind`, in its `never_joined`, and in the `members` of each line not the trunk |
+| `never_joined` | How many of those never joined: the names in the grow's `never_joined`, each counted once |
 | `came_to`, `stopped` | How the run came out, and what stopped its steps |
 
-`conversation` and `members_digest` are `null` for a run that read no result of its runner,
-and `trunk_epoch`, `ended`, `lines_off_trunk` and `members_off_trunk` for a run without a
-`grow` step. `members_digest` is the first 16 digits `printf '%s\n' ID... | sha256sum` prints,
-given each member's `installation` in `run.json`, in order.
+`conversation` and `members_digest` are `null` for a run that read no result of its runner, and
+`trunk_epoch`, `ended`, `lines_off_trunk`, `members_off_trunk` and `never_joined` for a run
+without a `grow` step. `members_digest` is the first 16 digits `printf '%s\n' ID... | sha256sum`
+prints, given each member's `installation` in `run.json`, in order.
 
 A run that came out otherwise has the outcome expected under it, and its change says where the
 run stands against it. A run of a `grow` step stands, highest first, by:
@@ -510,7 +511,7 @@ the base's outcome and the head's, where both have one.
 | `counts` | How many `cells`, how many have a change as `compared`, how many of those are `same`, `changed`, `better`, `worse` and `re-rolled`, how many of the re-rolled are `below` the lowest of the spread's, and how many have no outcome at the head as `no-outcome` |
 | `verdict` | The first verdict of those below that holds |
 | `groups[]` | For each group the cells are of, in its order: the `group`, and the `counts` and the `verdict` of its cells alone, so that one group's cells better do not hide the other's worse |
-| `summary[]` | Without a base, for each scenario: its `scenario`, `group`, `loss` and `rate`, how many `runs` and how many of them have no outcome as `no-outcome`, how many ended `whole`, `behind`, `split` and `stalled`, the `lowest`, `median` and `highest` of the `epochs` without a fork and, as `split_at`, of the epoch the runs that split first forked at, and the `median` of the `lines_off_trunk` and of the `members_off_trunk` at the end as `compare` counts them, behind, on a line not the trunk or never joined, and of the members `seated`; `null` with `--base` or `--base-point` |
+| `summary[]` | Without a base, for each scenario: its `scenario`, `group`, `loss` and `rate`, how many `runs` and how many of them have no outcome as `no-outcome`, how many ended `whole`, `behind`, `split` and `stalled`, the `lowest`, `median` and `highest` of the `epochs` without a fork and, as `split_at`, of the epoch the runs that split first forked at, and the `median` of the `lines_off_trunk` and of the `members_off_trunk` at the end as `compare` counts them, behind, on a line not the trunk or never joined, of those that `never_joined`, and of the members `seated`; `null` with `--base` or `--base-point` |
 | `spread` | With `--spread`, of that point its `logos_chat` and `measurement` commits and its run's `run_url`; at the scenarios of the cells, its `summary` rows as it holds them; and as `seeds[]`, in its order, each of its runs' `scenario`, `seed`, `epochs` without a fork and how it `ended`, each `null` for a run with no outcome; else `null` |
 
 | Verdict | When |

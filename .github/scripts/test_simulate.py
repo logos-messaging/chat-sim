@@ -34,13 +34,13 @@ HELD_GOALS = {
     "v3": "50-epochs-by-saro-waku-loss-{}-groupv3",
 }
 # The lines and the members off the trunk at the end of each of UPLOADED's runs but 0.1% seed 0,
-# which ended whole, by its rate and seed, as a cell says them.
+# which ended whole, and how many of those never joined, by its rate and seed, as a cell says them.
 OFF = {
     "0.1/1": "1 line and 2 of 51 members off the trunk",
-    "1/0": "7 lines and 18 of 51 members off the trunk",
+    "1/0": "7 lines and 18 of 51 members off the trunk, 1 of them never joined",
     "1/1": "11 lines and 21 of 51 members off the trunk",
-    "5/0": "2 lines and 9 of 15 members off the trunk",
-    "5/1": "16 lines and 42 of 51 members off the trunk",
+    "5/0": "2 lines and 9 of 15 members off the trunk, 2 of them never joined",
+    "5/1": "16 lines and 42 of 51 members off the trunk, 2 of them never joined",
 }
 # What the comment on a pull request says where main has no point to set the groups side by side.
 NO_SIDES = (
@@ -953,9 +953,10 @@ class Drawn(unittest.TestCase):
             "behind: one group, some members behind; stalled: one group that stopped growing short "
             "of 50; split: it forked), at the epoch of its first fork, or else of the trunk (50 is "
             "the goal) · the lines and the members off the trunk at the end, of the members "
-            "seated, where there are any (behind, on another line, or never joined) · where it is "
-            "better or worse, what the base's run had of the first of these that moved · the "
-            "change against the merge base at the same seed",
+            "seated, where there are any (behind, on another line, or never joined), and how many "
+            "of those never joined, where any did · where it is better or worse, what the base's "
+            "run had of the first of these that moved · the change against the merge base at the "
+            "same seed",
             out,
         )
         self.assertEqual((out.count("<details>"), out.count("<details open>")), (4, 2))
@@ -1064,9 +1065,9 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             self.sides(out),
             [
-                "| 0.1% | 15 of 20 · - | 18 to 46, median 36 · - | 1 · - | 2 of 51 · - |",
-                "| 1% | 20 of 20 · - | 3 to 23, median 12.5 · - | 7 · - | 19 of 51 · - |",
-                "| 5% | 19 of 20 · - | 3 to 18, median 6 · - | 7.5 · - | 32.5 of 44 · - |",
+                "| 0.1% | 15 of 20 · - | 18 to 46, median 36 · - | 1 · - | 2 of 51 · - | 0 · - |",
+                "| 1% | 20 of 20 · - | 3 to 23, median 12.5 · - | 7 · - | 19 of 51 · - | 0.5 · - |",
+                "| 5% | 19 of 20 · - | 3 to 18, median 6 · - | 7.5 · - | 32.5 of 44 · - | 2 · - |",
             ],
         )
         self.assertEqual(
@@ -1104,6 +1105,7 @@ class Drawn(unittest.TestCase):
         )
         rows["1%"].update({"split_at": none, "lines_off_trunk": {"median": None}})
         rows["1%"].update({"members_off_trunk": {"median": None}, "seated": {"median": None}})
+        rows["1%"].update({"never_joined": {"median": None}})
         rows["5%"].update({"no-outcome": 15, "split": 4, "behind": 1})
         matrix.write_text(json.dumps(written), encoding="utf-8")
         _, out, _ = self.comment("pr", matrix, "--base", FA5282A)
@@ -1111,9 +1113,9 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             self.sides(out)[1:],
             [
-                "| 1% | - · - | - · - | - · - | - · - |",
+                "| 1% | - · - | - · - | - · - | - · - | - · - |",
                 "| 5% | 4 of 5, 15 with no outcome · - | 3 to 18, median 6 · - | 7.5 · - "
-                "| 32.5 of 44 · - |",
+                "| 32.5 of 44 · - | 2 · - |",
             ],
         )
 
@@ -1387,17 +1389,18 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             lines[2],
             "| Group | Loss | Runs | Whole | Behind | Split | Stalled | Epochs without a fork "
-            "| First fork | Lines off the trunk, median | Members off the trunk, median |",
+            "| First fork | Lines off the trunk, median | Members off the trunk, median "
+            "| Never joined, median |",
         )
         self.assertEqual(
             self.rows(out),
             [
                 "| GroupV2 | 0.1% | 2 | 1 | 0 | 1 | 0 | 46 to 50, median 48 | 46 to 46, median 46 "
-                "| 0.5 | 1 of 51 |",
+                "| 0.5 | 1 of 51 | 0 |",
                 "| GroupV2 | 1% | 2 | 0 | 0 | 2 | 0 | 9 to 18, median 13.5 | 9 to 18, median 13.5 "
-                "| 9 | 19.5 of 51 |",
+                "| 9 | 19.5 of 51 | 0.5 |",
                 "| GroupV2 | 5% | 2 | 0 | 0 | 2 | 0 | 3 to 8, median 5.5 | 3 to 8, median 5.5 "
-                "| 9 | 25.5 of 33 |",
+                "| 9 | 25.5 of 33 | 2 |",
             ],
         )
         self.assertTrue(
@@ -1434,7 +1437,7 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             self.rows(out)[1],
             "| GroupV2 | 1% | 2 | 0 | 0 | 1 | 0 | 18 to 18, median 18 | 18 to 18, median 18 | 7 "
-            "| 18 of 51 |",
+            "| 18 of 51 | 1 |",
         )
 
     def test_a_pr_worse_in_2_of_6_fails_its_check_with_the_comment_and_the_report(self):

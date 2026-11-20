@@ -42,13 +42,31 @@ def write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def unforked(point: dict) -> dict:
-    """`point` as a point of an earlier measurement holds it, whose summaries say nothing of how
-    the runs forked."""
-    for one in point["summary"]:
+def summaries(held: dict) -> List[dict]:
+    """The summaries of a point, or of a pull request's matrix and of its spread."""
+    spread = held.get("spread")
+    return [*(held["summary"] or []), *([] if spread is None else spread["summary"])]
+
+
+def unjoined(held: dict) -> dict:
+    """`held`, a point or a pull request's matrix, as one of an earlier measurement holds it,
+    whose outcomes and summaries do not count the members that never joined."""
+    for cell in held["cells"]:
+        for side in ("head", "base"):
+            if cell.get(side) is not None:
+                del cell[side]["never_joined"]
+    for one in summaries(held):
+        del one["never_joined"]
+    return held
+
+
+def unforked(held: dict) -> dict:
+    """`held` as one of a measurement earlier still holds it, whose summaries say nothing of how
+    the runs forked either."""
+    for one in summaries(unjoined(held)):
         for field in ("split_at", "lines_off_trunk", "seated"):
             del one[field]
-    return point
+    return held
 
 
 class Parsed(HTMLParser):
@@ -660,6 +678,17 @@ class Point(LogosChat):
                 cell(head={k: v for k, v in head.items() if k != "members_digest"}),
             ),
             ("cells[0].head.conversation is not an id", cell(head=dict(head, conversation="<b>"))),
+            (
+                "cells[0].head.never_joined is not of its kind",
+                cell(head=dict(head, never_joined="2")),
+            ),
+            (
+                "summary[0].never_joined.median is not of its kind",
+                dict(
+                    written,
+                    summary=[dict(written["summary"][0], never_joined={"median": "0.5"})],
+                ),
+            ),
             ("cells[0].group 'v4' is none of a scenario's", cell(group="v4")),
             (
                 "summary[0].group 'GroupV3' is none of a scenario's",
@@ -1905,7 +1934,7 @@ class Pages(LogosChat):
                 (
                     True,
                     "GroupV2 5% loss, seed 0 split at 4, 2 lines and 9 of 15 members off the "
-                    "trunk, was split at 8: worse",
+                    "trunk, 2 of them never joined, was split at 8: worse",
                 ),
             ]
             + [
@@ -2235,6 +2264,21 @@ class Pages(LogosChat):
         status, _, err = self.run_pages("trend", str(self.site))
         self.assertEqual((status, err), (0, ""))
 
+    def test_a_point_json_whose_outcomes_count_no_member_that_never_joined_is_read_as_written(self):
+        self.point()
+        path, written = self.at() / "point.json", unjoined(self.read())
+        write(path, json.dumps(written))
+
+        point = pages.read_point(path)
+        pages.draw_point(self.at(), point)
+
+        self.assertEqual(point, written)
+        parsed = self.stands_alone(self.at())
+        self.assertIn("2 lines and 9 of 15 members off the trunk", parsed.text)
+        self.assertNotIn("of them never joined", parsed.text)
+        status, _, err = self.run_pages("trend", str(self.site))
+        self.assertEqual((status, err), (0, ""))
+
     def test_a_point_json_that_names_no_group_is_read_as_written_and_drawn_as_group_v2_s(self):
         self.point()
         path, written = self.at() / "point.json", unforked(self.read())
@@ -2324,15 +2368,25 @@ class Pages(LogosChat):
 
 
     def test_a_pull_request_s_matrix_whose_spread_predates_the_fork_fields_is_drawn_again(self):
+        # As a pull request's run kept it before main's points held how their runs forked.
+        self.drawn_again_once_its_point_loses_its_text(unforked)
+
+    def test_a_pull_request_s_matrix_counting_no_member_that_never_joined_is_drawn_again(self):
+        # As a pull request's run kept it before the outcomes counted the members that never
+        # joined.
+        self.drawn_again_once_its_point_loses_its_text(unjoined)
+
+    def drawn_again_once_its_point_loses_its_text(self, earlier: Callable[[dict], dict]) -> None:
+        """Draws a pull request's matrix against main's point, made by `earlier` one an earlier
+        measurement held: its page links the point's runs, and once the point loses their text,
+        the point's page."""
         runs = self.uploaded()
         matrix = self.matrix(runs)
         self.point(sha(1), minute=1, run_number=1, runs=runs, matrix=matrix)
         first = self.at(sha(1)) / "point.json"
         flags = ("--base-point", str(first), "--spread", str(first))
         stood = self.matrix(self.uploaded(), None, (), *flags)
-        # As a pull request's run kept it before main's points held how their runs forked.
-        written = json.loads(stood.read_text("utf-8"))
-        unforked(written["spread"])
+        written = earlier(json.loads(stood.read_text("utf-8")))
         write(stood, json.dumps(written))
         out = self.pr(self.uploaded(), stood, self.nothing(), revision=sha(1))
         text = f"../main/{sha(1)}/{MEASUREMENT}/{GOAL.format(1)}/1/run.txt"
@@ -2363,6 +2417,7 @@ FIFTY = {
     "ended": None,
     "lines_off_trunk": None,
     "members_off_trunk": None,
+    "never_joined": None,
     "came_to": "as expected",
     "stopped": None,
 }
@@ -2721,6 +2776,22 @@ class Long(LogosChat):
         self.assertIn("long.json: time is not of the form", err)
         self.long(run_number=1)
         self.assertEqual(pages.read_long(self.held() / "long.json")["time"], time(0))
+
+    def test_a_long_json_whose_outcomes_count_no_member_that_never_joined_is_read_as_written(self):
+        self.long()
+        path = self.held() / "long.json"
+        written = json.loads(path.read_text("utf-8"))
+        outcomes = [run["outcome"] for one in written["scenarios"] for run in one["runs"]]
+        for outcome in outcomes:
+            if outcome is not None:
+                del outcome["never_joined"]
+        write(path, json.dumps(written))
+
+        long = pages.read_long(path)
+        pages.draw_long(self.held(), long)
+
+        self.assertEqual(long, written)
+        self.assertIn(LOSS_5, self.stands_alone(self.held()).rows)
 
     def test_past_the_newest_fifteen_long_runs_each_keeps_long_json_and_a_page_drawn_from_it(self):
         uploaded = self.long_uploaded()

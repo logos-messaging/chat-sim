@@ -80,6 +80,7 @@ _OUTCOME = {
     "ended": (str, _NONE),
     "lines_off_trunk": (int, _NONE),
     "members_off_trunk": (int, _NONE),
+    "never_joined": (int, _NONE),
     "came_to": (str,),
     "stopped": (str, _NONE),
 }
@@ -95,6 +96,7 @@ _SUMMARY = {
     "split_at": {"lowest": (int, _NONE), "median": (int, float, _NONE), "highest": (int, _NONE)},
     "lines_off_trunk": {"median": (int, float, _NONE)},
     "members_off_trunk": {"median": (int, float, _NONE)},
+    "never_joined": {"median": (int, float, _NONE)},
     "seated": {"median": (int, float, _NONE)},
 }
 
@@ -423,8 +425,8 @@ def _summary(cells: List[dict]) -> List[dict]:
     """For each scenario in the order of its cells: its group, how many runs, how each ended, the
     lowest, median and highest epochs without a fork, the same of the epoch of the first fork of
     the runs that split, and the medians of the lines off the trunk at the end, of the members off
-    it, as `compare` counts them: behind, on a line not the trunk, or never joined, and of the
-    members seated."""
+    it, as `compare` counts them: behind, on a line not the trunk, or never joined, of those that
+    never joined, and of the members seated."""
     scenarios: Dict[str, List[dict]] = {}
     for cell in cells:
         scenarios.setdefault(cell["scenario"], []).append(cell)
@@ -435,6 +437,7 @@ def _summary(cells: List[dict]) -> List[dict]:
         split = [cell["epochs"]["head"] for cell in its if cell["ended"]["head"] == "split"]
         lines = [one["lines_off_trunk"] for one in outcomes if one["lines_off_trunk"] is not None]
         off = [one["members_off_trunk"] for one in outcomes if one["members_off_trunk"] is not None]
+        never = [one["never_joined"] for one in outcomes if one["never_joined"] is not None]
         seated = [one["seated"] for one in outcomes if one["seated"] is not None]
         summary.append(
             {
@@ -449,6 +452,7 @@ def _summary(cells: List[dict]) -> List[dict]:
                 "split_at": _extent(split),
                 "lines_off_trunk": {"median": _median(lines)},
                 "members_off_trunk": {"median": _median(off)},
+                "never_joined": {"median": _median(never)},
                 "seated": {"median": _median(seated)},
             }
         )

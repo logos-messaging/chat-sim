@@ -27,6 +27,7 @@ def outcome(**changed) -> dict:
         "ended": None,
         "lines_off_trunk": None,
         "members_off_trunk": None,
+        "never_joined": None,
         "came_to": "verdict: split at epoch 7, expected whole",
         "stopped": None,
     }
@@ -45,9 +46,9 @@ def run(name: str) -> dict:
 WHOLE, SPLIT, STALLED = (compare.outcome(run(name)) for name in ("whole", "split", "stalled"))
 
 
-# What an outcome says of a `grow` step: the trunk's epoch, how it ended, and the lines and the
-# members off the trunk.
-GROWN = ("trunk_epoch", "ended", "lines_off_trunk", "members_off_trunk")
+# What an outcome says of a `grow` step: the trunk's epoch, how it ended, the lines and the
+# members off the trunk, and how many of those never joined.
+GROWN = ("trunk_epoch", "ended", "lines_off_trunk", "members_off_trunk", "never_joined")
 
 
 def grown(one: dict) -> list:
@@ -90,11 +91,11 @@ class Change(unittest.TestCase):
 
 class Outcome(unittest.TestCase):
     def test_a_run_that_stayed_whole_ended_whole_with_no_one_off_the_trunk(self):
-        self.assertEqual(grown(WHOLE), [50, "whole", 0, 0])
+        self.assertEqual(grown(WHOLE), [50, "whole", 0, 0, 0])
 
     def test_a_run_that_split_counts_the_lines_and_members_off_its_trunk(self):
         # Seven main branches, nine members on them, eight behind on the trunk, tomo never joined.
-        self.assertEqual(grown(SPLIT), [50, "split", 7, 18])
+        self.assertEqual(grown(SPLIT), [50, "split", 7, 18, 1])
 
     def test_a_member_behind_on_a_branch_is_off_the_trunk_once(self):
         report = run("split")
@@ -103,7 +104,7 @@ class Outcome(unittest.TestCase):
         self.assertEqual(compare.outcome(report)["members_off_trunk"], 18)
 
     def test_a_run_that_never_forked_and_whose_trunk_stopped_short_stalled(self):
-        self.assertEqual(grown(STALLED), [4, "stalled", 0, 2])
+        self.assertEqual(grown(STALLED), [4, "stalled", 0, 2, 1])
 
     def test_whether_the_trunk_got_where_the_step_grew_is_the_runners_ending(self):
         reached, short = run("stalled"), run("whole")
@@ -113,12 +114,12 @@ class Outcome(unittest.TestCase):
         self.assertEqual(compare.outcome(reached)["ended"], "behind")
         self.assertEqual(compare.outcome(short)["ended"], "stalled")
 
-    def test_a_run_without_a_grow_step_has_none_of_its_four(self):
+    def test_a_run_without_a_grow_step_has_none_of_its_five(self):
         report = dict(run("whole"), grow=None, check={"as_expected": True, "differences": []})
 
         said = compare.outcome(report)
 
-        self.assertEqual(grown(said), [None, None, None, None])
+        self.assertEqual(grown(said), [None] * 5)
         self.assertEqual(said["came_to"], "as expected")
 
     def test_the_members_ids_come_to_one_digest_in_member_order(self):

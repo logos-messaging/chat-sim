@@ -157,12 +157,12 @@ head's runs among main's twenty seeds of each group's rate at the point at the b
 newest point
 at the measurement of the base's hundred newest commits that logos-chat's commits API lists, passing over
 one the plan cannot read, with a warning that says why. The matrix
-holds that point as `spread`, and the comment opens with its runs of the two groups side by side, a row
-a rate: how many split, the epoch of the first fork from the lowest to the highest, and the medians of the
-lines and of the members off the trunk at the end. A re-rolled cell says whether its epochs are within
-that point's runs or below the lowest, and the title of a re-rolled verdict how many fell below. With no
-such point, the comment has no such column, and against a base says why main's runs of the two groups
-are not side by side.
+holds that point as `spread`, and the comment opens with its runs of the two groups side by side, a row a
+rate: how many split, the epoch of the first fork from the lowest to the highest, and the medians of the
+lines and of the members off the trunk at the end, and of those that never joined. A re-rolled cell says
+whether its epochs are within that point's runs or below the lowest, and the title of a re-rolled verdict
+how many fell below. With no such point, the comment has no such column, and against a base says why
+main's runs of the two groups are not side by side.
 
 | Path | Holds |
 |---|---|
@@ -194,11 +194,13 @@ A `point.json` holds what a page of the point draws:
 | `merged` | the logos-chat pull requests merged since the point it follows, each its `number` and `title`, from the commits logos-chat's compare API gives between the two: a squash merge's commit is titled `<title> (#N)`, a merge commit's `Merge pull request #N from <branch>` above the title |
 | `previous` | the point it follows, its `logos_chat` and `measurement`, and as `rerolled` whether a run drew other ids than that point's run of its scenario and seed, the group's or the members'; `null` for the first point |
 | `cells` | each run's cell as the matrix holds it, but `below`, which only a pull request's matrix says: the scenario, its group, `v2` or `v3`, the seed, the run, the loss and its rate, the run's outcome as `compare --write` writes one, the epochs without a fork, how the run ended, and whether its job could not build chat-sim. A point has no base, so each field of a base is `null`, and `unbuilt.base` is `false` |
-| `summary` | of each scenario, a group at a rate, its group, how many runs and how each ended, the lowest, median and highest epochs without a fork, the lowest, median and highest epoch of the first fork of the runs that split, and the medians of the lines and of the members off the trunk at the end and of the members seated |
+| `summary` | of each scenario, a group at a rate, its group, how many runs and how each ended, the lowest, median and highest epochs without a fork, the lowest, median and highest epoch of the first fork of the runs that split, and the medians of the lines and of the members off the trunk at the end, of those that never joined, and of the members seated |
 
 A point that names no group, in its cells or its summary, holds GroupV2's runs alone, and is read and
-drawn as GroupV2's. A point of an earlier measurement may hold no first fork, lines off the trunk or
-members seated in its summary, and is read as it was written.
+drawn as GroupV2's. A point of an earlier measurement may not count the members that never joined, in its
+cells or its summary, nor hold a first fork, lines off the trunk or members seated in its summary, and is
+read as it was written. So are the cells and the spread of a pull request's matrix, and the runs of a
+`long.json`, of an earlier measurement.
 
 A `long.json` holds what the long run's page draws:
 

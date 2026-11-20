@@ -28,6 +28,7 @@ _KEYS = _ROW | {
     "ended",
     "lines_off_trunk",
     "members_off_trunk",
+    "never_joined",
 }
 # The parts of where a run of a `grow` step with a verdict stands, in the order they rank it: the
 # epochs without a fork, whether it ended whole, then the lines and the members off the trunk.
@@ -58,8 +59,9 @@ def outcome(report: dict) -> dict:
     holds `trunk_epoch`; how it `ended`: `split` where the verdict is `split at epoch N`,
     `stalled` where the trunk stopped short of the epoch the step grew toward, else `whole` for
     the verdict `whole` and `behind` for any other; `lines_off_trunk`, the lines whose kind is
-    not `trunk`; and `members_off_trunk`, the members behind at the end, on a line not the trunk,
-    or never joined, each once. Those four are `None` for a run without a `grow` step.
+    not `trunk`; `members_off_trunk`, the members behind at the end, on a line not the trunk, or
+    never joined, each once; and `never_joined`, how many of those never joined. Those five are
+    `None` for a run without a `grow` step.
     """
     return {
         "seed": report["seed"],
@@ -185,18 +187,22 @@ def _digest(installations: List[str]) -> Optional[str]:
 
 
 def _grown(report: dict) -> dict:
-    """The four keys of an outcome that say how far a `grow` step got, `None` without one."""
+    """The five keys of an outcome that say how far a `grow` step got, `None` without one."""
     grow = report["grow"]
     if grow is None:
-        return dict.fromkeys(("trunk_epoch", "ended", "lines_off_trunk", "members_off_trunk"))
+        return dict.fromkeys(
+            ("trunk_epoch", "ended", "lines_off_trunk", "members_off_trunk", "never_joined")
+        )
     off = [line for line in grow["lines"] if line["kind"] != "trunk"]
-    members = {*grow["behind"], *grow["never_joined"]}
+    never = set(grow["never_joined"])
+    members = {*grow["behind"], *never}
     members.update(member for line in off for member in line["members"])
     return {
         "trunk_epoch": grow["trunk_epoch"],
         "ended": _ended(report["verdict"], grow),
         "lines_off_trunk": len(off),
         "members_off_trunk": len(members),
+        "never_joined": len(never),
     }
 
 
