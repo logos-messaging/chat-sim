@@ -353,6 +353,7 @@ class Summary(unittest.TestCase):
                 "split_at": {"lowest": 18, "median": 18, "highest": 18},
                 "lines_off_trunk": {"median": 0},
                 "members_off_trunk": {"median": 1.5},
+                "never_joined": {"median": 0.5},
                 "seated": {"median": 51},
             },
         )
@@ -363,7 +364,7 @@ class Summary(unittest.TestCase):
 
         for spread in ("epochs", "split_at"):
             self.assertEqual(summary[spread], dict.fromkeys(("lowest", "median", "highest")))
-        for median in ("lines_off_trunk", "members_off_trunk", "seated"):
+        for median in ("lines_off_trunk", "members_off_trunk", "never_joined", "seated"):
             self.assertEqual(summary[median], {"median": None})
 
     def test_a_run_asked_for_that_left_nothing_counts_as_a_run_with_no_outcome(self):

@@ -210,9 +210,10 @@ than it did was changed by a revision of logos-chat or of chat-sim. `compare` ho
 in one process to the outcome a file expects of it: the seeds, the ids of the group and of its members,
 the verdict, the members at the tip, the seconds of the clock, how the run came out and what stopped its
 steps, and of a `grow` step the trunk's epoch, how the step ended (`whole`, `behind`, `split`, or
-`stalled` where the trunk stopped short of the epoch it grew toward), the lines off the trunk, and the
-members off it: behind at the end, on another line, or never joined. A run that came out otherwise has
-the outcome expected under it, as `was`, and its change says where the run stands against it.
+`stalled` where the trunk stopped short of the epoch it grew toward), the lines off the trunk, the
+members off it (behind at the end, on another line, or never joined), and how many of those never joined.
+A run that came out otherwise has the outcome expected under it, as `was`, and its change says where the
+run stands against it.
 
 A run of a `grow` step stands, highest first, by the epochs without a fork (the first split's epoch, or
 the trunk's where there is none); at the same epochs, whole at the end over any other ending; then the

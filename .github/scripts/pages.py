@@ -183,9 +183,13 @@ _OUTCOME = {
     "ended": (str, _NONE),
     "lines_off_trunk": (int, _NONE),
     "members_off_trunk": (int, _NONE),
+    "never_joined": (int, _NONE),
     "came_to": (str,),
     "stopped": (str, _NONE),
 }
+# An outcome a point, a pull request's matrix or a long run holds need not count the members that
+# never joined: the outcomes that do not are of earlier measurements.
+_UNJOINED_OUTCOME = {field: kind for field, kind in _OUTCOME.items() if field != "never_joined"}
 _MOVED = {"part": (str,), "head": (int, str), "base": (int, str)}
 _SUMMARY = {
     "scenario": (str,),
@@ -207,11 +211,16 @@ _SUMMARY = {
     },
     "lines_off_trunk": {"median": (int, float, _NONE)},
     "members_off_trunk": {"median": (int, float, _NONE)},
+    "never_joined": {"median": (int, float, _NONE)},
     "seated": {"median": (int, float, _NONE)},
 }
-# A point need not hold how its runs forked: the points that do not are of earlier measurements.
+# A point need not count the members that never joined, nor hold how its runs forked: the points
+# that do not are of earlier measurements.
+_UNJOINED_SUMMARY = {field: kind for field, kind in _SUMMARY.items() if field != "never_joined"}
 _FORKS = ("split_at", "lines_off_trunk", "seated")
-_UNFORKED_SUMMARY = {field: kind for field, kind in _SUMMARY.items() if field not in _FORKS}
+_UNFORKED_SUMMARY = {
+    field: kind for field, kind in _UNJOINED_SUMMARY.items() if field not in _FORKS
+}
 _UNGROUPED_SUMMARY = {field: kind for field, kind in _UNFORKED_SUMMARY.items() if field != "group"}
 # What `write_point`, `write_pr` and `write_long` write.
 _POINT = {
@@ -1819,7 +1828,7 @@ def _cell(cell: object, where: str, alone: bool, shape: dict = _CELL) -> None:
         raise Unreadable(f"{where}.run {cell['run']} is not that of a run")
     for side in ("head", "base"):
         if cell[side] is not None:
-            _outcome(cell[side], f"{where}.{side}")
+            _outcome(cell[side], f"{where}.{side}", _held_outcome(cell[side]))
         if cell["ended"][side] not in (None, *_ENDINGS):
             raise Unreadable(f"{where}.ended.{side} is not how a run ended")
     if cell["change"] not in (None, *_CHANGES):
@@ -1833,8 +1842,9 @@ def _cell(cell: object, where: str, alone: bool, shape: dict = _CELL) -> None:
         raise Unreadable(f"{where} has a base")
 
 
-def _outcome(outcome: object, where: str) -> None:
-    _shaped(outcome, _OUTCOME, where)
+def _outcome(outcome: object, where: str, shape: dict = _OUTCOME) -> None:
+    """Refuses `outcome` unless it is a run's outcome of `shape`."""
+    _shaped(outcome, shape, where)
     for field in ("conversation", "members_digest"):
         if outcome[field] is not None and _HEX.fullmatch(outcome[field]) is None:
             raise Unreadable(f"{where}.{field} is not an id")
@@ -1842,11 +1852,22 @@ def _outcome(outcome: object, where: str) -> None:
         raise Unreadable(f"{where}.ended is not how a run ended")
 
 
+def _held_outcome(outcome: object) -> dict:
+    """The shape of an outcome a point, a pull request's matrix or a long run holds: one from
+    before the outcomes counted the members that never joined has no such count."""
+    if not isinstance(outcome, dict) or "never_joined" in outcome:
+        return _OUTCOME
+    return _UNJOINED_OUTCOME
+
+
 def _held_summary(one: object) -> dict:
-    """The shape of a point's summary of a scenario: one from before the summaries held how the
-    runs forked has none of it, and one from before they named their group has no group too."""
-    if not isinstance(one, dict) or "split_at" in one:
+    """The shape of a point's summary of a scenario: one from before the summaries counted the
+    members that never joined has no such count, one from before they held how the runs forked
+    has none of that either, and one from before they named their group has no group too."""
+    if not isinstance(one, dict) or "never_joined" in one:
         return _SUMMARY
+    if "split_at" in one:
+        return _UNJOINED_SUMMARY
     return _UNFORKED_SUMMARY if "group" in one else _UNGROUPED_SUMMARY
 
 
@@ -1894,7 +1915,9 @@ def _long_scenario(one: object, where: str) -> None:
         if run["run"] != number + 1:
             raise Unreadable(f"{where}.runs[{number}].run is not run {number + 1}")
         if run["outcome"] is not None:
-            _outcome(run["outcome"], f"{where}.runs[{number}].outcome")
+            _outcome(
+                run["outcome"], f"{where}.runs[{number}].outcome", _held_outcome(run["outcome"])
+            )
             if run["outcome"]["seed"] != run["seed"]:
                 raise Unreadable(f"{where}.runs[{number}].outcome is not of the run's seed")
 

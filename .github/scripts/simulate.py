@@ -115,20 +115,22 @@ _OFF_TRUNK = "behind, on another line, or never joined"
 _PR_FOOT = (
     f"A cell: how the run ended ({_ENDED}), at the epoch of its first fork, or else of the trunk "
     "(50 is the goal) · the lines and the members off the trunk at the end, of the members "
-    f"seated, where there are any ({_OFF_TRUNK}) · where it is better or worse, what the base's "
-    "run had of the first of these that moved · the change against the merge base at the same "
-    "seed (changed: the run differs but is no better or worse; re-rolled: the run drew other ids "
-    "than the base's, so the two are not compared). One cell moving can be the loss pattern "
-    "shifting under your change; main's 20 seeds after the merge are the measurement. This check "
-    "blocks nothing yet. Run a cell again with the command in its fold."
+    f"seated, where there are any ({_OFF_TRUNK}), and how many of those never joined, where any "
+    "did · where it is better or worse, what the base's run had of the first of these that moved "
+    "· the change against the merge base at the same seed (changed: the run differs but is no "
+    "better or worse; re-rolled: the run drew other ids than the base's, so the two are not "
+    "compared). One cell moving can be the loss pattern shifting under your change; main's 20 "
+    "seeds after the merge are the measurement. This check blocks nothing yet. Run a cell again "
+    "with the command in its fold."
 )
 _SIDES_FOOT = (
     "A row: main's runs of a rate, a seed each, GroupV2's · GroupV3's: how many of those with an "
     "outcome split; the epoch of the first fork of the runs that split, from the lowest to the "
-    "highest; and the medians of the lines and of the members off the trunk at the end "
-    f"({_OFF_TRUNK}), of the median of the members seated. A seed fixes the numbers each "
-    "member's frames are drawn against, and the groups send other frames, so seed 0 of one group "
-    "is no twin of seed 0 of the other: the groups compare by their spreads."
+    "highest; and the median of the lines off the trunk at the end, the median of the members "
+    f"off it ({_OFF_TRUNK}) out of the median of the members seated, and the median of those "
+    "that never joined. A seed fixes the numbers each member's frames are drawn against, and the "
+    "groups send other frames, so seed 0 of one group is no twin of seed 0 of the other: the "
+    "groups compare by their spreads."
 )
 _NO_SIDES = [
     "No point of main at this chat-sim's measurement that can be read is among the base's hundred "
@@ -139,8 +141,9 @@ _MAIN_FOOT = (
     f"A row: the runs of a group at a rate of loss, a seed each, by how each ended ({_ENDED}); "
     "how many epochs the group stayed one group, from the lowest seed to the highest (50 is the "
     "goal); the epoch of the first fork of the runs that split, from the lowest to the highest; "
-    f"and the medians of the lines and of the members off the trunk at the end ({_OFF_TRUNK}), "
-    "of the median of the members seated."
+    "and the median of the lines off the trunk at the end, the median of the members off it "
+    f"({_OFF_TRUNK}) out of the median of the members seated, and the median of those that "
+    "never joined."
 )
 
 
@@ -568,7 +571,7 @@ def render_pr(matrix: dict, facts: dict) -> str:
 def render_main(matrix: dict, facts: dict) -> str:
     """The comment on a point of main: a row a group's rate with how its runs ended, the
     lowest, median and highest epochs without a fork and of the first fork, and the medians of
-    the lines and of the members off the trunk."""
+    the lines and of the members off the trunk, and of those that never joined."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
     said = f"chat-sim: {matrix['counts']['cells']} runs"
@@ -578,14 +581,17 @@ def render_main(matrix: dict, facts: dict) -> str:
         _verdict_line(said, facts),
         "",
         "| Group | Loss | Runs | Whole | Behind | Split | Stalled | Epochs without a fork | "
-        "First fork | Lines off the trunk, median | Members off the trunk, median |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "First fork | Lines off the trunk, median | Members off the trunk, median | "
+        "Never joined, median |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for one in matrix["summary"]:
         reached = _extent(one["epochs"])
         counted = " | ".join(str(one[ended]) for ended in ("whole", "behind", "split", "stalled"))
         named = f"{GROUPS[one['group']]} | {_rate(one['rate'])}"
-        forked = f"{_extent(one['split_at'])} | {_lines_off(one)} | {_members_off(one)}"
+        forked = " | ".join(
+            said(one) for said in (_first_fork, _lines_off, _members_off, _never_joined)
+        )
         lines.append(f"| {named} | {one['runs']} | {counted} | {reached} | {forked} |")
     lines += ["", _MAIN_FOOT]
     return "".join(f"{line}\n" for line in lines)
@@ -593,8 +599,8 @@ def render_main(matrix: dict, facts: dict) -> str:
 
 def sides(spread: dict) -> List[str]:
     """Main's runs in `spread` of the two groups side by side, as lines of Markdown: a row a rate
-    of how many split, the epochs of the first fork and the medians off the trunk, each GroupV2's,
-    then GroupV3's, and what a row says."""
+    of how many split, the epochs of the first fork, the medians off the trunk and of those that
+    never joined, each GroupV2's, then GroupV3's, and what a row says."""
     rates: Dict[object, Dict[str, dict]] = {}
     for one in spread["summary"]:
         rates.setdefault(one["loss"], {})[one["group"]] = one
@@ -603,15 +609,15 @@ def sides(spread: dict) -> List[str]:
         f"{_commit(spread['logos_chat'])}",
         "",
         "| Loss | Split | First fork | Lines off the trunk, median | "
-        "Members off the trunk, median |",
-        "|---|---|---|---|---|",
+        "Members off the trunk, median | Never joined, median |",
+        "|---|---|---|---|---|---|",
     ]
     for loss in sorted(rates, key=lambda loss: (loss is None, loss or 0)):
         held = [rates[loss].get(group) for group in GROUPS]
         rate = next(one for one in held if one is not None)["rate"]
         shown = [
             " · ".join("-" if one is None else said(one) for one in held)
-            for said in (_split, _first_fork, _lines_off, _members_off)
+            for said in (_split, _first_fork, _lines_off, _members_off, _never_joined)
         ]
         lines.append(f"| {_rate(rate)} | " + " | ".join(shown) + " |")
     return lines + ["", _SIDES_FOOT]
@@ -1027,10 +1033,11 @@ def _rows(cells: List[dict]) -> List[Tuple[str, List[dict]]]:
 
 def words(cell: dict, against: bool) -> str:
     """A cell in a few words: how the head's run ended, at the epoch of its first fork or else of
-    the trunk, and the lines and the members off the trunk where there are any, then its change,
-    with what the base's run had of what moved where it is better or worse, and where it is
-    re-rolled beside main's spread whether the head's epochs are within it or below it; and with
-    `against`, why a cell that has an outcome at the head has no change."""
+    the trunk, and the lines and the members off the trunk where there are any and how many of
+    those never joined where any did, then its change, with what the base's run had of what moved
+    where it is better or worse, and where it is re-rolled beside main's spread whether the head's
+    epochs are within it or below it; and with `against`, why a cell that has an outcome at the
+    head has no change."""
     if cell["head"] is None:
         return _missing(cell, "head")
     said = _ended_at(cell["epochs"]["head"], cell["ended"]["head"])
@@ -1088,6 +1095,11 @@ def _members_off(one: dict) -> str:
     return str(median) if seated is None else f"{median} of {seated}"
 
 
+def _never_joined(one: dict) -> str:
+    median = one["never_joined"]["median"]
+    return "-" if median is None else str(median)
+
+
 def _spread_head(spread: dict) -> str:
     """The head of the column of main's spread: how many seeds of a rate main ran, and where."""
     return f"main's {spread_seeds(spread)} at {_commit(spread['logos_chat'])}"
@@ -1110,15 +1122,20 @@ def _ended_at(epochs: int, ended: str) -> str:
 
 
 def _off_trunk(outcome: dict) -> str:
-    """The lines and the members off the trunk at the end of a run, of the members seated, or
-    nothing where there are none."""
+    """The lines and the members off the trunk at the end of a run, of the members seated, and
+    how many of those never joined, or nothing where there are none. An outcome of an earlier
+    measurement does not count those that never joined."""
     lines, members = outcome["lines_off_trunk"], outcome["members_off_trunk"]
     said = []
     if lines:
         said.append(f"{lines} line{'' if lines == 1 else 's'}")
     if members:
         said.append(f"{members} of {outcome['seated']} members")
-    return f"{' and '.join(said)} off the trunk" if said else ""
+    if not said:
+        return ""
+    off = f"{' and '.join(said)} off the trunk"
+    never = outcome.get("never_joined")
+    return f"{off}, {never} of them never joined" if never else off
 
 
 def _moved(cell: dict) -> str:
