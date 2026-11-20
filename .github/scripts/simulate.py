@@ -2,22 +2,23 @@
 """Plans the jobs of simulate.yml and writes the comment on what they came to.
 
 simulate.yml runs chat-sim at a logos-chat revision it is handed, and at a base revision too when
-it is handed one, in one of three suites. `pr` and `main` run the goal, a group of 51 that saro
-grows toward epoch 50, on GroupV2 and on GroupV3 at rates of loss: `pr` seeds 0 and 1 of the three
-lossy rates, a job a run, at the revision and at the base; `main` seeds 0 to 19 of the four rates,
-two jobs of ten a rate, and no base. `long` runs the two scenarios of fifty epochs and every other
-one `tools/sim/expected` holds but the goal's, a job a scenario a side. `plan` checks what it was
-handed and prints the run jobs: for `pr` none at the base when main's point at the base at the
-current measurement is on gh-pages with an outcome at each run the base's jobs would do, whose
-runs stand in for the base's. `spread` names main's point at the base, or else the nearest before
-it, that can be read, whose runs the head's are placed among. `comment` writes the comment in
-Markdown: for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, each group's
-apart, and for `long` a row for each scenario with what `tools/sim compare` said of its runs
-against the base's, or against what `tools/sim/expected` holds when there is no base.
-`measurement` prints the chat-sim commit a run measures. `running` writes the update that moves a
-check run on logos-chat to in progress while the runs go, and `check` the one that completes it
-with the groups' verdicts; `post` says where the comment goes on a logos-chat pull request, an edit
-of the App's comment there or a new one, and writes it for GitHub's API.
+it is handed one, in one of three suites. `pr` and `main` run the goal, a group grown toward epoch
+50 by up to three members of any branch a round, on GroupV2 and on GroupV3 at rates of loss: `pr`
+seeds 0 to 2 of the three lossy rates, a job a run, at the revision and at the base; `main` seeds 0
+to 19 of the four rates, two jobs of ten a rate, and no base. `long` runs the two scenarios of
+fifty epochs and every other one `tools/sim/expected` holds but the goal's, a job a scenario a
+side. `plan` checks what it was handed and prints the run jobs: for `pr` none at the base when
+main's point at the base at the current measurement is on gh-pages with an outcome at each run the
+base's jobs would do, whose runs stand in for the base's. `spread` names main's point at the base,
+or else the nearest before it, that can be read, whose runs the head's are placed among. `comment`
+writes the comment in Markdown: for `pr` and `main` from the matrix `tools/sim matrix` wrote of the
+runs, each group's apart, for `pr` after main's runs of the two groups side by side, and for `long`
+a row for each scenario with what `tools/sim compare` said of its runs against the base's, or
+against what `tools/sim/expected` holds when there is no base. `measurement` prints the chat-sim
+commit a run measures. `running` writes the update that moves a check run on logos-chat to in
+progress while the runs go, and `check` the one that completes it with the groups' verdicts; `post`
+says where the comment goes on a logos-chat pull request, an edit of the App's comment there or a
+new one, and writes it for GitHub's API.
 """
 
 from __future__ import annotations
@@ -30,18 +31,20 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Callable, Collection, List, Optional, Sequence, Tuple
+from typing import Callable, Collection, Dict, List, Optional, Sequence, Tuple
 
 import measure
 
 # The goal's scenario of each group at a rate of loss in percent, by the group's name in a
-# scenario. Its files set no seed, so that run k of a sweep has seed k - 1.
-GOALS = {"v2": "50-epochs-by-saro-waku-loss-{}", "v3": "50-epochs-by-saro-waku-loss-{}-groupv3"}
+# scenario: two or more adders a round can commit for one epoch, which a GroupV3 group needs to
+# fork. Its files set no seed, so that run k of a sweep has seed k - 1.
+GOALS = {"v2": "grow-waku-loss-{}", "v3": "grow-waku-loss-{}-groupv3"}
 # What the comment calls each group.
 GROUPS = {"v2": "GroupV2", "v3": "GroupV3"}
-RATES = {"pr": ("0.1", "1", "5"), "main": ("0", "0.1", "1", "5")}
+# GroupV3 forks at each of `pr`'s rates on seeds 0 to 2, where at 0.1% two of them stay whole.
+RATES = {"pr": ("0.5", "1", "5"), "main": ("0", "0.5", "1", "5")}
 # How many seeds of each rate a suite runs, from seed 0, and how many of them a job does.
-SEEDS = {"pr": 2, "main": 20}
+SEEDS = {"pr": 3, "main": 20}
 A_JOB = {"pr": 1, "main": 10}
 FIFTY_EPOCHS = ("50-epochs", "50-epochs-waku")
 SUITES = ("pr", "main", "long")
@@ -104,22 +107,40 @@ _TITLES = {
 # What the title of `re-rolled` adds where the matrix places the head's runs among main's.
 _BELOW = "; {c[below]} of {c[cells]} below main's worst seed"
 _ENDED = (
-    "whole: one group, everyone in it; behind: one group, some members behind; stalled: one "
-    "group that stopped growing short of 50; split: it forked"
+    "whole: one group, every member that joined at its tip; behind: one group, some members "
+    "behind; stalled: one group that stopped growing short of 50; split: it forked"
 )
+# Of the members a run seated, those `compare` counts off the trunk at the end.
+_OFF_TRUNK = "behind, on another line, or never joined"
 _PR_FOOT = (
-    "A cell: how many epochs the group stayed one group (50 is the goal) · how the run ended "
-    f"({_ENDED}) · the change against the merge base at the same seed (changed: the run differs "
-    "but is no better or worse; re-rolled: the run drew other ids than the base's, so the two "
-    "are not compared). One cell moving can be the loss pattern shifting under your change; "
-    "main's 20 seeds after the merge are the measurement. This check blocks nothing yet. Run a "
-    "cell again with the command in its fold."
+    f"A cell: how the run ended ({_ENDED}), at the epoch of its first fork, or else of the trunk "
+    "(50 is the goal) · the lines and the members off the trunk at the end, of the members "
+    f"seated, where there are any ({_OFF_TRUNK}) · where it is better or worse, what the base's "
+    "run had of the first of these that moved · the change against the merge base at the same "
+    "seed (changed: the run differs but is no better or worse; re-rolled: the run drew other ids "
+    "than the base's, so the two are not compared). One cell moving can be the loss pattern "
+    "shifting under your change; main's 20 seeds after the merge are the measurement. This check "
+    "blocks nothing yet. Run a cell again with the command in its fold."
 )
+_SIDES_FOOT = (
+    "A row: main's runs of a rate, a seed each, GroupV2's · GroupV3's: how many of those with an "
+    "outcome split; the epoch of the first fork of the runs that split, from the lowest to the "
+    "highest; and the medians of the lines and of the members off the trunk at the end "
+    f"({_OFF_TRUNK}), of the median of the members seated. A seed fixes the numbers each "
+    "member's frames are drawn against, and the groups send other frames, so seed 0 of one group "
+    "is no twin of seed 0 of the other: the groups compare by their spreads."
+)
+_NO_SIDES = [
+    "No point of main at this chat-sim's measurement that can be read is among the base's hundred "
+    "newest commits, so main's runs of the two groups are not set side by side."
+]
 _OFF = {"lines_off_trunk": "line", "members_off_trunk": "member"}
 _MAIN_FOOT = (
-    f"A row: the runs of a group at a rate of loss, a seed each, by how each ended ({_ENDED}), "
-    "and how many epochs the group stayed one group, from the lowest seed to the highest (50 is "
-    "the goal)."
+    f"A row: the runs of a group at a rate of loss, a seed each, by how each ended ({_ENDED}); "
+    "how many epochs the group stayed one group, from the lowest seed to the highest (50 is the "
+    "goal); the epoch of the first fork of the runs that split, from the lowest to the highest; "
+    f"and the medians of the lines and of the members off the trunk at the end ({_OFF_TRUNK}), "
+    "of the median of the members seated."
 )
 
 
@@ -211,9 +232,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "comment",
         help="write the comment on what the run jobs came to",
         description="Writes the comment in Markdown. For pr and main it is drawn from --matrix: "
-        "for pr the verdict of each group, a row a group's rate and a cell a seed, and a fold for "
-        "each cell with its runs and the command that runs it again; for main a row a group's "
-        "rate with how its runs ended. For long it is a row for each scenario from the "
+        "for pr the verdict of each group, main's runs of the two groups side by side a row a "
+        "rate, a row a group's rate and a cell a seed, and a fold for each cell with its runs and "
+        "the command that runs it again; for main a row a group's rate with how its runs ended "
+        "and forked. For long it is a row for each scenario from the "
         "outcomes.json the run jobs uploaded under RUNS and the compare.txt written beside it, "
         "and the output of each compare.",
     )
@@ -380,7 +402,7 @@ def jobs(suite: str, revision: str, base: str, swept: Sequence[Tuple[str, int]])
 def stands_in(suite: str, base: str, measurement: str, points: Collection[str]) -> Optional[str]:
     """Where on gh-pages main's point at `base` and `measurement` is, when `points` lists it and
     it can stand in for the base's runs of `suite`, or `None`. Only a point at the current
-    measurement can, and only for `pr`, whose seeds are main's first two."""
+    measurement can, and only for `pr`, whose seeds are main's first three."""
     if suite != "pr" or not base or measure.point(base, measurement) not in points:
         return None
     return measure.point(base, measurement)
@@ -498,8 +520,9 @@ def post_to(pages: Sequence[Sequence[dict]], login: str, pr: str) -> Tuple[str, 
 
 
 def render_pr(matrix: dict, facts: dict) -> str:
-    """The comment on a pull request: the verdict of each group, a row a group's rate and a cell a
-    seed, beside them main's spread where the matrix has one, what a cell says, and under it a
+    """The comment on a pull request: the verdict of each group; main's runs of the two groups
+    side by side where the matrix has its spread, or else, against a base, why not; a row a
+    group's rate and a cell a seed, beside them main's spread; what a cell says, and under it a
     fold for each cell with its runs and the command that runs it again."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
@@ -509,8 +532,12 @@ def render_pr(matrix: dict, facts: dict) -> str:
     columns = [f"Seed {seed}" for seed in seeds]
     if spread is not None:
         columns.append(_spread_head(spread))
-    lines = [
-        _verdict_line(headline(matrix), facts, matrix["base_point"]),
+    lines = [_verdict_line(headline(matrix), facts, matrix["base_point"])]
+    if spread is not None:
+        lines += ["", *sides(spread)]
+    elif facts["base"]:
+        lines += ["", *_NO_SIDES]
+    lines += [
         "",
         "| Group | Loss | " + " | ".join(columns) + " |",
         "|---" * (len(columns) + 2) + "|",
@@ -539,8 +566,9 @@ def render_pr(matrix: dict, facts: dict) -> str:
 
 
 def render_main(matrix: dict, facts: dict) -> str:
-    """The comment on a point of main: a row a group's rate with how its runs ended, and the
-    lowest, median and highest epochs without a fork."""
+    """The comment on a point of main: a row a group's rate with how its runs ended, the
+    lowest, median and highest epochs without a fork and of the first fork, and the medians of
+    the lines and of the members off the trunk."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
     said = f"chat-sim: {matrix['counts']['cells']} runs"
@@ -549,19 +577,44 @@ def render_main(matrix: dict, facts: dict) -> str:
     lines = [
         _verdict_line(said, facts),
         "",
-        "| Group | Loss | Runs | Whole | Behind | Split | Stalled | Epochs without a fork |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Group | Loss | Runs | Whole | Behind | Split | Stalled | Epochs without a fork | "
+        "First fork | Lines off the trunk, median | Members off the trunk, median |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for one in matrix["summary"]:
-        epochs = one["epochs"]
-        reached = "-"
-        if epochs["median"] is not None:
-            reached = f"{epochs['lowest']} to {epochs['highest']}, median {epochs['median']}"
+        reached = _extent(one["epochs"])
         counted = " | ".join(str(one[ended]) for ended in ("whole", "behind", "split", "stalled"))
         named = f"{GROUPS[one['group']]} | {_rate(one['rate'])}"
-        lines.append(f"| {named} | {one['runs']} | {counted} | {reached} |")
+        forked = f"{_extent(one['split_at'])} | {_lines_off(one)} | {_members_off(one)}"
+        lines.append(f"| {named} | {one['runs']} | {counted} | {reached} | {forked} |")
     lines += ["", _MAIN_FOOT]
     return "".join(f"{line}\n" for line in lines)
+
+
+def sides(spread: dict) -> List[str]:
+    """Main's runs in `spread` of the two groups side by side, as lines of Markdown: a row a rate
+    of how many split, the epochs of the first fork and the medians off the trunk, each GroupV2's,
+    then GroupV3's, and what a row says."""
+    rates: Dict[object, Dict[str, dict]] = {}
+    for one in spread["summary"]:
+        rates.setdefault(one["loss"], {})[one["group"]] = one
+    lines = [
+        f"**{' · '.join(GROUPS.values())}**, main's {spread_seeds(spread)} of each rate at "
+        f"{_commit(spread['logos_chat'])}",
+        "",
+        "| Loss | Split | First fork | Lines off the trunk, median | "
+        "Members off the trunk, median |",
+        "|---|---|---|---|---|",
+    ]
+    for loss in sorted(rates, key=lambda loss: (loss is None, loss or 0)):
+        held = [rates[loss].get(group) for group in GROUPS]
+        rate = next(one for one in held if one is not None)["rate"]
+        shown = [
+            " · ".join("-" if one is None else said(one) for one in held)
+            for said in (_split, _first_fork, _lines_off, _members_off)
+        ]
+        lines.append(f"| {_rate(rate)} | " + " | ".join(shown) + " |")
+    return lines + ["", _SIDES_FOOT]
 
 
 def render(
@@ -973,17 +1026,20 @@ def _rows(cells: List[dict]) -> List[Tuple[str, List[dict]]]:
 
 
 def words(cell: dict, against: bool) -> str:
-    """A cell in a few words: the head's epochs without a fork and how it ended, then its
-    change, with what moved where it is better or worse, and where it is re-rolled beside main's
-    spread whether the head's epochs are within it or below it; and with `against`, why a cell
-    that has an outcome at the head has no change."""
+    """A cell in a few words: how the head's run ended, at the epoch of its first fork or else of
+    the trunk, and the lines and the members off the trunk where there are any, then its change,
+    with what the base's run had of what moved where it is better or worse, and where it is
+    re-rolled beside main's spread whether the head's epochs are within it or below it; and with
+    `against`, why a cell that has an outcome at the head has no change."""
     if cell["head"] is None:
         return _missing(cell, "head")
-    epochs, ended = cell["epochs"]["head"], cell["ended"]["head"]
-    said = f"{epochs} whole" if ended == "whole" else f"{epochs}, {ended}"
+    said = _ended_at(cell["epochs"]["head"], cell["ended"]["head"])
+    off = _off_trunk(cell["head"])
+    if off:
+        said += f", {off}"
     change, moved = cell["change"], cell["moved"]
     if moved is not None:
-        return f"{said}{_moved(moved)}: {change}"
+        return f"{said}, was {_moved(cell)}: {change}"
     if change == "re-rolled" and cell["below"] is not None:
         return f"{said}, {change}, {'below' if cell['below'] else 'within'} main's spread"
     if change is not None:
@@ -996,6 +1052,40 @@ def spread_seeds(spread: dict) -> str:
     ran other counts."""
     runs = {one["runs"] for one in spread["summary"]}
     return f"{runs.pop()} seeds" if len(runs) == 1 else "seeds"
+
+
+def _extent(spread: dict) -> str:
+    """The lowest, the highest and the median of a summary's values, or `-` without any."""
+    if spread["median"] is None:
+        return "-"
+    return f"{spread['lowest']} to {spread['highest']}, median {spread['median']}"
+
+
+def _split(one: dict) -> str:
+    """How many of a summary's runs with an outcome split, and how many had none, or `-` where
+    none had one."""
+    without = one["no-outcome"]
+    if without == one["runs"]:
+        return "-"
+    said = f"{one['split']} of {one['runs'] - without}"
+    return said if not without else f"{said}, {without} with no outcome"
+
+
+def _first_fork(one: dict) -> str:
+    return _extent(one["split_at"])
+
+
+def _lines_off(one: dict) -> str:
+    median = one["lines_off_trunk"]["median"]
+    return "-" if median is None else str(median)
+
+
+def _members_off(one: dict) -> str:
+    """The median of a summary's members off the trunk, of the median of those seated."""
+    median, seated = one["members_off_trunk"]["median"], one["seated"]["median"]
+    if median is None:
+        return "-"
+    return str(median) if seated is None else f"{median} of {seated}"
 
 
 def _spread_head(spread: dict) -> str:
@@ -1012,13 +1102,32 @@ def spread_of(spread: dict, scenario: str) -> str:
     return f"{one['whole']} whole, {one['epochs']['lowest']} to {one['epochs']['highest']}"
 
 
-def _moved(moved: dict) -> str:
-    """What moved in a cell: the base's epochs or ending, or the head's lines or members off the
-    trunk and the base's."""
-    part, now, was = moved["part"], moved["head"], moved["base"]
+def _ended_at(epochs: int, ended: str) -> str:
+    """How a run ended, at the epoch of its first fork or else of the trunk."""
+    if ended == "split":
+        return f"split at {epochs}"
+    return f"{epochs} whole" if ended == "whole" else f"{epochs}, {ended}"
+
+
+def _off_trunk(outcome: dict) -> str:
+    """The lines and the members off the trunk at the end of a run, of the members seated, or
+    nothing where there are none."""
+    lines, members = outcome["lines_off_trunk"], outcome["members_off_trunk"]
+    said = []
+    if lines:
+        said.append(f"{lines} line{'' if lines == 1 else 's'}")
+    if members:
+        said.append(f"{members} of {outcome['seated']} members")
+    return f"{' and '.join(said)} off the trunk" if said else ""
+
+
+def _moved(cell: dict) -> str:
+    """What the base's run of a cell had of the part that moved: how it ended and where, or its
+    lines or members off the trunk."""
+    part, was = cell["moved"]["part"], cell["moved"]["base"]
     if part in ("epochs", "ended"):
-        return f", was {was}"
-    return f", {now} {_OFF[part]}{'' if now == 1 else 's'} off the trunk, was {was}"
+        return _ended_at(cell["epochs"]["base"], cell["ended"]["base"])
+    return f"{was} {_OFF[part]}{'' if was == 1 else 's'} off"
 
 
 def _ran(cell: dict, side: str) -> str:

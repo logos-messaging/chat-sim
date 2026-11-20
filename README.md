@@ -48,15 +48,16 @@ revision. To move it, change the revision in both, then run
 The workflow `simulate.yml` runs master at another logos-chat revision, started by hand with the
 revision, the suite, a base revision to compare with or none, the number of the logos-chat pull
 request the revision is of or none, and the id of a check run on it or none. The `pr` suite, for a
-logos-chat pull request, runs seeds 0 and 1 of `50-epochs-by-saro-waku-loss-0.1`, `-1` and `-5`
+logos-chat pull request, runs seeds 0 to 2 of `grow-waku-loss-0.5`, `-1` and `-5`
 on GroupV2, and of their `-groupv3` copies on GroupV3, a job a run, at the revision and at the
 base; `main` runs seeds 0 to 19 of those and of `-0` and `-0-groupv3`, with no base; `long` runs
 `50-epochs`, `50-epochs-waku` and every other scenario held in `tools/sim/expected` but those
 eight. A `pr` run whose base has its point of main on `gh-pages` at
 the chat-sim commit a run measures, with an outcome at each run it asks of the base, runs nothing
-at the base: main's runs of seeds 0 and 1 are the
+at the base: main's runs of seeds 0 to 2 are the
 base's. The run's summary holds the comment: for `pr` the verdict `tools/sim matrix` says of each
-group, a cell a group's rate and seed, and of each such rate main's twenty seeds at the point at the
+group, main's runs of the two groups side by side, a cell a group's rate and seed, and of each such
+rate main's twenty seeds at the point at the
 base or else the nearest before it of the base's hundred newest commits, for `main` how the runs of
 each group at each rate ended, and for
 `long` what each scenario's runs came to and which moved from the base's, or from those

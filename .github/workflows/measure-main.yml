@@ -11,7 +11,7 @@ name: Measure main
 # group names the suite. Hourly, as the net under a dispatch from logos-chat
 # on a push to main: the tip gets its point when that dispatch failed or there
 # is none yet, and again when chat-sim's measurement moves, which logos-chat
-# never sees; a merge has its point within the hour and the run's half hour.
+# never sees; a merge has its point within the hour and the run's two hours.
 # A run of main at the tip handed a pr holds nothing back, going or ended: it
 # keeps no point, and its concurrency group is the pull request's. Nor does a
 # run of another branch than the default that ended: it keeps no point either.

@@ -92,7 +92,10 @@ _SUMMARY = {
     "no-outcome": (int,),
     **{ended: (int,) for ended in ENDINGS},
     "epochs": {"lowest": (int, _NONE), "median": (int, float, _NONE), "highest": (int, _NONE)},
+    "split_at": {"lowest": (int, _NONE), "median": (int, float, _NONE), "highest": (int, _NONE)},
+    "lines_off_trunk": {"median": (int, float, _NONE)},
     "members_off_trunk": {"median": (int, float, _NONE)},
+    "seated": {"median": (int, float, _NONE)},
 }
 
 
@@ -231,7 +234,7 @@ def matrix(
     without a spread, a lowest or epochs at the head. The cells are in the order of their group,
     then loss, then scenario, then seed, and `groups` in the order of its group.
     """
-    # A point's runs are main's twenty seeds a scenario, of which a pull request runs two.
+    # A point's runs are main's twenty seeds a scenario, of which a pull request runs three.
     sides = [head] + ([base] if isinstance(base, Side) else [])
     where = {key: (run.number, run.loss) for side in sides for key, run in side.runs.items()}
     for name, number in asked:
@@ -418,8 +421,10 @@ def _verdict(head: dict, counts: dict) -> str:
 
 def _summary(cells: List[dict]) -> List[dict]:
     """For each scenario in the order of its cells: its group, how many runs, how each ended, the
-    lowest, median and highest epochs without a fork, and the median of the members off the trunk
-    at the end, as `compare` counts them: behind, on a line not the trunk, or never joined."""
+    lowest, median and highest epochs without a fork, the same of the epoch of the first fork of
+    the runs that split, and the medians of the lines off the trunk at the end, of the members off
+    it, as `compare` counts them: behind, on a line not the trunk, or never joined, and of the
+    members seated."""
     scenarios: Dict[str, List[dict]] = {}
     for cell in cells:
         scenarios.setdefault(cell["scenario"], []).append(cell)
@@ -427,7 +432,10 @@ def _summary(cells: List[dict]) -> List[dict]:
     for name, its in scenarios.items():
         outcomes = [cell["head"] for cell in its if cell["head"] is not None]
         epochs = [cell["epochs"]["head"] for cell in its if cell["epochs"]["head"] is not None]
+        split = [cell["epochs"]["head"] for cell in its if cell["ended"]["head"] == "split"]
+        lines = [one["lines_off_trunk"] for one in outcomes if one["lines_off_trunk"] is not None]
         off = [one["members_off_trunk"] for one in outcomes if one["members_off_trunk"] is not None]
+        seated = [one["seated"] for one in outcomes if one["seated"] is not None]
         summary.append(
             {
                 "scenario": name,
@@ -437,15 +445,22 @@ def _summary(cells: List[dict]) -> List[dict]:
                 "runs": len(its),
                 "no-outcome": len(its) - len(outcomes),
                 **{ended: sum(one["ended"] == ended for one in outcomes) for ended in ENDINGS},
-                "epochs": {
-                    "lowest": min(epochs, default=None),
-                    "median": _median(epochs),
-                    "highest": max(epochs, default=None),
-                },
+                "epochs": _extent(epochs),
+                "split_at": _extent(split),
+                "lines_off_trunk": {"median": _median(lines)},
                 "members_off_trunk": {"median": _median(off)},
+                "seated": {"median": _median(seated)},
             }
         )
     return summary
+
+
+def _extent(values: List[int]) -> dict:
+    return {
+        "lowest": min(values, default=None),
+        "median": _median(values),
+        "highest": max(values, default=None),
+    }
 
 
 def _median(values: List[int]) -> Optional[Union[int, float]]:
