@@ -55,31 +55,33 @@ base; `main` runs seeds 0 to 19 of those and of `-0` and `-0-groupv3`, with no b
 eight. A `pr` run whose base has its point of main on `gh-pages` at
 the chat-sim commit a run measures, with an outcome at each run it asks of the base, runs nothing
 at the base: main's runs of seeds 0 to 2 are the
-base's. The run's summary holds the comment: for `pr` the verdict `tools/sim matrix` says of each
-group, main's runs of the two groups side by side, a cell a group's rate and seed, and of each such
-rate main's twenty seeds at the point at the
-base or else the nearest before it of the base's hundred newest commits, for `main` how the runs of
-each group at each rate ended, and for
-`long` what each scenario's runs came to and which moved from the base's, or from those
-`tools/sim/expected` holds when there is no base. Its publish job keeps a `main` run handed no
-`pr` on the Pages
-site as a point of logos-chat's main, with the matrix's cells and summary, a `pr` run under the
-number of its pull request, with the matrix, and a `long` run with no base as a long run of
-logos-chat's main, with what each scenario came to and the output of each `compare`, each with its
-runs' text, or the build's log where chat-sim did not build, and a page drawn from them, which the
-comment links; the guide's
+base's. The run's summary holds the comment. For `pr` it says, a line a group, how many of its runs
+had no outcome, and how many came out worse, better or changed against the base's and whether those
+stand within main's twenty seeds of their rate at the point at the base or else the nearest before
+it of the base's hundred newest commits; or, in one line, that nothing moved. Where a run moved, a
+picture of those runs follows: each one's fork tree at the revision over the base's. For `main` the
+comment says how the runs of each group at each rate ended, and for `long` what each scenario's runs
+came to and which moved from the base's, or from those `tools/sim/expected` holds when there is no
+base. The workflow's publish job keeps a `main` run handed no `pr` on the Pages site as a point of
+logos-chat's main, with the matrix's cells and summary, a `pr` run under the number of its pull
+request, with the matrix, and a `long` run with no base as a long run of logos-chat's main, with
+what each scenario came to and the output of each `compare`, each with its runs' text, or the
+build's log where chat-sim did not build, and a page drawn from them, which the comment links. A
+`pr` run also gets a page for each of its runs and the picture of the runs that moved; the guide's
 [Reports](https://logos-messaging.github.io/chat-sim/guide/reports/#logos-chats-runs) says what
 they hold and how long. The weekly run of `prune-pages.yml` removes the run of each logos-chat pull
 request that is no longer open, and a dispatch of it handed a `pr` removes that one's.
 
 A `pr` run handed a `pr` also posts its comment on that pull request as the GitHub App chat-sim,
-`chat-sim[bot]`: it edits the App's comment there, or writes one. A `pr` run handed `check_run`,
+`chat-sim[bot]`: it edits the App's comment there, or writes one. Its post job does so after the
+publish job and, where the comment shows a picture, once the Pages site has built it, waiting ten
+minutes at most. A `pr` run handed `check_run`,
 the id of a check run the App made on logos-chat, moves that check to in progress once its runs are
 planned and completes it with the groups' verdicts: a failure when either group's runs are worse in
 two or more and better in none, else a success when either group's are better, and neutral
 otherwise, but that a revision chat-sim does not build at,
 or a run with no outcome there, fails it when the repository variable `CHAT_SIM_CHECK_REQUIRED` is
-`true`. The plan job and the comment job each mint a token of their own, for logos-chat alone, from
+`true`. The plan job and the post job each mint a token of their own, for logos-chat alone, from
 the repository variable `CHAT_SIM_APP_CLIENT_ID` and secret `CHAT_SIM_APP_PRIVATE_KEY`; without
 them, nothing is posted and the comment is in the run's summary alone. The guide's
 [Reports](https://logos-messaging.github.io/chat-sim/guide/reports/#the-comment-and-the-check) gives
