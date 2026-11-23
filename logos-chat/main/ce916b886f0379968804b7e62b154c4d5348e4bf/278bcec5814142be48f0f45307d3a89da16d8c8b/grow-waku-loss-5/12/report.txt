@@ -1,0 +1,47 @@
+conversation e4564b8596
+  split at epoch 4
+  27 of 27 seats share a log
+
+  branch A: epoch 11, state d1aec6a18ec02513, 16 members
+    on it: 019a84f8, 3b2391a5, 747a024f, 873e2846, 916c235b, cb57ef4f, d6fd7b02, d9288601
+  branch B: epoch 8, state 90f463779b72b4a9, 12 members
+    on it: 280db1e5, 702a898b, 738f92a6, aadb350b
+  branch C: epoch 8, state bbca23a286d6ed6d, 12 members
+    on it: 22e8369c, 97600ff2, a4e93bef, ced1323b
+  branch D: epoch 8, state fd076d224ae66188, 12 members
+    on it: 1b9d9d8f, 97b7b40b, c0198727, eb5892f4
+  branch E: epoch 7, state 19acef9d7952c62b, 10 members
+    on it: 6665f67e
+  branch F: epoch 11, state 3a9123b97d3d22f6, 16 members
+    on it: 552db96c
+
+  installation  account   name   epoch  position      branch
+  019a84f8      70656572  group  11     tip           A
+  3b2391a5      70656572  group  11     tip           A
+  747a024f      706178    group  11     tip           A
+  873e2846      746f6d6f  group  11     tip           A
+  916c235b      7361726f  group  11     tip           A
+  cb57ef4f      70656572  group  11     tip           A
+  d6fd7b02      70656572  group  11     tip           A
+  d9288601      70656572  group  11     tip           A
+  280db1e5      70656572  group  8      tip           B
+  702a898b      70656572  group  8      tip           B
+  738f92a6      72617961  group  8      tip           B
+  aadb350b      70656572  group  8      tip           B
+  22e8369c      70656572  group  8      tip           C
+  97600ff2      6b6573    group  8      tip           C
+  a4e93bef      70656572  group  8      tip           C
+  ced1323b      70656572  group  8      tip           C
+  1b9d9d8f      70656572  group  8      tip           D
+  97b7b40b      6d697261  group  8      tip           D
+  c0198727      70656572  group  8      tip           D
+  eb5892f4      70656572  group  8      tip           D
+  6665f67e      70656572  group  7      tip           E
+  552db96c      70656572  group  11     tip           F
+  276ac7c3      70656572  group  8      behind        -
+  47b67bae      70656572  group  -      never joined  -
+  71a1debe      70656572  group  -      never joined  -
+  93494b00      70656572  group  -      never joined  -
+  bc0c5ad5      70656572  group  -      never joined  -
+
+lines: 16650 read, 16650 records, 0 without a stamp, 0 malformed, 0 unknown

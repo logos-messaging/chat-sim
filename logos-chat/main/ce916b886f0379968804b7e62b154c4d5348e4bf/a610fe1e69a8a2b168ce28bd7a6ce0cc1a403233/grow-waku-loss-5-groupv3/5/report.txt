@@ -1,0 +1,51 @@
+conversation 976aece3d46afb497b7701b22af0e760
+  split at epoch 8
+  32 of 32 seats share a log
+
+  branch A: epoch 22, state 6cf79353907e6609, 23 members
+    on it: 11d0a2a8, 13f7e97d, 29a8fc7b, 3047d51e, 421e0748, 4296b696, 646e87d7, 81f6402a, 84324bbd,
+      900a2953, a3e945a6, b6ead2b3, b9b7c216, c9b8b728, cbdb15d4, d6859a67, da327d1a, e1456a92
+  branch B: epoch 12, state efad30c01b4fcbda, 13 members
+    on it: 150648d4, 2a92f552, 4b99cc4f, 64354253, a76f412e
+  branch C: epoch 10, state 8af2336a55b47408, 11 members
+    on it: 426182a9, 57fce4d5, 57fd26a7, b025fe60
+  branch D: epoch 22, state cd3af1c86ade46f5, 23 members
+    on it: 3186e51e, 6dab58b9
+  branch E: epoch 20, state 6864bda2c9164f23, 21 members
+    on it: 46dd4c20
+
+  installation  account   name   epoch  position      branch
+  11d0a2a8      6d697261  group  22     tip           A
+  13f7e97d      70656572  group  22     tip           A
+  29a8fc7b      70656572  group  22     tip           A
+  3047d51e      70656572  group  22     tip           A
+  421e0748      70656572  group  22     tip           A
+  4296b696      70656572  group  22     tip           A
+  646e87d7      70656572  group  22     tip           A
+  81f6402a      7361726f  group  22     tip           A
+  84324bbd      70656572  group  22     tip           A
+  900a2953      70656572  group  22     tip           A
+  a3e945a6      70656572  group  22     tip           A
+  b6ead2b3      70656572  group  22     tip           A
+  b9b7c216      70656572  group  22     tip           A
+  c9b8b728      70656572  group  22     tip           A
+  cbdb15d4      70656572  group  22     tip           A
+  d6859a67      70656572  group  22     tip           A
+  da327d1a      70656572  group  22     tip           A
+  e1456a92      70656572  group  22     tip           A
+  150648d4      70656572  group  12     tip           B
+  2a92f552      6b6573    group  12     tip           B
+  4b99cc4f      70656572  group  12     tip           B
+  a76f412e      70656572  group  12     tip           B
+  64354253      70656572  group  11     behind        B
+  426182a9      706178    group  10     tip           C
+  57fce4d5      70656572  group  10     tip           C
+  57fd26a7      70656572  group  10     tip           C
+  b025fe60      70656572  group  10     tip           C
+  3186e51e      70656572  group  22     tip           D
+  6dab58b9      70656572  group  22     tip           D
+  46dd4c20      72617961  group  20     tip           E
+  0b7017bb      70656572  group  -      never joined  -
+  89c891a1      70656572  group  -      never joined  -
+
+lines: 584 read, 584 records, 0 without a stamp, 0 malformed, 0 unknown

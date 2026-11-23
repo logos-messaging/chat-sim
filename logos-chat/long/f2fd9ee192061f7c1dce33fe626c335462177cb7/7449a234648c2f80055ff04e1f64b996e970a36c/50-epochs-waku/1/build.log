@@ -1,0 +1,82 @@
+    Updating git repository `https://github.com/logos-messaging/logos-chat`
+    Updating git repository `https://github.com/logos-messaging/sds-rs`
+     Locking 6 packages to latest Rust 1.95.0 compatible versions
+      Adding account v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+      Adding account-log v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+      Adding components v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+      Adding crypto v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+      Adding libchat v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+      Adding sds v0.1.0 (https://github.com/logos-messaging/sds-rs?rev=370c6fbb458f66b42a39f8df948fe5c6b109c896#370c6fbb)
+    Updating crates.io index
+   Compiling crypto v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+   Compiling sds v0.1.0 (https://github.com/logos-messaging/sds-rs?rev=370c6fbb458f66b42a39f8df948fe5c6b109c896#370c6fbb)
+   Compiling account-log v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+   Compiling libchat v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+   Compiling account v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+   Compiling network-model v0.1.0 (/home/runner/work/chat-sim/chat-sim/crates/network-model)
+   Compiling components v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=f2fd9ee192061f7c1dce33fe626c335462177cb7#f2fd9ee1)
+   Compiling harness v0.1.0 (/home/runner/work/chat-sim/chat-sim/crates/harness)
+error[E0053]: method `publish` has an incompatible type for trait
+   --> crates/harness/src/test_client.rs:241:59
+    |
+241 |     fn publish(&mut self, envelope: AddressedEnvelope) -> Result<(), Self::Error> {
+    |                                                           ^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<DeliveryMsgId>`, found `()`
+    |
+    = note: expected signature `fn(&mut Publishing, AddressedEnvelope) -> Result<Option<DeliveryMsgId>, _>`
+               found signature `fn(&mut Publishing, AddressedEnvelope) -> Result<(), _>`
+help: change the output type to match the trait
+    |
+241 -     fn publish(&mut self, envelope: AddressedEnvelope) -> Result<(), Self::Error> {
+241 +     fn publish(&mut self, envelope: AddressedEnvelope) -> Result<Option<DeliveryMsgId>, std::string::String> {
+    |
+
+error[E0046]: not all trait items implemented, missing: `fetch_messages`
+   --> crates/harness/src/test_client.rs:238:1
+    |
+238 | impl DeliveryService for Publishing {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `fetch_messages` in implementation
+    |
+    = help: implement the missing item: `fn fetch_messages(&mut self, _: &str, _: &[DeliveryMsgId]) -> Result<(), <Self as DeliveryService>::Error> { todo!() }`
+
+error[E0061]: this method takes 2 arguments but 1 argument was supplied
+   --> crates/harness/src/test_client.rs:149:44
+    |
+149 |             let outcome = match self.inner.handle_payload(&data) {
+    |                                            ^^^^^^^^^^^^^^------- argument #2 of type `Option<&DeliveryInfo>` is missing
+    |
+note: method defined here
+   --> /home/runner/.cargo/git/checkouts/logos-chat-5f30b57ded591c59/f2fd9ee/core/conversations/src/core.rs:439:12
+    |
+439 |     pub fn handle_payload(
+    |            ^^^^^^^^^^^^^^
+help: provide the argument
+    |
+149 |             let outcome = match self.inner.handle_payload(&data, /* Option<&DeliveryInfo> */) {
+    |                                                                +++++++++++++++++++++++++++++
+
+error[E0308]: mismatched types
+   --> crates/harness/src/test_client.rs:234:9
+    |
+233 |     pub fn poll(&mut self) -> Option<Vec<u8>> {
+    |                               --------------- expected `Option<Vec<u8>>` because of return type
+234 |         self.broadcaster.poll()
+    |         ^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<Vec<u8>>`, found `Option<(Vec<u8>, DeliveryInfo)>`
+    |
+    = note: expected enum `Option<Vec<u8>>`
+               found enum `Option<(Vec<u8>, DeliveryInfo)>`
+
+error[E0308]: mismatched types
+   --> crates/harness/src/test_client.rs:245:9
+    |
+241 |     fn publish(&mut self, envelope: AddressedEnvelope) -> Result<(), Self::Error> {
+    |                                                           ----------------------- expected `Result<(), std::string::String>` because of return type
+...
+245 |         self.publisher.publish(envelope)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<(), String>`, found `Result<Option<DeliveryMsgId>, String>`
+    |
+    = note: expected enum `Result<(), _>`
+               found enum `Result<Option<DeliveryMsgId>, _>`
+
+Some errors have detailed explanations: E0046, E0053, E0061, E0308.
+For more information about an error, try `rustc --explain E0046`.
+error: could not compile `harness` (lib) due to 5 previous errors

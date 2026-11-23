@@ -1,0 +1,66 @@
+51 members, GroupV3, one process, 8232.650s on a virtual clock in 68.550s of wall time, seed 17, network seed 18, loss 0.05, welcome loss 0.05
+whole, members behind: 46 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 1.11 at the start, 1.19 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        6ff961b4     1666    1599     0    67       0
+raya        d58465a5     1735    1663     0    72       0
+pax         de6a41d8     1728    1629     0    99       0
+mira        2e898c3b     1717    1636     0    81       0
+kes         2d9c7636     1706    1614     0    92       0
+tomo        220a3c19     1702    1621     0    81       0
+peer7       15dd538c     1688    1593     0    95       0
+peer8       52286a8e     1669    1580     0    89       0
+peer9       8bd6ba5f     1656    1553     0   103       0
+peer10      28f86bb3     1639    1558     0    81       0
+peer11      cd942462     1614    1530     0    84       0
+peer12      7421b5fe     1600    1508     0    92       0
+peer13      800c7cea     1581    1486     0    95       0
+peer14      28d57247     1570    1485     0    85       0
+peer15      715fdd6a     1530    1448     0    82       0
+peer16      543630fc     1520    1447     0    73       0
+peer17      e10b76c7     1489    1415     0    74       0
+peer18      936d91cc     1462    1386     0    76       0
+peer19      fc1fdaea     1446    1374     0    72       0
+peer20      21ee2bba     1401    1334     0    67       0
+peer21      c408ddd2     1375    1309     0    66       0
+peer22      1a186e6c     1362    1293     0    69       0
+peer23      2f9b29ba     1317    1251     0    66       0
+peer24      a3f456c9     1296    1237     0    59       0
+peer25      cf2e4043     1254    1198     0    56       0
+peer26      ed5e4427     1214    1160     0    54       0
+peer27      140ff034     1196    1134     0    62       0
+peer28      491c2f90     1148    1095     0    53       0
+peer29      eb15e6fa     1106    1052     0    54       0
+peer30      6aee07f2     1086    1023     0    63       0
+peer31      1cb6ebef     1033     980     0    53       0
+peer32      41894bb8     1003     956     0    47       0
+peer33      069c28f2      945     887     0    58       0
+peer34      8352d356      901     860     0    41       0
+peer35      e042ee8d      874     824     0    50       0
+peer36      3ad15bb5      816     775     0    41       0
+peer37      ac850ef2      760     723     0    37       0
+peer38      59e06ba1      731     691     0    40       0
+peer39      01190c1c      670     645     0    25       0
+peer40      cd8b98ce      645     617     0    28       0
+peer41      75285059      571     548     0    23       0
+peer42      80288e9c      513     486     0    27       0
+peer43      3e556e5d      483     455     0    28       0
+peer44      ec138e07      411     387     0    24       0
+peer45      de3b304c      347     336     0    11       0
+peer46      afb250d4      317     294     0    23       0
+peer47      75b0dc0f        1       0     0     1       0
+peer48      de52cdfc      222     213     0     9       0
+peer49      f7a6f0d1      136     129     0     7       0
+peer50      491e7cd2       72      68     0     4       0
+peer51      2c6f2f77       40      39     0     1       0
+
+the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 34 fell behind, 4 behind at the end, 1 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       50
+fell behind: pax at epoch 5, peer7 at epoch 7, pax at epoch 8, raya at epoch 11, kes at epoch 11, peer12 at epoch 12, peer13 at epoch 13, peer10 at epoch 15, peer11 at epoch 15, peer7 at epoch 16, peer10 at epoch 17, peer14 at epoch 17, peer17 at epoch 20, mira at epoch 21, peer12 at epoch 21, peer8 at epoch 22, peer9 at epoch 22, peer17 at epoch 22, kes at epoch 23, peer14 at epoch 24, peer15 at epoch 24, peer12 at epoch 25, peer13 at epoch 26, peer20 at epoch 26, peer9 at epoch 27, pax at epoch 28, kes at epoch 28, tomo at epoch 28, peer15 at epoch 29, raya at epoch 30, peer10 at epoch 30, peer14 at epoch 31, peer16 at epoch 31, peer25 at epoch 32, peer32 at epoch 32, peer15 at epoch 33, peer12 at epoch 34, peer35 at epoch 34, peer14 at epoch 35, peer31 at epoch 35, pax at epoch 36, peer20 at epoch 36, mira at epoch 37, peer33 at epoch 37, raya at epoch 38, peer14 at epoch 38, peer21 at epoch 38, peer35 at epoch 39, peer21 at epoch 40, peer31 at epoch 40, peer21 at epoch 43, peer37 at epoch 44, peer17 at epoch 45, peer27 at epoch 45, peer39 at epoch 45, peer38 at epoch 46, peer24 at epoch 47, peer34 at epoch 47, peer42 at epoch 47, peer46 at epoch 47, peer19 at epoch 48, peer39 at epoch 49, peer46 at epoch 49, peer48 at epoch 49, peer49 at epoch 49
+behind at the end: peer39, peer46, peer48, peer49
+never joined: peer47

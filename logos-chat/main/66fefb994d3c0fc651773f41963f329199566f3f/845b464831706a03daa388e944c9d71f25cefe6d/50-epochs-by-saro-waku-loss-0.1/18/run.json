@@ -1,0 +1,2415 @@
+{
+  "members": 51,
+  "ok": true,
+  "stopped": null,
+  "steps": 1,
+  "steps_done": 1,
+  "group": "v2",
+  "timers": "default",
+  "preset": null,
+  "cluster_id": null,
+  "max_message_kib": 512,
+  "budget": 180.0,
+  "seed": 17,
+  "network": {
+    "seed": 18,
+    "loss": 0.001,
+    "welcome_loss": 0.001,
+    "delay_ms": {
+      "saro": 518,
+      "raya": 600,
+      "pax": 456,
+      "mira": 533,
+      "kes": 644,
+      "tomo": 501,
+      "peer7": 554,
+      "peer8": 400,
+      "peer9": 515,
+      "peer10": 592,
+      "peer11": 447,
+      "peer12": 529,
+      "peer13": 634,
+      "peer14": 498,
+      "peer15": 549,
+      "peer16": 393,
+      "peer17": 513,
+      "peer18": 583,
+      "peer19": 438,
+      "peer20": 526,
+      "peer21": 627,
+      "peer22": 493,
+      "peer23": 545,
+      "peer24": 386,
+      "peer25": 511,
+      "peer26": 576,
+      "peer27": 431,
+      "peer28": 524,
+      "peer29": 622,
+      "peer30": 484,
+      "peer31": 541,
+      "peer32": 373,
+      "peer33": 509,
+      "peer34": 570,
+      "peer35": 424,
+      "peer36": 522,
+      "peer37": 617,
+      "peer38": 474,
+      "peer39": 538,
+      "peer40": 329,
+      "peer41": 506,
+      "peer42": 563,
+      "peer43": 416,
+      "peer44": 520,
+      "peer45": 610,
+      "peer46": 465,
+      "peer47": 536,
+      "peer48": 284,
+      "peer49": 504,
+      "peer50": 557,
+      "peer51": 408
+    }
+  },
+  "wire": null,
+  "load": {
+    "start": [
+      1.1142578125,
+      1.21826171875,
+      0.7587890625
+    ],
+    "end": [
+      1.080078125,
+      1.1796875,
+      0.798828125
+    ]
+  },
+  "nodes": [
+    {
+      "account": "7361726f",
+      "app_id": "39366663393337336235",
+      "inbound_errors": {},
+      "installation": "6ff961b4",
+      "name": "saro",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 518,
+        "frames": {
+          "arrived": 4852,
+          "dropped": {
+            "cut": 0,
+            "loss": 4,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4846
+        },
+        "loss": 0.001,
+        "own": [
+          "39366663393337336235"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 4
+      }
+    },
+    {
+      "account": "72617961",
+      "app_id": "38343430663433303332",
+      "inbound_errors": {},
+      "installation": "d58465a5",
+      "name": "raya",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 600,
+        "frames": {
+          "arrived": 4801,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4796
+        },
+        "loss": 0.001,
+        "own": [
+          "38343430663433303332"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "706178",
+      "app_id": "30336438393362396565",
+      "inbound_errors": {},
+      "installation": "de6a41d8",
+      "name": "pax",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 456,
+        "frames": {
+          "arrived": 4851,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4846
+        },
+        "loss": 0.001,
+        "own": [
+          "30336438393362396565"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "6d697261",
+      "app_id": "36303165366635316463",
+      "inbound_errors": {},
+      "installation": "2e898c3b",
+      "name": "mira",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 533,
+        "frames": {
+          "arrived": 4850,
+          "dropped": {
+            "cut": 0,
+            "loss": 6,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4842
+        },
+        "loss": 0.001,
+        "own": [
+          "36303165366635316463"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 6
+      }
+    },
+    {
+      "account": "6b6573",
+      "app_id": "37313365666466613330",
+      "inbound_errors": {},
+      "installation": "2d9c7636",
+      "name": "kes",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 644,
+        "frames": {
+          "arrived": 4838,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4833
+        },
+        "loss": 0.001,
+        "own": [
+          "37313365666466613330"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "746f6d6f",
+      "app_id": "38653432656433353262",
+      "inbound_errors": {},
+      "installation": "220a3c19",
+      "name": "tomo",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 501,
+        "frames": {
+          "arrived": 4824,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4819
+        },
+        "loss": 0.001,
+        "own": [
+          "38653432656433353262"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "33383737373366613635",
+      "inbound_errors": {},
+      "installation": "15dd538c",
+      "name": "peer7",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 554,
+        "frames": {
+          "arrived": 4810,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4805
+        },
+        "loss": 0.001,
+        "own": [
+          "33383737373366613635"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "65643433336265356535",
+      "inbound_errors": {},
+      "installation": "52286a8e",
+      "name": "peer8",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 400,
+        "frames": {
+          "arrived": 4881,
+          "dropped": {
+            "cut": 0,
+            "loss": 11,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4868
+        },
+        "loss": 0.001,
+        "own": [
+          "65643433336265356535"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 11
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31303738613865336330",
+      "inbound_errors": {},
+      "installation": "8bd6ba5f",
+      "name": "peer9",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 515,
+        "frames": {
+          "arrived": 4773,
+          "dropped": {
+            "cut": 0,
+            "loss": 5,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4766
+        },
+        "loss": 0.001,
+        "own": [
+          "31303738613865336330"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 5
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "63376333333832613337",
+      "inbound_errors": {},
+      "installation": "28f86bb3",
+      "name": "peer10",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 592,
+        "frames": {
+          "arrived": 4756,
+          "dropped": {
+            "cut": 0,
+            "loss": 2,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4752
+        },
+        "loss": 0.001,
+        "own": [
+          "63376333333832613337"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "34316462643337636438",
+      "inbound_errors": {},
+      "installation": "cd942462",
+      "name": "peer11",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 447,
+        "frames": {
+          "arrived": 4731,
+          "dropped": {
+            "cut": 0,
+            "loss": 6,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4723
+        },
+        "loss": 0.001,
+        "own": [
+          "34316462643337636438"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 6
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "66366232643330386533",
+      "inbound_errors": {},
+      "installation": "7421b5fe",
+      "name": "peer12",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 529,
+        "frames": {
+          "arrived": 4713,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4708
+        },
+        "loss": 0.001,
+        "own": [
+          "66366232643330386533"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "34383534383763336531",
+      "inbound_errors": {},
+      "installation": "800c7cea",
+      "name": "peer13",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 634,
+        "frames": {
+          "arrived": 4675,
+          "dropped": {
+            "cut": 0,
+            "loss": 7,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4665
+        },
+        "loss": 0.001,
+        "own": [
+          "34383534383763336531"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 7,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "37333130316432663736",
+      "inbound_errors": {},
+      "installation": "28d57247",
+      "name": "peer14",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 498,
+        "frames": {
+          "arrived": 4658,
+          "dropped": {
+            "cut": 0,
+            "loss": 5,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4651
+        },
+        "loss": 0.001,
+        "own": [
+          "37333130316432663736"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 5
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31303464346236636461",
+      "inbound_errors": {},
+      "installation": "715fdd6a",
+      "name": "peer15",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 549,
+        "frames": {
+          "arrived": 4609,
+          "dropped": {
+            "cut": 0,
+            "loss": 4,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4603
+        },
+        "loss": 0.001,
+        "own": [
+          "31303464346236636461"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "34393335393039326339",
+      "inbound_errors": {},
+      "installation": "543630fc",
+      "name": "peer16",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 393,
+        "frames": {
+          "arrived": 4594,
+          "dropped": {
+            "cut": 0,
+            "loss": 7,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 4586
+        },
+        "loss": 0.001,
+        "own": [
+          "34393335393039326339"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 7
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31306335656131626635",
+      "inbound_errors": {},
+      "installation": "e10b76c7",
+      "name": "peer17",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 513,
+        "frames": {
+          "arrived": 4557,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4551
+        },
+        "loss": 0.001,
+        "own": [
+          "31306335656131626635"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31313033396262303931",
+      "inbound_errors": {},
+      "installation": "936d91cc",
+      "name": "peer18",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 583,
+        "frames": {
+          "arrived": 4523,
+          "dropped": {
+            "cut": 0,
+            "loss": 6,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4515
+        },
+        "loss": 0.001,
+        "own": [
+          "31313033396262303931"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 6
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "38323132333761393530",
+      "inbound_errors": {},
+      "installation": "fc1fdaea",
+      "name": "peer19",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 438,
+        "frames": {
+          "arrived": 4472,
+          "dropped": {
+            "cut": 0,
+            "loss": 2,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4468
+        },
+        "loss": 0.001,
+        "own": [
+          "38323132333761393530"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "38363863666239303133",
+      "inbound_errors": {},
+      "installation": "21ee2bba",
+      "name": "peer20",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 526,
+        "frames": {
+          "arrived": 4448,
+          "dropped": {
+            "cut": 0,
+            "loss": 2,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4444
+        },
+        "loss": 0.001,
+        "own": [
+          "38363863666239303133"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "30396237313033643363",
+      "inbound_errors": {},
+      "installation": "c408ddd2",
+      "name": "peer21",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 627,
+        "frames": {
+          "arrived": 4382,
+          "dropped": {
+            "cut": 0,
+            "loss": 2,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4378
+        },
+        "loss": 0.001,
+        "own": [
+          "30396237313033643363"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "37323138303366333135",
+      "inbound_errors": {},
+      "installation": "1a186e6c",
+      "name": "peer22",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 493,
+        "frames": {
+          "arrived": 4351,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4349
+        },
+        "loss": 0.001,
+        "own": [
+          "37323138303366333135"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {}
+    },
+    {
+      "account": "70656572",
+      "app_id": "36623861653731326165",
+      "inbound_errors": {},
+      "installation": "2f9b29ba",
+      "name": "peer23",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 545,
+        "frames": {
+          "arrived": 4293,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4288
+        },
+        "loss": 0.001,
+        "own": [
+          "36623861653731326165"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "34643132663864626534",
+      "inbound_errors": {},
+      "installation": "a3f456c9",
+      "name": "peer24",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 386,
+        "frames": {
+          "arrived": 4266,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 4262
+        },
+        "loss": 0.001,
+        "own": [
+          "34643132663864626534"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "34383363376633383735",
+      "inbound_errors": {},
+      "installation": "cf2e4043",
+      "name": "peer25",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 511,
+        "frames": {
+          "arrived": 4205,
+          "dropped": {
+            "cut": 0,
+            "loss": 5,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4198
+        },
+        "loss": 0.001,
+        "own": [
+          "34383363376633383735"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 5
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "36633161663462303938",
+      "inbound_errors": {},
+      "installation": "ed5e4427",
+      "name": "peer26",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 576,
+        "frames": {
+          "arrived": 4163,
+          "dropped": {
+            "cut": 0,
+            "loss": 4,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4157
+        },
+        "loss": 0.001,
+        "own": [
+          "36633161663462303938"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "39333333326333656331",
+      "inbound_errors": {},
+      "installation": "140ff034",
+      "name": "peer27",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 431,
+        "frames": {
+          "arrived": 4084,
+          "dropped": {
+            "cut": 0,
+            "loss": 5,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 4077
+        },
+        "loss": 0.001,
+        "own": [
+          "39333333326333656331"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 5
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "36363062393636373830",
+      "inbound_errors": {},
+      "installation": "491c2f90",
+      "name": "peer28",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 524,
+        "frames": {
+          "arrived": 4052,
+          "dropped": {
+            "cut": 0,
+            "loss": 5,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 4046
+        },
+        "loss": 0.001,
+        "own": [
+          "36363062393636373830"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 5
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "33363263326331633662",
+      "inbound_errors": {},
+      "installation": "eb15e6fa",
+      "name": "peer29",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 622,
+        "frames": {
+          "arrived": 3966,
+          "dropped": {
+            "cut": 0,
+            "loss": 1,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3963
+        },
+        "loss": 0.001,
+        "own": [
+          "33363263326331633662"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "35663765383839656462",
+      "inbound_errors": {},
+      "installation": "6aee07f2",
+      "name": "peer30",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 484,
+        "frames": {
+          "arrived": 3933,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3928
+        },
+        "loss": 0.001,
+        "own": [
+          "35663765383839656462"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "37663366633066666335",
+      "inbound_errors": {},
+      "installation": "1cb6ebef",
+      "name": "peer31",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 541,
+        "frames": {
+          "arrived": 3842,
+          "dropped": {
+            "cut": 0,
+            "loss": 4,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3836
+        },
+        "loss": 0.001,
+        "own": [
+          "37663366633066666335"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "62623963353935646633",
+      "inbound_errors": {},
+      "installation": "41894bb8",
+      "name": "peer32",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 373,
+        "frames": {
+          "arrived": 3806,
+          "dropped": {
+            "cut": 0,
+            "loss": 2,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 3803
+        },
+        "loss": 0.001,
+        "own": [
+          "62623963353935646633"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "66316331396166326165",
+      "inbound_errors": {},
+      "installation": "069c28f2",
+      "name": "peer33",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 509,
+        "frames": {
+          "arrived": 3723,
+          "dropped": {
+            "cut": 0,
+            "loss": 4,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3717
+        },
+        "loss": 0.001,
+        "own": [
+          "66316331396166326165"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "62336565663765633034",
+      "inbound_errors": {},
+      "installation": "8352d356",
+      "name": "peer34",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 570,
+        "frames": {
+          "arrived": 3675,
+          "dropped": {
+            "cut": 0,
+            "loss": 6,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3667
+        },
+        "loss": 0.001,
+        "own": [
+          "62336565663765633034"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 6
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "30653736653431366237",
+      "inbound_errors": {},
+      "installation": "e042ee8d",
+      "name": "peer35",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 424,
+        "frames": {
+          "arrived": 3574,
+          "dropped": {
+            "cut": 0,
+            "loss": 6,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3566
+        },
+        "loss": 0.001,
+        "own": [
+          "30653736653431366237"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 6
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "39626635663335303864",
+      "inbound_errors": {},
+      "installation": "3ad15bb5",
+      "name": "peer36",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 522,
+        "frames": {
+          "arrived": 3536,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3531
+        },
+        "loss": 0.001,
+        "own": [
+          "39626635663335303864"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "62646539633134316564",
+      "inbound_errors": {},
+      "installation": "ac850ef2",
+      "name": "peer37",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 617,
+        "frames": {
+          "arrived": 3431,
+          "dropped": {
+            "cut": 0,
+            "loss": 1,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3428
+        },
+        "loss": 0.001,
+        "own": [
+          "62646539633134316564"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "33316566303337663532",
+      "inbound_errors": {},
+      "installation": "59e06ba1",
+      "name": "peer38",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 474,
+        "frames": {
+          "arrived": 3390,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3385
+        },
+        "loss": 0.001,
+        "own": [
+          "33316566303337663532"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "39303666613836623361",
+      "inbound_errors": {},
+      "installation": "01190c1c",
+      "name": "peer39",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 538,
+        "frames": {
+          "arrived": 3314,
+          "dropped": {
+            "cut": 0,
+            "loss": 5,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 3307
+        },
+        "loss": 0.001,
+        "own": [
+          "39303666613836623361"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 5
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "63353763336632643831",
+      "inbound_errors": {},
+      "installation": "cd8b98ce",
+      "name": "peer40",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 329,
+        "frames": {
+          "arrived": 3088,
+          "dropped": {
+            "cut": 0,
+            "loss": 1,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 3086
+        },
+        "loss": 0.001,
+        "own": [
+          "63353763336632643831"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "64303730623065313233",
+      "inbound_errors": {},
+      "installation": "75285059",
+      "name": "peer41",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 506,
+        "frames": {
+          "arrived": 2701,
+          "dropped": {
+            "cut": 0,
+            "loss": 4,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 2695
+        },
+        "loss": 0.001,
+        "own": [
+          "64303730623065313233"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "61623535343532366365",
+      "inbound_errors": {},
+      "installation": "80288e9c",
+      "name": "peer42",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 563,
+        "frames": {
+          "arrived": 2462,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 2458
+        },
+        "loss": 0.001,
+        "own": [
+          "61623535343532366365"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "66363164396533613738",
+      "inbound_errors": {},
+      "installation": "3e556e5d",
+      "name": "peer43",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 416,
+        "frames": {
+          "arrived": 2219,
+          "dropped": {
+            "cut": 0,
+            "loss": 2,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 2215
+        },
+        "loss": 0.001,
+        "own": [
+          "66363164396533613738"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "65356264316438343435",
+      "inbound_errors": {},
+      "installation": "ec138e07",
+      "name": "peer44",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 520,
+        "frames": {
+          "arrived": 1969,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 1964
+        },
+        "loss": 0.001,
+        "own": [
+          "65356264316438343435"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "62323238643665646435",
+      "inbound_errors": {},
+      "installation": "de3b304c",
+      "name": "peer45",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 610,
+        "frames": {
+          "arrived": 1711,
+          "dropped": {
+            "cut": 0,
+            "loss": 3,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 1706
+        },
+        "loss": 0.001,
+        "own": [
+          "62323238643665646435"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "33633130373662306464",
+      "inbound_errors": {},
+      "installation": "afb250d4",
+      "name": "peer46",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 465,
+        "frames": {
+          "arrived": 1447,
+          "dropped": {
+            "cut": 0,
+            "loss": 2,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 1443
+        },
+        "loss": 0.001,
+        "own": [
+          "33633130373662306464"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "38343238623035666463",
+      "inbound_errors": {},
+      "installation": "75b0dc0f",
+      "name": "peer47",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 536,
+        "frames": {
+          "arrived": 1177,
+          "dropped": {
+            "cut": 0,
+            "loss": 1,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 1174
+        },
+        "loss": 0.001,
+        "own": [
+          "38343238623035666463"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "35346534363337383737",
+      "inbound_errors": {},
+      "installation": "de52cdfc",
+      "name": "peer48",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 284,
+        "frames": {
+          "arrived": 901,
+          "dropped": {
+            "cut": 0,
+            "loss": 1,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 899
+        },
+        "loss": 0.001,
+        "own": [
+          "35346534363337383737"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "37343238646533373834",
+      "inbound_errors": {},
+      "installation": "f7a6f0d1",
+      "name": "peer49",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 504,
+        "frames": {
+          "arrived": 583,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 581
+        },
+        "loss": 0.001,
+        "own": [
+          "37343238646533373834"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {}
+    },
+    {
+      "account": "70656572",
+      "app_id": "35376165393565386466",
+      "inbound_errors": {},
+      "installation": "491e7cd2",
+      "name": "peer50",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 557,
+        "frames": {
+          "arrived": 295,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 2,
+          "passed": 293
+        },
+        "loss": 0.001,
+        "own": [
+          "35376165393565386466"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {}
+    },
+    {
+      "account": "70656572",
+      "app_id": "39306364653961323063",
+      "inbound_errors": {},
+      "installation": "2c6f2f77",
+      "name": "peer51",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 408,
+        "frames": {
+          "arrived": 2,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 1
+        },
+        "loss": 0.001,
+        "own": [
+          "39306364653961323063"
+        ],
+        "seed": 18,
+        "welcome_loss": 0.001,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {}
+    }
+  ],
+  "batches": [],
+  "posts": [],
+  "holds": [],
+  "conversation": "e5c6b36a4c",
+  "withheld": null,
+  "held_to": null,
+  "check": null,
+  "unchecked": "a `grow` step expects no outcome",
+  "verdict": "whole, members behind",
+  "at_tip": 49,
+  "seated": 51,
+  "grow": {
+    "behind": [
+      "peer8",
+      "peer33"
+    ],
+    "ended": "the trunk reached epoch 50",
+    "fell_behind": [
+      {
+        "epoch": 31,
+        "name": "peer8"
+      },
+      {
+        "epoch": 38,
+        "name": "peer33"
+      }
+    ],
+    "lines": [
+      {
+        "epoch": 50,
+        "forked_at": null,
+        "from": null,
+        "kind": "trunk",
+        "members": [
+          "saro",
+          "raya",
+          "pax",
+          "mira",
+          "kes",
+          "tomo",
+          "peer7",
+          "peer8",
+          "peer9",
+          "peer10",
+          "peer11",
+          "peer12",
+          "peer13",
+          "peer14",
+          "peer15",
+          "peer16",
+          "peer17",
+          "peer18",
+          "peer19",
+          "peer20",
+          "peer21",
+          "peer22",
+          "peer23",
+          "peer24",
+          "peer25",
+          "peer26",
+          "peer27",
+          "peer28",
+          "peer29",
+          "peer30",
+          "peer31",
+          "peer32",
+          "peer33",
+          "peer34",
+          "peer35",
+          "peer36",
+          "peer37",
+          "peer38",
+          "peer39",
+          "peer40",
+          "peer41",
+          "peer42",
+          "peer43",
+          "peer44",
+          "peer45",
+          "peer46",
+          "peer47",
+          "peer48",
+          "peer49",
+          "peer50",
+          "peer51"
+        ]
+      }
+    ],
+    "main": 1,
+    "never_joined": [],
+    "removed": [],
+    "rounds": [
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "raya"
+        ],
+        "refused": [],
+        "settled_s": 60.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "pax"
+        ],
+        "refused": [],
+        "settled_s": 71.8
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "mira"
+        ],
+        "refused": [],
+        "settled_s": 71.75
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "kes"
+        ],
+        "refused": [],
+        "settled_s": 73.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "tomo"
+        ],
+        "refused": [],
+        "settled_s": 72.85
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer7"
+        ],
+        "refused": [],
+        "settled_s": 72.85
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer8"
+        ],
+        "refused": [],
+        "settled_s": 72.7
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer9"
+        ],
+        "refused": [],
+        "settled_s": 72.85
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer10"
+        ],
+        "refused": [],
+        "settled_s": 73.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer11"
+        ],
+        "refused": [],
+        "settled_s": 72.85
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer12"
+        ],
+        "refused": [],
+        "settled_s": 72.7
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer13"
+        ],
+        "refused": [],
+        "settled_s": 72.75
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer14"
+        ],
+        "refused": [],
+        "settled_s": 72.25
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer15"
+        ],
+        "refused": [],
+        "settled_s": 72.95
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer16"
+        ],
+        "refused": [],
+        "settled_s": 72.55
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer17"
+        ],
+        "refused": [],
+        "settled_s": 72.1
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer18"
+        ],
+        "refused": [],
+        "settled_s": 72.9
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer19"
+        ],
+        "refused": [],
+        "settled_s": 72.75
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer20"
+        ],
+        "refused": [],
+        "settled_s": 72.8
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer21"
+        ],
+        "refused": [],
+        "settled_s": 72.9
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer22"
+        ],
+        "refused": [],
+        "settled_s": 72.85
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer23"
+        ],
+        "refused": [],
+        "settled_s": 72.9
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer24"
+        ],
+        "refused": [],
+        "settled_s": 72.7
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer25"
+        ],
+        "refused": [],
+        "settled_s": 72.25
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer26"
+        ],
+        "refused": [],
+        "settled_s": 72.9
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer27"
+        ],
+        "refused": [],
+        "settled_s": 72.75
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer28"
+        ],
+        "refused": [],
+        "settled_s": 72.95
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer29"
+        ],
+        "refused": [],
+        "settled_s": 73.05
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer30"
+        ],
+        "refused": [],
+        "settled_s": 72.8
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer31"
+        ],
+        "refused": [],
+        "settled_s": 72.85
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer32"
+        ],
+        "refused": [],
+        "settled_s": 101.15
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer33"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer34"
+        ],
+        "refused": [],
+        "settled_s": 72.7
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer35"
+        ],
+        "refused": [],
+        "settled_s": 72.6
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer36"
+        ],
+        "refused": [],
+        "settled_s": 72.85
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer37"
+        ],
+        "refused": [],
+        "settled_s": 101.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer38"
+        ],
+        "refused": [],
+        "settled_s": 102.25
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer39"
+        ],
+        "refused": [],
+        "settled_s": 102.3
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer40"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer41"
+        ],
+        "refused": [],
+        "settled_s": 102.3
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer42"
+        ],
+        "refused": [],
+        "settled_s": 102.35
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer43"
+        ],
+        "refused": [],
+        "settled_s": 102.2
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer44"
+        ],
+        "refused": [],
+        "settled_s": 102.3
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer45"
+        ],
+        "refused": [],
+        "settled_s": 102.4
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer46"
+        ],
+        "refused": [],
+        "settled_s": 102.25
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer47"
+        ],
+        "refused": [],
+        "settled_s": 102.3
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer48"
+        ],
+        "refused": [],
+        "settled_s": 102.05
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer49"
+        ],
+        "refused": [],
+        "settled_s": 102.3
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer50"
+        ],
+        "refused": [],
+        "settled_s": 102.35
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer51"
+        ],
+        "refused": [],
+        "settled_s": 102.2
+      }
+    ],
+    "trunk_epoch": 50
+  },
+  "page": null,
+  "unshared": [],
+  "rig": "one process",
+  "virtual_s": 4279.444,
+  "wall_s": 101.421460954
+}

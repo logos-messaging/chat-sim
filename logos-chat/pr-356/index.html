@@ -1,0 +1,2403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>chat-sim: logos-chat #356</title>
+<style>
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;
+--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--grid:#e6e9ed;
+--band:rgba(57,135,229,.18);--rate-1:#86b6ef;--rate-2:#3987e5;--rate-3:#1c5cab;
+--rate-4:#0d366b;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;
+--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;
+--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;
+--grid:#21262d;--band:rgba(109,167,236,.22);--rate-1:#b7d3f6;--rate-2:#6da7ec;
+--rate-3:#2a78d6;--rate-4:#184f95;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;
+--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
+background:var(--bg);font:15px/1.5 system-ui,sans-serif}
+a{color:var(--link)}
+h1{overflow-wrap:anywhere}
+h2{margin-top:2.5rem}
+h3{margin-top:2rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:.25rem 0 1rem;padding:.75rem;overflow-x:auto;font-size:12px;line-height:1.45;
+background:var(--box);border:1px solid var(--line);border-radius:6px}
+.wide{overflow-x:auto}
+table{border-collapse:collapse}
+th,td{padding:.3rem 1.25rem .3rem 0;border-bottom:1px solid var(--line);text-align:left;
+vertical-align:top}
+summary{cursor:pointer}
+.file{margin:.75rem 0 0}
+.muted{color:var(--muted)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.none{color:var(--none)}
+
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.band{fill:var(--band)}
+.measure{stroke:var(--muted);stroke-dasharray:3 3}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.s1{--hue:var(--rate-1)}
+.s2{--hue:var(--rate-2)}
+.s3{--hue:var(--rate-3)}
+.s4{--hue:var(--rate-4)}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.marker.open{fill:var(--bg);stroke:var(--hue)}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+.points td{white-space:nowrap;font-variant-numeric:tabular-nums}
+.points th[colspan]{text-align:center}
+.points .merged{white-space:normal;min-width:14rem}
+.points .moved{white-space:normal;font-size:13px;color:var(--muted);min-width:12rem}
+
+.facts code{font-size:13px}
+.verdict{font-size:1.1em}
+.side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
+.heats{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 3rem}
+.sides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));
+gap:0 2.5rem}
+.sides>div{min-width:0}
+details{margin:.75rem 0}
+details.run>summary{font-size:1.1em;font-weight:600}
+summary span{font-weight:normal;margin-left:.4rem}
+details.text>summary{font-size:13px;color:var(--muted)}
+.who{font-size:14px;margin:.4rem 0}
+.lines,.runs,.rates{font-size:14px}
+.lines th,.lines td{padding:.15rem 1rem .15rem 0}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates th[colspan]{text-align:center}
+.rates td,.runs td.n{white-space:nowrap}
+.spread{margin-top:18px}
+.spread th,.spread td{height:30px;padding:0 .75rem 0 0;border:0;font-size:13px;
+vertical-align:middle;white-space:nowrap}
+.spread th{font-weight:normal;color:var(--muted)}
+.cell .outline{fill:none;stroke-width:2.5}
+.worse .outline{stroke:var(--bad)}
+.better .outline{stroke:var(--good)}
+.tick{stroke:var(--line)}
+.seed{fill:var(--muted);fill-opacity:.55}
+.head{fill:var(--fg);stroke:var(--bg);stroke-width:2}
+</style>
+</head>
+<body>
+<p class="muted"><a href="../../">chat-sim</a> / <a href="../">Over main</a></p>
+<h1>logos-chat #356</h1>
+<p class="facts">head <a href="https://github.com/logos-messaging/logos-chat/commit/6135ae763cd2e15672368e3d475bab58316de978"><code>6135ae7</code></a> · merge base <a href="https://github.com/logos-messaging/logos-chat/commit/df0700469f329321d1dbcfe78b227ab8767e537b"><code>df07004</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/62ff08125a72c27e0bdd527a849f0a8d6180cc31"><code>62ff081</code></a> · <a href="https://github.com/logos-messaging/logos-chat/pull/356">the pull request</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44622107611">the run</a> · 2026-11-19 21:55 UTC</p>
+<p class="verdict"><b>chat-sim: same as its base, 6 of 6 runs</b> <span class="muted">at <code>6135ae7</code> against its merge base <code>df07004</code></span></p>
+<section class="chart" id="matrix">
+<h2>The matrix</h2>
+<div class="heats">
+<div>
+<p class="side">the head <code>6135ae7</code></p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 108" width="132" height="108" role="img" aria-label="The head&#x27;s runs">
+<text class="axis small" x="0" y="11">seed</text>
+<text class="axis small" x="75.0" y="11" text-anchor="middle">0</text>
+<text class="axis small" x="113.0" y="11" text-anchor="middle">1</text>
+<text class="label" x="0" y="36">0.1%</text>
+<g class="cell bin5"><title>0.1%, seed 0 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="57.0" y="19" width="36" height="26" rx="4"/><text x="71.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="85.0" cy="32" r="3"/></g>
+<g class="cell bin4"><title>0.1%, seed 1 · 46 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</title><rect x="95.0" y="19" width="36" height="26" rx="4"/><text x="112.0" y="36" text-anchor="middle">46</text></g>
+<text class="label" x="0" y="66">1%</text>
+<g class="cell bin1"><title>1%, seed 0 · 18 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined</title><rect x="57.0" y="49" width="36" height="26" rx="4"/><text x="74.0" y="66" text-anchor="middle">18</text></g>
+<g class="cell bin0"><title>1%, seed 1 · 9 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined</title><rect x="95.0" y="49" width="36" height="26" rx="4"/><text x="112.0" y="66" text-anchor="middle">9</text></g>
+<text class="label" x="0" y="96">5%</text>
+<g class="cell bin0"><title>5%, seed 0 · 8 epochs without a fork · no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined</title><rect x="57.0" y="79" width="36" height="26" rx="4"/><text x="74.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>5%, seed 1 · 3 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined</title><rect x="95.0" y="79" width="36" height="26" rx="4"/><text x="112.0" y="96" text-anchor="middle">3</text></g>
+</svg>
+</div>
+<div>
+<p class="side">the base <code>df07004</code></p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 108" width="132" height="108" role="img" aria-label="The base&#x27;s runs">
+<text class="axis small" x="0" y="11">seed</text>
+<text class="axis small" x="75.0" y="11" text-anchor="middle">0</text>
+<text class="axis small" x="113.0" y="11" text-anchor="middle">1</text>
+<text class="label" x="0" y="36">0.1%</text>
+<g class="cell bin5"><title>0.1%, seed 0 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="57.0" y="19" width="36" height="26" rx="4"/><text x="71.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="85.0" cy="32" r="3"/></g>
+<g class="cell bin4"><title>0.1%, seed 1 · 46 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</title><rect x="95.0" y="19" width="36" height="26" rx="4"/><text x="112.0" y="36" text-anchor="middle">46</text></g>
+<text class="label" x="0" y="66">1%</text>
+<g class="cell bin1"><title>1%, seed 0 · 18 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined</title><rect x="57.0" y="49" width="36" height="26" rx="4"/><text x="74.0" y="66" text-anchor="middle">18</text></g>
+<g class="cell bin0"><title>1%, seed 1 · 9 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined</title><rect x="95.0" y="49" width="36" height="26" rx="4"/><text x="112.0" y="66" text-anchor="middle">9</text></g>
+<text class="label" x="0" y="96">5%</text>
+<g class="cell bin0"><title>5%, seed 0 · 8 epochs without a fork · no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined</title><rect x="57.0" y="79" width="36" height="26" rx="4"/><text x="74.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>5%, seed 1 · 3 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined</title><rect x="95.0" y="79" width="36" height="26" rx="4"/><text x="112.0" y="96" text-anchor="middle">3</text></g>
+</svg>
+</div>
+<div>
+<p class="side">main's 20 seeds at <code>c083dcd</code></p>
+<table class="spread"><tbody>
+<tr><th>0.1%</th><td>2 whole, 18 to 50</td></tr>
+<tr><th>1%</th><td>0 whole, 3 to 23</td></tr>
+<tr><th>5%</th><td>0 whole, 3 to 18</td></tr>
+</tbody></table>
+</div>
+</div>
+<p class="legend"><span><svg class="cell bin0" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>0 to 9</span><span><svg class="cell bin1" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>10 to 19</span><span><svg class="cell bin2" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>20 to 29</span><span><svg class="cell bin3" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>30 to 39</span><span><svg class="cell bin4" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>40 to 49</span><span><svg class="cell bin5" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>50</span><span><svg class="cell bin5" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/><circle class="whole" cx="11" cy="8" r="3"/></svg>whole</span><span><svg class="cell bin5" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/><circle class="behind" cx="11" cy="8" r="2.5"/></svg>one group, members behind</span><span><svg class="cell empty" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>no outcome</span></p>
+<p class="caption">A row a rate and a column a seed: a cell's colour is the epochs its run went without a fork; a dot marks a run that ended whole, a ring one that ended one group with members behind, and no mark one that split or stalled. An outline marks a run of the head that stands lower or higher than the base's. A cell's hover text is how the run came out.</p>
+<p class="side">Where the head's runs fall among main's 20 seeds at <code>c083dcd</code>, by the epochs without a fork: main's runs small, stacked where they meet, and the head's large.</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 508 62" width="508" height="62" role="img" aria-label="The head&#x27;s runs at 0.1% among main&#x27;s">
+<text class="label" x="0" y="44">0.1%</text>
+<line class="tick" x1="56" x2="496" y1="40" y2="40"/>
+<line class="tick" x1="56.0" x2="56.0" y1="43" y2="47"/>
+<text class="axis small" x="56.0" y="58" text-anchor="middle">0</text>
+<line class="tick" x1="144.0" x2="144.0" y1="43" y2="47"/>
+<text class="axis small" x="144.0" y="58" text-anchor="middle">10</text>
+<line class="tick" x1="232.0" x2="232.0" y1="43" y2="47"/>
+<text class="axis small" x="232.0" y="58" text-anchor="middle">20</text>
+<line class="tick" x1="320.0" x2="320.0" y1="43" y2="47"/>
+<text class="axis small" x="320.0" y="58" text-anchor="middle">30</text>
+<line class="tick" x1="408.0" x2="408.0" y1="43" y2="47"/>
+<text class="axis small" x="408.0" y="58" text-anchor="middle">40</text>
+<line class="tick" x1="496.0" x2="496.0" y1="43" y2="47"/>
+<text class="axis small" x="496.0" y="58" text-anchor="middle">50</text>
+<g><title>main, seed 0 · 50 epochs without a fork, whole</title><circle class="seed" cx="496.0" cy="40" r="3.5"/></g>
+<g><title>main, seed 1 · 46 epochs without a fork, split</title><circle class="seed" cx="460.8" cy="40" r="3.5"/></g>
+<g><title>main, seed 2 · 36 epochs without a fork, split</title><circle class="seed" cx="372.8" cy="40" r="3.5"/></g>
+<g><title>main, seed 3 · 22 epochs without a fork, split</title><circle class="seed" cx="249.6" cy="40" r="3.5"/></g>
+<g><title>main, seed 4 · 41 epochs without a fork, split</title><circle class="seed" cx="416.8" cy="40" r="3.5"/></g>
+<g><title>main, seed 5 · 42 epochs without a fork, split</title><circle class="seed" cx="425.6" cy="40" r="3.5"/></g>
+<g><title>main, seed 6 · 41 epochs without a fork, split</title><circle class="seed" cx="416.8" cy="33" r="3.5"/></g>
+<g><title>main, seed 7 · 26 epochs without a fork, split</title><circle class="seed" cx="284.8" cy="40" r="3.5"/></g>
+<g><title>main, seed 8 · 40 epochs without a fork, split</title><circle class="seed" cx="408.0" cy="40" r="3.5"/></g>
+<g><title>main, seed 9 · 18 epochs without a fork, split</title><circle class="seed" cx="214.4" cy="40" r="3.5"/></g>
+<g><title>main, seed 10 · 50 epochs without a fork, whole</title><circle class="seed" cx="496.0" cy="33" r="3.5"/></g>
+<g><title>main, seed 11 · 37 epochs without a fork, split</title><circle class="seed" cx="381.6" cy="40" r="3.5"/></g>
+<g><title>main, seed 12 · 50 epochs without a fork, behind</title><circle class="seed" cx="496.0" cy="26" r="3.5"/></g>
+<g><title>main, seed 13 · 21 epochs without a fork, split</title><circle class="seed" cx="240.8" cy="40" r="3.5"/></g>
+<g><title>main, seed 14 · 34 epochs without a fork, split</title><circle class="seed" cx="355.2" cy="40" r="3.5"/></g>
+<g><title>main, seed 15 · 27 epochs without a fork, split</title><circle class="seed" cx="293.6" cy="40" r="3.5"/></g>
+<g><title>main, seed 16 · 24 epochs without a fork, split</title><circle class="seed" cx="267.2" cy="40" r="3.5"/></g>
+<g><title>main, seed 17 · 50 epochs without a fork, behind</title><circle class="seed" cx="496.0" cy="19" r="3.5"/></g>
+<g><title>main, seed 18 · 36 epochs without a fork, split</title><circle class="seed" cx="372.8" cy="33" r="3.5"/></g>
+<g><title>main, seed 19 · 50 epochs without a fork, behind</title><circle class="seed" cx="496.0" cy="12" r="3.5"/></g>
+<g><title>the head, seed 0 · 50 whole, same</title><circle class="head" cx="496.0" cy="40" r="6"/></g>
+<g><title>the head, seed 1 · 46, split, same</title><circle class="head" cx="460.8" cy="40" r="6"/></g>
+</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 508 48" width="508" height="48" role="img" aria-label="The head&#x27;s runs at 1% among main&#x27;s">
+<text class="label" x="0" y="30">1%</text>
+<line class="tick" x1="56" x2="496" y1="26" y2="26"/>
+<line class="tick" x1="56.0" x2="56.0" y1="29" y2="33"/>
+<text class="axis small" x="56.0" y="44" text-anchor="middle">0</text>
+<line class="tick" x1="144.0" x2="144.0" y1="29" y2="33"/>
+<text class="axis small" x="144.0" y="44" text-anchor="middle">10</text>
+<line class="tick" x1="232.0" x2="232.0" y1="29" y2="33"/>
+<text class="axis small" x="232.0" y="44" text-anchor="middle">20</text>
+<line class="tick" x1="320.0" x2="320.0" y1="29" y2="33"/>
+<text class="axis small" x="320.0" y="44" text-anchor="middle">30</text>
+<line class="tick" x1="408.0" x2="408.0" y1="29" y2="33"/>
+<text class="axis small" x="408.0" y="44" text-anchor="middle">40</text>
+<line class="tick" x1="496.0" x2="496.0" y1="29" y2="33"/>
+<text class="axis small" x="496.0" y="44" text-anchor="middle">50</text>
+<g><title>main, seed 0 · 18 epochs without a fork, split</title><circle class="seed" cx="214.4" cy="26" r="3.5"/></g>
+<g><title>main, seed 1 · 9 epochs without a fork, split</title><circle class="seed" cx="135.2" cy="26" r="3.5"/></g>
+<g><title>main, seed 2 · 19 epochs without a fork, split</title><circle class="seed" cx="223.2" cy="26" r="3.5"/></g>
+<g><title>main, seed 3 · 8 epochs without a fork, split</title><circle class="seed" cx="126.4" cy="26" r="3.5"/></g>
+<g><title>main, seed 4 · 8 epochs without a fork, split</title><circle class="seed" cx="126.4" cy="19" r="3.5"/></g>
+<g><title>main, seed 5 · 8 epochs without a fork, split</title><circle class="seed" cx="126.4" cy="12" r="3.5"/></g>
+<g><title>main, seed 6 · 21 epochs without a fork, split</title><circle class="seed" cx="240.8" cy="26" r="3.5"/></g>
+<g><title>main, seed 7 · 10 epochs without a fork, split</title><circle class="seed" cx="144.0" cy="26" r="3.5"/></g>
+<g><title>main, seed 8 · 13 epochs without a fork, split</title><circle class="seed" cx="170.4" cy="26" r="3.5"/></g>
+<g><title>main, seed 9 · 6 epochs without a fork, split</title><circle class="seed" cx="108.8" cy="26" r="3.5"/></g>
+<g><title>main, seed 10 · 12 epochs without a fork, split</title><circle class="seed" cx="161.6" cy="26" r="3.5"/></g>
+<g><title>main, seed 11 · 5 epochs without a fork, split</title><circle class="seed" cx="100.0" cy="26" r="3.5"/></g>
+<g><title>main, seed 12 · 18 epochs without a fork, split</title><circle class="seed" cx="214.4" cy="19" r="3.5"/></g>
+<g><title>main, seed 13 · 23 epochs without a fork, split</title><circle class="seed" cx="258.4" cy="26" r="3.5"/></g>
+<g><title>main, seed 14 · 17 epochs without a fork, split</title><circle class="seed" cx="205.6" cy="26" r="3.5"/></g>
+<g><title>main, seed 15 · 15 epochs without a fork, split</title><circle class="seed" cx="188.0" cy="26" r="3.5"/></g>
+<g><title>main, seed 16 · 11 epochs without a fork, split</title><circle class="seed" cx="152.8" cy="26" r="3.5"/></g>
+<g><title>main, seed 17 · 15 epochs without a fork, split</title><circle class="seed" cx="188.0" cy="19" r="3.5"/></g>
+<g><title>main, seed 18 · 3 epochs without a fork, split</title><circle class="seed" cx="82.4" cy="26" r="3.5"/></g>
+<g><title>main, seed 19 · 19 epochs without a fork, split</title><circle class="seed" cx="223.2" cy="19" r="3.5"/></g>
+<g><title>the head, seed 0 · 18, split, same</title><circle class="head" cx="214.4" cy="26" r="6"/></g>
+<g><title>the head, seed 1 · 9, split, same</title><circle class="head" cx="135.2" cy="26" r="6"/></g>
+</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 508 62" width="508" height="62" role="img" aria-label="The head&#x27;s runs at 5% among main&#x27;s">
+<text class="label" x="0" y="44">5%</text>
+<line class="tick" x1="56" x2="496" y1="40" y2="40"/>
+<line class="tick" x1="56.0" x2="56.0" y1="43" y2="47"/>
+<text class="axis small" x="56.0" y="58" text-anchor="middle">0</text>
+<line class="tick" x1="144.0" x2="144.0" y1="43" y2="47"/>
+<text class="axis small" x="144.0" y="58" text-anchor="middle">10</text>
+<line class="tick" x1="232.0" x2="232.0" y1="43" y2="47"/>
+<text class="axis small" x="232.0" y="58" text-anchor="middle">20</text>
+<line class="tick" x1="320.0" x2="320.0" y1="43" y2="47"/>
+<text class="axis small" x="320.0" y="58" text-anchor="middle">30</text>
+<line class="tick" x1="408.0" x2="408.0" y1="43" y2="47"/>
+<text class="axis small" x="408.0" y="58" text-anchor="middle">40</text>
+<line class="tick" x1="496.0" x2="496.0" y1="43" y2="47"/>
+<text class="axis small" x="496.0" y="58" text-anchor="middle">50</text>
+<g><title>main, seed 0 · 8 epochs without a fork, split</title><circle class="seed" cx="126.4" cy="40" r="3.5"/></g>
+<g><title>main, seed 1 · 3 epochs without a fork, split</title><circle class="seed" cx="82.4" cy="40" r="3.5"/></g>
+<g><title>main, seed 2 · 4 epochs without a fork, split</title><circle class="seed" cx="91.2" cy="40" r="3.5"/></g>
+<g><title>main, seed 3 · 6 epochs without a fork, split</title><circle class="seed" cx="108.8" cy="40" r="3.5"/></g>
+<g><title>main, seed 4 · 5 epochs without a fork, split</title><circle class="seed" cx="100.0" cy="40" r="3.5"/></g>
+<g><title>main, seed 5 · 8 epochs without a fork, split</title><circle class="seed" cx="126.4" cy="33" r="3.5"/></g>
+<g><title>main, seed 6 · 8 epochs without a fork, split</title><circle class="seed" cx="126.4" cy="26" r="3.5"/></g>
+<g><title>main, seed 7 · 9 epochs without a fork, split</title><circle class="seed" cx="135.2" cy="40" r="3.5"/></g>
+<g><title>main, seed 8 · 9 epochs without a fork, split</title><circle class="seed" cx="135.2" cy="33" r="3.5"/></g>
+<g><title>main, seed 9 · 5 epochs without a fork, split</title><circle class="seed" cx="100.0" cy="33" r="3.5"/></g>
+<g><title>main, seed 10 · 5 epochs without a fork, split</title><circle class="seed" cx="100.0" cy="26" r="3.5"/></g>
+<g><title>main, seed 11 · 5 epochs without a fork, split</title><circle class="seed" cx="100.0" cy="19" r="3.5"/></g>
+<g><title>main, seed 12 · 5 epochs without a fork, split</title><circle class="seed" cx="100.0" cy="12" r="3.5"/></g>
+<g><title>main, seed 13 · 11 epochs without a fork, split</title><circle class="seed" cx="152.8" cy="40" r="3.5"/></g>
+<g><title>main, seed 14 · 8 epochs without a fork, split</title><circle class="seed" cx="126.4" cy="19" r="3.5"/></g>
+<g><title>main, seed 15 · 6 epochs without a fork, split</title><circle class="seed" cx="108.8" cy="33" r="3.5"/></g>
+<g><title>main, seed 16 · 4 epochs without a fork, stalled</title><circle class="seed" cx="91.2" cy="33" r="3.5"/></g>
+<g><title>main, seed 17 · 6 epochs without a fork, split</title><circle class="seed" cx="108.8" cy="26" r="3.5"/></g>
+<g><title>main, seed 18 · 18 epochs without a fork, split</title><circle class="seed" cx="214.4" cy="40" r="3.5"/></g>
+<g><title>main, seed 19 · 6 epochs without a fork, split</title><circle class="seed" cx="108.8" cy="19" r="3.5"/></g>
+<g><title>the head, seed 0 · 8, split, same</title><circle class="head" cx="126.4" cy="40" r="6"/></g>
+<g><title>the head, seed 1 · 3, split, same</title><circle class="head" cx="82.4" cy="40" r="6"/></g>
+</svg>
+</section>
+<section id="cells">
+<h2>The cells</h2>
+<details class="run">
+<summary>0.1% loss, seed 0 <span class="muted">50 whole, same</span></summary>
+<div class="sides">
+<div>
+<p class="side">the head <code>6135ae7</code></p>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">51</td></tr>
+</tbody>
+</table></div>
+<p class="file"><a href="head/50-epochs-by-saro-waku-loss-0.1/1/run.txt">run.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-0.1/1/report.txt">report.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-0.1/1/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 3626.644s on a virtual clock in 37.648s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
+whole: 51 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.48 at the start, 1.94 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        f95e254c     2700    2698     2     0       0
+raya        671cc18a     2699    2694     2     3       0
+pax         c1f311f2     2703    2700     1     2       0
+mira        97bfa122     2696    2692     2     2       0
+kes         6fe8495b     2689    2687     2     0       0
+tomo        a5f339d9     2679    2674     2     3       0
+peer7       f2ccb695     2660    2655     2     3       0
+peer8       62a677be     2649    2645     1     3       0
+peer9       54151b53     2624    2621     2     1       0
+peer10      efc50449     2606    2603     2     1       0
+peer11      40e18357     2576    2573     1     2       0
+peer12      f9f57cd1     2562    2559     2     1       0
+peer13      cb0de6fa     2522    2516     2     4       0
+peer14      d4f07e9b     2511    2508     2     1       0
+peer15      6d584977     2464    2460     2     2       0
+peer16      005527b4     2445    2443     1     1       0
+peer17      768406f7     2396    2393     2     1       0
+peer18      adb9aef2     2374    2368     2     4       0
+peer19      0ab50813     2322    2317     1     4       0
+peer20      9838d5f4     2282    2275     2     5       0
+peer21      1b68cbe6     2229    2224     2     3       0
+peer22      630e82d1     2207    2201     1     5       0
+peer23      455dc8b7     2136    2133     2     1       0
+peer24      e06e7f05     2113    2111     1     1       0
+peer25      d7fac7f4     2039    2037     2     0       0
+peer26      4b8a8bb9     2010    2007     2     1       0
+peer27      9aaf5e9f     1934    1933     1     0       0
+peer28      e6c730af     1899    1897     2     0       0
+peer29      b5c682c7     1815    1813     1     1       0
+peer30      1654f4e6     1783    1781     1     1       0
+peer31      c7971a17     1691    1685     2     4       0
+peer32      a5a183e1     1656    1655     1     0       0
+peer33      a43cda26     1552    1549     2     1       0
+peer34      db3576a9     1521    1517     2     2       0
+peer35      f96a70dc     1418    1415     1     2       0
+peer36      03387c93     1378    1375     2     1       0
+peer37      c68280d6     1268    1263     2     3       0
+peer38      bbab81fd     1227    1224     1     2       0
+peer39      70c46b76     1111    1108     2     1       0
+peer40      abfd232d     1064    1063     1     0       0
+peer41      1ee8fdf9      944     942     2     0       0
+peer42      58ccbaec      901     899     2     0       0
+peer43      6a19ece6      774     772     1     1       0
+peer44      7f01dffb      726     724     2     0       0
+peer45      5a90ab83      592     590     2     0       0
+peer46      75aab49c      543     541     1     1       0
+peer47      503f150e      404     402     2     0       0
+peer48      5b0dac3c      352     351     1     0       0
+peer49      f3d5e78a      207     205     2     0       0
+peer50      288fcbd0      153     150     2     1       0
+peer51      90557d44        2       2     0     0       0
+
+the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 73.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       51
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation def2b1dd40
+  whole
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 4336adb239ee03ca, 51 members
+    on it: 005527b4, 03387c93, 0ab50813, 1654f4e6, 1b68cbe6, 1ee8fdf9, 288fcbd0, 40e18357, 455dc8b7,
+      4b8a8bb9, 503f150e, 54151b53, 58ccbaec, 5a90ab83, 5b0dac3c, 62a677be, 630e82d1, 671cc18a,
+      6a19ece6, 6d584977, 6fe8495b, 70c46b76, 75aab49c, 768406f7, 7f01dffb, 90557d44, 97bfa122,
+      9838d5f4, 9aaf5e9f, a43cda26, a5a183e1, a5f339d9, abfd232d, adb9aef2, b5c682c7, bbab81fd,
+      c1f311f2, c68280d6, c7971a17, cb0de6fa, d4f07e9b, d7fac7f4, db3576a9, e06e7f05, e6c730af,
+      efc50449, f2ccb695, f3d5e78a, f95e254c, f96a70dc, f9f57cd1
+
+  installation  account   name   epoch  position  branch
+  005527b4      70656572  group  50     tip       A
+  03387c93      70656572  group  50     tip       A
+  0ab50813      70656572  group  50     tip       A
+  1654f4e6      70656572  group  50     tip       A
+  1b68cbe6      70656572  group  50     tip       A
+  1ee8fdf9      70656572  group  50     tip       A
+  288fcbd0      70656572  group  50     tip       A
+  40e18357      70656572  group  50     tip       A
+  455dc8b7      70656572  group  50     tip       A
+  4b8a8bb9      70656572  group  50     tip       A
+  503f150e      70656572  group  50     tip       A
+  54151b53      70656572  group  50     tip       A
+  58ccbaec      70656572  group  50     tip       A
+  5a90ab83      70656572  group  50     tip       A
+  5b0dac3c      70656572  group  50     tip       A
+  62a677be      70656572  group  50     tip       A
+  630e82d1      70656572  group  50     tip       A
+  671cc18a      72617961  group  50     tip       A
+  6a19ece6      70656572  group  50     tip       A
+  6d584977      70656572  group  50     tip       A
+  6fe8495b      6b6573    group  50     tip       A
+  70c46b76      70656572  group  50     tip       A
+  75aab49c      70656572  group  50     tip       A
+  768406f7      70656572  group  50     tip       A
+  7f01dffb      70656572  group  50     tip       A
+  90557d44      70656572  group  50     tip       A
+  97bfa122      6d697261  group  50     tip       A
+  9838d5f4      70656572  group  50     tip       A
+  9aaf5e9f      70656572  group  50     tip       A
+  a43cda26      70656572  group  50     tip       A
+  a5a183e1      70656572  group  50     tip       A
+  a5f339d9      746f6d6f  group  50     tip       A
+  abfd232d      70656572  group  50     tip       A
+  adb9aef2      70656572  group  50     tip       A
+  b5c682c7      70656572  group  50     tip       A
+  bbab81fd      70656572  group  50     tip       A
+  c1f311f2      706178    group  50     tip       A
+  c68280d6      70656572  group  50     tip       A
+  c7971a17      70656572  group  50     tip       A
+  cb0de6fa      70656572  group  50     tip       A
+  d4f07e9b      70656572  group  50     tip       A
+  d7fac7f4      70656572  group  50     tip       A
+  db3576a9      70656572  group  50     tip       A
+  e06e7f05      70656572  group  50     tip       A
+  e6c730af      70656572  group  50     tip       A
+  efc50449      70656572  group  50     tip       A
+  f2ccb695      70656572  group  50     tip       A
+  f3d5e78a      70656572  group  50     tip       A
+  f95e254c      7361726f  group  50     tip       A
+  f96a70dc      70656572  group  50     tip       A
+  f9f57cd1      70656572  group  50     tip       A
+
+lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+<div>
+<p class="side">the base <code>df07004</code></p>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">51</td></tr>
+</tbody>
+</table></div>
+<p class="file"><a href="base/50-epochs-by-saro-waku-loss-0.1/1/run.txt">run.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-0.1/1/report.txt">report.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-0.1/1/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 3626.644s on a virtual clock in 45.370s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
+whole: 51 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.89 at the start, 1.89 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        f95e254c     2700    2698     2     0       0
+raya        671cc18a     2699    2694     2     3       0
+pax         c1f311f2     2703    2700     1     2       0
+mira        97bfa122     2696    2692     2     2       0
+kes         6fe8495b     2689    2687     2     0       0
+tomo        a5f339d9     2679    2674     2     3       0
+peer7       f2ccb695     2660    2655     2     3       0
+peer8       62a677be     2649    2645     1     3       0
+peer9       54151b53     2624    2621     2     1       0
+peer10      efc50449     2606    2603     2     1       0
+peer11      40e18357     2576    2573     1     2       0
+peer12      f9f57cd1     2562    2559     2     1       0
+peer13      cb0de6fa     2522    2516     2     4       0
+peer14      d4f07e9b     2511    2508     2     1       0
+peer15      6d584977     2464    2460     2     2       0
+peer16      005527b4     2445    2443     1     1       0
+peer17      768406f7     2396    2393     2     1       0
+peer18      adb9aef2     2374    2368     2     4       0
+peer19      0ab50813     2322    2317     1     4       0
+peer20      9838d5f4     2282    2275     2     5       0
+peer21      1b68cbe6     2229    2224     2     3       0
+peer22      630e82d1     2207    2201     1     5       0
+peer23      455dc8b7     2136    2133     2     1       0
+peer24      e06e7f05     2113    2111     1     1       0
+peer25      d7fac7f4     2039    2037     2     0       0
+peer26      4b8a8bb9     2010    2007     2     1       0
+peer27      9aaf5e9f     1934    1933     1     0       0
+peer28      e6c730af     1899    1897     2     0       0
+peer29      b5c682c7     1815    1813     1     1       0
+peer30      1654f4e6     1783    1781     1     1       0
+peer31      c7971a17     1691    1685     2     4       0
+peer32      a5a183e1     1656    1655     1     0       0
+peer33      a43cda26     1552    1549     2     1       0
+peer34      db3576a9     1521    1517     2     2       0
+peer35      f96a70dc     1418    1415     1     2       0
+peer36      03387c93     1378    1375     2     1       0
+peer37      c68280d6     1268    1263     2     3       0
+peer38      bbab81fd     1227    1224     1     2       0
+peer39      70c46b76     1111    1108     2     1       0
+peer40      abfd232d     1064    1063     1     0       0
+peer41      1ee8fdf9      944     942     2     0       0
+peer42      58ccbaec      901     899     2     0       0
+peer43      6a19ece6      774     772     1     1       0
+peer44      7f01dffb      726     724     2     0       0
+peer45      5a90ab83      592     590     2     0       0
+peer46      75aab49c      543     541     1     1       0
+peer47      503f150e      404     402     2     0       0
+peer48      5b0dac3c      352     351     1     0       0
+peer49      f3d5e78a      207     205     2     0       0
+peer50      288fcbd0      153     150     2     1       0
+peer51      90557d44        2       2     0     0       0
+
+the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 73.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       51
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation def2b1dd40
+  whole
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 4336adb239ee03ca, 51 members
+    on it: 005527b4, 03387c93, 0ab50813, 1654f4e6, 1b68cbe6, 1ee8fdf9, 288fcbd0, 40e18357, 455dc8b7,
+      4b8a8bb9, 503f150e, 54151b53, 58ccbaec, 5a90ab83, 5b0dac3c, 62a677be, 630e82d1, 671cc18a,
+      6a19ece6, 6d584977, 6fe8495b, 70c46b76, 75aab49c, 768406f7, 7f01dffb, 90557d44, 97bfa122,
+      9838d5f4, 9aaf5e9f, a43cda26, a5a183e1, a5f339d9, abfd232d, adb9aef2, b5c682c7, bbab81fd,
+      c1f311f2, c68280d6, c7971a17, cb0de6fa, d4f07e9b, d7fac7f4, db3576a9, e06e7f05, e6c730af,
+      efc50449, f2ccb695, f3d5e78a, f95e254c, f96a70dc, f9f57cd1
+
+  installation  account   name   epoch  position  branch
+  005527b4      70656572  group  50     tip       A
+  03387c93      70656572  group  50     tip       A
+  0ab50813      70656572  group  50     tip       A
+  1654f4e6      70656572  group  50     tip       A
+  1b68cbe6      70656572  group  50     tip       A
+  1ee8fdf9      70656572  group  50     tip       A
+  288fcbd0      70656572  group  50     tip       A
+  40e18357      70656572  group  50     tip       A
+  455dc8b7      70656572  group  50     tip       A
+  4b8a8bb9      70656572  group  50     tip       A
+  503f150e      70656572  group  50     tip       A
+  54151b53      70656572  group  50     tip       A
+  58ccbaec      70656572  group  50     tip       A
+  5a90ab83      70656572  group  50     tip       A
+  5b0dac3c      70656572  group  50     tip       A
+  62a677be      70656572  group  50     tip       A
+  630e82d1      70656572  group  50     tip       A
+  671cc18a      72617961  group  50     tip       A
+  6a19ece6      70656572  group  50     tip       A
+  6d584977      70656572  group  50     tip       A
+  6fe8495b      6b6573    group  50     tip       A
+  70c46b76      70656572  group  50     tip       A
+  75aab49c      70656572  group  50     tip       A
+  768406f7      70656572  group  50     tip       A
+  7f01dffb      70656572  group  50     tip       A
+  90557d44      70656572  group  50     tip       A
+  97bfa122      6d697261  group  50     tip       A
+  9838d5f4      70656572  group  50     tip       A
+  9aaf5e9f      70656572  group  50     tip       A
+  a43cda26      70656572  group  50     tip       A
+  a5a183e1      70656572  group  50     tip       A
+  a5f339d9      746f6d6f  group  50     tip       A
+  abfd232d      70656572  group  50     tip       A
+  adb9aef2      70656572  group  50     tip       A
+  b5c682c7      70656572  group  50     tip       A
+  bbab81fd      70656572  group  50     tip       A
+  c1f311f2      706178    group  50     tip       A
+  c68280d6      70656572  group  50     tip       A
+  c7971a17      70656572  group  50     tip       A
+  cb0de6fa      70656572  group  50     tip       A
+  d4f07e9b      70656572  group  50     tip       A
+  d7fac7f4      70656572  group  50     tip       A
+  db3576a9      70656572  group  50     tip       A
+  e06e7f05      70656572  group  50     tip       A
+  e6c730af      70656572  group  50     tip       A
+  efc50449      70656572  group  50     tip       A
+  f2ccb695      70656572  group  50     tip       A
+  f3d5e78a      70656572  group  50     tip       A
+  f95e254c      7361726f  group  50     tip       A
+  f96a70dc      70656572  group  50     tip       A
+  f9f57cd1      70656572  group  50     tip       A
+
+lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 62ff08125a72c27e0bdd527a849f0a8d6180cc31
+# move both pins to 6135ae763cd2e15672368e3d475bab58316de978, or to df0700469f329321d1dbcfe78b227ab8767e537b for the base, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-0</pre>
+</details>
+<details class="run">
+<summary>0.1% loss, seed 1 <span class="muted">46, split, same</span></summary>
+<div class="sides">
+<div>
+<p class="side">the head <code>6135ae7</code></p>
+<p>split at epoch 46 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">50</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">46</td><td class="n">46</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: peer25 at epoch 45</p>
+<p class="who">behind at the end: peer25</p>
+<p class="file"><a href="head/50-epochs-by-saro-waku-loss-0.1/2/run.txt">run.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-0.1/2/report.txt">report.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-0.1/2/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 3790.744s on a virtual clock in 23.013s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
+split at epoch 46: 50 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.03 at the start, 1.85 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        01469e2a     2695    2692     1     2       8
+raya        4c454e6d     2687    2683     1     3       8
+pax         cc2e7d1e     2703    2699     1     3       8
+mira        57769c86     2691    2687     1     3       8
+kes         361310e5     2681    2678     1     2       8
+tomo        8bb4f9de     2681    2678     1     2       8
+peer7       7e06dea5     2658    2655     1     2       8
+peer8       6b9208f4     2641    2637     1     3       8
+peer9       45bfa798     2620    2617     1     2       8
+peer10      6524481b     2608    2606     1     1       8
+peer11      ecbeb26b     2577    2573     1     3       8
+peer12      326027d3     2561    2557     1     3       8
+peer13      db8cff00     2523    2521     1     1       8
+peer14      804b55e6     2509    2507     1     1       8
+peer15      490debbe     2459    2456     1     2       8
+peer16      e5aeb9e3     2446    2443     1     2       8
+peer17      bfffe31e     2381    2378     1     2       8
+peer18      aece090a     2376    2371     1     4       8
+peer19      f336d055     2322    2318     1     3       8
+peer20      108704f1     2289    2285     1     3       8
+peer21      5053dc73     2231    2230     1     0       8
+peer22      46b3b08b     2209    2205     1     3       8
+peer23      071f881e     2138    2135     1     2       8
+peer24      5173100c     2114    2112     1     1       8
+peer25      5787be4a     2044    2041     1     2       0
+peer26      49d1a660     2011    2006     1     4       8
+peer27      9cc4f24d     1932    1928     1     3       8
+peer28      ab9833fe     1900    1899     1     0       8
+peer29      3799f396     1806    1804     1     1       8
+peer30      8f837d2e     1781    1780     1     0       8
+peer31      01b0cb8e     1690    1688     1     1       8
+peer32      6dded4d3     1651    1648     1     2       8
+peer33      7dfd3590     1556    1554     1     1       8
+peer34      13e16c17     1519    1515     1     3       8
+peer35      d7d6370a     1416    1415     1     0       8
+peer36      b042319a     1376    1374     1     1       8
+peer37      3e784065     1266    1265     1     0       8
+peer38      7d4d5ac3     1225    1223     1     1       8
+peer39      5570ce64     1107    1103     1     3       8
+peer40      faad3bf1     1066    1064     1     1       8
+peer41      167d210e      943     942     1     0       8
+peer42      b54004b2      899     897     1     1       8
+peer43      29056ea9      772     770     1     1       8
+peer44      382fda6f      724     723     1     0       8
+peer45      37f225f0      581     578     1     2      45
+peer46      4e3b1a35      540     539     1     0       8
+peer47      e8d186c2      407     406     1     0       8
+peer48      3584c696      349     347     1     1       0
+peer49      57bad2ab      205     203     1     1       0
+peer50      e76a3a49      151     150     1     0       0
+peer51      a97a33c2        2       2     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))     405       46
+
+the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       50
+1      main     0         46     46        1
+fell behind: peer25 at epoch 45
+behind at the end: peer25
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation d4a01d28ed
+  split at epoch 46
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 2ae96d06128595a8, 51 members
+    on it: 01469e2a, 01b0cb8e, 071f881e, 108704f1, 13e16c17, 167d210e, 29056ea9, 326027d3, 3584c696,
+      361310e5, 3799f396, 382fda6f, 3e784065, 45bfa798, 46b3b08b, 490debbe, 49d1a660, 4c454e6d,
+      4e3b1a35, 5053dc73, 5173100c, 5570ce64, 57769c86, 57bad2ab, 6524481b, 6b9208f4, 6dded4d3,
+      7d4d5ac3, 7dfd3590, 7e06dea5, 804b55e6, 8bb4f9de, 8f837d2e, 9cc4f24d, a97a33c2, ab9833fe,
+      aece090a, b042319a, b54004b2, bfffe31e, cc2e7d1e, d7d6370a, db8cff00, e5aeb9e3, e76a3a49,
+      e8d186c2, ecbeb26b, f336d055, faad3bf1
+  branch B: epoch 46, state 36e05c955a613f29, 47 members
+    on it: 37f225f0
+
+  installation  account   name   epoch  position  branch
+  01469e2a      7361726f  group  50     tip       A
+  01b0cb8e      70656572  group  50     tip       A
+  071f881e      70656572  group  50     tip       A
+  108704f1      70656572  group  50     tip       A
+  13e16c17      70656572  group  50     tip       A
+  167d210e      70656572  group  50     tip       A
+  29056ea9      70656572  group  50     tip       A
+  326027d3      70656572  group  50     tip       A
+  3584c696      70656572  group  50     tip       A
+  361310e5      6b6573    group  50     tip       A
+  3799f396      70656572  group  50     tip       A
+  382fda6f      70656572  group  50     tip       A
+  3e784065      70656572  group  50     tip       A
+  45bfa798      70656572  group  50     tip       A
+  46b3b08b      70656572  group  50     tip       A
+  490debbe      70656572  group  50     tip       A
+  49d1a660      70656572  group  50     tip       A
+  4c454e6d      72617961  group  50     tip       A
+  4e3b1a35      70656572  group  50     tip       A
+  5053dc73      70656572  group  50     tip       A
+  5173100c      70656572  group  50     tip       A
+  5570ce64      70656572  group  50     tip       A
+  57769c86      6d697261  group  50     tip       A
+  57bad2ab      70656572  group  50     tip       A
+  6524481b      70656572  group  50     tip       A
+  6b9208f4      70656572  group  50     tip       A
+  6dded4d3      70656572  group  50     tip       A
+  7d4d5ac3      70656572  group  50     tip       A
+  7dfd3590      70656572  group  50     tip       A
+  7e06dea5      70656572  group  50     tip       A
+  804b55e6      70656572  group  50     tip       A
+  8bb4f9de      746f6d6f  group  50     tip       A
+  8f837d2e      70656572  group  50     tip       A
+  9cc4f24d      70656572  group  50     tip       A
+  a97a33c2      70656572  group  50     tip       A
+  ab9833fe      70656572  group  50     tip       A
+  aece090a      70656572  group  50     tip       A
+  b042319a      70656572  group  50     tip       A
+  b54004b2      70656572  group  50     tip       A
+  bfffe31e      70656572  group  50     tip       A
+  cc2e7d1e      706178    group  50     tip       A
+  d7d6370a      70656572  group  50     tip       A
+  db8cff00      70656572  group  50     tip       A
+  e5aeb9e3      70656572  group  50     tip       A
+  e76a3a49      70656572  group  50     tip       A
+  e8d186c2      70656572  group  50     tip       A
+  ecbeb26b      70656572  group  50     tip       A
+  f336d055      70656572  group  50     tip       A
+  faad3bf1      70656572  group  50     tip       A
+  37f225f0      70656572  group  46     tip       B
+  5787be4a      70656572  group  45     behind    -
+
+lines: 3322 read, 3322 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+<div>
+<p class="side">the base <code>df07004</code></p>
+<p>split at epoch 46 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">50</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">46</td><td class="n">46</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: peer25 at epoch 45</p>
+<p class="who">behind at the end: peer25</p>
+<p class="file"><a href="base/50-epochs-by-saro-waku-loss-0.1/2/run.txt">run.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-0.1/2/report.txt">report.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-0.1/2/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 3790.744s on a virtual clock in 30.044s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
+split at epoch 46: 50 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.28 at the start, 1.83 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        01469e2a     2695    2692     1     2       8
+raya        4c454e6d     2687    2683     1     3       8
+pax         cc2e7d1e     2703    2699     1     3       8
+mira        57769c86     2691    2687     1     3       8
+kes         361310e5     2681    2678     1     2       8
+tomo        8bb4f9de     2681    2678     1     2       8
+peer7       7e06dea5     2658    2655     1     2       8
+peer8       6b9208f4     2641    2637     1     3       8
+peer9       45bfa798     2620    2617     1     2       8
+peer10      6524481b     2608    2606     1     1       8
+peer11      ecbeb26b     2577    2573     1     3       8
+peer12      326027d3     2561    2557     1     3       8
+peer13      db8cff00     2523    2521     1     1       8
+peer14      804b55e6     2509    2507     1     1       8
+peer15      490debbe     2459    2456     1     2       8
+peer16      e5aeb9e3     2446    2443     1     2       8
+peer17      bfffe31e     2381    2378     1     2       8
+peer18      aece090a     2376    2371     1     4       8
+peer19      f336d055     2322    2318     1     3       8
+peer20      108704f1     2289    2285     1     3       8
+peer21      5053dc73     2231    2230     1     0       8
+peer22      46b3b08b     2209    2205     1     3       8
+peer23      071f881e     2138    2135     1     2       8
+peer24      5173100c     2114    2112     1     1       8
+peer25      5787be4a     2044    2041     1     2       0
+peer26      49d1a660     2011    2006     1     4       8
+peer27      9cc4f24d     1932    1928     1     3       8
+peer28      ab9833fe     1900    1899     1     0       8
+peer29      3799f396     1806    1804     1     1       8
+peer30      8f837d2e     1781    1780     1     0       8
+peer31      01b0cb8e     1690    1688     1     1       8
+peer32      6dded4d3     1651    1648     1     2       8
+peer33      7dfd3590     1556    1554     1     1       8
+peer34      13e16c17     1519    1515     1     3       8
+peer35      d7d6370a     1416    1415     1     0       8
+peer36      b042319a     1376    1374     1     1       8
+peer37      3e784065     1266    1265     1     0       8
+peer38      7d4d5ac3     1225    1223     1     1       8
+peer39      5570ce64     1107    1103     1     3       8
+peer40      faad3bf1     1066    1064     1     1       8
+peer41      167d210e      943     942     1     0       8
+peer42      b54004b2      899     897     1     1       8
+peer43      29056ea9      772     770     1     1       8
+peer44      382fda6f      724     723     1     0       8
+peer45      37f225f0      581     578     1     2      45
+peer46      4e3b1a35      540     539     1     0       8
+peer47      e8d186c2      407     406     1     0       8
+peer48      3584c696      349     347     1     1       0
+peer49      57bad2ab      205     203     1     1       0
+peer50      e76a3a49      151     150     1     0       0
+peer51      a97a33c2        2       2     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))     405       46
+
+the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       50
+1      main     0         46     46        1
+fell behind: peer25 at epoch 45
+behind at the end: peer25
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation d4a01d28ed
+  split at epoch 46
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 2ae96d06128595a8, 51 members
+    on it: 01469e2a, 01b0cb8e, 071f881e, 108704f1, 13e16c17, 167d210e, 29056ea9, 326027d3, 3584c696,
+      361310e5, 3799f396, 382fda6f, 3e784065, 45bfa798, 46b3b08b, 490debbe, 49d1a660, 4c454e6d,
+      4e3b1a35, 5053dc73, 5173100c, 5570ce64, 57769c86, 57bad2ab, 6524481b, 6b9208f4, 6dded4d3,
+      7d4d5ac3, 7dfd3590, 7e06dea5, 804b55e6, 8bb4f9de, 8f837d2e, 9cc4f24d, a97a33c2, ab9833fe,
+      aece090a, b042319a, b54004b2, bfffe31e, cc2e7d1e, d7d6370a, db8cff00, e5aeb9e3, e76a3a49,
+      e8d186c2, ecbeb26b, f336d055, faad3bf1
+  branch B: epoch 46, state 36e05c955a613f29, 47 members
+    on it: 37f225f0
+
+  installation  account   name   epoch  position  branch
+  01469e2a      7361726f  group  50     tip       A
+  01b0cb8e      70656572  group  50     tip       A
+  071f881e      70656572  group  50     tip       A
+  108704f1      70656572  group  50     tip       A
+  13e16c17      70656572  group  50     tip       A
+  167d210e      70656572  group  50     tip       A
+  29056ea9      70656572  group  50     tip       A
+  326027d3      70656572  group  50     tip       A
+  3584c696      70656572  group  50     tip       A
+  361310e5      6b6573    group  50     tip       A
+  3799f396      70656572  group  50     tip       A
+  382fda6f      70656572  group  50     tip       A
+  3e784065      70656572  group  50     tip       A
+  45bfa798      70656572  group  50     tip       A
+  46b3b08b      70656572  group  50     tip       A
+  490debbe      70656572  group  50     tip       A
+  49d1a660      70656572  group  50     tip       A
+  4c454e6d      72617961  group  50     tip       A
+  4e3b1a35      70656572  group  50     tip       A
+  5053dc73      70656572  group  50     tip       A
+  5173100c      70656572  group  50     tip       A
+  5570ce64      70656572  group  50     tip       A
+  57769c86      6d697261  group  50     tip       A
+  57bad2ab      70656572  group  50     tip       A
+  6524481b      70656572  group  50     tip       A
+  6b9208f4      70656572  group  50     tip       A
+  6dded4d3      70656572  group  50     tip       A
+  7d4d5ac3      70656572  group  50     tip       A
+  7dfd3590      70656572  group  50     tip       A
+  7e06dea5      70656572  group  50     tip       A
+  804b55e6      70656572  group  50     tip       A
+  8bb4f9de      746f6d6f  group  50     tip       A
+  8f837d2e      70656572  group  50     tip       A
+  9cc4f24d      70656572  group  50     tip       A
+  a97a33c2      70656572  group  50     tip       A
+  ab9833fe      70656572  group  50     tip       A
+  aece090a      70656572  group  50     tip       A
+  b042319a      70656572  group  50     tip       A
+  b54004b2      70656572  group  50     tip       A
+  bfffe31e      70656572  group  50     tip       A
+  cc2e7d1e      706178    group  50     tip       A
+  d7d6370a      70656572  group  50     tip       A
+  db8cff00      70656572  group  50     tip       A
+  e5aeb9e3      70656572  group  50     tip       A
+  e76a3a49      70656572  group  50     tip       A
+  e8d186c2      70656572  group  50     tip       A
+  ecbeb26b      70656572  group  50     tip       A
+  f336d055      70656572  group  50     tip       A
+  faad3bf1      70656572  group  50     tip       A
+  37f225f0      70656572  group  46     tip       B
+  5787be4a      70656572  group  45     behind    -
+
+lines: 3322 read, 3322 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 62ff08125a72c27e0bdd527a849f0a8d6180cc31
+# move both pins to 6135ae763cd2e15672368e3d475bab58316de978, or to df0700469f329321d1dbcfe78b227ab8767e537b for the base, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-1</pre>
+</details>
+<details class="run">
+<summary>1% loss, seed 0 <span class="muted">18, split, same</span></summary>
+<div class="sides">
+<div>
+<p class="side">the head <code>6135ae7</code></p>
+<p>split at epoch 18 · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">41</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">18</td><td class="n">18</td><td class="n">1</td></tr>
+<tr><td class="n">2</td><td>main</td><td class="n">0</td><td class="n">28</td><td class="n">28</td><td class="n">2</td></tr>
+<tr><td class="n">3</td><td>main</td><td class="n">0</td><td class="n">30</td><td class="n">30</td><td class="n">1</td></tr>
+<tr><td class="n">4</td><td>main</td><td class="n">0</td><td class="n">33</td><td class="n">33</td><td class="n">1</td></tr>
+<tr><td class="n">5</td><td>main</td><td class="n">0</td><td class="n">34</td><td class="n">34</td><td class="n">1</td></tr>
+<tr><td class="n">6</td><td>main</td><td class="n">0</td><td class="n">39</td><td class="n">39</td><td class="n">2</td></tr>
+<tr><td class="n">7</td><td>main</td><td class="n">0</td><td class="n">47</td><td class="n">47</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: mira at epoch 5, peer7 at epoch 6, kes at epoch 14, peer17 at epoch 17, peer13 at epoch 27, peer22 at epoch 27, peer29 at epoch 31, peer19 at epoch 32, peer9 at epoch 33, peer27 at epoch 33, peer10 at epoch 36, peer31 at epoch 38, peer36 at epoch 38, peer21 at epoch 43, peer34 at epoch 46, peer38 at epoch 47</p>
+<p class="who">behind at the end: mira, kes, peer7, peer10, peer21, peer27, peer29, peer38</p>
+<p class="who">never joined: tomo</p>
+<p class="file"><a href="head/50-epochs-by-saro-waku-loss-1/1/run.txt">run.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-1/1/report.txt">report.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-1/1/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 6076.244s on a virtual clock in 286.964s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
+split at epoch 18: 42 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.84 at the start, 1.08 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        f95e254c     7834    7745     1    88       8
+raya        671cc18a     8050    7982     1    67      10
+pax         c1f311f2     8058    7996     1    61     115
+mira        97bfa122     8338    8263     1    74       0
+kes         6fe8495b     8066    7976     1    89       0
+tomo        a5f339d9        0       0     0     0       0
+peer7       f2ccb695     8299    8228     1    70       0
+peer8       62a677be     8001    7923     1    77      10
+peer9       54151b53     7997    7921     1    75     103
+peer10      efc50449     7986    7902     1    83      10
+peer11      40e18357     7947    7867     1    79      10
+peer12      f9f57cd1     7934    7861     1    72       8
+peer13      cb0de6fa     7933    7859     1    73      29
+peer14      d4f07e9b     7856    7789     1    66      10
+peer15      6d584977     7791    7708     1    82      10
+peer16      005527b4     7721    7649     1    71      10
+peer17      768406f7     7624    7553     1    70       0
+peer18      adb9aef2     7512    7437     1    74      10
+peer19      0ab50813     7439    7370     0    69     126
+peer20      9838d5f4     7268    7185     1    82       8
+peer21      1b68cbe6     7209    7127     1    81      10
+peer22      630e82d1     7115    7037     1    77      28
+peer23      455dc8b7     6982    6905     1    76      10
+peer24      e06e7f05     6865    6809     1    55      10
+peer25      d7fac7f4     6740    6678     1    61      10
+peer26      4b8a8bb9     6608    6538     1    69      10
+peer27      9aaf5e9f     6487    6424     1    62     115
+peer28      e6c730af     6328    6276     1    51      10
+peer29      b5c682c7     6198    6134     1    63       6
+peer30      1654f4e6     5998    5951     1    46       8
+peer31      c7971a17     5843    5786     1    56       8
+peer32      a5a183e1     5586    5520     1    65       4
+peer33      a43cda26     5416    5365     1    50       4
+peer34      db3576a9     5123    5085     1    37      13
+peer35      f96a70dc     4854    4807     1    46       4
+peer36      03387c93     4523    4485     1    37       0
+peer37      c68280d6     4324    4276     1    47       0
+peer38      bbab81fd     4099    4057     1    41      10
+peer39      70c46b76     3759    3722     1    36       0
+peer40      abfd232d     3518    3475     0    43       0
+peer41      1ee8fdf9     3159    3123     1    35       0
+peer42      58ccbaec     2993    2964     1    28       0
+peer43      6a19ece6     2729    2695     1    33       0
+peer44      7f01dffb     2397    2374     1    22       0
+peer45      5a90ab83     2122    2104     1    17       0
+peer46      75aab49c     1717    1693     1    23       0
+peer47      503f150e     1428    1406     0    22       0
+peer48      5b0dac3c     1133    1123     0    10       0
+peer49      f3d5e78a      696     686     1     9       0
+peer50      288fcbd0      316     309     1     6       0
+peer51      90557d44        2       2     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))     737       31
+
+the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       41
+1      main     0         18     18        1
+2      main     0         28     28        2
+3      main     0         30     30        1
+4      main     0         33     33        1
+5      main     0         34     34        1
+6      main     0         39     39        2
+7      main     0         47     47        1
+fell behind: mira at epoch 5, peer7 at epoch 6, kes at epoch 14, peer17 at epoch 17, peer13 at epoch 27, peer22 at epoch 27, peer29 at epoch 31, peer19 at epoch 32, peer9 at epoch 33, peer27 at epoch 33, peer10 at epoch 36, peer31 at epoch 38, peer36 at epoch 38, peer21 at epoch 43, peer34 at epoch 46, peer38 at epoch 47
+behind at the end: mira, kes, peer7, peer10, peer21, peer27, peer29, peer38
+never joined: tomo
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation def2b1dd40
+  split at epoch 18
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 44f799c9da3651b0, 51 members
+    on it: 005527b4, 1654f4e6, 1ee8fdf9, 288fcbd0, 40e18357, 455dc8b7, 4b8a8bb9, 503f150e, 58ccbaec,
+      5a90ab83, 5b0dac3c, 62a677be, 671cc18a, 6a19ece6, 6d584977, 70c46b76, 75aab49c, 7f01dffb,
+      90557d44, 9838d5f4, a43cda26, a5a183e1, abfd232d, adb9aef2, bbab81fd, c68280d6, d4f07e9b,
+      d7fac7f4, e06e7f05, e6c730af, f3d5e78a, f95e254c, f96a70dc, f9f57cd1
+  branch B: epoch 28, state 150466e4d21b7ca7, 29 members
+    on it: 630e82d1, cb0de6fa
+  branch C: epoch 39, state 81841e2f8653bf34, 40 members
+    on it: 03387c93, c7971a17
+  branch D: epoch 34, state 102e4d267867258e, 35 members
+    on it: 54151b53
+  branch E: epoch 33, state 25ac1d87d011d0e4, 34 members
+    on it: 0ab50813
+  branch F: epoch 47, state 89629cb9383947bb, 48 members
+    on it: db3576a9
+  branch G: epoch 30, state cdffadec2eef8e90, 31 members
+    on it: c1f311f2
+  branch H: epoch 18, state f968c9da33d7bfbd, 19 members
+    on it: 768406f7
+
+  installation  account   name   epoch  position      branch
+  005527b4      70656572  group  50     tip           A
+  1654f4e6      70656572  group  50     tip           A
+  1ee8fdf9      70656572  group  50     tip           A
+  288fcbd0      70656572  group  50     tip           A
+  40e18357      70656572  group  50     tip           A
+  455dc8b7      70656572  group  50     tip           A
+  4b8a8bb9      70656572  group  50     tip           A
+  503f150e      70656572  group  50     tip           A
+  58ccbaec      70656572  group  50     tip           A
+  5a90ab83      70656572  group  50     tip           A
+  5b0dac3c      70656572  group  50     tip           A
+  62a677be      70656572  group  50     tip           A
+  671cc18a      72617961  group  50     tip           A
+  6a19ece6      70656572  group  50     tip           A
+  6d584977      70656572  group  50     tip           A
+  70c46b76      70656572  group  50     tip           A
+  75aab49c      70656572  group  50     tip           A
+  7f01dffb      70656572  group  50     tip           A
+  90557d44      70656572  group  50     tip           A
+  9838d5f4      70656572  group  50     tip           A
+  a43cda26      70656572  group  50     tip           A
+  a5a183e1      70656572  group  50     tip           A
+  abfd232d      70656572  group  50     tip           A
+  adb9aef2      70656572  group  50     tip           A
+  c68280d6      70656572  group  50     tip           A
+  d4f07e9b      70656572  group  50     tip           A
+  d7fac7f4      70656572  group  50     tip           A
+  e06e7f05      70656572  group  50     tip           A
+  e6c730af      70656572  group  50     tip           A
+  f3d5e78a      70656572  group  50     tip           A
+  f95e254c      7361726f  group  50     tip           A
+  f96a70dc      70656572  group  50     tip           A
+  f9f57cd1      70656572  group  50     tip           A
+  bbab81fd      70656572  group  47     behind        A
+  630e82d1      70656572  group  28     tip           B
+  cb0de6fa      70656572  group  28     tip           B
+  03387c93      70656572  group  39     tip           C
+  c7971a17      70656572  group  39     tip           C
+  54151b53      70656572  group  34     tip           D
+  0ab50813      70656572  group  33     tip           E
+  db3576a9      70656572  group  47     tip           F
+  c1f311f2      706178    group  30     tip           G
+  768406f7      70656572  group  18     tip           H
+  1b68cbe6      70656572  group  43     behind        -
+  6fe8495b      6b6573    group  14     behind        -
+  97bfa122      6d697261  group  5      behind        -
+  9aaf5e9f      70656572  group  33     behind        -
+  b5c682c7      70656572  group  31     behind        -
+  efc50449      70656572  group  36     behind        -
+  f2ccb695      70656572  group  6      behind        -
+  a5f339d9      746f6d6f  group  -      never joined  -
+
+lines: 130360 read, 130331 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+<div>
+<p class="side">the base <code>df07004</code></p>
+<p>split at epoch 18 · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">41</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">18</td><td class="n">18</td><td class="n">1</td></tr>
+<tr><td class="n">2</td><td>main</td><td class="n">0</td><td class="n">28</td><td class="n">28</td><td class="n">2</td></tr>
+<tr><td class="n">3</td><td>main</td><td class="n">0</td><td class="n">30</td><td class="n">30</td><td class="n">1</td></tr>
+<tr><td class="n">4</td><td>main</td><td class="n">0</td><td class="n">33</td><td class="n">33</td><td class="n">1</td></tr>
+<tr><td class="n">5</td><td>main</td><td class="n">0</td><td class="n">34</td><td class="n">34</td><td class="n">1</td></tr>
+<tr><td class="n">6</td><td>main</td><td class="n">0</td><td class="n">39</td><td class="n">39</td><td class="n">2</td></tr>
+<tr><td class="n">7</td><td>main</td><td class="n">0</td><td class="n">47</td><td class="n">47</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: mira at epoch 5, peer7 at epoch 6, kes at epoch 14, peer17 at epoch 17, peer13 at epoch 27, peer22 at epoch 27, peer29 at epoch 31, peer19 at epoch 32, peer9 at epoch 33, peer27 at epoch 33, peer10 at epoch 36, peer31 at epoch 38, peer36 at epoch 38, peer21 at epoch 43, peer34 at epoch 46, peer38 at epoch 47</p>
+<p class="who">behind at the end: mira, kes, peer7, peer10, peer21, peer27, peer29, peer38</p>
+<p class="who">never joined: tomo</p>
+<p class="file"><a href="base/50-epochs-by-saro-waku-loss-1/1/run.txt">run.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-1/1/report.txt">report.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-1/1/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 6076.244s on a virtual clock in 357.836s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
+split at epoch 18: 42 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.83 at the start, 1.12 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        f95e254c     7834    7745     1    88       8
+raya        671cc18a     8050    7982     1    67      10
+pax         c1f311f2     8058    7996     1    61     115
+mira        97bfa122     8338    8263     1    74       0
+kes         6fe8495b     8066    7976     1    89       0
+tomo        a5f339d9        0       0     0     0       0
+peer7       f2ccb695     8299    8228     1    70       0
+peer8       62a677be     8001    7923     1    77      10
+peer9       54151b53     7997    7921     1    75     103
+peer10      efc50449     7986    7902     1    83      10
+peer11      40e18357     7947    7867     1    79      10
+peer12      f9f57cd1     7934    7861     1    72       8
+peer13      cb0de6fa     7933    7859     1    73      29
+peer14      d4f07e9b     7856    7789     1    66      10
+peer15      6d584977     7791    7708     1    82      10
+peer16      005527b4     7721    7649     1    71      10
+peer17      768406f7     7624    7553     1    70       0
+peer18      adb9aef2     7512    7437     1    74      10
+peer19      0ab50813     7439    7370     0    69     126
+peer20      9838d5f4     7268    7185     1    82       8
+peer21      1b68cbe6     7209    7127     1    81      10
+peer22      630e82d1     7115    7037     1    77      28
+peer23      455dc8b7     6982    6905     1    76      10
+peer24      e06e7f05     6865    6809     1    55      10
+peer25      d7fac7f4     6740    6678     1    61      10
+peer26      4b8a8bb9     6608    6538     1    69      10
+peer27      9aaf5e9f     6487    6424     1    62     115
+peer28      e6c730af     6328    6276     1    51      10
+peer29      b5c682c7     6198    6134     1    63       6
+peer30      1654f4e6     5998    5951     1    46       8
+peer31      c7971a17     5843    5786     1    56       8
+peer32      a5a183e1     5586    5520     1    65       4
+peer33      a43cda26     5416    5365     1    50       4
+peer34      db3576a9     5123    5085     1    37      13
+peer35      f96a70dc     4854    4807     1    46       4
+peer36      03387c93     4523    4485     1    37       0
+peer37      c68280d6     4324    4276     1    47       0
+peer38      bbab81fd     4099    4057     1    41      10
+peer39      70c46b76     3759    3722     1    36       0
+peer40      abfd232d     3518    3475     0    43       0
+peer41      1ee8fdf9     3159    3123     1    35       0
+peer42      58ccbaec     2993    2964     1    28       0
+peer43      6a19ece6     2729    2695     1    33       0
+peer44      7f01dffb     2397    2374     1    22       0
+peer45      5a90ab83     2122    2104     1    17       0
+peer46      75aab49c     1717    1693     1    23       0
+peer47      503f150e     1428    1406     0    22       0
+peer48      5b0dac3c     1133    1123     0    10       0
+peer49      f3d5e78a      696     686     1     9       0
+peer50      288fcbd0      316     309     1     6       0
+peer51      90557d44        2       2     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))     737       31
+
+the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       41
+1      main     0         18     18        1
+2      main     0         28     28        2
+3      main     0         30     30        1
+4      main     0         33     33        1
+5      main     0         34     34        1
+6      main     0         39     39        2
+7      main     0         47     47        1
+fell behind: mira at epoch 5, peer7 at epoch 6, kes at epoch 14, peer17 at epoch 17, peer13 at epoch 27, peer22 at epoch 27, peer29 at epoch 31, peer19 at epoch 32, peer9 at epoch 33, peer27 at epoch 33, peer10 at epoch 36, peer31 at epoch 38, peer36 at epoch 38, peer21 at epoch 43, peer34 at epoch 46, peer38 at epoch 47
+behind at the end: mira, kes, peer7, peer10, peer21, peer27, peer29, peer38
+never joined: tomo
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation def2b1dd40
+  split at epoch 18
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 44f799c9da3651b0, 51 members
+    on it: 005527b4, 1654f4e6, 1ee8fdf9, 288fcbd0, 40e18357, 455dc8b7, 4b8a8bb9, 503f150e, 58ccbaec,
+      5a90ab83, 5b0dac3c, 62a677be, 671cc18a, 6a19ece6, 6d584977, 70c46b76, 75aab49c, 7f01dffb,
+      90557d44, 9838d5f4, a43cda26, a5a183e1, abfd232d, adb9aef2, bbab81fd, c68280d6, d4f07e9b,
+      d7fac7f4, e06e7f05, e6c730af, f3d5e78a, f95e254c, f96a70dc, f9f57cd1
+  branch B: epoch 28, state 150466e4d21b7ca7, 29 members
+    on it: 630e82d1, cb0de6fa
+  branch C: epoch 39, state 81841e2f8653bf34, 40 members
+    on it: 03387c93, c7971a17
+  branch D: epoch 34, state 102e4d267867258e, 35 members
+    on it: 54151b53
+  branch E: epoch 33, state 25ac1d87d011d0e4, 34 members
+    on it: 0ab50813
+  branch F: epoch 47, state 89629cb9383947bb, 48 members
+    on it: db3576a9
+  branch G: epoch 30, state cdffadec2eef8e90, 31 members
+    on it: c1f311f2
+  branch H: epoch 18, state f968c9da33d7bfbd, 19 members
+    on it: 768406f7
+
+  installation  account   name   epoch  position      branch
+  005527b4      70656572  group  50     tip           A
+  1654f4e6      70656572  group  50     tip           A
+  1ee8fdf9      70656572  group  50     tip           A
+  288fcbd0      70656572  group  50     tip           A
+  40e18357      70656572  group  50     tip           A
+  455dc8b7      70656572  group  50     tip           A
+  4b8a8bb9      70656572  group  50     tip           A
+  503f150e      70656572  group  50     tip           A
+  58ccbaec      70656572  group  50     tip           A
+  5a90ab83      70656572  group  50     tip           A
+  5b0dac3c      70656572  group  50     tip           A
+  62a677be      70656572  group  50     tip           A
+  671cc18a      72617961  group  50     tip           A
+  6a19ece6      70656572  group  50     tip           A
+  6d584977      70656572  group  50     tip           A
+  70c46b76      70656572  group  50     tip           A
+  75aab49c      70656572  group  50     tip           A
+  7f01dffb      70656572  group  50     tip           A
+  90557d44      70656572  group  50     tip           A
+  9838d5f4      70656572  group  50     tip           A
+  a43cda26      70656572  group  50     tip           A
+  a5a183e1      70656572  group  50     tip           A
+  abfd232d      70656572  group  50     tip           A
+  adb9aef2      70656572  group  50     tip           A
+  c68280d6      70656572  group  50     tip           A
+  d4f07e9b      70656572  group  50     tip           A
+  d7fac7f4      70656572  group  50     tip           A
+  e06e7f05      70656572  group  50     tip           A
+  e6c730af      70656572  group  50     tip           A
+  f3d5e78a      70656572  group  50     tip           A
+  f95e254c      7361726f  group  50     tip           A
+  f96a70dc      70656572  group  50     tip           A
+  f9f57cd1      70656572  group  50     tip           A
+  bbab81fd      70656572  group  47     behind        A
+  630e82d1      70656572  group  28     tip           B
+  cb0de6fa      70656572  group  28     tip           B
+  03387c93      70656572  group  39     tip           C
+  c7971a17      70656572  group  39     tip           C
+  54151b53      70656572  group  34     tip           D
+  0ab50813      70656572  group  33     tip           E
+  db3576a9      70656572  group  47     tip           F
+  c1f311f2      706178    group  30     tip           G
+  768406f7      70656572  group  18     tip           H
+  1b68cbe6      70656572  group  43     behind        -
+  6fe8495b      6b6573    group  14     behind        -
+  97bfa122      6d697261  group  5      behind        -
+  9aaf5e9f      70656572  group  33     behind        -
+  b5c682c7      70656572  group  31     behind        -
+  efc50449      70656572  group  36     behind        -
+  f2ccb695      70656572  group  6      behind        -
+  a5f339d9      746f6d6f  group  -      never joined  -
+
+lines: 130360 read, 130331 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 62ff08125a72c27e0bdd527a849f0a8d6180cc31
+# move both pins to 6135ae763cd2e15672368e3d475bab58316de978, or to df0700469f329321d1dbcfe78b227ab8767e537b for the base, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-0</pre>
+</details>
+<details class="run">
+<summary>1% loss, seed 1 <span class="muted">9, split, same</span></summary>
+<div class="sides">
+<div>
+<p class="side">the head <code>6135ae7</code></p>
+<p>split at epoch 9 · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">39</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">9</td><td class="n">9</td><td class="n">1</td></tr>
+<tr><td class="n">2</td><td>main</td><td class="n">0</td><td class="n">16</td><td class="n">16</td><td class="n">1</td></tr>
+<tr><td class="n">3</td><td>main</td><td class="n">0</td><td class="n">21</td><td class="n">21</td><td class="n">1</td></tr>
+<tr><td class="n">4</td><td>main</td><td class="n">0</td><td class="n">32</td><td class="n">32</td><td class="n">1</td></tr>
+<tr><td class="n">5</td><td>main</td><td class="n">0</td><td class="n">33</td><td class="n">33</td><td class="n">1</td></tr>
+<tr><td class="n">6</td><td>main</td><td class="n">0</td><td class="n">40</td><td class="n">40</td><td class="n">2</td></tr>
+<tr><td class="n">7</td><td>main</td><td class="n">0</td><td class="n">42</td><td class="n">42</td><td class="n">1</td></tr>
+<tr><td class="n">8</td><td>main</td><td class="n">0</td><td class="n">44</td><td class="n">44</td><td class="n">1</td></tr>
+<tr><td class="n">9</td><td>main</td><td class="n">0</td><td class="n">45</td><td class="n">45</td><td class="n">1</td></tr>
+<tr><td class="n">10</td><td>main</td><td class="n">0</td><td class="n">46</td><td class="n">46</td><td class="n">1</td></tr>
+<tr><td class="n">11</td><td>main</td><td class="n">0</td><td class="n">46</td><td class="n">46</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: peer9 at epoch 23, peer18 at epoch 23, peer11 at epoch 29, peer12 at epoch 31, peer13 at epoch 32, peer34 at epoch 33, peer32 at epoch 39, peer37 at epoch 39, peer31 at epoch 40, peer41 at epoch 41, peer17 at epoch 42, peer28 at epoch 43, peer36 at epoch 44, peer7 at epoch 45, peer23 at epoch 45, peer22 at epoch 46, peer27 at epoch 48, peer30 at epoch 49</p>
+<p class="who">behind at the end: peer9, peer11, peer17, peer18, peer22, peer27, peer30, peer31, peer34</p>
+<p class="file"><a href="head/50-epochs-by-saro-waku-loss-1/2/run.txt">run.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-1/2/report.txt">report.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-1/2/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 5686.050s on a virtual clock in 287.284s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
+split at epoch 9: 42 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.52 at the start, 1.15 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        01469e2a     7105    7040     0    65       8
+raya        4c454e6d     6941    6876     0    65       4
+pax         cc2e7d1e     7108    7049     0    59       8
+mira        57769c86     7098    7009     0    89       8
+kes         361310e5     7082    7016     0    66       8
+tomo        8bb4f9de     7299    7221     0    78       9
+peer7       7e06dea5     7062    6993     0    69     114
+peer8       6b9208f4     7236    7162     0    74      23
+peer9       45bfa798     7214    7142     0    72       4
+peer10      6524481b     7010    6939     0    71       8
+peer11      ecbeb26b     7158    7084     0    74       4
+peer12      326027d3     6985    6907     0    78       9
+peer13      db8cff00     6952    6881     0    71     131
+peer14      804b55e6     6919    6840     0    79       8
+peer15      490debbe     6860    6802     0    58      15
+peer16      e5aeb9e3     6860    6792     0    68       8
+peer17      bfffe31e     6813    6736     0    77      59
+peer18      aece090a     6980    6916     0    64       0
+peer19      f336d055     6739    6678     0    61       4
+peer20      108704f1     6710    6633     0    77       4
+peer21      5053dc73     6651    6584     0    67       4
+peer22      46b3b08b     6632    6564     0    68      59
+peer23      071f881e     6565    6507     0    58     110
+peer24      5173100c     6535    6476     0    59       3
+peer25      5787be4a     6468    6398     0    70       4
+peer26      49d1a660     6438    6373     0    65       4
+peer27      9cc4f24d     6369    6310     0    59       4
+peer28      ab9833fe     6341    6263     0    78      18
+peer29      3799f396     6262    6210     0    52       4
+peer30      8f837d2e     6231    6159     0    72       4
+peer31      01b0cb8e     6185    6130     0    55     144
+peer32      6dded4d3     5923    5863     0    60      71
+peer33      7dfd3590     5755    5689     0    66       4
+peer34      13e16c17     5496    5433     0    63     119
+peer35      d7d6370a     5302    5242     0    60       4
+peer36      b042319a     4943    4897     0    46      18
+peer37      3e784065     4766    4733     0    33      73
+peer38      7d4d5ac3     4569    4531     0    38       4
+peer39      5570ce64     4349    4298     0    51       4
+peer40      faad3bf1     4148    4109     0    39       4
+peer41      167d210e     3946    3904     0    42      56
+peer42      b54004b2     3590    3553     0    37       4
+peer43      29056ea9     3291    3254     0    37       4
+peer44      382fda6f     2918    2886     0    32       4
+peer45      37f225f0     2573    2550     0    23       4
+peer46      4e3b1a35     2055    2036     0    19       4
+peer47      e8d186c2     1625    1610     0    15       4
+peer48      3584c696     1417    1401     0    16       0
+peer49      57bad2ab      868     857     0    11       0
+peer50      e76a3a49      568     564     0     4       0
+peer51      a97a33c2      134     131     0     3       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))    1175       46
+
+the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       39
+1      main     0          9      9        1
+2      main     0         16     16        1
+3      main     0         21     21        1
+4      main     0         32     32        1
+5      main     0         33     33        1
+6      main     0         40     40        2
+7      main     0         42     42        1
+8      main     0         44     44        1
+9      main     0         45     45        1
+10     main     0         46     46        1
+11     main     0         46     46        1
+fell behind: peer9 at epoch 23, peer18 at epoch 23, peer11 at epoch 29, peer12 at epoch 31, peer13 at epoch 32, peer34 at epoch 33, peer32 at epoch 39, peer37 at epoch 39, peer31 at epoch 40, peer41 at epoch 41, peer17 at epoch 42, peer28 at epoch 43, peer36 at epoch 44, peer7 at epoch 45, peer23 at epoch 45, peer22 at epoch 46, peer27 at epoch 48, peer30 at epoch 49
+behind at the end: peer9, peer11, peer17, peer18, peer22, peer27, peer30, peer31, peer34
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation d4a01d28ed
+  split at epoch 9
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 96d97030e3a3bceb, 51 members
+    on it: 01469e2a, 108704f1, 29056ea9, 3584c696, 361310e5, 3799f396, 37f225f0, 382fda6f, 46b3b08b,
+      49d1a660, 4c454e6d, 4e3b1a35, 5053dc73, 5173100c, 5570ce64, 57769c86, 5787be4a, 57bad2ab,
+      6524481b, 7d4d5ac3, 7dfd3590, 804b55e6, 8f837d2e, 9cc4f24d, a97a33c2, b54004b2, cc2e7d1e,
+      d7d6370a, e5aeb9e3, e76a3a49, e8d186c2, f336d055, faad3bf1
+  branch B: epoch 40, state 4d016d25dd55829f, 41 members
+    on it: 3e784065, 6dded4d3
+  branch C: epoch 46, state 0c50223549f2f20c, 47 members
+    on it: 7e06dea5
+  branch D: epoch 33, state 105a0cee0d2a56a8, 34 members
+    on it: db8cff00
+  branch E: epoch 16, state 29a775b5d2aea024, 17 members
+    on it: 490debbe
+  branch F: epoch 42, state 4e2b0a22b8e5fd28, 43 members
+    on it: 167d210e
+  branch G: epoch 21, state 71a89e6ffb08170c, 22 members
+    on it: 6b9208f4
+  branch H: epoch 9, state 8403c4c9659d17af, 10 members
+    on it: 8bb4f9de
+  branch I: epoch 44, state aad15e000fc5240e, 45 members
+    on it: ab9833fe
+  branch J: epoch 45, state ab8e71c68ccc5e96, 46 members
+    on it: b042319a
+  branch K: epoch 32, state e36094b3f4537898, 33 members
+    on it: 326027d3
+  branch L: epoch 46, state fc80e662f9bbcb23, 47 members
+    on it: 071f881e
+
+  installation  account   name   epoch  position  branch
+  01469e2a      7361726f  group  50     tip       A
+  108704f1      70656572  group  50     tip       A
+  29056ea9      70656572  group  50     tip       A
+  3584c696      70656572  group  50     tip       A
+  361310e5      6b6573    group  50     tip       A
+  3799f396      70656572  group  50     tip       A
+  37f225f0      70656572  group  50     tip       A
+  382fda6f      70656572  group  50     tip       A
+  49d1a660      70656572  group  50     tip       A
+  4c454e6d      72617961  group  50     tip       A
+  4e3b1a35      70656572  group  50     tip       A
+  5053dc73      70656572  group  50     tip       A
+  5173100c      70656572  group  50     tip       A
+  5570ce64      70656572  group  50     tip       A
+  57769c86      6d697261  group  50     tip       A
+  5787be4a      70656572  group  50     tip       A
+  57bad2ab      70656572  group  50     tip       A
+  6524481b      70656572  group  50     tip       A
+  7d4d5ac3      70656572  group  50     tip       A
+  7dfd3590      70656572  group  50     tip       A
+  804b55e6      70656572  group  50     tip       A
+  a97a33c2      70656572  group  50     tip       A
+  b54004b2      70656572  group  50     tip       A
+  cc2e7d1e      706178    group  50     tip       A
+  d7d6370a      70656572  group  50     tip       A
+  e5aeb9e3      70656572  group  50     tip       A
+  e76a3a49      70656572  group  50     tip       A
+  e8d186c2      70656572  group  50     tip       A
+  f336d055      70656572  group  50     tip       A
+  faad3bf1      70656572  group  50     tip       A
+  46b3b08b      70656572  group  46     behind    A
+  8f837d2e      70656572  group  49     behind    A
+  9cc4f24d      70656572  group  48     behind    A
+  3e784065      70656572  group  40     tip       B
+  6dded4d3      70656572  group  40     tip       B
+  7e06dea5      70656572  group  46     tip       C
+  db8cff00      70656572  group  33     tip       D
+  490debbe      70656572  group  16     tip       E
+  167d210e      70656572  group  42     tip       F
+  6b9208f4      70656572  group  21     tip       G
+  8bb4f9de      746f6d6f  group  9      tip       H
+  ab9833fe      70656572  group  44     tip       I
+  b042319a      70656572  group  45     tip       J
+  326027d3      70656572  group  32     tip       K
+  071f881e      70656572  group  46     tip       L
+  01b0cb8e      70656572  group  40     behind    -
+  13e16c17      70656572  group  33     behind    -
+  45bfa798      70656572  group  23     behind    -
+  aece090a      70656572  group  23     behind    -
+  bfffe31e      70656572  group  42     behind    -
+  ecbeb26b      70656572  group  29     behind    -
+
+lines: 121230 read, 121230 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+<div>
+<p class="side">the base <code>df07004</code></p>
+<p>split at epoch 9 · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">39</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">9</td><td class="n">9</td><td class="n">1</td></tr>
+<tr><td class="n">2</td><td>main</td><td class="n">0</td><td class="n">16</td><td class="n">16</td><td class="n">1</td></tr>
+<tr><td class="n">3</td><td>main</td><td class="n">0</td><td class="n">21</td><td class="n">21</td><td class="n">1</td></tr>
+<tr><td class="n">4</td><td>main</td><td class="n">0</td><td class="n">32</td><td class="n">32</td><td class="n">1</td></tr>
+<tr><td class="n">5</td><td>main</td><td class="n">0</td><td class="n">33</td><td class="n">33</td><td class="n">1</td></tr>
+<tr><td class="n">6</td><td>main</td><td class="n">0</td><td class="n">40</td><td class="n">40</td><td class="n">2</td></tr>
+<tr><td class="n">7</td><td>main</td><td class="n">0</td><td class="n">42</td><td class="n">42</td><td class="n">1</td></tr>
+<tr><td class="n">8</td><td>main</td><td class="n">0</td><td class="n">44</td><td class="n">44</td><td class="n">1</td></tr>
+<tr><td class="n">9</td><td>main</td><td class="n">0</td><td class="n">45</td><td class="n">45</td><td class="n">1</td></tr>
+<tr><td class="n">10</td><td>main</td><td class="n">0</td><td class="n">46</td><td class="n">46</td><td class="n">1</td></tr>
+<tr><td class="n">11</td><td>main</td><td class="n">0</td><td class="n">46</td><td class="n">46</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: peer9 at epoch 23, peer18 at epoch 23, peer11 at epoch 29, peer12 at epoch 31, peer13 at epoch 32, peer34 at epoch 33, peer32 at epoch 39, peer37 at epoch 39, peer31 at epoch 40, peer41 at epoch 41, peer17 at epoch 42, peer28 at epoch 43, peer36 at epoch 44, peer7 at epoch 45, peer23 at epoch 45, peer22 at epoch 46, peer27 at epoch 48, peer30 at epoch 49</p>
+<p class="who">behind at the end: peer9, peer11, peer17, peer18, peer22, peer27, peer30, peer31, peer34</p>
+<p class="file"><a href="base/50-epochs-by-saro-waku-loss-1/2/run.txt">run.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-1/2/report.txt">report.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-1/2/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 5686.050s on a virtual clock in 285.971s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
+split at epoch 9: 42 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.63 at the start, 1.34 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        01469e2a     7105    7040     0    65       8
+raya        4c454e6d     6941    6876     0    65       4
+pax         cc2e7d1e     7108    7049     0    59       8
+mira        57769c86     7098    7009     0    89       8
+kes         361310e5     7082    7016     0    66       8
+tomo        8bb4f9de     7299    7221     0    78       9
+peer7       7e06dea5     7062    6993     0    69     114
+peer8       6b9208f4     7236    7162     0    74      23
+peer9       45bfa798     7214    7142     0    72       4
+peer10      6524481b     7010    6939     0    71       8
+peer11      ecbeb26b     7158    7084     0    74       4
+peer12      326027d3     6985    6907     0    78       9
+peer13      db8cff00     6952    6881     0    71     131
+peer14      804b55e6     6919    6840     0    79       8
+peer15      490debbe     6860    6802     0    58      15
+peer16      e5aeb9e3     6860    6792     0    68       8
+peer17      bfffe31e     6813    6736     0    77      59
+peer18      aece090a     6980    6916     0    64       0
+peer19      f336d055     6739    6678     0    61       4
+peer20      108704f1     6710    6633     0    77       4
+peer21      5053dc73     6651    6584     0    67       4
+peer22      46b3b08b     6632    6564     0    68      59
+peer23      071f881e     6565    6507     0    58     110
+peer24      5173100c     6535    6476     0    59       3
+peer25      5787be4a     6468    6398     0    70       4
+peer26      49d1a660     6438    6373     0    65       4
+peer27      9cc4f24d     6369    6310     0    59       4
+peer28      ab9833fe     6341    6263     0    78      18
+peer29      3799f396     6262    6210     0    52       4
+peer30      8f837d2e     6231    6159     0    72       4
+peer31      01b0cb8e     6185    6130     0    55     144
+peer32      6dded4d3     5923    5863     0    60      71
+peer33      7dfd3590     5755    5689     0    66       4
+peer34      13e16c17     5496    5433     0    63     119
+peer35      d7d6370a     5302    5242     0    60       4
+peer36      b042319a     4943    4897     0    46      18
+peer37      3e784065     4766    4733     0    33      73
+peer38      7d4d5ac3     4569    4531     0    38       4
+peer39      5570ce64     4349    4298     0    51       4
+peer40      faad3bf1     4148    4109     0    39       4
+peer41      167d210e     3946    3904     0    42      56
+peer42      b54004b2     3590    3553     0    37       4
+peer43      29056ea9     3291    3254     0    37       4
+peer44      382fda6f     2918    2886     0    32       4
+peer45      37f225f0     2573    2550     0    23       4
+peer46      4e3b1a35     2055    2036     0    19       4
+peer47      e8d186c2     1625    1610     0    15       4
+peer48      3584c696     1417    1401     0    16       0
+peer49      57bad2ab      868     857     0    11       0
+peer50      e76a3a49      568     564     0     4       0
+peer51      a97a33c2      134     131     0     3       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))    1175       46
+
+the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       39
+1      main     0          9      9        1
+2      main     0         16     16        1
+3      main     0         21     21        1
+4      main     0         32     32        1
+5      main     0         33     33        1
+6      main     0         40     40        2
+7      main     0         42     42        1
+8      main     0         44     44        1
+9      main     0         45     45        1
+10     main     0         46     46        1
+11     main     0         46     46        1
+fell behind: peer9 at epoch 23, peer18 at epoch 23, peer11 at epoch 29, peer12 at epoch 31, peer13 at epoch 32, peer34 at epoch 33, peer32 at epoch 39, peer37 at epoch 39, peer31 at epoch 40, peer41 at epoch 41, peer17 at epoch 42, peer28 at epoch 43, peer36 at epoch 44, peer7 at epoch 45, peer23 at epoch 45, peer22 at epoch 46, peer27 at epoch 48, peer30 at epoch 49
+behind at the end: peer9, peer11, peer17, peer18, peer22, peer27, peer30, peer31, peer34
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation d4a01d28ed
+  split at epoch 9
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 96d97030e3a3bceb, 51 members
+    on it: 01469e2a, 108704f1, 29056ea9, 3584c696, 361310e5, 3799f396, 37f225f0, 382fda6f, 46b3b08b,
+      49d1a660, 4c454e6d, 4e3b1a35, 5053dc73, 5173100c, 5570ce64, 57769c86, 5787be4a, 57bad2ab,
+      6524481b, 7d4d5ac3, 7dfd3590, 804b55e6, 8f837d2e, 9cc4f24d, a97a33c2, b54004b2, cc2e7d1e,
+      d7d6370a, e5aeb9e3, e76a3a49, e8d186c2, f336d055, faad3bf1
+  branch B: epoch 40, state 4d016d25dd55829f, 41 members
+    on it: 3e784065, 6dded4d3
+  branch C: epoch 46, state 0c50223549f2f20c, 47 members
+    on it: 7e06dea5
+  branch D: epoch 33, state 105a0cee0d2a56a8, 34 members
+    on it: db8cff00
+  branch E: epoch 16, state 29a775b5d2aea024, 17 members
+    on it: 490debbe
+  branch F: epoch 42, state 4e2b0a22b8e5fd28, 43 members
+    on it: 167d210e
+  branch G: epoch 21, state 71a89e6ffb08170c, 22 members
+    on it: 6b9208f4
+  branch H: epoch 9, state 8403c4c9659d17af, 10 members
+    on it: 8bb4f9de
+  branch I: epoch 44, state aad15e000fc5240e, 45 members
+    on it: ab9833fe
+  branch J: epoch 45, state ab8e71c68ccc5e96, 46 members
+    on it: b042319a
+  branch K: epoch 32, state e36094b3f4537898, 33 members
+    on it: 326027d3
+  branch L: epoch 46, state fc80e662f9bbcb23, 47 members
+    on it: 071f881e
+
+  installation  account   name   epoch  position  branch
+  01469e2a      7361726f  group  50     tip       A
+  108704f1      70656572  group  50     tip       A
+  29056ea9      70656572  group  50     tip       A
+  3584c696      70656572  group  50     tip       A
+  361310e5      6b6573    group  50     tip       A
+  3799f396      70656572  group  50     tip       A
+  37f225f0      70656572  group  50     tip       A
+  382fda6f      70656572  group  50     tip       A
+  49d1a660      70656572  group  50     tip       A
+  4c454e6d      72617961  group  50     tip       A
+  4e3b1a35      70656572  group  50     tip       A
+  5053dc73      70656572  group  50     tip       A
+  5173100c      70656572  group  50     tip       A
+  5570ce64      70656572  group  50     tip       A
+  57769c86      6d697261  group  50     tip       A
+  5787be4a      70656572  group  50     tip       A
+  57bad2ab      70656572  group  50     tip       A
+  6524481b      70656572  group  50     tip       A
+  7d4d5ac3      70656572  group  50     tip       A
+  7dfd3590      70656572  group  50     tip       A
+  804b55e6      70656572  group  50     tip       A
+  a97a33c2      70656572  group  50     tip       A
+  b54004b2      70656572  group  50     tip       A
+  cc2e7d1e      706178    group  50     tip       A
+  d7d6370a      70656572  group  50     tip       A
+  e5aeb9e3      70656572  group  50     tip       A
+  e76a3a49      70656572  group  50     tip       A
+  e8d186c2      70656572  group  50     tip       A
+  f336d055      70656572  group  50     tip       A
+  faad3bf1      70656572  group  50     tip       A
+  46b3b08b      70656572  group  46     behind    A
+  8f837d2e      70656572  group  49     behind    A
+  9cc4f24d      70656572  group  48     behind    A
+  3e784065      70656572  group  40     tip       B
+  6dded4d3      70656572  group  40     tip       B
+  7e06dea5      70656572  group  46     tip       C
+  db8cff00      70656572  group  33     tip       D
+  490debbe      70656572  group  16     tip       E
+  167d210e      70656572  group  42     tip       F
+  6b9208f4      70656572  group  21     tip       G
+  8bb4f9de      746f6d6f  group  9      tip       H
+  ab9833fe      70656572  group  44     tip       I
+  b042319a      70656572  group  45     tip       J
+  326027d3      70656572  group  32     tip       K
+  071f881e      70656572  group  46     tip       L
+  01b0cb8e      70656572  group  40     behind    -
+  13e16c17      70656572  group  33     behind    -
+  45bfa798      70656572  group  23     behind    -
+  aece090a      70656572  group  23     behind    -
+  bfffe31e      70656572  group  42     behind    -
+  ecbeb26b      70656572  group  29     behind    -
+
+lines: 121230 read, 121230 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 62ff08125a72c27e0bdd527a849f0a8d6180cc31
+# move both pins to 6135ae763cd2e15672368e3d475bab58316de978, or to df0700469f329321d1dbcfe78b227ab8767e537b for the base, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-1</pre>
+</details>
+<details class="run">
+<summary>5% loss, seed 0 <span class="muted">8, split, same</span></summary>
+<div class="sides">
+<div>
+<p class="side">the head <code>6135ae7</code></p>
+<p>split at epoch 8 · no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">14</td><td class="n">11</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">8</td><td class="n">8</td><td class="n">1</td></tr>
+<tr><td class="n">2</td><td>main</td><td class="n">0</td><td class="n">11</td><td class="n">11</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: mira at epoch 5, kes at epoch 6, peer7 at epoch 6, peer8 at epoch 7, peer9 at epoch 8, peer10 at epoch 10, saro at epoch 13</p>
+<p class="who">behind at the end: saro, mira, kes, peer7, peer9</p>
+<p class="who">never joined: tomo, peer14</p>
+<p class="file"><a href="head/50-epochs-by-saro-waku-loss-5/1/run.txt">run.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-5/1/report.txt">report.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-5/1/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 1961.200s on a virtual clock in 0.550s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
+split at epoch 8: 8 of 15 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.36 at the start, 2.36 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        f95e254c      462     436     0    26       0
+raya        671cc18a      461     444     0    17       0
+pax         c1f311f2      410     390     0    20       0
+mira        97bfa122      521     493     0    28       0
+kes         6fe8495b      504     470     0    34       0
+tomo        a5f339d9        0       0     0     0       0
+peer7       f2ccb695      482     462     0    20       0
+peer8       62a677be      425     407     0    18      44
+peer9       54151b53      411     401     0    10      43
+peer10      efc50449      366     347     0    19       0
+peer11      40e18357      302     288     0    14       0
+peer12      f9f57cd1      255     239     0    16       0
+peer13      cb0de6fa      180     172     0     8       0
+peer14      d4f07e9b        0       0     0     0       0
+peer15      6d584977       30      28     0     2       0
+peer16      005527b4        0       0     0     0       0
+peer17      768406f7        0       0     0     0       0
+peer18      adb9aef2        0       0     0     0       0
+peer19      0ab50813        0       0     0     0       0
+peer20      9838d5f4        0       0     0     0       0
+peer21      1b68cbe6        0       0     0     0       0
+peer22      630e82d1        0       0     0     0       0
+peer23      455dc8b7        0       0     0     0       0
+peer24      e06e7f05        0       0     0     0       0
+peer25      d7fac7f4        0       0     0     0       0
+peer26      4b8a8bb9        0       0     0     0       0
+peer27      9aaf5e9f        0       0     0     0       0
+peer28      e6c730af        0       0     0     0       0
+peer29      b5c682c7        0       0     0     0       0
+peer30      1654f4e6        0       0     0     0       0
+peer31      c7971a17        0       0     0     0       0
+peer32      a5a183e1        0       0     0     0       0
+peer33      a43cda26        0       0     0     0       0
+peer34      db3576a9        0       0     0     0       0
+peer35      f96a70dc        0       0     0     0       0
+peer36      03387c93        0       0     0     0       0
+peer37      c68280d6        0       0     0     0       0
+peer38      bbab81fd        0       0     0     0       0
+peer39      70c46b76        0       0     0     0       0
+peer40      abfd232d        0       0     0     0       0
+peer41      1ee8fdf9        0       0     0     0       0
+peer42      58ccbaec        0       0     0     0       0
+peer43      6a19ece6        0       0     0     0       0
+peer44      7f01dffb        0       0     0     0       0
+peer45      5a90ab83        0       0     0     0       0
+peer46      75aab49c        0       0     0     0       0
+peer47      503f150e        0       0     0     0       0
+peer48      5b0dac3c        0       0     0     0       0
+peer49      f3d5e78a        0       0     0     0       0
+peer50      288fcbd0        0       0     0     0       0
+peer51      90557d44        0       0     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))      87        2
+
+no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined
+14 rounds, 14 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     14       11
+1      main     0          8      8        1
+2      main     0         11     11        1
+fell behind: mira at epoch 5, kes at epoch 6, peer7 at epoch 6, peer8 at epoch 7, peer9 at epoch 8, peer10 at epoch 10, saro at epoch 13
+behind at the end: saro, mira, kes, peer7, peer9
+never joined: tomo, peer14
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation def2b1dd40
+  split at epoch 8
+  15 of 15 seats share a log
+
+  branch A: epoch 14, state a97ac8755d019c58, 15 members
+    on it: 40e18357, 671cc18a, 6d584977, c1f311f2, cb0de6fa, f95e254c, f9f57cd1
+  branch B: epoch 11, state 16d16d16c32baab3, 12 members
+    on it: efc50449
+  branch C: epoch 8, state cab65957220359e1, 9 members
+    on it: 62a677be
+
+  installation  account   name   epoch  position      branch
+  40e18357      70656572  group  14     tip           A
+  671cc18a      72617961  group  14     tip           A
+  6d584977      70656572  group  14     tip           A
+  c1f311f2      706178    group  14     tip           A
+  cb0de6fa      70656572  group  14     tip           A
+  f9f57cd1      70656572  group  14     tip           A
+  f95e254c      7361726f  group  13     behind        A
+  efc50449      70656572  group  11     tip           B
+  62a677be      70656572  group  8      tip           C
+  54151b53      70656572  group  8      behind        -
+  6fe8495b      6b6573    group  6      behind        -
+  97bfa122      6d697261  group  5      behind        -
+  f2ccb695      70656572  group  6      behind        -
+  a5f339d9      746f6d6f  group  -      never joined  -
+  d4f07e9b      70656572  group  -      never joined  -
+
+lines: 3040 read, 3040 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+<div>
+<p class="side">the base <code>df07004</code></p>
+<p>split at epoch 8 · no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">14</td><td class="n">11</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">8</td><td class="n">8</td><td class="n">1</td></tr>
+<tr><td class="n">2</td><td>main</td><td class="n">0</td><td class="n">11</td><td class="n">11</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: mira at epoch 5, kes at epoch 6, peer7 at epoch 6, peer8 at epoch 7, peer9 at epoch 8, peer10 at epoch 10, saro at epoch 13</p>
+<p class="who">behind at the end: saro, mira, kes, peer7, peer9</p>
+<p class="who">never joined: tomo, peer14</p>
+<p class="file"><a href="base/50-epochs-by-saro-waku-loss-5/1/run.txt">run.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-5/1/report.txt">report.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-5/1/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 1961.200s on a virtual clock in 0.549s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
+split at epoch 8: 8 of 15 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.08 at the start, 2.08 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        f95e254c      462     436     0    26       0
+raya        671cc18a      461     444     0    17       0
+pax         c1f311f2      410     390     0    20       0
+mira        97bfa122      521     493     0    28       0
+kes         6fe8495b      504     470     0    34       0
+tomo        a5f339d9        0       0     0     0       0
+peer7       f2ccb695      482     462     0    20       0
+peer8       62a677be      425     407     0    18      44
+peer9       54151b53      411     401     0    10      43
+peer10      efc50449      366     347     0    19       0
+peer11      40e18357      302     288     0    14       0
+peer12      f9f57cd1      255     239     0    16       0
+peer13      cb0de6fa      180     172     0     8       0
+peer14      d4f07e9b        0       0     0     0       0
+peer15      6d584977       30      28     0     2       0
+peer16      005527b4        0       0     0     0       0
+peer17      768406f7        0       0     0     0       0
+peer18      adb9aef2        0       0     0     0       0
+peer19      0ab50813        0       0     0     0       0
+peer20      9838d5f4        0       0     0     0       0
+peer21      1b68cbe6        0       0     0     0       0
+peer22      630e82d1        0       0     0     0       0
+peer23      455dc8b7        0       0     0     0       0
+peer24      e06e7f05        0       0     0     0       0
+peer25      d7fac7f4        0       0     0     0       0
+peer26      4b8a8bb9        0       0     0     0       0
+peer27      9aaf5e9f        0       0     0     0       0
+peer28      e6c730af        0       0     0     0       0
+peer29      b5c682c7        0       0     0     0       0
+peer30      1654f4e6        0       0     0     0       0
+peer31      c7971a17        0       0     0     0       0
+peer32      a5a183e1        0       0     0     0       0
+peer33      a43cda26        0       0     0     0       0
+peer34      db3576a9        0       0     0     0       0
+peer35      f96a70dc        0       0     0     0       0
+peer36      03387c93        0       0     0     0       0
+peer37      c68280d6        0       0     0     0       0
+peer38      bbab81fd        0       0     0     0       0
+peer39      70c46b76        0       0     0     0       0
+peer40      abfd232d        0       0     0     0       0
+peer41      1ee8fdf9        0       0     0     0       0
+peer42      58ccbaec        0       0     0     0       0
+peer43      6a19ece6        0       0     0     0       0
+peer44      7f01dffb        0       0     0     0       0
+peer45      5a90ab83        0       0     0     0       0
+peer46      75aab49c        0       0     0     0       0
+peer47      503f150e        0       0     0     0       0
+peer48      5b0dac3c        0       0     0     0       0
+peer49      f3d5e78a        0       0     0     0       0
+peer50      288fcbd0        0       0     0     0       0
+peer51      90557d44        0       0     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))      87        2
+
+no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined
+14 rounds, 14 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     14       11
+1      main     0          8      8        1
+2      main     0         11     11        1
+fell behind: mira at epoch 5, kes at epoch 6, peer7 at epoch 6, peer8 at epoch 7, peer9 at epoch 8, peer10 at epoch 10, saro at epoch 13
+behind at the end: saro, mira, kes, peer7, peer9
+never joined: tomo, peer14
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation def2b1dd40
+  split at epoch 8
+  15 of 15 seats share a log
+
+  branch A: epoch 14, state a97ac8755d019c58, 15 members
+    on it: 40e18357, 671cc18a, 6d584977, c1f311f2, cb0de6fa, f95e254c, f9f57cd1
+  branch B: epoch 11, state 16d16d16c32baab3, 12 members
+    on it: efc50449
+  branch C: epoch 8, state cab65957220359e1, 9 members
+    on it: 62a677be
+
+  installation  account   name   epoch  position      branch
+  40e18357      70656572  group  14     tip           A
+  671cc18a      72617961  group  14     tip           A
+  6d584977      70656572  group  14     tip           A
+  c1f311f2      706178    group  14     tip           A
+  cb0de6fa      70656572  group  14     tip           A
+  f9f57cd1      70656572  group  14     tip           A
+  f95e254c      7361726f  group  13     behind        A
+  efc50449      70656572  group  11     tip           B
+  62a677be      70656572  group  8      tip           C
+  54151b53      70656572  group  8      behind        -
+  6fe8495b      6b6573    group  6      behind        -
+  97bfa122      6d697261  group  5      behind        -
+  f2ccb695      70656572  group  6      behind        -
+  a5f339d9      746f6d6f  group  -      never joined  -
+  d4f07e9b      70656572  group  -      never joined  -
+
+lines: 3040 read, 3040 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 62ff08125a72c27e0bdd527a849f0a8d6180cc31
+# move both pins to 6135ae763cd2e15672368e3d475bab58316de978, or to df0700469f329321d1dbcfe78b227ab8767e537b for the base, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-0</pre>
+</details>
+<details class="run">
+<summary>5% loss, seed 1 <span class="muted">3, split, same</span></summary>
+<div class="sides">
+<div>
+<p class="side">the head <code>6135ae7</code></p>
+<p>split at epoch 3 · the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">28</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">3</td><td class="n">3</td><td class="n">2</td></tr>
+<tr><td class="n">2</td><td>main</td><td class="n">0</td><td class="n">6</td><td class="n">6</td><td class="n">1</td></tr>
+<tr><td class="n">3</td><td>main</td><td class="n">0</td><td class="n">7</td><td class="n">7</td><td class="n">1</td></tr>
+<tr><td class="n">4</td><td>main</td><td class="n">0</td><td class="n">14</td><td class="n">14</td><td class="n">1</td></tr>
+<tr><td class="n">5</td><td>main</td><td class="n">0</td><td class="n">19</td><td class="n">19</td><td class="n">1</td></tr>
+<tr><td class="n">6</td><td>main</td><td class="n">0</td><td class="n">19</td><td class="n">19</td><td class="n">1</td></tr>
+<tr><td class="n">7</td><td>main</td><td class="n">0</td><td class="n">20</td><td class="n">20</td><td class="n">1</td></tr>
+<tr><td class="n">8</td><td>main</td><td class="n">0</td><td class="n">30</td><td class="n">30</td><td class="n">1</td></tr>
+<tr><td class="n">9</td><td>main</td><td class="n">0</td><td class="n">30</td><td class="n">30</td><td class="n">1</td></tr>
+<tr><td class="n">10</td><td>main</td><td class="n">0</td><td class="n">32</td><td class="n">32</td><td class="n">3</td></tr>
+<tr><td class="n">11</td><td>main</td><td class="n">0</td><td class="n">37</td><td class="n">37</td><td class="n">1</td></tr>
+<tr><td class="n">12</td><td>main</td><td class="n">0</td><td class="n">39</td><td class="n">39</td><td class="n">2</td></tr>
+<tr><td class="n">13</td><td>main</td><td class="n">0</td><td class="n">42</td><td class="n">42</td><td class="n">2</td></tr>
+<tr><td class="n">14</td><td>main</td><td class="n">0</td><td class="n">44</td><td class="n">44</td><td class="n">1</td></tr>
+<tr><td class="n">15</td><td>main</td><td class="n">0</td><td class="n">45</td><td class="n">45</td><td class="n">1</td></tr>
+<tr><td class="n">16</td><td>main</td><td class="n">0</td><td class="n">47</td><td class="n">47</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: pax at epoch 5, tomo at epoch 5, kes at epoch 6, peer7 at epoch 10, peer10 at epoch 13, peer13 at epoch 15, peer16 at epoch 16, peer15 at epoch 18, peer17 at epoch 18, peer12 at epoch 19, peer19 at epoch 19, peer8 at epoch 20, peer9 at epoch 20, peer14 at epoch 20, peer11 at epoch 26, peer21 at epoch 29, peer28 at epoch 29, peer24 at epoch 31, peer26 at epoch 31, peer29 at epoch 31, peer30 at epoch 31, peer31 at epoch 31, peer33 at epoch 36, peer37 at epoch 37, peer27 at epoch 38, peer39 at epoch 38, peer32 at epoch 41, peer36 at epoch 41, peer41 at epoch 41, peer42 at epoch 41, peer20 at epoch 42, peer38 at epoch 42, peer43 at epoch 43, peer40 at epoch 44, peer18 at epoch 46, peer35 at epoch 46, peer45 at epoch 47, peer44 at epoch 48</p>
+<p class="who">behind at the end: pax, peer7, peer8, peer9, peer11, peer12, peer13, peer14, peer16, peer18, peer20, peer26, peer29, peer36, peer37, peer38, peer42, peer44, peer45</p>
+<p class="who">never joined: peer23, peer46</p>
+<p class="file"><a href="head/50-epochs-by-saro-waku-loss-5/2/run.txt">run.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-5/2/report.txt">report.txt</a> · <a href="head/50-epochs-by-saro-waku-loss-5/2/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 7070.894s on a virtual clock in 274.572s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
+split at epoch 3: 30 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.78 at the start, 1.09 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        01469e2a     8661    8260     1   400       3
+raya        4c454e6d     9338    8881     1   456       2
+pax         cc2e7d1e     8997    8592     1   404       0
+mira        57769c86     9330    8846     1   483       2
+kes         361310e5     8980    8555     1   424      19
+tomo        8bb4f9de     8963    8485     1   477      10
+peer7       7e06dea5     8936    8494     1   441       6
+peer8       6b9208f4     8890    8477     1   412     208
+peer9       45bfa798     8822    8382     1   439     202
+peer10      6524481b     8780    8358     1   421       0
+peer11      ecbeb26b     8719    8279     1   439       0
+peer12      326027d3     8665    8274     1   390     420
+peer13      db8cff00     8576    8140     1   435       0
+peer14      804b55e6     8498    8072     1   425     202
+peer15      490debbe     8415    8016     1   398     434
+peer16      e5aeb9e3     8333    7921     1   411       0
+peer17      bfffe31e     8233    7816     1   416     442
+peer18      aece090a     8068    7653     1   414       0
+peer19      f336d055     7941    7546     1   394     631
+peer20      108704f1     7810    7409     1   400     104
+peer21      5053dc73     7652    7275     1   376     134
+peer22      46b3b08b     7475    7098     0   377       0
+peer23      071f881e        1       0     0     1       0
+peer24      5173100c     7088    6740     1   347       0
+peer25      5787be4a     6937    6601     1   335       0
+peer26      49d1a660     6813    6475     1   337       0
+peer27      9cc4f24d     6659    6314     1   344       0
+peer28      ab9833fe     6513    6197     1   315     135
+peer29      3799f396     6282    5969     1   312       0
+peer30      8f837d2e     6110    5784     1   325       0
+peer31      01b0cb8e     5935    5632     1   302       0
+peer32      6dded4d3     5681    5385     1   295     101
+peer33      7dfd3590     5543    5249     1   293      86
+peer34      13e16c17     5212    4944     1   267       0
+peer35      d7d6370a     5131    4854     1   276      10
+peer36      b042319a     4933    4683     1   249       0
+peer37      3e784065     4673    4444     1   228      87
+peer38      7d4d5ac3     4454    4226     1   227      98
+peer39      5570ce64     4131    3905     1   225       0
+peer40      faad3bf1     3924    3726     1   197      13
+peer41      167d210e     3484    3300     1   183      99
+peer42      b54004b2     3299    3137     1   161       0
+peer43      29056ea9     2989    2834     1   154      15
+peer44      382fda6f     2621    2482     1   138       0
+peer45      37f225f0     2412    2284     1   127       9
+peer46      4e3b1a35        1       0     0     1       0
+peer47      e8d186c2     1520    1453     1    66       0
+peer48      3584c696     1186    1122     1    63       0
+peer49      57bad2ab      848     810     1    37       0
+peer50      e76a3a49      359     347     1    11       0
+peer51      a97a33c2        1       1     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))    3472       25
+
+the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       28
+1      main     0          3      3        2
+2      main     0          6      6        1
+3      main     0          7      7        1
+4      main     0         14     14        1
+5      main     0         19     19        1
+6      main     0         19     19        1
+7      main     0         20     20        1
+8      main     0         30     30        1
+9      main     0         30     30        1
+10     main     0         32     32        3
+11     main     0         37     37        1
+12     main     0         39     39        2
+13     main     0         42     42        2
+14     main     0         44     44        1
+15     main     0         45     45        1
+16     main     0         47     47        1
+fell behind: pax at epoch 5, tomo at epoch 5, kes at epoch 6, peer7 at epoch 10, peer10 at epoch 13, peer13 at epoch 15, peer16 at epoch 16, peer15 at epoch 18, peer17 at epoch 18, peer12 at epoch 19, peer19 at epoch 19, peer8 at epoch 20, peer9 at epoch 20, peer14 at epoch 20, peer11 at epoch 26, peer21 at epoch 29, peer28 at epoch 29, peer24 at epoch 31, peer26 at epoch 31, peer29 at epoch 31, peer30 at epoch 31, peer31 at epoch 31, peer33 at epoch 36, peer37 at epoch 37, peer27 at epoch 38, peer39 at epoch 38, peer32 at epoch 41, peer36 at epoch 41, peer41 at epoch 41, peer42 at epoch 41, peer20 at epoch 42, peer38 at epoch 42, peer43 at epoch 43, peer40 at epoch 44, peer18 at epoch 46, peer35 at epoch 46, peer45 at epoch 47, peer44 at epoch 48
+behind at the end: pax, peer7, peer8, peer9, peer11, peer12, peer13, peer14, peer16, peer18, peer20, peer26, peer29, peer36, peer37, peer38, peer42, peer44, peer45
+never joined: peer23, peer46
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation d4a01d28ed
+  split at epoch 3
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 7f60437388a821e9, 51 members
+    on it: 01469e2a, 13e16c17, 3584c696, 37f225f0, 382fda6f, 46b3b08b, 5787be4a, 57bad2ab, a97a33c2,
+      e76a3a49, e8d186c2
+  branch B: epoch 32, state 3ac6009bc5a0c8dd, 33 members
+    on it: 01b0cb8e, 5173100c, 8f837d2e
+  branch C: epoch 3, state 10408649909e4ec9, 4 members
+    on it: 4c454e6d, 57769c86
+  branch D: epoch 42, state 5a1f05d9fab45657, 43 members
+    on it: 167d210e, 6dded4d3
+  branch E: epoch 39, state 606d79b2fe445e0b, 40 members
+    on it: 5570ce64, 9cc4f24d
+  branch F: epoch 14, state 05839e7de2eb640b, 15 members
+    on it: 6524481b
+  branch G: epoch 47, state 3f3a2dbe7d182d26, 48 members
+    on it: d7d6370a
+  branch H: epoch 7, state 4ee7ce6110cbda07, 8 members
+    on it: 361310e5
+  branch I: epoch 30, state 60dd07e60edb18e8, 31 members
+    on it: 5053dc73
+  branch J: epoch 37, state 671072df904a4e45, 38 members
+    on it: 7dfd3590
+  branch K: epoch 45, state 805003d35230f654, 46 members
+    on it: faad3bf1
+  branch L: epoch 19, state 89972b1d4ad12ab9, 20 members
+    on it: 490debbe
+  branch M: epoch 19, state 8b2bb57446da625e, 20 members
+    on it: bfffe31e
+  branch N: epoch 20, state 8d006684843cb36e, 21 members
+    on it: f336d055
+  branch O: epoch 44, state b426800e03dcd6e0, 45 members
+    on it: 29056ea9
+  branch P: epoch 6, state d3f7edd22394721d, 7 members
+    on it: 8bb4f9de
+  branch Q: epoch 30, state e0b26e1f71fa5989, 31 members
+    on it: ab9833fe
+
+  installation  account   name   epoch  position      branch
+  01469e2a      7361726f  group  50     tip           A
+  13e16c17      70656572  group  50     tip           A
+  3584c696      70656572  group  50     tip           A
+  46b3b08b      70656572  group  50     tip           A
+  5787be4a      70656572  group  50     tip           A
+  57bad2ab      70656572  group  50     tip           A
+  a97a33c2      70656572  group  50     tip           A
+  e76a3a49      70656572  group  50     tip           A
+  e8d186c2      70656572  group  50     tip           A
+  37f225f0      70656572  group  47     behind        A
+  382fda6f      70656572  group  48     behind        A
+  01b0cb8e      70656572  group  32     tip           B
+  5173100c      70656572  group  32     tip           B
+  8f837d2e      70656572  group  32     tip           B
+  4c454e6d      72617961  group  3      tip           C
+  57769c86      6d697261  group  3      tip           C
+  167d210e      70656572  group  42     tip           D
+  6dded4d3      70656572  group  42     tip           D
+  5570ce64      70656572  group  39     tip           E
+  9cc4f24d      70656572  group  39     tip           E
+  6524481b      70656572  group  14     tip           F
+  d7d6370a      70656572  group  47     tip           G
+  361310e5      6b6573    group  7      tip           H
+  5053dc73      70656572  group  30     tip           I
+  7dfd3590      70656572  group  37     tip           J
+  faad3bf1      70656572  group  45     tip           K
+  490debbe      70656572  group  19     tip           L
+  bfffe31e      70656572  group  19     tip           M
+  f336d055      70656572  group  20     tip           N
+  29056ea9      70656572  group  44     tip           O
+  8bb4f9de      746f6d6f  group  6      tip           P
+  ab9833fe      70656572  group  30     tip           Q
+  108704f1      70656572  group  42     behind        -
+  326027d3      70656572  group  19     behind        -
+  3799f396      70656572  group  31     behind        -
+  3e784065      70656572  group  37     behind        -
+  45bfa798      70656572  group  20     behind        -
+  49d1a660      70656572  group  31     behind        -
+  6b9208f4      70656572  group  20     behind        -
+  7d4d5ac3      70656572  group  42     behind        -
+  7e06dea5      70656572  group  10     behind        -
+  804b55e6      70656572  group  20     behind        -
+  aece090a      70656572  group  46     behind        -
+  b042319a      70656572  group  41     behind        -
+  b54004b2      70656572  group  41     behind        -
+  cc2e7d1e      706178    group  5      behind        -
+  db8cff00      70656572  group  15     behind        -
+  e5aeb9e3      70656572  group  16     behind        -
+  ecbeb26b      70656572  group  26     behind        -
+  071f881e      70656572  group  -      never joined  -
+  4e3b1a35      70656572  group  -      never joined  -
+
+lines: 255351 read, 255164 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+<div>
+<p class="side">the base <code>df07004</code></p>
+<p>split at epoch 3 · the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined</p>
+<div class="wide"><table class="lines">
+<thead><tr><th class="n">line</th><th>kind</th><th class="n">from</th><th class="n">forked at</th><th class="n">epoch</th><th class="n">members</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>trunk</td><td class="n">-</td><td class="n">-</td><td class="n">50</td><td class="n">28</td></tr>
+<tr><td class="n">1</td><td>main</td><td class="n">0</td><td class="n">3</td><td class="n">3</td><td class="n">2</td></tr>
+<tr><td class="n">2</td><td>main</td><td class="n">0</td><td class="n">6</td><td class="n">6</td><td class="n">1</td></tr>
+<tr><td class="n">3</td><td>main</td><td class="n">0</td><td class="n">7</td><td class="n">7</td><td class="n">1</td></tr>
+<tr><td class="n">4</td><td>main</td><td class="n">0</td><td class="n">14</td><td class="n">14</td><td class="n">1</td></tr>
+<tr><td class="n">5</td><td>main</td><td class="n">0</td><td class="n">19</td><td class="n">19</td><td class="n">1</td></tr>
+<tr><td class="n">6</td><td>main</td><td class="n">0</td><td class="n">19</td><td class="n">19</td><td class="n">1</td></tr>
+<tr><td class="n">7</td><td>main</td><td class="n">0</td><td class="n">20</td><td class="n">20</td><td class="n">1</td></tr>
+<tr><td class="n">8</td><td>main</td><td class="n">0</td><td class="n">30</td><td class="n">30</td><td class="n">1</td></tr>
+<tr><td class="n">9</td><td>main</td><td class="n">0</td><td class="n">30</td><td class="n">30</td><td class="n">1</td></tr>
+<tr><td class="n">10</td><td>main</td><td class="n">0</td><td class="n">32</td><td class="n">32</td><td class="n">3</td></tr>
+<tr><td class="n">11</td><td>main</td><td class="n">0</td><td class="n">37</td><td class="n">37</td><td class="n">1</td></tr>
+<tr><td class="n">12</td><td>main</td><td class="n">0</td><td class="n">39</td><td class="n">39</td><td class="n">2</td></tr>
+<tr><td class="n">13</td><td>main</td><td class="n">0</td><td class="n">42</td><td class="n">42</td><td class="n">2</td></tr>
+<tr><td class="n">14</td><td>main</td><td class="n">0</td><td class="n">44</td><td class="n">44</td><td class="n">1</td></tr>
+<tr><td class="n">15</td><td>main</td><td class="n">0</td><td class="n">45</td><td class="n">45</td><td class="n">1</td></tr>
+<tr><td class="n">16</td><td>main</td><td class="n">0</td><td class="n">47</td><td class="n">47</td><td class="n">1</td></tr>
+</tbody>
+</table></div>
+<p class="who">fell behind: pax at epoch 5, tomo at epoch 5, kes at epoch 6, peer7 at epoch 10, peer10 at epoch 13, peer13 at epoch 15, peer16 at epoch 16, peer15 at epoch 18, peer17 at epoch 18, peer12 at epoch 19, peer19 at epoch 19, peer8 at epoch 20, peer9 at epoch 20, peer14 at epoch 20, peer11 at epoch 26, peer21 at epoch 29, peer28 at epoch 29, peer24 at epoch 31, peer26 at epoch 31, peer29 at epoch 31, peer30 at epoch 31, peer31 at epoch 31, peer33 at epoch 36, peer37 at epoch 37, peer27 at epoch 38, peer39 at epoch 38, peer32 at epoch 41, peer36 at epoch 41, peer41 at epoch 41, peer42 at epoch 41, peer20 at epoch 42, peer38 at epoch 42, peer43 at epoch 43, peer40 at epoch 44, peer18 at epoch 46, peer35 at epoch 46, peer45 at epoch 47, peer44 at epoch 48</p>
+<p class="who">behind at the end: pax, peer7, peer8, peer9, peer11, peer12, peer13, peer14, peer16, peer18, peer20, peer26, peer29, peer36, peer37, peer38, peer42, peer44, peer45</p>
+<p class="who">never joined: peer23, peer46</p>
+<p class="file"><a href="base/50-epochs-by-saro-waku-loss-5/2/run.txt">run.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-5/2/report.txt">report.txt</a> · <a href="base/50-epochs-by-saro-waku-loss-5/2/run.json">run.json</a></p>
+<details class="text">
+<summary>run.txt</summary>
+<pre>51 members, default group timers, one process, 7070.894s on a virtual clock in 234.139s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
+split at epoch 3: 30 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 2.35 at the start, 1.09 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        01469e2a     8661    8260     1   400       3
+raya        4c454e6d     9338    8881     1   456       2
+pax         cc2e7d1e     8997    8592     1   404       0
+mira        57769c86     9330    8846     1   483       2
+kes         361310e5     8980    8555     1   424      19
+tomo        8bb4f9de     8963    8485     1   477      10
+peer7       7e06dea5     8936    8494     1   441       6
+peer8       6b9208f4     8890    8477     1   412     208
+peer9       45bfa798     8822    8382     1   439     202
+peer10      6524481b     8780    8358     1   421       0
+peer11      ecbeb26b     8719    8279     1   439       0
+peer12      326027d3     8665    8274     1   390     420
+peer13      db8cff00     8576    8140     1   435       0
+peer14      804b55e6     8498    8072     1   425     202
+peer15      490debbe     8415    8016     1   398     434
+peer16      e5aeb9e3     8333    7921     1   411       0
+peer17      bfffe31e     8233    7816     1   416     442
+peer18      aece090a     8068    7653     1   414       0
+peer19      f336d055     7941    7546     1   394     631
+peer20      108704f1     7810    7409     1   400     104
+peer21      5053dc73     7652    7275     1   376     134
+peer22      46b3b08b     7475    7098     0   377       0
+peer23      071f881e        1       0     0     1       0
+peer24      5173100c     7088    6740     1   347       0
+peer25      5787be4a     6937    6601     1   335       0
+peer26      49d1a660     6813    6475     1   337       0
+peer27      9cc4f24d     6659    6314     1   344       0
+peer28      ab9833fe     6513    6197     1   315     135
+peer29      3799f396     6282    5969     1   312       0
+peer30      8f837d2e     6110    5784     1   325       0
+peer31      01b0cb8e     5935    5632     1   302       0
+peer32      6dded4d3     5681    5385     1   295     101
+peer33      7dfd3590     5543    5249     1   293      86
+peer34      13e16c17     5212    4944     1   267       0
+peer35      d7d6370a     5131    4854     1   276      10
+peer36      b042319a     4933    4683     1   249       0
+peer37      3e784065     4673    4444     1   228      87
+peer38      7d4d5ac3     4454    4226     1   227      98
+peer39      5570ce64     4131    3905     1   225       0
+peer40      faad3bf1     3924    3726     1   197      13
+peer41      167d210e     3484    3300     1   183      99
+peer42      b54004b2     3299    3137     1   161       0
+peer43      29056ea9     2989    2834     1   154      15
+peer44      382fda6f     2621    2482     1   138       0
+peer45      37f225f0     2412    2284     1   127       9
+peer46      4e3b1a35        1       0     0     1       0
+peer47      e8d186c2     1520    1453     1    66       0
+peer48      3584c696     1186    1122     1    63       0
+peer49      57bad2ab      848     810     1    37       0
+peer50      e76a3a49      359     347     1    11       0
+peer51      a97a33c2        1       1     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))    3472       25
+
+the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       28
+1      main     0          3      3        2
+2      main     0          6      6        1
+3      main     0          7      7        1
+4      main     0         14     14        1
+5      main     0         19     19        1
+6      main     0         19     19        1
+7      main     0         20     20        1
+8      main     0         30     30        1
+9      main     0         30     30        1
+10     main     0         32     32        3
+11     main     0         37     37        1
+12     main     0         39     39        2
+13     main     0         42     42        2
+14     main     0         44     44        1
+15     main     0         45     45        1
+16     main     0         47     47        1
+fell behind: pax at epoch 5, tomo at epoch 5, kes at epoch 6, peer7 at epoch 10, peer10 at epoch 13, peer13 at epoch 15, peer16 at epoch 16, peer15 at epoch 18, peer17 at epoch 18, peer12 at epoch 19, peer19 at epoch 19, peer8 at epoch 20, peer9 at epoch 20, peer14 at epoch 20, peer11 at epoch 26, peer21 at epoch 29, peer28 at epoch 29, peer24 at epoch 31, peer26 at epoch 31, peer29 at epoch 31, peer30 at epoch 31, peer31 at epoch 31, peer33 at epoch 36, peer37 at epoch 37, peer27 at epoch 38, peer39 at epoch 38, peer32 at epoch 41, peer36 at epoch 41, peer41 at epoch 41, peer42 at epoch 41, peer20 at epoch 42, peer38 at epoch 42, peer43 at epoch 43, peer40 at epoch 44, peer18 at epoch 46, peer35 at epoch 46, peer45 at epoch 47, peer44 at epoch 48
+behind at the end: pax, peer7, peer8, peer9, peer11, peer12, peer13, peer14, peer16, peer18, peer20, peer26, peer29, peer36, peer37, peer38, peer42, peer44, peer45
+never joined: peer23, peer46
+</pre>
+</details>
+<details class="text">
+<summary>report.txt</summary>
+<pre>conversation d4a01d28ed
+  split at epoch 3
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 7f60437388a821e9, 51 members
+    on it: 01469e2a, 13e16c17, 3584c696, 37f225f0, 382fda6f, 46b3b08b, 5787be4a, 57bad2ab, a97a33c2,
+      e76a3a49, e8d186c2
+  branch B: epoch 32, state 3ac6009bc5a0c8dd, 33 members
+    on it: 01b0cb8e, 5173100c, 8f837d2e
+  branch C: epoch 3, state 10408649909e4ec9, 4 members
+    on it: 4c454e6d, 57769c86
+  branch D: epoch 42, state 5a1f05d9fab45657, 43 members
+    on it: 167d210e, 6dded4d3
+  branch E: epoch 39, state 606d79b2fe445e0b, 40 members
+    on it: 5570ce64, 9cc4f24d
+  branch F: epoch 14, state 05839e7de2eb640b, 15 members
+    on it: 6524481b
+  branch G: epoch 47, state 3f3a2dbe7d182d26, 48 members
+    on it: d7d6370a
+  branch H: epoch 7, state 4ee7ce6110cbda07, 8 members
+    on it: 361310e5
+  branch I: epoch 30, state 60dd07e60edb18e8, 31 members
+    on it: 5053dc73
+  branch J: epoch 37, state 671072df904a4e45, 38 members
+    on it: 7dfd3590
+  branch K: epoch 45, state 805003d35230f654, 46 members
+    on it: faad3bf1
+  branch L: epoch 19, state 89972b1d4ad12ab9, 20 members
+    on it: 490debbe
+  branch M: epoch 19, state 8b2bb57446da625e, 20 members
+    on it: bfffe31e
+  branch N: epoch 20, state 8d006684843cb36e, 21 members
+    on it: f336d055
+  branch O: epoch 44, state b426800e03dcd6e0, 45 members
+    on it: 29056ea9
+  branch P: epoch 6, state d3f7edd22394721d, 7 members
+    on it: 8bb4f9de
+  branch Q: epoch 30, state e0b26e1f71fa5989, 31 members
+    on it: ab9833fe
+
+  installation  account   name   epoch  position      branch
+  01469e2a      7361726f  group  50     tip           A
+  13e16c17      70656572  group  50     tip           A
+  3584c696      70656572  group  50     tip           A
+  46b3b08b      70656572  group  50     tip           A
+  5787be4a      70656572  group  50     tip           A
+  57bad2ab      70656572  group  50     tip           A
+  a97a33c2      70656572  group  50     tip           A
+  e76a3a49      70656572  group  50     tip           A
+  e8d186c2      70656572  group  50     tip           A
+  37f225f0      70656572  group  47     behind        A
+  382fda6f      70656572  group  48     behind        A
+  01b0cb8e      70656572  group  32     tip           B
+  5173100c      70656572  group  32     tip           B
+  8f837d2e      70656572  group  32     tip           B
+  4c454e6d      72617961  group  3      tip           C
+  57769c86      6d697261  group  3      tip           C
+  167d210e      70656572  group  42     tip           D
+  6dded4d3      70656572  group  42     tip           D
+  5570ce64      70656572  group  39     tip           E
+  9cc4f24d      70656572  group  39     tip           E
+  6524481b      70656572  group  14     tip           F
+  d7d6370a      70656572  group  47     tip           G
+  361310e5      6b6573    group  7      tip           H
+  5053dc73      70656572  group  30     tip           I
+  7dfd3590      70656572  group  37     tip           J
+  faad3bf1      70656572  group  45     tip           K
+  490debbe      70656572  group  19     tip           L
+  bfffe31e      70656572  group  19     tip           M
+  f336d055      70656572  group  20     tip           N
+  29056ea9      70656572  group  44     tip           O
+  8bb4f9de      746f6d6f  group  6      tip           P
+  ab9833fe      70656572  group  30     tip           Q
+  108704f1      70656572  group  42     behind        -
+  326027d3      70656572  group  19     behind        -
+  3799f396      70656572  group  31     behind        -
+  3e784065      70656572  group  37     behind        -
+  45bfa798      70656572  group  20     behind        -
+  49d1a660      70656572  group  31     behind        -
+  6b9208f4      70656572  group  20     behind        -
+  7d4d5ac3      70656572  group  42     behind        -
+  7e06dea5      70656572  group  10     behind        -
+  804b55e6      70656572  group  20     behind        -
+  aece090a      70656572  group  46     behind        -
+  b042319a      70656572  group  41     behind        -
+  b54004b2      70656572  group  41     behind        -
+  cc2e7d1e      706178    group  5      behind        -
+  db8cff00      70656572  group  15     behind        -
+  e5aeb9e3      70656572  group  16     behind        -
+  ecbeb26b      70656572  group  26     behind        -
+  071f881e      70656572  group  -      never joined  -
+  4e3b1a35      70656572  group  -      never joined  -
+
+lines: 255351 read, 255164 records, 0 without a stamp, 0 malformed, 0 unknown
+</pre>
+</details>
+</div>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 62ff08125a72c27e0bdd527a849f0a8d6180cc31
+# move both pins to 6135ae763cd2e15672368e3d475bab58316de978, or to df0700469f329321d1dbcfe78b227ab8767e537b for the base, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-1</pre>
+</details>
+</section>
+<p class="muted">What the page shows: the guide's <a href="../../guide/reports/#the-pages-of-logos-chats-runs">Reports</a>.</p>
+</body>
+</html>

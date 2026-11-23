@@ -1,0 +1,44 @@
+conversation ea373f158f
+  split at epoch 6
+  18 of 18 seats share a log
+
+  branch A: epoch 10, state d17de80bab3b76f7, 16 members
+    on it: 747ee919, cc388b3d
+  branch B: epoch 8, state 2dd410404c93b7ee, 13 members
+    on it: 506c5d65, 8944fe60
+  branch C: epoch 7, state 858f4e5dea04a2a7, 9 members
+    on it: a757435e, c3d564c7
+  branch D: epoch 10, state 067709a5933552f6, 16 members
+    on it: 55e5d919
+  branch E: epoch 10, state 3c3eaeaeb6020fc7, 16 members
+    on it: 3d49e196
+  branch F: epoch 10, state 596205658403f17b, 16 members
+    on it: 790f3c28
+  branch G: epoch 10, state 61e82bfa3b64c633, 16 members
+    on it: 5c51fb81
+  branch H: epoch 10, state 6745593c07807b6b, 16 members
+    on it: ec2db029
+  branch I: epoch 10, state ede4d5822a6722df, 16 members
+    on it: 99eda065
+
+  installation  account   name   epoch  position      branch
+  747ee919      70656572  group  10     tip           A
+  cc388b3d      70656572  group  10     tip           A
+  506c5d65      7361726f  group  8      tip           B
+  8944fe60      70656572  group  8      tip           B
+  a757435e      70656572  group  7      tip           C
+  c3d564c7      6d697261  group  7      tip           C
+  55e5d919      70656572  group  10     tip           D
+  3d49e196      70656572  group  10     tip           E
+  790f3c28      70656572  group  10     tip           F
+  5c51fb81      70656572  group  10     tip           G
+  ec2db029      70656572  group  10     tip           H
+  99eda065      70656572  group  10     tip           I
+  1032f398      70656572  group  7      behind        -
+  346aeac0      72617961  group  1      behind        -
+  3f549fb1      6b6573    group  3      behind        -
+  76e7de04      746f6d6f  group  8      behind        -
+  a14d9dab      70656572  group  -      never joined  -
+  bfe8ea7b      70656572  group  -      never joined  -
+
+lines: 5428 read, 5106 records, 0 without a stamp, 0 malformed, 0 unknown

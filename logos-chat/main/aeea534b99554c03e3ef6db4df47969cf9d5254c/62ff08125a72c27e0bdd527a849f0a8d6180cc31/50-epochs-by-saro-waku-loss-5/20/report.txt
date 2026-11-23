@@ -1,0 +1,57 @@
+conversation cead3644f0
+  split at epoch 6
+  30 of 30 seats share a log
+
+  branch A: epoch 29, state c002717d16d2dfa3, 30 members
+    on it: 06d7b24b, 18c94d32, 1bc29a7d, 29129023, 31fa7bca, 408d6533, 67784531, 84493fdd, bb88bb3f,
+      d243723c, de35a906, f24a2d8b, f2c64bcc
+  branch B: epoch 21, state 3637a251589b6c5a, 22 members
+    on it: 348eef3b
+  branch C: epoch 12, state 42ecc19de130348f, 13 members
+    on it: 61b521b3
+  branch D: epoch 16, state 588e2fc106fcec3b, 17 members
+    on it: 5274aae0
+  branch E: epoch 15, state 69327143ac6d9165, 16 members
+    on it: 6e97aa74
+  branch F: epoch 17, state 7b13ba27a939bd1a, 18 members
+    on it: 3236abef
+  branch G: epoch 6, state 8bc7b00e705e8f1c, 7 members
+    on it: 47ba3f94
+  branch H: epoch 22, state 8dbc1ebaded30b21, 23 members
+    on it: a2ec3a9f
+  branch I: epoch 24, state bdeed891a468a75a, 25 members
+    on it: a9aead4a
+
+  installation  account   name   epoch  position      branch
+  06d7b24b      70656572  group  29     tip           A
+  18c94d32      70656572  group  29     tip           A
+  29129023      70656572  group  29     tip           A
+  408d6533      6d697261  group  29     tip           A
+  67784531      70656572  group  29     tip           A
+  bb88bb3f      70656572  group  29     tip           A
+  de35a906      70656572  group  29     tip           A
+  f24a2d8b      70656572  group  29     tip           A
+  f2c64bcc      70656572  group  29     tip           A
+  1bc29a7d      70656572  group  24     behind        A
+  31fa7bca      7361726f  group  28     behind        A
+  84493fdd      70656572  group  28     behind        A
+  d243723c      70656572  group  28     behind        A
+  348eef3b      70656572  group  21     tip           B
+  61b521b3      70656572  group  12     tip           C
+  5274aae0      70656572  group  16     tip           D
+  6e97aa74      70656572  group  15     tip           E
+  3236abef      70656572  group  17     tip           F
+  47ba3f94      706178    group  6      tip           G
+  a2ec3a9f      70656572  group  22     tip           H
+  a9aead4a      70656572  group  24     tip           I
+  0de1fa1b      72617961  group  12     behind        -
+  1a2a55b1      6b6573    group  6      behind        -
+  442a9ca6      70656572  group  19     behind        -
+  4c58b15d      70656572  group  16     behind        -
+  919947e6      70656572  group  14     behind        -
+  b0789edd      70656572  group  20     behind        -
+  ce6c4c14      70656572  group  21     behind        -
+  d9109f61      746f6d6f  group  6      behind        -
+  a51c5350      70656572  group  -      never joined  -
+
+lines: 45561 read, 45531 records, 0 without a stamp, 0 malformed, 0 unknown

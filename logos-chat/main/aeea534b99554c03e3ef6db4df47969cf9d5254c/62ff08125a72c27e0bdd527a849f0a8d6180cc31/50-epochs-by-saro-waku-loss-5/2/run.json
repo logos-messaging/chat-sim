@@ -1,0 +1,2789 @@
+{
+  "members": 51,
+  "ok": true,
+  "stopped": null,
+  "steps": 1,
+  "steps_done": 1,
+  "group": "v2",
+  "timers": "default",
+  "preset": null,
+  "cluster_id": null,
+  "max_message_kib": 512,
+  "budget": 180.0,
+  "seed": 1,
+  "network": {
+    "seed": 2,
+    "loss": 0.05,
+    "welcome_loss": 0.05,
+    "delay_ms": {
+      "saro": 518,
+      "raya": 600,
+      "pax": 456,
+      "mira": 533,
+      "kes": 644,
+      "tomo": 501,
+      "peer7": 554,
+      "peer8": 400,
+      "peer9": 515,
+      "peer10": 592,
+      "peer11": 447,
+      "peer12": 529,
+      "peer13": 634,
+      "peer14": 498,
+      "peer15": 549,
+      "peer16": 393,
+      "peer17": 513,
+      "peer18": 583,
+      "peer19": 438,
+      "peer20": 526,
+      "peer21": 627,
+      "peer22": 493,
+      "peer23": 545,
+      "peer24": 386,
+      "peer25": 511,
+      "peer26": 576,
+      "peer27": 431,
+      "peer28": 524,
+      "peer29": 622,
+      "peer30": 484,
+      "peer31": 541,
+      "peer32": 373,
+      "peer33": 509,
+      "peer34": 570,
+      "peer35": 424,
+      "peer36": 522,
+      "peer37": 617,
+      "peer38": 474,
+      "peer39": 538,
+      "peer40": 329,
+      "peer41": 506,
+      "peer42": 563,
+      "peer43": 416,
+      "peer44": 520,
+      "peer45": 610,
+      "peer46": 465,
+      "peer47": 536,
+      "peer48": 284,
+      "peer49": 504,
+      "peer50": 557,
+      "peer51": 408
+    }
+  },
+  "wire": null,
+  "load": {
+    "start": [
+      2.3671875,
+      0.96826171875,
+      0.36181640625
+    ],
+    "end": [
+      1.13623046875,
+      1.05078125,
+      0.54345703125
+    ]
+  },
+  "nodes": [
+    {
+      "account": "7361726f",
+      "app_id": "30663839656335386436",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 3
+      },
+      "installation": "01469e2a",
+      "name": "saro",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 518,
+        "frames": {
+          "arrived": 8661,
+          "dropped": {
+            "cut": 0,
+            "loss": 399,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8260
+        },
+        "loss": 0.05,
+        "own": [
+          "30663839656335386436"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 399,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "72617961",
+      "app_id": "38323661306234323864",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 2
+      },
+      "installation": "4c454e6d",
+      "name": "raya",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 600,
+        "frames": {
+          "arrived": 9338,
+          "dropped": {
+            "cut": 0,
+            "loss": 451,
+            "welcome_loss": 5,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8881
+        },
+        "loss": 0.05,
+        "own": [
+          "38323661306234323864"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 451,
+        "welcome_loss": 5
+      }
+    },
+    {
+      "account": "706178",
+      "app_id": "63363238316539363738",
+      "inbound_errors": {},
+      "installation": "cc2e7d1e",
+      "name": "pax",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 456,
+        "frames": {
+          "arrived": 8997,
+          "dropped": {
+            "cut": 0,
+            "loss": 404,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8592
+        },
+        "loss": 0.05,
+        "own": [
+          "63363238316539363738"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 404
+      }
+    },
+    {
+      "account": "6d697261",
+      "app_id": "64363663336237346165",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 2
+      },
+      "installation": "57769c86",
+      "name": "mira",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 533,
+        "frames": {
+          "arrived": 9330,
+          "dropped": {
+            "cut": 0,
+            "loss": 482,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8846
+        },
+        "loss": 0.05,
+        "own": [
+          "64363663336237346165"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 482,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "6b6573",
+      "app_id": "65326362316664363139",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 19
+      },
+      "installation": "361310e5",
+      "name": "kes",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 644,
+        "frames": {
+          "arrived": 8980,
+          "dropped": {
+            "cut": 0,
+            "loss": 419,
+            "welcome_loss": 5,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8555
+        },
+        "loss": 0.05,
+        "own": [
+          "65326362316664363139"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 419,
+        "welcome_loss": 5
+      }
+    },
+    {
+      "account": "746f6d6f",
+      "app_id": "61613631643633666134",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 10
+      },
+      "installation": "8bb4f9de",
+      "name": "tomo",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 501,
+        "frames": {
+          "arrived": 8963,
+          "dropped": {
+            "cut": 0,
+            "loss": 474,
+            "welcome_loss": 3,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8485
+        },
+        "loss": 0.05,
+        "own": [
+          "61613631643633666134"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 474,
+        "welcome_loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "32633161646432643438",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 6
+      },
+      "installation": "7e06dea5",
+      "name": "peer7",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 554,
+        "frames": {
+          "arrived": 8936,
+          "dropped": {
+            "cut": 0,
+            "loss": 439,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8494
+        },
+        "loss": 0.05,
+        "own": [
+          "32633161646432643438"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 439,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31363436396638613530",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 208
+      },
+      "installation": "6b9208f4",
+      "name": "peer8",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 400,
+        "frames": {
+          "arrived": 8890,
+          "dropped": {
+            "cut": 0,
+            "loss": 408,
+            "welcome_loss": 4,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8477
+        },
+        "loss": 0.05,
+        "own": [
+          "31363436396638613530"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 408,
+        "welcome_loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "34323637613937646639",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 202
+      },
+      "installation": "45bfa798",
+      "name": "peer9",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 515,
+        "frames": {
+          "arrived": 8822,
+          "dropped": {
+            "cut": 0,
+            "loss": 431,
+            "welcome_loss": 8,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8382
+        },
+        "loss": 0.05,
+        "own": [
+          "34323637613937646639"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 431,
+        "welcome_loss": 8
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "64336439323662663866",
+      "inbound_errors": {},
+      "installation": "6524481b",
+      "name": "peer10",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 592,
+        "frames": {
+          "arrived": 8780,
+          "dropped": {
+            "cut": 0,
+            "loss": 420,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8358
+        },
+        "loss": 0.05,
+        "own": [
+          "64336439323662663866"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 420,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "61386536363164636139",
+      "inbound_errors": {},
+      "installation": "ecbeb26b",
+      "name": "peer11",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 447,
+        "frames": {
+          "arrived": 8719,
+          "dropped": {
+            "cut": 0,
+            "loss": 435,
+            "welcome_loss": 4,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8279
+        },
+        "loss": 0.05,
+        "own": [
+          "61386536363164636139"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 435,
+        "welcome_loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "66613634623839326534",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 420
+      },
+      "installation": "326027d3",
+      "name": "peer12",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 529,
+        "frames": {
+          "arrived": 8665,
+          "dropped": {
+            "cut": 0,
+            "loss": 389,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8274
+        },
+        "loss": 0.05,
+        "own": [
+          "66613634623839326534"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 389,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "32656337663133333662",
+      "inbound_errors": {},
+      "installation": "db8cff00",
+      "name": "peer13",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 634,
+        "frames": {
+          "arrived": 8576,
+          "dropped": {
+            "cut": 0,
+            "loss": 432,
+            "welcome_loss": 3,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8140
+        },
+        "loss": 0.05,
+        "own": [
+          "32656337663133333662"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 432,
+        "welcome_loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "34613638343030363562",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 202
+      },
+      "installation": "804b55e6",
+      "name": "peer14",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 498,
+        "frames": {
+          "arrived": 8498,
+          "dropped": {
+            "cut": 0,
+            "loss": 423,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8072
+        },
+        "loss": 0.05,
+        "own": [
+          "34613638343030363562"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 423,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "36633238366232383233",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 434
+      },
+      "installation": "490debbe",
+      "name": "peer15",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 549,
+        "frames": {
+          "arrived": 8415,
+          "dropped": {
+            "cut": 0,
+            "loss": 395,
+            "welcome_loss": 3,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 8016
+        },
+        "loss": 0.05,
+        "own": [
+          "36633238366232383233"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 395,
+        "welcome_loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31633565656635613663",
+      "inbound_errors": {},
+      "installation": "e5aeb9e3",
+      "name": "peer16",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 393,
+        "frames": {
+          "arrived": 8333,
+          "dropped": {
+            "cut": 0,
+            "loss": 409,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 7921
+        },
+        "loss": 0.05,
+        "own": [
+          "31633565656635613663"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 409,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "62636465323566356366",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 442
+      },
+      "installation": "bfffe31e",
+      "name": "peer17",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 513,
+        "frames": {
+          "arrived": 8233,
+          "dropped": {
+            "cut": 0,
+            "loss": 412,
+            "welcome_loss": 4,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 7816
+        },
+        "loss": 0.05,
+        "own": [
+          "62636465323566356366"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 412,
+        "welcome_loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31313634656339383438",
+      "inbound_errors": {},
+      "installation": "aece090a",
+      "name": "peer18",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 583,
+        "frames": {
+          "arrived": 8068,
+          "dropped": {
+            "cut": 0,
+            "loss": 409,
+            "welcome_loss": 5,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 7653
+        },
+        "loss": 0.05,
+        "own": [
+          "31313634656339383438"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 409,
+        "welcome_loss": 5
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31333232363466353039",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 631
+      },
+      "installation": "f336d055",
+      "name": "peer19",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 438,
+        "frames": {
+          "arrived": 7941,
+          "dropped": {
+            "cut": 0,
+            "loss": 391,
+            "welcome_loss": 3,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 7546
+        },
+        "loss": 0.05,
+        "own": [
+          "31333232363466353039"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 391,
+        "welcome_loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "32396438363464393635",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 104
+      },
+      "installation": "108704f1",
+      "name": "peer20",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 526,
+        "frames": {
+          "arrived": 7810,
+          "dropped": {
+            "cut": 0,
+            "loss": 398,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 7409
+        },
+        "loss": 0.05,
+        "own": [
+          "32396438363464393635"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 398,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "37383637383937316334",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 134
+      },
+      "installation": "5053dc73",
+      "name": "peer21",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 627,
+        "frames": {
+          "arrived": 7652,
+          "dropped": {
+            "cut": 0,
+            "loss": 373,
+            "welcome_loss": 3,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 7275
+        },
+        "loss": 0.05,
+        "own": [
+          "37383637383937316334"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 373,
+        "welcome_loss": 3
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31653366663735636434",
+      "inbound_errors": {},
+      "installation": "46b3b08b",
+      "name": "peer22",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 493,
+        "frames": {
+          "arrived": 7475,
+          "dropped": {
+            "cut": 0,
+            "loss": 373,
+            "welcome_loss": 4,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 7098
+        },
+        "loss": 0.05,
+        "own": [
+          "31653366663735636434"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 373,
+        "welcome_loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": null,
+      "inbound_errors": {},
+      "installation": "071f881e",
+      "name": "peer23",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 545,
+        "frames": {
+          "arrived": 1,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 0
+        },
+        "loss": 0.05,
+        "own": [],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "64383762343766306138",
+      "inbound_errors": {},
+      "installation": "5173100c",
+      "name": "peer24",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 386,
+        "frames": {
+          "arrived": 7088,
+          "dropped": {
+            "cut": 0,
+            "loss": 345,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 6740
+        },
+        "loss": 0.05,
+        "own": [
+          "64383762343766306138"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 345,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "39646332383661333065",
+      "inbound_errors": {},
+      "installation": "5787be4a",
+      "name": "peer25",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 511,
+        "frames": {
+          "arrived": 6937,
+          "dropped": {
+            "cut": 0,
+            "loss": 333,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 6601
+        },
+        "loss": 0.05,
+        "own": [
+          "39646332383661333065"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 333,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "65313339343231333762",
+      "inbound_errors": {},
+      "installation": "49d1a660",
+      "name": "peer26",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 576,
+        "frames": {
+          "arrived": 6813,
+          "dropped": {
+            "cut": 0,
+            "loss": 335,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 6475
+        },
+        "loss": 0.05,
+        "own": [
+          "65313339343231333762"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 335,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "64333930623934363438",
+      "inbound_errors": {},
+      "installation": "9cc4f24d",
+      "name": "peer27",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 431,
+        "frames": {
+          "arrived": 6659,
+          "dropped": {
+            "cut": 0,
+            "loss": 343,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 6314
+        },
+        "loss": 0.05,
+        "own": [
+          "64333930623934363438"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 343,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "64366662313364396235",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 135
+      },
+      "installation": "ab9833fe",
+      "name": "peer28",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 524,
+        "frames": {
+          "arrived": 6513,
+          "dropped": {
+            "cut": 0,
+            "loss": 313,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 6197
+        },
+        "loss": 0.05,
+        "own": [
+          "64366662313364396235"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 313,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "61306161396333363066",
+      "inbound_errors": {},
+      "installation": "3799f396",
+      "name": "peer29",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 622,
+        "frames": {
+          "arrived": 6282,
+          "dropped": {
+            "cut": 0,
+            "loss": 312,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 5969
+        },
+        "loss": 0.05,
+        "own": [
+          "61306161396333363066"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 312
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "30313136336666666464",
+      "inbound_errors": {},
+      "installation": "8f837d2e",
+      "name": "peer30",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 484,
+        "frames": {
+          "arrived": 6110,
+          "dropped": {
+            "cut": 0,
+            "loss": 321,
+            "welcome_loss": 4,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 5784
+        },
+        "loss": 0.05,
+        "own": [
+          "30313136336666666464"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 321,
+        "welcome_loss": 4
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "34306132336366636530",
+      "inbound_errors": {},
+      "installation": "01b0cb8e",
+      "name": "peer31",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 541,
+        "frames": {
+          "arrived": 5935,
+          "dropped": {
+            "cut": 0,
+            "loss": 302,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 5632
+        },
+        "loss": 0.05,
+        "own": [
+          "34306132336366636530"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 302
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "61636662613666316164",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 101
+      },
+      "installation": "6dded4d3",
+      "name": "peer32",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 373,
+        "frames": {
+          "arrived": 5681,
+          "dropped": {
+            "cut": 0,
+            "loss": 295,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 5385
+        },
+        "loss": 0.05,
+        "own": [
+          "61636662613666316164"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 295
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31653464616166373936",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 86
+      },
+      "installation": "7dfd3590",
+      "name": "peer33",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 509,
+        "frames": {
+          "arrived": 5543,
+          "dropped": {
+            "cut": 0,
+            "loss": 292,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 5249
+        },
+        "loss": 0.05,
+        "own": [
+          "31653464616166373936"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 292,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "32633935303935643830",
+      "inbound_errors": {},
+      "installation": "13e16c17",
+      "name": "peer34",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 570,
+        "frames": {
+          "arrived": 5212,
+          "dropped": {
+            "cut": 0,
+            "loss": 267,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 4944
+        },
+        "loss": 0.05,
+        "own": [
+          "32633935303935643830"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 267
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "32373966666466633039",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 10
+      },
+      "installation": "d7d6370a",
+      "name": "peer35",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 424,
+        "frames": {
+          "arrived": 5131,
+          "dropped": {
+            "cut": 0,
+            "loss": 274,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 4854
+        },
+        "loss": 0.05,
+        "own": [
+          "32373966666466633039"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 274,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "35663363386266326363",
+      "inbound_errors": {},
+      "installation": "b042319a",
+      "name": "peer36",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 522,
+        "frames": {
+          "arrived": 4933,
+          "dropped": {
+            "cut": 0,
+            "loss": 248,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 4683
+        },
+        "loss": 0.05,
+        "own": [
+          "35663363386266326363"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 248,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "38353065366433386264",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 87
+      },
+      "installation": "3e784065",
+      "name": "peer37",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 617,
+        "frames": {
+          "arrived": 4673,
+          "dropped": {
+            "cut": 0,
+            "loss": 226,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 4444
+        },
+        "loss": 0.05,
+        "own": [
+          "38353065366433386264"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 226,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "31653061646533616264",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 98
+      },
+      "installation": "7d4d5ac3",
+      "name": "peer38",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 474,
+        "frames": {
+          "arrived": 4454,
+          "dropped": {
+            "cut": 0,
+            "loss": 227,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 4226
+        },
+        "loss": 0.05,
+        "own": [
+          "31653061646533616264"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 227
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "33633336346364653130",
+      "inbound_errors": {},
+      "installation": "5570ce64",
+      "name": "peer39",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 538,
+        "frames": {
+          "arrived": 4131,
+          "dropped": {
+            "cut": 0,
+            "loss": 225,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 3905
+        },
+        "loss": 0.05,
+        "own": [
+          "33633336346364653130"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 225
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "66623139323733663063",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 13
+      },
+      "installation": "faad3bf1",
+      "name": "peer40",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 329,
+        "frames": {
+          "arrived": 3924,
+          "dropped": {
+            "cut": 0,
+            "loss": 197,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 3726
+        },
+        "loss": 0.05,
+        "own": [
+          "66623139323733663063"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 197
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "38353030376434613964",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 99
+      },
+      "installation": "167d210e",
+      "name": "peer41",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 506,
+        "frames": {
+          "arrived": 3484,
+          "dropped": {
+            "cut": 0,
+            "loss": 183,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 3300
+        },
+        "loss": 0.05,
+        "own": [
+          "38353030376434613964"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 183
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "36343666393464663031",
+      "inbound_errors": {},
+      "installation": "b54004b2",
+      "name": "peer42",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 563,
+        "frames": {
+          "arrived": 3299,
+          "dropped": {
+            "cut": 0,
+            "loss": 160,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 3137
+        },
+        "loss": 0.05,
+        "own": [
+          "36343666393464663031"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 160,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "33333332313734306436",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 15
+      },
+      "installation": "29056ea9",
+      "name": "peer43",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 416,
+        "frames": {
+          "arrived": 2989,
+          "dropped": {
+            "cut": 0,
+            "loss": 152,
+            "welcome_loss": 2,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 2834
+        },
+        "loss": 0.05,
+        "own": [
+          "33333332313734306436"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 152,
+        "welcome_loss": 2
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "37376266313665663332",
+      "inbound_errors": {},
+      "installation": "382fda6f",
+      "name": "peer44",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 520,
+        "frames": {
+          "arrived": 2621,
+          "dropped": {
+            "cut": 0,
+            "loss": 138,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 2482
+        },
+        "loss": 0.05,
+        "own": [
+          "37376266313665663332"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 138
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "35643262383935393465",
+      "inbound_errors": {
+        "DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))": 9
+      },
+      "installation": "37f225f0",
+      "name": "peer45",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 610,
+        "frames": {
+          "arrived": 2412,
+          "dropped": {
+            "cut": 0,
+            "loss": 127,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 2284
+        },
+        "loss": 0.05,
+        "own": [
+          "35643262383935393465"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 127
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": null,
+      "inbound_errors": {},
+      "installation": "4e3b1a35",
+      "name": "peer46",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 465,
+        "frames": {
+          "arrived": 1,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 0
+        },
+        "loss": 0.05,
+        "own": [],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "37313463306566356437",
+      "inbound_errors": {},
+      "installation": "e8d186c2",
+      "name": "peer47",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 536,
+        "frames": {
+          "arrived": 1520,
+          "dropped": {
+            "cut": 0,
+            "loss": 66,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 1453
+        },
+        "loss": 0.05,
+        "own": [
+          "37313463306566356437"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 66
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "66643033383737313831",
+      "inbound_errors": {},
+      "installation": "3584c696",
+      "name": "peer48",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 284,
+        "frames": {
+          "arrived": 1186,
+          "dropped": {
+            "cut": 0,
+            "loss": 63,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 1122
+        },
+        "loss": 0.05,
+        "own": [
+          "66643033383737313831"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 63
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "38373539316565393434",
+      "inbound_errors": {},
+      "installation": "57bad2ab",
+      "name": "peer49",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 504,
+        "frames": {
+          "arrived": 848,
+          "dropped": {
+            "cut": 0,
+            "loss": 36,
+            "welcome_loss": 1,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 810
+        },
+        "loss": 0.05,
+        "own": [
+          "38373539316565393434"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 36,
+        "welcome_loss": 1
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "64333432656633393061",
+      "inbound_errors": {},
+      "installation": "e76a3a49",
+      "name": "peer50",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 557,
+        "frames": {
+          "arrived": 359,
+          "dropped": {
+            "cut": 0,
+            "loss": 11,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 1,
+          "passed": 347
+        },
+        "loss": 0.05,
+        "own": [
+          "64333432656633393061"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 11
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": "32636338356631653964",
+      "inbound_errors": {},
+      "installation": "a97a33c2",
+      "name": "peer51",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 408,
+        "frames": {
+          "arrived": 1,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 1
+        },
+        "loss": 0.05,
+        "own": [
+          "32636338356631653964"
+        ],
+        "seed": 2,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {}
+    }
+  ],
+  "batches": [],
+  "posts": [],
+  "holds": [],
+  "conversation": "d4a01d28ed",
+  "withheld": null,
+  "held_to": null,
+  "check": null,
+  "unchecked": "a `grow` step expects no outcome",
+  "verdict": "split at epoch 3",
+  "at_tip": 30,
+  "seated": 51,
+  "grow": {
+    "behind": [
+      "pax",
+      "peer7",
+      "peer8",
+      "peer9",
+      "peer11",
+      "peer12",
+      "peer13",
+      "peer14",
+      "peer16",
+      "peer18",
+      "peer20",
+      "peer26",
+      "peer29",
+      "peer36",
+      "peer37",
+      "peer38",
+      "peer42",
+      "peer44",
+      "peer45"
+    ],
+    "ended": "the trunk reached epoch 50",
+    "fell_behind": [
+      {
+        "epoch": 5,
+        "name": "pax"
+      },
+      {
+        "epoch": 5,
+        "name": "tomo"
+      },
+      {
+        "epoch": 6,
+        "name": "kes"
+      },
+      {
+        "epoch": 10,
+        "name": "peer7"
+      },
+      {
+        "epoch": 13,
+        "name": "peer10"
+      },
+      {
+        "epoch": 15,
+        "name": "peer13"
+      },
+      {
+        "epoch": 16,
+        "name": "peer16"
+      },
+      {
+        "epoch": 18,
+        "name": "peer15"
+      },
+      {
+        "epoch": 18,
+        "name": "peer17"
+      },
+      {
+        "epoch": 19,
+        "name": "peer12"
+      },
+      {
+        "epoch": 19,
+        "name": "peer19"
+      },
+      {
+        "epoch": 20,
+        "name": "peer8"
+      },
+      {
+        "epoch": 20,
+        "name": "peer9"
+      },
+      {
+        "epoch": 20,
+        "name": "peer14"
+      },
+      {
+        "epoch": 26,
+        "name": "peer11"
+      },
+      {
+        "epoch": 29,
+        "name": "peer21"
+      },
+      {
+        "epoch": 29,
+        "name": "peer28"
+      },
+      {
+        "epoch": 31,
+        "name": "peer24"
+      },
+      {
+        "epoch": 31,
+        "name": "peer26"
+      },
+      {
+        "epoch": 31,
+        "name": "peer29"
+      },
+      {
+        "epoch": 31,
+        "name": "peer30"
+      },
+      {
+        "epoch": 31,
+        "name": "peer31"
+      },
+      {
+        "epoch": 36,
+        "name": "peer33"
+      },
+      {
+        "epoch": 37,
+        "name": "peer37"
+      },
+      {
+        "epoch": 38,
+        "name": "peer27"
+      },
+      {
+        "epoch": 38,
+        "name": "peer39"
+      },
+      {
+        "epoch": 41,
+        "name": "peer32"
+      },
+      {
+        "epoch": 41,
+        "name": "peer36"
+      },
+      {
+        "epoch": 41,
+        "name": "peer41"
+      },
+      {
+        "epoch": 41,
+        "name": "peer42"
+      },
+      {
+        "epoch": 42,
+        "name": "peer20"
+      },
+      {
+        "epoch": 42,
+        "name": "peer38"
+      },
+      {
+        "epoch": 43,
+        "name": "peer43"
+      },
+      {
+        "epoch": 44,
+        "name": "peer40"
+      },
+      {
+        "epoch": 46,
+        "name": "peer18"
+      },
+      {
+        "epoch": 46,
+        "name": "peer35"
+      },
+      {
+        "epoch": 47,
+        "name": "peer45"
+      },
+      {
+        "epoch": 48,
+        "name": "peer44"
+      }
+    ],
+    "lines": [
+      {
+        "epoch": 50,
+        "forked_at": null,
+        "from": null,
+        "kind": "trunk",
+        "members": [
+          "saro",
+          "pax",
+          "peer7",
+          "peer8",
+          "peer9",
+          "peer11",
+          "peer12",
+          "peer13",
+          "peer14",
+          "peer16",
+          "peer18",
+          "peer20",
+          "peer22",
+          "peer25",
+          "peer26",
+          "peer29",
+          "peer34",
+          "peer36",
+          "peer37",
+          "peer38",
+          "peer42",
+          "peer44",
+          "peer45",
+          "peer47",
+          "peer48",
+          "peer49",
+          "peer50",
+          "peer51"
+        ]
+      },
+      {
+        "epoch": 3,
+        "forked_at": 3,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "raya",
+          "mira"
+        ]
+      },
+      {
+        "epoch": 6,
+        "forked_at": 6,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "tomo"
+        ]
+      },
+      {
+        "epoch": 7,
+        "forked_at": 7,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "kes"
+        ]
+      },
+      {
+        "epoch": 14,
+        "forked_at": 14,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer10"
+        ]
+      },
+      {
+        "epoch": 19,
+        "forked_at": 19,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer15"
+        ]
+      },
+      {
+        "epoch": 19,
+        "forked_at": 19,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer17"
+        ]
+      },
+      {
+        "epoch": 20,
+        "forked_at": 20,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer19"
+        ]
+      },
+      {
+        "epoch": 30,
+        "forked_at": 30,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer21"
+        ]
+      },
+      {
+        "epoch": 30,
+        "forked_at": 30,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer28"
+        ]
+      },
+      {
+        "epoch": 32,
+        "forked_at": 32,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer24",
+          "peer30",
+          "peer31"
+        ]
+      },
+      {
+        "epoch": 37,
+        "forked_at": 37,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer33"
+        ]
+      },
+      {
+        "epoch": 39,
+        "forked_at": 39,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer27",
+          "peer39"
+        ]
+      },
+      {
+        "epoch": 42,
+        "forked_at": 42,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer32",
+          "peer41"
+        ]
+      },
+      {
+        "epoch": 44,
+        "forked_at": 44,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer43"
+        ]
+      },
+      {
+        "epoch": 45,
+        "forked_at": 45,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer40"
+        ]
+      },
+      {
+        "epoch": 47,
+        "forked_at": 47,
+        "from": 0,
+        "kind": "main",
+        "members": [
+          "peer35"
+        ]
+      }
+    ],
+    "main": 17,
+    "never_joined": [
+      "peer23",
+      "peer46"
+    ],
+    "removed": [],
+    "rounds": [
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "raya"
+        ],
+        "refused": [],
+        "settled_s": 60.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "pax"
+        ],
+        "refused": [],
+        "settled_s": 71.8
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "mira"
+        ],
+        "refused": [],
+        "settled_s": 101.05
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "kes"
+        ],
+        "refused": [],
+        "settled_s": 120.7
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "tomo"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer7"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer8"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer9"
+        ],
+        "refused": [],
+        "settled_s": 90.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer10"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer11"
+        ],
+        "refused": [],
+        "settled_s": 120.6
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer12"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer13"
+        ],
+        "refused": [],
+        "settled_s": 120.7
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer14"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer15"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer16"
+        ],
+        "refused": [],
+        "settled_s": 63.05
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer17"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer18"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer19"
+        ],
+        "refused": [],
+        "settled_s": 120.6
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer20"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer21"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer22"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer23"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer24"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer25"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer26"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer27"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer28"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer29"
+        ],
+        "refused": [],
+        "settled_s": 120.7
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer30"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer31"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer32"
+        ],
+        "refused": [],
+        "settled_s": 107.45
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer33"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer34"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer35"
+        ],
+        "refused": [],
+        "settled_s": 72.2
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer36"
+        ],
+        "refused": [],
+        "settled_s": 120.6
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer37"
+        ],
+        "refused": [],
+        "settled_s": 120.7
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer38"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer39"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer40"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer41"
+        ],
+        "refused": [],
+        "settled_s": 96.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer42"
+        ],
+        "refused": [],
+        "settled_s": 120.55
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer43"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer44"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer45"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer46"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer47"
+        ],
+        "refused": [],
+        "settled_s": 120.65
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer48"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer49"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer50"
+        ],
+        "refused": [],
+        "settled_s": 180.0
+      },
+      {
+        "adders": [
+          "saro"
+        ],
+        "joiners": [
+          "peer51"
+        ],
+        "refused": [],
+        "settled_s": 95.1
+      }
+    ],
+    "trunk_epoch": 50
+  },
+  "page": null,
+  "unshared": [],
+  "rig": "one process",
+  "virtual_s": 7070.894,
+  "wall_s": 233.521192507
+}

@@ -1,0 +1,715 @@
+{
+ "logos_chat": "ce916b886f0379968804b7e62b154c4d5348e4bf",
+ "measurement": "278bcec5814142be48f0f45307d3a89da16d8c8b",
+ "chat_sim": "278bcec5814142be48f0f45307d3a89da16d8c8b",
+ "time": "2026-11-22T02:47:02Z",
+ "run_url": "https://github.com/logos-messaging/chat-sim/actions/runs/44967887248",
+ "run_number": 144,
+ "scenarios": [
+  {
+   "scenario": "50-epochs",
+   "compare": null,
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": null,
+      "conversation": "def2b1dd40",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 3494.75,
+      "trunk_epoch": null,
+      "ended": null,
+      "lines_off_trunk": null,
+      "members_off_trunk": null,
+      "never_joined": null,
+      "came_to": "as expected",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "50-epochs-waku",
+   "compare": null,
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "def2b1dd40",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 3627.344,
+      "trunk_epoch": null,
+      "ended": null,
+      "lines_off_trunk": null,
+      "members_off_trunk": null,
+      "never_joined": null,
+      "came_to": "as expected",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "50-epochs-by-saro-waku-loss-0",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "2 of 2 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "def2b1dd40",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 3626.644,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 0,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "d4a01d28ed",
+      "members_digest": "e7be2f6a8a13997c",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 3626.894,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 0,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "50-epochs-by-saro-waku-loss-0-groupv3",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "2 of 2 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "15a00cfb038295fd6463c4f58a947f42",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 6050.294,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 0,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "ecc153091067054925f8d2c3ffd8e793",
+      "members_digest": "e7be2f6a8a13997c",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 6050.294,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 0,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "50-epochs-by-saro-waku-loss-0.1",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "2 of 2 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "def2b1dd40",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 3626.644,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 0,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "d4a01d28ed",
+      "members_digest": "e7be2f6a8a13997c",
+      "verdict": "split at epoch 46",
+      "at_tip": 50,
+      "seated": 51,
+      "virtual_s": 3790.744,
+      "trunk_epoch": 50,
+      "ended": "split",
+      "lines_off_trunk": 1,
+      "members_off_trunk": 2,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "50-epochs-by-saro-waku-loss-0.1-groupv3",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "2 of 2 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "15a00cfb038295fd6463c4f58a947f42",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 6109.294,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 0,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 1 fell behind, 0 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "ecc153091067054925f8d2c3ffd8e793",
+      "members_digest": "e7be2f6a8a13997c",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 6109.294,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 0,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 1 fell behind, 0 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "50-epochs-by-saro-waku-loss-1",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "2 of 2 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "def2b1dd40",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "split at epoch 18",
+      "at_tip": 42,
+      "seated": 51,
+      "virtual_s": 6076.244,
+      "trunk_epoch": 50,
+      "ended": "split",
+      "lines_off_trunk": 7,
+      "members_off_trunk": 18,
+      "never_joined": 1,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "d4a01d28ed",
+      "members_digest": "e7be2f6a8a13997c",
+      "verdict": "split at epoch 9",
+      "at_tip": 42,
+      "seated": 51,
+      "virtual_s": 5686.05,
+      "trunk_epoch": 50,
+      "ended": "split",
+      "lines_off_trunk": 11,
+      "members_off_trunk": 21,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "50-epochs-by-saro-waku-loss-1-groupv3",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "2 of 2 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "15a00cfb038295fd6463c4f58a947f42",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "whole, members behind",
+      "at_tip": 50,
+      "seated": 51,
+      "virtual_s": 6580.65,
+      "trunk_epoch": 50,
+      "ended": "behind",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 1,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 9 fell behind, 1 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "ecc153091067054925f8d2c3ffd8e793",
+      "members_digest": "e7be2f6a8a13997c",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 51,
+      "virtual_s": 6699.294,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 0,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 11 fell behind, 0 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "50-epochs-by-saro-waku-loss-5",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "2 of 2 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "def2b1dd40",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "split at epoch 8",
+      "at_tip": 8,
+      "seated": 15,
+      "virtual_s": 1961.2,
+      "trunk_epoch": 14,
+      "ended": "split",
+      "lines_off_trunk": 2,
+      "members_off_trunk": 9,
+      "never_joined": 2,
+      "came_to": "no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "d4a01d28ed",
+      "members_digest": "e7be2f6a8a13997c",
+      "verdict": "split at epoch 3",
+      "at_tip": 30,
+      "seated": 51,
+      "virtual_s": 7070.894,
+      "trunk_epoch": 50,
+      "ended": "split",
+      "lines_off_trunk": 16,
+      "members_off_trunk": 42,
+      "never_joined": 2,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "50-epochs-by-saro-waku-loss-5-groupv3",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "2 of 2 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "15a00cfb038295fd6463c4f58a947f42",
+      "members_digest": "1f228bfa64e58b9a",
+      "verdict": "whole, members behind",
+      "at_tip": 45,
+      "seated": 51,
+      "virtual_s": 7701.65,
+      "trunk_epoch": 50,
+      "ended": "behind",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 6,
+      "never_joined": 3,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 32 fell behind, 3 behind at the end, 3 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "ecc153091067054925f8d2c3ffd8e793",
+      "members_digest": "e7be2f6a8a13997c",
+      "verdict": "whole, members behind",
+      "at_tip": 45,
+      "seated": 51,
+      "virtual_s": 7996.65,
+      "trunk_epoch": 50,
+      "ended": "behind",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 6,
+      "never_joined": 2,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 35 fell behind, 4 behind at the end, 2 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "grow-waku-loss-0.1",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "3 of 3 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "ee89b1a642",
+      "members_digest": "e488a3e2806f41ee",
+      "verdict": "split at epoch 39",
+      "at_tip": 102,
+      "seated": 103,
+      "virtual_s": 3895.809,
+      "trunk_epoch": 50,
+      "ended": "split",
+      "lines_off_trunk": 3,
+      "members_off_trunk": 4,
+      "never_joined": 0,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 4 main, 0 sub, 2 fell behind, 1 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "af92293c83",
+      "members_digest": "d2eb242052b1fa76",
+      "verdict": "split at epoch 14",
+      "at_tip": 72,
+      "seated": 74,
+      "virtual_s": 3281.05,
+      "trunk_epoch": 36,
+      "ended": "split",
+      "lines_off_trunk": 4,
+      "members_off_trunk": 6,
+      "never_joined": 1,
+      "came_to": "5 main branches ran side by side: trunk at epoch 36, 5 main, 0 sub, 2 fell behind, 1 behind at the end, 1 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 3,
+     "seed": 2,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 2,
+      "network_seed": 3,
+      "conversation": "8159753266",
+      "members_digest": "9f50fb7f0f75164f",
+      "verdict": "split at epoch 16",
+      "at_tip": 59,
+      "seated": 59,
+      "virtual_s": 2500.559,
+      "trunk_epoch": 27,
+      "ended": "split",
+      "lines_off_trunk": 4,
+      "members_off_trunk": 6,
+      "never_joined": 0,
+      "came_to": "5 main branches ran side by side: trunk at epoch 27, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 0 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "grow-waku-loss-0.1-groupv3",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "3 of 3 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "15a00cfb038295fd6463c4f58a947f42",
+      "members_digest": "e488a3e2806f41ee",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 103,
+      "virtual_s": 7946.9,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 52,
+      "never_joined": 52,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 52 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "ecc153091067054925f8d2c3ffd8e793",
+      "members_digest": "d2eb242052b1fa76",
+      "verdict": "whole",
+      "at_tip": 51,
+      "seated": 107,
+      "virtual_s": 8296.8,
+      "trunk_epoch": 50,
+      "ended": "whole",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 56,
+      "never_joined": 56,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 56 never joined",
+      "stopped": null
+     }
+    },
+    {
+     "run": 3,
+     "seed": 2,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 2,
+      "network_seed": 3,
+      "conversation": "dbab77347029e73de5133d3fcb015ec2",
+      "members_digest": "9f50fb7f0f75164f",
+      "verdict": "split at epoch 47",
+      "at_tip": 51,
+      "seated": 108,
+      "virtual_s": 8239.0,
+      "trunk_epoch": 50,
+      "ended": "split",
+      "lines_off_trunk": 1,
+      "members_off_trunk": 58,
+      "never_joined": 57,
+      "came_to": "the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 57 never joined",
+      "stopped": null
+     }
+    }
+   ]
+  },
+  {
+   "scenario": "grow-waku-size-50",
+   "compare": {
+    "verdict": "as expected",
+    "counted": "3 of 3 runs came out as expected"
+   },
+   "runs": [
+    {
+     "run": 1,
+     "seed": 0,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 0,
+      "network_seed": 1,
+      "conversation": "ca080ac87c",
+      "members_digest": "227b8b6c020ba93e",
+      "verdict": "split at epoch 66",
+      "at_tip": 50,
+      "seated": 50,
+      "virtual_s": 6604.65,
+      "trunk_epoch": 79,
+      "ended": "split",
+      "lines_off_trunk": 3,
+      "members_off_trunk": 3,
+      "never_joined": 0,
+      "came_to": "4 main branches ran side by side: trunk at epoch 79, 4 main, 0 sub, 3 fell behind, 0 behind at the end, 0 never joined, 114 removed",
+      "stopped": null
+     }
+    },
+    {
+     "run": 2,
+     "seed": 1,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 1,
+      "network_seed": 2,
+      "conversation": "2a2ff20aff",
+      "members_digest": "5c0242c9406a5bc3",
+      "verdict": "whole",
+      "at_tip": 50,
+      "seated": 50,
+      "virtual_s": 24396.6,
+      "trunk_epoch": 251,
+      "ended": "stalled",
+      "lines_off_trunk": 0,
+      "members_off_trunk": 49,
+      "never_joined": 49,
+      "came_to": "no member took part: trunk at epoch 251, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 49 never joined, 512 removed",
+      "stopped": null
+     }
+    },
+    {
+     "run": 3,
+     "seed": 2,
+     "unbuilt": false,
+     "outcome": {
+      "seed": 2,
+      "network_seed": 3,
+      "conversation": "d9b95871c1",
+      "members_digest": "0e35061e4a846c2c",
+      "verdict": "split at epoch 408",
+      "at_tip": 50,
+      "seated": 50,
+      "virtual_s": 34769.823,
+      "trunk_epoch": 415,
+      "ended": "split",
+      "lines_off_trunk": 2,
+      "members_off_trunk": 2,
+      "never_joined": 0,
+      "came_to": "3 main branches ran side by side: trunk at epoch 415, 3 main, 0 sub, 2 fell behind, 0 behind at the end, 0 never joined, 789 removed",
+      "stopped": null
+     }
+    }
+   ]
+  }
+ ]
+}

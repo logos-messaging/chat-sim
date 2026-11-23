@@ -1,0 +1,69 @@
+51 members, default group timers, one process, 3878.794s on a virtual clock in 27.411s of wall time, seed 15, network seed 16, loss 0.001, welcome loss 0.001
+split at epoch 27: 50 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 1.33 at the start, 1.28 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        c5c4f221     2625    2621     1     3       0
+raya        a6bc1a35     2669    2661     2     6      27
+pax         f2ae8525     2613    2610     1     2       0
+mira        acc0b9d3     2609    2605     1     3       0
+kes         61ef4104     2603    2598     2     3       0
+tomo        02557d02     2597    2594     1     2       0
+peer7       a8a76745     2578    2575     2     1       0
+peer8       5e1dbb47     2560    2557     1     2       0
+peer9       f0a9377e     2530    2526     1     3       0
+peer10      03a340ee     2521    2517     2     2       0
+peer11      e57d2896     2493    2491     1     1       0
+peer12      b09146f8     2484    2482     1     1       0
+peer13      d1c0b685     2446    2440     2     4       0
+peer14      2bed4515     2426    2422     1     3       0
+peer15      3e1a1b5d     2383    2380     2     1       0
+peer16      63e7a2a9     2363    2360     1     2       0
+peer17      f9d9fadb     2313    2310     1     2       0
+peer18      0709219a     2295    2288     2     5       0
+peer19      4cd47aa2     2237    2233     1     3       0
+peer20      c7d0b746     2212    2211     1     0       0
+peer21      e1ed59ef     2154    2152     2     0       0
+peer22      d913d3f5     2129    2124     1     4       0
+peer23      4ee0780c     2057    2053     2     2       0
+peer24      0c5f72aa     2026    2023     1     2       0
+peer25      800a0cdd     1957    1952     1     4       0
+peer26      4a3ab0f8     1931    1925     2     4       0
+peer27      97f5129b     1852    1850     1     1       0
+peer28      aa1bbc83     1816    1812     1     3       0
+peer29      3a3f2df1     1737    1732     2     3       0
+peer30      b3ed9bff     1696    1692     1     3       0
+peer31      bfedf387     1616    1613     1     2       0
+peer32      49ca92ee     1613    1609     1     3       0
+peer33      a59be4d4     1487    1485     1     1       0
+peer34      07feac77     1447    1443     2     2       0
+peer35      5416b5af     1351    1348     1     2       0
+peer36      e90c4f85     1312    1308     1     3       0
+peer37      c3ac535e     1208    1206     2     0       0
+peer38      925ab7bb     1169    1167     1     1       0
+peer39      89ca2729     1060    1059     1     0       0
+peer40      6995892d     1014    1012     1     1       0
+peer41      7147ae0d      902     900     1     1       0
+peer42      037bf451      859     856     2     1       0
+peer43      4ed199cb      737     736     1     0       0
+peer44      7211a5c6      692     691     1     0       0
+peer45      317b5981      564     562     2     0       0
+peer46      eefdd813      518     517     1     0       0
+peer47      3f8af104      386     385     1     0       0
+peer48      f37307a4      336     335     1     0       0
+peer49      38960f7f      196     194     1     1       0
+peer50      133276fc      146     144     2     0       0
+peer51      95cc1d03        2       2     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))      27        1
+
+the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       50
+1      main     0         27     27        1
+fell behind: peer32 at epoch 35
+behind at the end: peer32

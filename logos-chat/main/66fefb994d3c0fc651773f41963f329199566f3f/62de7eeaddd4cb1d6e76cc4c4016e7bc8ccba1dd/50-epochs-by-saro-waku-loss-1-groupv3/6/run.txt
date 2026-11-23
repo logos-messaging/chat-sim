@@ -1,0 +1,65 @@
+51 members, GroupV3, one process, 6876.294s on a virtual clock in 66.982s of wall time, seed 5, network seed 6, loss 0.01, welcome loss 0.01
+whole: 50 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 1.13 at the start, 1.10 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        7daae0d1     1542    1523     0    19       0
+raya        b3dc0e18     1609    1587     0    22       0
+pax         fd4143b5     1587    1569     0    18       0
+mira        021cab9b     1589    1571     0    18       0
+kes         ea368e04     1563    1543     0    20       0
+tomo        c467ab14     1570    1557     0    13       0
+peer7       70ae7858     1555    1528     0    27       0
+peer8       90e2789e     1544    1534     0    10       0
+peer9       827c01e2     1536    1529     0     7       0
+peer10      06962167     1515    1502     0    13       0
+peer11      d4413c97     1512    1499     0    13       0
+peer12      a7dffc8d     1490    1479     0    11       0
+peer13      7974966f     1460    1447     0    13       0
+peer14      ad201d74     1450    1427     0    23       0
+peer15      ddd25515     1418    1401     0    17       0
+peer16      f3e647df     1417    1407     0    10       0
+peer17      c7919644     1385    1374     0    11       0
+peer18      a8cef94e     1357    1343     0    14       0
+peer19      aff4e82e     1344    1335     0     9       0
+peer20      26e23f86     1310    1297     0    13       0
+peer21      6578faeb     1280    1265     0    15       0
+peer22      d029d0c5     1262    1252     0    10       0
+peer23      6594ca7d     1236    1225     0    11       0
+peer24      1b1a3785     1220    1208     0    12       0
+peer25      d861a58e     1173    1162     0    11       0
+peer26      65cbef24     1141    1134     0     7       0
+peer27      766a67bc     1123    1108     0    15       0
+peer28      e0b188d9     1074    1056     0    18       0
+peer29      f7fe07e9     1030    1014     0    16       0
+peer30      099bfd81     1014    1001     0    13       0
+peer31      583a4204      970     958     0    12       0
+peer32      6a884ead      953     951     0     2       0
+peer33      9f4e9f35      898     882     0    16       0
+peer34      7dff58c6      850     840     0    10       0
+peer35      9671850c      832     822     0    10       0
+peer36      33e6aea8      771     765     0     6       0
+peer37      cc94884a      718     712     0     6       0
+peer38      5630dbf8      692     683     0     9       0
+peer39      00ce17ab      638     634     0     4       0
+peer40      32c7a38b      618     613     0     5       0
+peer41      c66d29de      540     537     0     3       0
+peer42      d146a2ee      486     481     0     5       0
+peer43      b3cb1021      466     460     0     6       0
+peer44      7edec8b4      393     386     0     7       0
+peer45      2875a002      328     323     0     5       0
+peer46      64ec632f      302     300     0     2       0
+peer47      9da0aad4        1       0     0     1       0
+peer48      6173ec8f      208     208     0     0       0
+peer49      fc392050      123     121     0     2       0
+peer50      1051342c       62      61     0     1       0
+peer51      d051508f       39      38     0     1       0
+
+the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 12 fell behind, 0 behind at the end, 1 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       50
+fell behind: kes at epoch 10, peer13 at epoch 16, peer7 at epoch 23, raya at epoch 25, peer14 at epoch 26, kes at epoch 31, tomo at epoch 33, peer31 at epoch 34, peer18 at epoch 36, peer13 at epoch 37, peer7 at epoch 39, peer12 at epoch 39, peer24 at epoch 41, peer25 at epoch 41, peer33 at epoch 41, peer7 at epoch 44
+never joined: peer47

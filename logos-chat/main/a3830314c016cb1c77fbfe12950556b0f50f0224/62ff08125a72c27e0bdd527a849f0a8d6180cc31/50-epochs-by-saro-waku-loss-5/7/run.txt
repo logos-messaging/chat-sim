@@ -1,0 +1,72 @@
+51 members, default group timers, one process, 1729.700s on a virtual clock in 2.577s of wall time, seed 6, network seed 7, loss 0.05, welcome loss 0.05
+split at epoch 8: 14 of 17 members at the tip
+not checked: a `grow` step expects no outcome
+load average 1.17 at the start, 1.17 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        29400213      792     755     0    37       2
+raya        8c984bdc      732     701     0    31       2
+pax         e76d10d6      848     802     0    46      97
+mira        2b83956f      783     748     0    35       2
+kes         f9a13250      781     746     0    35       2
+tomo        92b31dc6      762     727     0    35       2
+peer7       c1583d09      744     704     0    40       4
+peer8       b5f92e8b      731     689     0    42       2
+peer9       10b362dd      714     660     0    54       5
+peer10      be68c541      655     622     0    33       2
+peer11      a82db5c2      558     538     0    20       0
+peer12      f5a058fa      498     468     0    30       1
+peer13      9c838929        1       0     0     1       0
+peer14      0032a174      355     335     0    20       0
+peer15      5f32a2c8      264     252     0    12       0
+peer16      d193f589      159     153     0     6       0
+peer17      38799ab6       58      55     0     3       0
+peer18      731d9a4a        0       0     0     0       0
+peer19      884178ab        0       0     0     0       0
+peer20      364745e8        0       0     0     0       0
+peer21      7ef5df55        0       0     0     0       0
+peer22      04af79e0        0       0     0     0       0
+peer23      4a838b68        0       0     0     0       0
+peer24      699c11ce        0       0     0     0       0
+peer25      69659ea3        0       0     0     0       0
+peer26      c7f8a854        0       0     0     0       0
+peer27      4b6377fe        0       0     0     0       0
+peer28      0cc61ef7        0       0     0     0       0
+peer29      e3a96598        0       0     0     0       0
+peer30      5b4137dc        0       0     0     0       0
+peer31      a86e16f9        0       0     0     0       0
+peer32      525849bb        0       0     0     0       0
+peer33      feee4348        0       0     0     0       0
+peer34      e808983f        0       0     0     0       0
+peer35      3756c7a0        0       0     0     0       0
+peer36      00b64334        0       0     0     0       0
+peer37      4e9a06a0        0       0     0     0       0
+peer38      b89fdc5b        0       0     0     0       0
+peer39      5beff1e9        0       0     0     0       0
+peer40      a0f1ab6b        0       0     0     0       0
+peer41      9b345094        0       0     0     0       0
+peer42      6f6256c3        0       0     0     0       0
+peer43      52e69920        0       0     0     0       0
+peer44      1c1d785b        0       0     0     0       0
+peer45      e6752068        0       0     0     0       0
+peer46      88221237        0       0     0     0       0
+peer47      ef922518        0       0     0     0       0
+peer48      3454b1e6        0       0     0     0       0
+peer49      5b242340        0       0     0     0       0
+peer50      b043b7a9        0       0     0     0       0
+peer51      4795b40e        0       0     0     0       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))     121       11
+
+no member took part: trunk at epoch 16, 4 main, 0 sub, 4 fell behind, 2 behind at the end, 1 never joined
+16 rounds, 16 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     16       13
+1      main     0          8      8        1
+2      main     0         12     12        1
+3      main     0         14     14        1
+fell behind: kes at epoch 8, peer9 at epoch 11, peer12 at epoch 13, saro at epoch 15
+behind at the end: saro, kes
+never joined: peer13

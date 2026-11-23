@@ -1,0 +1,77 @@
+51 members, default group timers, one process, 6272.100s on a virtual clock in 276.951s of wall time, seed 7, network seed 8, loss 0.01, welcome loss 0.01
+split at epoch 10: 36 of 51 members at the tip
+not checked: a `grow` step expects no outcome
+load average 1.07 at the start, 1.28 at the end
+
+member  installation  arrived  passed  held  lost  errors
+saro        19d985d4     8120    8051     0    69       8
+raya        541f757f     8117    8046     0    71       9
+pax         b45edebc     8117    8042     0    75       9
+mira        cf4b0e64     8376    8280     0    96     262
+kes         594b07fc     8095    8007     0    88       9
+tomo        d982f281     8118    8039     0    79       8
+peer7       d3db6d5a     8069    7991     0    78       9
+peer8       cdd01c91     8059    7987     0    72      10
+peer9       2092bcb7     8295    8206     0    89       8
+peer10      eb091716     8024    7942     0    82       9
+peer11      8b9fca77     8001    7928     0    73      16
+peer12      7f09f50b     7981    7899     0    82     101
+peer13      b314e810     7959    7891     0    68       5
+peer14      130ba73a     7710    7641     0    69       4
+peer15      487ca805     7878    7800     0    78     119
+peer16      98d7fa86     8108    8030     0    78       0
+peer17      9ce884aa     7789    7717     0    72      72
+peer18      738acae6     7765    7685     0    80       1
+peer19      a9881435     7720    7620     0   100       2
+peer20      0d05df81     7624    7555     0    69       0
+peer21      1d3ac305     7515    7440     0    75       0
+peer22      1bbb6ae6     7323    7253     0    70     142
+peer23      cd0a9a91     7215    7146     0    69       1
+peer24      9f267d20     7149    7070     0    79       0
+peer25      b9c747c4     6862    6794     0    68      70
+peer26      02c4355f     6652    6580     0    72       0
+peer27      a3757878     6497    6433     0    64       0
+peer28      9f7ac73f     6374    6307     0    67       0
+peer29      97912d7a        1       0     0     1       0
+peer30      0ce01775     5955    5908     0    47       0
+peer31      9a9fb404     5696    5646     0    50      14
+peer32      d6a7215f     5511    5470     0    41       0
+peer33      9a4ba361     5328    5275     0    53       0
+peer34      0fdec2a4     5124    5066     0    58       0
+peer35      40ff6d86     4944    4901     0    43       0
+peer36      56a9f159     4727    4683     0    44       0
+peer37      f9d2dd75     4429    4390     0    39       0
+peer38      85f5c6fc     4188    4135     0    53       0
+peer39      7b54bc82     3948    3909     0    39       0
+peer40      d1190a03     3515    3477     0    38       0
+peer41      afda4d6a     3398    3376     0    22       0
+peer42      9208cebd     2976    2947     0    29       0
+peer43      4ad1816b     2596    2570     0    26       0
+peer44      e4204e47     2273    2256     0    17       0
+peer45      ff02d281     2010    1989     0    21       0
+peer46      9eedd5c2     1619    1605     0    14       0
+peer47      ec623de1     1340    1328     0    12       0
+peer48      4bddce86     1055    1045     0    10       0
+peer49      84d1e73f      765     755     0    10       0
+peer50      648e4289      228     226     0     2       0
+peer51      c55d7748       39      38     0     1       0
+
+inbound error                                                                 frames  members
+DeMlsError(Mls(ProcessMessage(ValidationError(UnableToDecrypt(AeadError)))))     888       22
+
+the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 21 fell behind, 14 behind at the end, 1 never joined
+50 rounds, 50 joiners, 0 of the adders refused a whole round, the longest 180.000s
+
+line   kind  from  forked at  epoch  members
+0     trunk     -          -     50       41
+1      main     0         10     10        1
+2      main     0         14     14        1
+3      main     0         18     18        1
+4      main     0         20     20        1
+5      main     0         35     35        1
+6      main     0         37     37        1
+7      main     0         38     38        1
+8      main     0         40     40        2
+fell behind: mira at epoch 14, peer16 at epoch 16, tomo at epoch 17, peer9 at epoch 17, peer20 at epoch 19, peer21 at epoch 22, peer13 at epoch 23, peer28 at epoch 28, peer23 at epoch 34, peer30 at epoch 34, peer33 at epoch 34, peer15 at epoch 36, peer12 at epoch 37, peer31 at epoch 37, peer17 at epoch 39, peer25 at epoch 39, peer22 at epoch 40, peer7 at epoch 43, peer42 at epoch 47, peer14 at epoch 48, peer50 at epoch 49
+behind at the end: mira, peer7, peer9, peer12, peer13, peer14, peer16, peer21, peer22, peer28, peer30, peer33, peer42, peer50
+never joined: peer29

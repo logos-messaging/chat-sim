@@ -1,0 +1,42 @@
+conversation f4399e83d8
+  split at epoch 23
+  28 of 28 seats share a log
+
+  branch A: epoch 27, state d67c71dad1566a5e, 28 members
+    on it: 025127d5, 06c3e17a, 0b6a5124, 0c01ec82, 1b4ac0c6, 23104b42, 258e3cd6, 3dea3fe8, 4e7ef3b1,
+      51ad8494, 5af9aa05, 5dd687a8, 78efe15b, 817e5778, ab289943, b1e480b1, bc74dd5e, bcc814a1,
+      ce97731e, e3e47e49, efb3dc3e, f28e5a47, feaea2fb
+  branch B: epoch 23, state 1e79c71ba4b70da8, 24 members
+    on it: 6ccc51fb
+
+  installation  account   name   epoch  position      branch
+  bcc814a1      70656572  group  27     tip           A
+  025127d5      70656572  group  26     behind        A
+  06c3e17a      70656572  group  26     behind        A
+  0b6a5124      70656572  group  26     behind        A
+  0c01ec82      70656572  group  26     behind        A
+  1b4ac0c6      70656572  group  23     behind        A
+  23104b42      70656572  group  26     behind        A
+  258e3cd6      6d697261  group  26     behind        A
+  3dea3fe8      70656572  group  26     behind        A
+  4e7ef3b1      746f6d6f  group  26     behind        A
+  51ad8494      70656572  group  26     behind        A
+  5af9aa05      70656572  group  26     behind        A
+  5dd687a8      6b6573    group  26     behind        A
+  78efe15b      70656572  group  26     behind        A
+  817e5778      70656572  group  26     behind        A
+  ab289943      70656572  group  26     behind        A
+  b1e480b1      70656572  group  26     behind        A
+  bc74dd5e      70656572  group  26     behind        A
+  ce97731e      70656572  group  26     behind        A
+  e3e47e49      70656572  group  26     behind        A
+  efb3dc3e      7361726f  group  26     behind        A
+  f28e5a47      70656572  group  26     behind        A
+  feaea2fb      70656572  group  26     behind        A
+  6ccc51fb      70656572  group  23     tip           B
+  30291aee      706178    group  5      behind        -
+  3142bbfd      72617961  group  17     behind        -
+  3c363911      70656572  group  -      never joined  -
+  7bf9b7fa      70656572  group  -      never joined  -
+
+lines: 1955 read, 1955 records, 0 without a stamp, 0 malformed, 0 unknown

@@ -1,0 +1,64 @@
+conversation ebe409d1f8
+  split at epoch 5
+  35 of 35 seats share a log
+
+  branch A: epoch 14, state 489dd3d3a40abf82, 22 members
+    on it: 02557d02, 2bed4515, 3a3f2df1, 49ca92ee, 4a3ab0f8, 5416b5af, 5e1dbb47, 61ef4104, 800a0cdd,
+      aa1bbc83, acc0b9d3, c5c4f221, c7d0b746, e1ed59ef
+  branch B: epoch 11, state eb75836f395c34cf, 15 members
+    on it: 97f5129b, b09146f8, bfedf387
+  branch C: epoch 12, state 50773429625ce2ed, 17 members
+    on it: 07feac77, 4cd47aa2
+  branch D: epoch 10, state 8f38b847051b407f, 14 members
+    on it: 4ee0780c, f2ae8525
+  branch E: epoch 8, state 4017c0ea729fc16d, 12 members
+    on it: a6bc1a35, d913d3f5
+  branch F: epoch 12, state 2cf1a40987b65da6, 17 members
+    on it: f0a9377e
+  branch G: epoch 13, state 48bc8d6f5daf6031, 21 members
+    on it: d1c0b685
+  branch H: epoch 12, state c686b8200379fb36, 17 members
+    on it: 3e1a1b5d
+  branch I: epoch 12, state c7df6c792af5ce47, 17 members
+    on it: b3ed9bff
+  branch J: epoch 12, state ffdbbcd7b2ef633c, 19 members
+    on it: 03a340ee
+
+  installation  account   name   epoch  position      branch
+  02557d02      746f6d6f  group  14     tip           A
+  2bed4515      70656572  group  14     tip           A
+  3a3f2df1      70656572  group  14     tip           A
+  49ca92ee      70656572  group  14     tip           A
+  4a3ab0f8      70656572  group  14     tip           A
+  5416b5af      70656572  group  14     tip           A
+  61ef4104      6b6573    group  14     tip           A
+  800a0cdd      70656572  group  14     tip           A
+  aa1bbc83      70656572  group  14     tip           A
+  acc0b9d3      6d697261  group  14     tip           A
+  c5c4f221      7361726f  group  14     tip           A
+  c7d0b746      70656572  group  14     tip           A
+  e1ed59ef      70656572  group  14     tip           A
+  5e1dbb47      70656572  group  13     behind        A
+  97f5129b      70656572  group  11     tip           B
+  b09146f8      70656572  group  11     tip           B
+  bfedf387      70656572  group  11     tip           B
+  07feac77      70656572  group  12     tip           C
+  4cd47aa2      70656572  group  12     tip           C
+  4ee0780c      70656572  group  10     tip           D
+  f2ae8525      706178    group  10     tip           D
+  a6bc1a35      72617961  group  8      tip           E
+  d913d3f5      70656572  group  8      tip           E
+  f0a9377e      70656572  group  12     tip           F
+  d1c0b685      70656572  group  13     tip           G
+  3e1a1b5d      70656572  group  12     tip           H
+  b3ed9bff      70656572  group  12     tip           I
+  03a340ee      70656572  group  12     tip           J
+  e57d2896      70656572  group  10     behind        -
+  0709219a      70656572  group  -      never joined  -
+  0c5f72aa      70656572  group  -      never joined  -
+  63e7a2a9      70656572  group  -      never joined  -
+  a59be4d4      70656572  group  -      never joined  -
+  a8a76745      70656572  group  -      never joined  -
+  f9d9fadb      70656572  group  -      never joined  -
+
+lines: 31579 read, 26959 records, 0 without a stamp, 0 malformed, 0 unknown

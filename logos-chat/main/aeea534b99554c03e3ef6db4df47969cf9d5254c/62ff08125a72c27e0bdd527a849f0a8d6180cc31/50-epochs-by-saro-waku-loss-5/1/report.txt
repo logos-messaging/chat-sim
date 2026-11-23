@@ -1,0 +1,29 @@
+conversation def2b1dd40
+  split at epoch 8
+  15 of 15 seats share a log
+
+  branch A: epoch 14, state a97ac8755d019c58, 15 members
+    on it: 40e18357, 671cc18a, 6d584977, c1f311f2, cb0de6fa, f95e254c, f9f57cd1
+  branch B: epoch 11, state 16d16d16c32baab3, 12 members
+    on it: efc50449
+  branch C: epoch 8, state cab65957220359e1, 9 members
+    on it: 62a677be
+
+  installation  account   name   epoch  position      branch
+  40e18357      70656572  group  14     tip           A
+  671cc18a      72617961  group  14     tip           A
+  6d584977      70656572  group  14     tip           A
+  c1f311f2      706178    group  14     tip           A
+  cb0de6fa      70656572  group  14     tip           A
+  f9f57cd1      70656572  group  14     tip           A
+  f95e254c      7361726f  group  13     behind        A
+  efc50449      70656572  group  11     tip           B
+  62a677be      70656572  group  8      tip           C
+  54151b53      70656572  group  8      behind        -
+  6fe8495b      6b6573    group  6      behind        -
+  97bfa122      6d697261  group  5      behind        -
+  f2ccb695      70656572  group  6      behind        -
+  a5f339d9      746f6d6f  group  -      never joined  -
+  d4f07e9b      70656572  group  -      never joined  -
+
+lines: 3040 read, 3040 records, 0 without a stamp, 0 malformed, 0 unknown

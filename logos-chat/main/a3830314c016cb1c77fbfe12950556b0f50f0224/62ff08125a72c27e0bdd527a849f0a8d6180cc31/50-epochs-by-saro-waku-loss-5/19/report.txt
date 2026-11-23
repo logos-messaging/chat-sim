@@ -1,0 +1,43 @@
+conversation 5a5cb099e9
+  split at epoch 18
+  26 of 26 seats share a log
+
+  branch A: epoch 25, state 9a7bc1884d2e2685, 26 members
+    on it: 506c5d65, 55e5d919, 5b2330e1, 5c51fb81, 6bb6e984, 747ee919, 89c1db1b, a757435e, c3d564c7,
+      dbc8eba3, e707362b
+  branch B: epoch 22, state 9df63cdf6a2f860f, 23 members
+    on it: 0e91a452, a14d9dab
+  branch C: epoch 18, state 33676c51c88175ec, 19 members
+    on it: 99eda065
+  branch D: epoch 20, state cf44bbeaf57e4fc3, 21 members
+    on it: 790f3c28
+
+  installation  account   name   epoch  position      branch
+  5b2330e1      70656572  group  25     tip           A
+  5c51fb81      70656572  group  25     tip           A
+  747ee919      70656572  group  25     tip           A
+  89c1db1b      70656572  group  25     tip           A
+  a757435e      70656572  group  25     tip           A
+  c3d564c7      6d697261  group  25     tip           A
+  dbc8eba3      70656572  group  25     tip           A
+  e707362b      70656572  group  25     tip           A
+  506c5d65      7361726f  group  24     behind        A
+  55e5d919      70656572  group  24     behind        A
+  6bb6e984      70656572  group  22     behind        A
+  0e91a452      70656572  group  22     tip           B
+  a14d9dab      70656572  group  22     tip           B
+  99eda065      70656572  group  18     tip           C
+  790f3c28      70656572  group  20     tip           D
+  1032f398      70656572  group  12     behind        -
+  346aeac0      72617961  group  16     behind        -
+  3f549fb1      6b6573    group  4      behind        -
+  76e7de04      746f6d6f  group  19     behind        -
+  cc388b3d      70656572  group  8      behind        -
+  ec2db029      70656572  group  10     behind        -
+  1c89ad6a      706178    group  -      never joined  -
+  1fa3a4f5      70656572  group  -      never joined  -
+  3d49e196      70656572  group  -      never joined  -
+  8944fe60      70656572  group  -      never joined  -
+  bfe8ea7b      70656572  group  -      never joined  -
+
+lines: 16656 read, 16648 records, 0 without a stamp, 0 malformed, 0 unknown

@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>chat-sim: over main</title>
+<style>
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;
+--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--grid:#e6e9ed;
+--band:rgba(57,135,229,.18);--rate-1:#86b6ef;--rate-2:#3987e5;--rate-3:#1c5cab;
+--rate-4:#0d366b;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;
+--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;
+--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;
+--grid:#21262d;--band:rgba(109,167,236,.22);--rate-1:#b7d3f6;--rate-2:#6da7ec;
+--rate-3:#2a78d6;--rate-4:#184f95;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;
+--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
+background:var(--bg);font:15px/1.5 system-ui,sans-serif}
+a{color:var(--link)}
+h1{overflow-wrap:anywhere}
+h2{margin-top:2.5rem}
+h3{margin-top:2rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:.25rem 0 1rem;padding:.75rem;overflow-x:auto;font-size:12px;line-height:1.45;
+background:var(--box);border:1px solid var(--line);border-radius:6px}
+.wide{overflow-x:auto}
+table{border-collapse:collapse}
+th,td{padding:.3rem 1.25rem .3rem 0;border-bottom:1px solid var(--line);text-align:left;
+vertical-align:top}
+summary{cursor:pointer}
+.file{margin:.75rem 0 0}
+.muted{color:var(--muted)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.none{color:var(--none)}
+
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.band{fill:var(--band)}
+.measure{stroke:var(--muted);stroke-dasharray:3 3}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.s1{--hue:var(--rate-1)}
+.s2{--hue:var(--rate-2)}
+.s3{--hue:var(--rate-3)}
+.s4{--hue:var(--rate-4)}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.marker.open{fill:var(--bg);stroke:var(--hue)}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+.points td{white-space:nowrap;font-variant-numeric:tabular-nums}
+.points th[colspan]{text-align:center}
+.points .merged{white-space:normal;min-width:14rem}
+.points .moved{white-space:normal;font-size:13px;color:var(--muted);min-width:12rem}
+</style>
+</head>
+<body>
+<p class="muted"><a href="../">chat-sim</a> / <a href="../guide/">Guide</a></p>
+<h1>Over main</h1>
+<p class="lead">How many epochs a group of logos-chat clients lasts as one group while it grows toward epoch 50, on GroupV2 and on GroupV3 at each rate of loss main runs, over logos-chat's main: a point for each of its commits that was measured, the oldest at the left.</p>
+<p><a href="long/ce916b886f0379968804b7e62b154c4d5348e4bf/278bcec5814142be48f0f45307d3a89da16d8c8b/">The newest long run</a>, at main <code>ce916b8</code> on 2026-11-22 02:47 UTC: the two scenarios of fifty epochs and each scenario chat-sim holds to what is expected but the goal's on either group, run at main's tip each Sunday. The charts are of main's points alone, so nothing of them is drawn here.</p>
+<section class="chart" id="epochs">
+<h2>Epochs without a fork</h2>
+<p class="legend"><span><svg class="s2" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>the median of the runs</span><span><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><rect class="band" x="1" y="1" width="20" height="8"/></svg>the lowest run to the highest</span><span><svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true"><line class="measure" x1="11" x2="11" y1="0" y2="14"/></svg>the measurement moved: another chat-sim commit</span></p>
+<h3>GroupV2</h3>
+<div class="panels">
+<div class="panel">
+<p><svg class="s1" width="14" height="6" viewBox="0 0 14 6" aria-hidden="true"><rect class="key" x="0" y="1.5" width="14" height="3" rx="1.5"/></svg>0%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 152" width="196" height="152" role="img" aria-label="Epochs without a fork at GroupV2 0%">
+<line class="grid" x1="28" x2="184" y1="130.0" y2="130.0"/>
+<text class="axis small" x="22" y="134.0" text-anchor="end">0</text>
+<line class="grid" x1="28" x2="184" y1="70.0" y2="70.0"/>
+<text class="axis small" x="22" y="74.0" text-anchor="end">25</text>
+<line class="grid" x1="28" x2="184" y1="10.0" y2="10.0"/>
+<text class="axis small" x="22" y="14.0" text-anchor="end">50</text>
+<text class="axis small" x="28.0" y="145" text-anchor="start">11-10</text>
+<text class="axis small" x="184.0" y="145" text-anchor="end">11-21</text>
+<line class="measure" x1="64.7" x2="64.7" y1="10" y2="130"/>
+<line class="measure" x1="96.8" x2="96.8" y1="10" y2="130"/>
+<line class="measure" x1="138.1" x2="138.1" y1="10" y2="130"/>
+<line class="measure" x1="156.5" x2="156.5" y1="10" y2="130"/>
+<line class="measure" x1="165.6" x2="165.6" y1="10" y2="130"/>
+<line class="measure" x1="170.2" x2="170.2" y1="10" y2="130"/>
+<line class="measure" x1="179.4" x2="179.4" y1="10" y2="130"/>
+<line class="measure" x1="184.0" x2="184.0" y1="10" y2="130"/>
+<polygon class="band" points="28.0,10.0 32.6,10.0 37.2,10.0 41.8,10.0 41.8,10.0 37.2,10.0 32.6,10.0 28.0,10.0"/>
+<polygon class="band" points="60.7,10.0 68.7,10.0 68.7,10.0 60.7,10.0"/>
+<polygon class="band" points="96.8,10.0 101.4,10.0 106.0,10.0 110.6,10.0 115.2,10.0 119.8,10.0 124.4,10.0 128.9,10.0 133.5,10.0 138.1,10.0 142.7,10.0 147.3,10.0 151.9,10.0 156.5,10.0 161.1,10.0 165.6,10.0 170.2,10.0 174.8,10.0 179.4,10.0 184.0,10.0 184.0,10.0 179.4,10.0 174.8,10.0 170.2,10.0 165.6,10.0 161.1,10.0 156.5,10.0 151.9,10.0 147.3,10.0 142.7,10.0 138.1,10.0 133.5,10.0 128.9,10.0 124.4,10.0 119.8,10.0 115.2,10.0 110.6,10.0 106.0,10.0 101.4,10.0 96.8,10.0"/>
+<g class="s1">
+<path class="series" d="M28.0 10.0 L32.6 10.0 L37.2 10.0 L41.8 10.0 M64.7 10.0 M96.8 10.0 L101.4 10.0 L106.0 10.0 L110.6 10.0 L115.2 10.0 L119.8 10.0 L124.4 10.0 L128.9 10.0 L133.5 10.0 L138.1 10.0 L142.7 10.0 L147.3 10.0 L151.9 10.0 L156.5 10.0 L161.1 10.0 L165.6 10.0 L170.2 10.0 L174.8 10.0 L179.4 10.0 L184.0 10.0"/>
+<g><title>2026-11-10 18:00 UTC · main 70aa02b · merged none · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="28.0" cy="10.0" r="2.3"/><circle class="marker" cx="28.0" cy="10.0" r="4"/></g>
+<g><title>2026-11-11 09:01 UTC · main d176754 · merged #327 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="32.6" cy="10.0" r="2.3"/><circle class="marker" cx="32.6" cy="10.0" r="4"/></g>
+<g><title>2026-11-12 01:26 UTC · main ffe1c1e · merged #316 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="37.2" cy="10.0" r="2.3"/><circle class="marker" cx="37.2" cy="10.0" r="4"/></g>
+<g><title>2026-11-12 18:05 UTC · main 873a19c · merged #323 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="41.8" cy="10.0" r="2.3"/><circle class="marker" cx="41.8" cy="10.0" r="4"/></g>
+<g><title>2026-11-17 01:25 UTC · main 1c99aea · merged none · chat-sim moved to 9f2ae61 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="64.7" cy="10.0" r="2.3"/><circle class="marker" cx="64.7" cy="10.0" r="4"/></g>
+<g><title>2026-11-17 20:06 UTC · main 329408b · merged none · chat-sim moved to 07fb9d9 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="96.8" cy="10.0" r="2.3"/><circle class="marker" cx="96.8" cy="10.0" r="4"/></g>
+<g><title>2026-11-17 21:26 UTC · main 9ccc06b · merged #329 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="101.4" cy="10.0" r="2.3"/><circle class="marker" cx="101.4" cy="10.0" r="4"/></g>
+<g><title>2026-11-17 22:00 UTC · main ec106de · merged #341 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="106.0" cy="10.0" r="2.3"/><circle class="marker" cx="106.0" cy="10.0" r="4"/></g>
+<g><title>2026-11-18 03:37 UTC · main 3b01918 · merged #326 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="110.6" cy="10.0" r="2.3"/><circle class="marker" cx="110.6" cy="10.0" r="4"/></g>
+<g><title>2026-11-18 14:39 UTC · main 19ab1b5 · merged #344 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="115.2" cy="10.0" r="2.3"/><circle class="marker" cx="115.2" cy="10.0" r="4"/></g>
+<g><title>2026-11-18 15:26 UTC · main 50ce37d · merged #343 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="119.8" cy="10.0" r="2.3"/><circle class="marker" cx="119.8" cy="10.0" r="4"/></g>
+<g><title>2026-11-18 16:21 UTC · main 5094e1c · merged #342, #340 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="124.4" cy="10.0" r="2.3"/><circle class="marker" cx="124.4" cy="10.0" r="4"/></g>
+<g><title>2026-11-18 17:09 UTC · main b41a532 · merged #345 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="128.9" cy="10.0" r="2.3"/><circle class="marker" cx="128.9" cy="10.0" r="4"/></g>
+<g><title>2026-11-18 19:10 UTC · main aeea534 · merged #350 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="133.5" cy="10.0" r="2.3"/><circle class="marker" cx="133.5" cy="10.0" r="4"/></g>
+<g><title>2026-11-19 17:04 UTC · main aeea534 · merged none · chat-sim moved to 62ff081 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="138.1" cy="10.0" r="2.3"/><circle class="marker" cx="138.1" cy="10.0" r="4"/></g>
+<g><title>2026-11-19 18:30 UTC · main a383031 · merged #347 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="142.7" cy="10.0" r="2.3"/><circle class="marker" cx="142.7" cy="10.0" r="4"/></g>
+<g><title>2026-11-19 20:17 UTC · main c083dcd · merged #348 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="147.3" cy="10.0" r="2.3"/><circle class="marker" cx="147.3" cy="10.0" r="4"/></g>
+<g><title>2026-11-19 22:17 UTC · main df07004 · merged #353 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="151.9" cy="10.0" r="2.3"/><circle class="marker" cx="151.9" cy="10.0" r="4"/></g>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="156.5" cy="10.0" r="2.3"/><circle class="marker" cx="156.5" cy="10.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="161.1" cy="10.0" r="2.3"/><circle class="marker" cx="161.1" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="165.6" cy="10.0" r="2.3"/><circle class="marker" cx="165.6" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="170.2" cy="10.0" r="2.3"/><circle class="marker" cx="170.2" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="174.8" cy="10.0" r="2.3"/><circle class="marker" cx="174.8" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="179.4" cy="10.0" r="2.3"/><circle class="marker" cx="179.4" cy="10.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="184.0" cy="10.0" r="2.3"/><circle class="marker" cx="184.0" cy="10.0" r="4"/></g>
+</g>
+</svg>
+</div>
+<div class="panel">
+<p><svg class="s2" width="14" height="6" viewBox="0 0 14 6" aria-hidden="true"><rect class="key" x="0" y="1.5" width="14" height="3" rx="1.5"/></svg>0.5%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 152" width="196" height="152" role="img" aria-label="Epochs without a fork at GroupV2 0.5%">
+<line class="grid" x1="28" x2="184" y1="130.0" y2="130.0"/>
+<text class="axis small" x="22" y="134.0" text-anchor="end">0</text>
+<line class="grid" x1="28" x2="184" y1="70.0" y2="70.0"/>
+<text class="axis small" x="22" y="74.0" text-anchor="end">25</text>
+<line class="grid" x1="28" x2="184" y1="10.0" y2="10.0"/>
+<text class="axis small" x="22" y="14.0" text-anchor="end">50</text>
+<text class="axis small" x="28.0" y="145" text-anchor="start">11-10</text>
+<text class="axis small" x="184.0" y="145" text-anchor="end">11-21</text>
+<line class="measure" x1="64.7" x2="64.7" y1="10" y2="130"/>
+<line class="measure" x1="96.8" x2="96.8" y1="10" y2="130"/>
+<line class="measure" x1="138.1" x2="138.1" y1="10" y2="130"/>
+<line class="measure" x1="156.5" x2="156.5" y1="10" y2="130"/>
+<line class="measure" x1="165.6" x2="165.6" y1="10" y2="130"/>
+<line class="measure" x1="170.2" x2="170.2" y1="10" y2="130"/>
+<line class="measure" x1="179.4" x2="179.4" y1="10" y2="130"/>
+<line class="measure" x1="184.0" x2="184.0" y1="10" y2="130"/>
+<polygon class="band" points="170.2,84.4 174.8,84.4 179.4,84.4 184.0,84.4 184.0,122.8 179.4,122.8 174.8,122.8 170.2,122.8"/>
+<g class="s2">
+<path class="series" d="M170.2 109.6 L174.8 109.6 L179.4 109.6 L184.0 109.6"/>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0.5%: median 8.5, lowest 3, highest 19</title><circle class="hit" cx="170.2" cy="109.6" r="2.3"/><circle class="marker" cx="170.2" cy="109.6" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0.5%: median 8.5, lowest 3, highest 19</title><circle class="hit" cx="174.8" cy="109.6" r="2.3"/><circle class="marker" cx="174.8" cy="109.6" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0.5%: median 8.5, lowest 3, highest 19</title><circle class="hit" cx="179.4" cy="109.6" r="2.3"/><circle class="marker" cx="179.4" cy="109.6" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0.5%: median 8.5, lowest 3, highest 19</title><circle class="hit" cx="184.0" cy="109.6" r="2.3"/><circle class="marker" cx="184.0" cy="109.6" r="4"/></g>
+</g>
+</svg>
+</div>
+<div class="panel">
+<p><svg class="s3" width="14" height="6" viewBox="0 0 14 6" aria-hidden="true"><rect class="key" x="0" y="1.5" width="14" height="3" rx="1.5"/></svg>1%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 152" width="196" height="152" role="img" aria-label="Epochs without a fork at GroupV2 1%">
+<line class="grid" x1="28" x2="184" y1="130.0" y2="130.0"/>
+<text class="axis small" x="22" y="134.0" text-anchor="end">0</text>
+<line class="grid" x1="28" x2="184" y1="70.0" y2="70.0"/>
+<text class="axis small" x="22" y="74.0" text-anchor="end">25</text>
+<line class="grid" x1="28" x2="184" y1="10.0" y2="10.0"/>
+<text class="axis small" x="22" y="14.0" text-anchor="end">50</text>
+<text class="axis small" x="28.0" y="145" text-anchor="start">11-10</text>
+<text class="axis small" x="184.0" y="145" text-anchor="end">11-21</text>
+<line class="measure" x1="64.7" x2="64.7" y1="10" y2="130"/>
+<line class="measure" x1="96.8" x2="96.8" y1="10" y2="130"/>
+<line class="measure" x1="138.1" x2="138.1" y1="10" y2="130"/>
+<line class="measure" x1="156.5" x2="156.5" y1="10" y2="130"/>
+<line class="measure" x1="165.6" x2="165.6" y1="10" y2="130"/>
+<line class="measure" x1="170.2" x2="170.2" y1="10" y2="130"/>
+<line class="measure" x1="179.4" x2="179.4" y1="10" y2="130"/>
+<line class="measure" x1="184.0" x2="184.0" y1="10" y2="130"/>
+<polygon class="band" points="28.0,74.8 32.6,74.8 37.2,74.8 41.8,74.8 41.8,122.8 37.2,122.8 32.6,122.8 28.0,122.8"/>
+<polygon class="band" points="60.7,74.8 68.7,74.8 68.7,122.8 60.7,122.8"/>
+<polygon class="band" points="96.8,74.8 101.4,74.8 106.0,74.8 110.6,74.8 115.2,74.8 119.8,74.8 124.4,74.8 128.9,74.8 133.5,74.8 138.1,74.8 142.7,74.8 147.3,74.8 151.9,74.8 156.5,74.8 161.1,74.8 165.6,74.8 170.2,91.6 174.8,91.6 179.4,91.6 184.0,91.6 184.0,122.8 179.4,122.8 174.8,122.8 170.2,122.8 165.6,122.8 161.1,122.8 156.5,122.8 151.9,122.8 147.3,122.8 142.7,122.8 138.1,122.8 133.5,122.8 128.9,122.8 124.4,122.8 119.8,122.8 115.2,122.8 110.6,122.8 106.0,122.8 101.4,122.8 96.8,122.8"/>
+<g class="s3">
+<path class="series" d="M28.0 100.0 L32.6 100.0 L37.2 100.0 L41.8 100.0 M64.7 100.0 M96.8 100.0 L101.4 100.0 L106.0 100.0 L110.6 100.0 L115.2 100.0 L119.8 100.0 L124.4 100.0 L128.9 100.0 L133.5 100.0 L138.1 100.0 L142.7 100.0 L147.3 100.0 L151.9 100.0 L156.5 100.0 L161.1 100.0 L165.6 100.0 L170.2 113.2 L174.8 113.2 L179.4 113.2 L184.0 113.2"/>
+<g><title>2026-11-10 18:00 UTC · main 70aa02b · merged none · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="28.0" cy="100.0" r="2.3"/><circle class="marker" cx="28.0" cy="100.0" r="4"/></g>
+<g><title>2026-11-11 09:01 UTC · main d176754 · merged #327 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="32.6" cy="100.0" r="2.3"/><circle class="marker" cx="32.6" cy="100.0" r="4"/></g>
+<g><title>2026-11-12 01:26 UTC · main ffe1c1e · merged #316 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="37.2" cy="100.0" r="2.3"/><circle class="marker" cx="37.2" cy="100.0" r="4"/></g>
+<g><title>2026-11-12 18:05 UTC · main 873a19c · merged #323 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="41.8" cy="100.0" r="2.3"/><circle class="marker" cx="41.8" cy="100.0" r="4"/></g>
+<g><title>2026-11-17 01:25 UTC · main 1c99aea · merged none · chat-sim moved to 9f2ae61 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="64.7" cy="100.0" r="2.3"/><circle class="marker" cx="64.7" cy="100.0" r="4"/></g>
+<g><title>2026-11-17 20:06 UTC · main 329408b · merged none · chat-sim moved to 07fb9d9 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="96.8" cy="100.0" r="2.3"/><circle class="marker" cx="96.8" cy="100.0" r="4"/></g>
+<g><title>2026-11-17 21:26 UTC · main 9ccc06b · merged #329 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="101.4" cy="100.0" r="2.3"/><circle class="marker" cx="101.4" cy="100.0" r="4"/></g>
+<g><title>2026-11-17 22:00 UTC · main ec106de · merged #341 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="106.0" cy="100.0" r="2.3"/><circle class="marker" cx="106.0" cy="100.0" r="4"/></g>
+<g><title>2026-11-18 03:37 UTC · main 3b01918 · merged #326 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="110.6" cy="100.0" r="2.3"/><circle class="marker" cx="110.6" cy="100.0" r="4"/></g>
+<g><title>2026-11-18 14:39 UTC · main 19ab1b5 · merged #344 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="115.2" cy="100.0" r="2.3"/><circle class="marker" cx="115.2" cy="100.0" r="4"/></g>
+<g><title>2026-11-18 15:26 UTC · main 50ce37d · merged #343 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="119.8" cy="100.0" r="2.3"/><circle class="marker" cx="119.8" cy="100.0" r="4"/></g>
+<g><title>2026-11-18 16:21 UTC · main 5094e1c · merged #342, #340 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="124.4" cy="100.0" r="2.3"/><circle class="marker" cx="124.4" cy="100.0" r="4"/></g>
+<g><title>2026-11-18 17:09 UTC · main b41a532 · merged #345 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="128.9" cy="100.0" r="2.3"/><circle class="marker" cx="128.9" cy="100.0" r="4"/></g>
+<g><title>2026-11-18 19:10 UTC · main aeea534 · merged #350 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="133.5" cy="100.0" r="2.3"/><circle class="marker" cx="133.5" cy="100.0" r="4"/></g>
+<g><title>2026-11-19 17:04 UTC · main aeea534 · merged none · chat-sim moved to 62ff081 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="138.1" cy="100.0" r="2.3"/><circle class="marker" cx="138.1" cy="100.0" r="4"/></g>
+<g><title>2026-11-19 18:30 UTC · main a383031 · merged #347 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="142.7" cy="100.0" r="2.3"/><circle class="marker" cx="142.7" cy="100.0" r="4"/></g>
+<g><title>2026-11-19 20:17 UTC · main c083dcd · merged #348 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="147.3" cy="100.0" r="2.3"/><circle class="marker" cx="147.3" cy="100.0" r="4"/></g>
+<g><title>2026-11-19 22:17 UTC · main df07004 · merged #353 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="151.9" cy="100.0" r="2.3"/><circle class="marker" cx="151.9" cy="100.0" r="4"/></g>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="156.5" cy="100.0" r="2.3"/><circle class="marker" cx="156.5" cy="100.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="161.1" cy="100.0" r="2.3"/><circle class="marker" cx="161.1" cy="100.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 1%: median 12.5, lowest 3, highest 23</title><circle class="hit" cx="165.6" cy="100.0" r="2.3"/><circle class="marker" cx="165.6" cy="100.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 1%: median 7, lowest 3, highest 16</title><circle class="hit" cx="170.2" cy="113.2" r="2.3"/><circle class="marker" cx="170.2" cy="113.2" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 1%: median 7, lowest 3, highest 16</title><circle class="hit" cx="174.8" cy="113.2" r="2.3"/><circle class="marker" cx="174.8" cy="113.2" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 1%: median 7, lowest 3, highest 16</title><circle class="hit" cx="179.4" cy="113.2" r="2.3"/><circle class="marker" cx="179.4" cy="113.2" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 1%: median 7, lowest 3, highest 16</title><circle class="hit" cx="184.0" cy="113.2" r="2.3"/><circle class="marker" cx="184.0" cy="113.2" r="4"/></g>
+</g>
+</svg>
+</div>
+<div class="panel">
+<p><svg class="s4" width="14" height="6" viewBox="0 0 14 6" aria-hidden="true"><rect class="key" x="0" y="1.5" width="14" height="3" rx="1.5"/></svg>5%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 152" width="196" height="152" role="img" aria-label="Epochs without a fork at GroupV2 5%">
+<line class="grid" x1="28" x2="184" y1="130.0" y2="130.0"/>
+<text class="axis small" x="22" y="134.0" text-anchor="end">0</text>
+<line class="grid" x1="28" x2="184" y1="70.0" y2="70.0"/>
+<text class="axis small" x="22" y="74.0" text-anchor="end">25</text>
+<line class="grid" x1="28" x2="184" y1="10.0" y2="10.0"/>
+<text class="axis small" x="22" y="14.0" text-anchor="end">50</text>
+<text class="axis small" x="28.0" y="145" text-anchor="start">11-10</text>
+<text class="axis small" x="184.0" y="145" text-anchor="end">11-21</text>
+<line class="measure" x1="64.7" x2="64.7" y1="10" y2="130"/>
+<line class="measure" x1="96.8" x2="96.8" y1="10" y2="130"/>
+<line class="measure" x1="138.1" x2="138.1" y1="10" y2="130"/>
+<line class="measure" x1="156.5" x2="156.5" y1="10" y2="130"/>
+<line class="measure" x1="165.6" x2="165.6" y1="10" y2="130"/>
+<line class="measure" x1="170.2" x2="170.2" y1="10" y2="130"/>
+<line class="measure" x1="179.4" x2="179.4" y1="10" y2="130"/>
+<line class="measure" x1="184.0" x2="184.0" y1="10" y2="130"/>
+<polygon class="band" points="28.0,86.8 32.6,86.8 37.2,86.8 41.8,86.8 41.8,122.8 37.2,122.8 32.6,122.8 28.0,122.8"/>
+<polygon class="band" points="60.7,86.8 68.7,86.8 68.7,122.8 60.7,122.8"/>
+<polygon class="band" points="96.8,86.8 101.4,86.8 106.0,86.8 110.6,86.8 115.2,86.8 119.8,86.8 124.4,86.8 128.9,86.8 133.5,86.8 138.1,86.8 142.7,86.8 147.3,86.8 151.9,86.8 156.5,86.8 161.1,86.8 165.6,86.8 170.2,115.6 174.8,115.6 179.4,115.6 184.0,115.6 184.0,122.8 179.4,122.8 174.8,122.8 170.2,122.8 165.6,122.8 161.1,122.8 156.5,122.8 151.9,122.8 147.3,122.8 142.7,122.8 138.1,122.8 133.5,122.8 128.9,122.8 124.4,122.8 119.8,122.8 115.2,122.8 110.6,122.8 106.0,122.8 101.4,122.8 96.8,122.8"/>
+<g class="s4">
+<path class="series" d="M28.0 115.6 L32.6 115.6 L37.2 115.6 L41.8 115.6 M64.7 115.6 M96.8 115.6 L101.4 115.6 L106.0 115.6 L110.6 115.6 L115.2 115.6 L119.8 115.6 L124.4 115.6 L128.9 115.6 L133.5 115.6 L138.1 115.6 L142.7 115.6 L147.3 115.6 L151.9 115.6 L156.5 115.6 L161.1 115.6 L165.6 115.6 L170.2 120.4 L174.8 120.4 L179.4 120.4 L184.0 120.4"/>
+<g><title>2026-11-10 18:00 UTC · main 70aa02b · merged none · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="28.0" cy="115.6" r="2.3"/><circle class="marker" cx="28.0" cy="115.6" r="4"/></g>
+<g><title>2026-11-11 09:01 UTC · main d176754 · merged #327 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="32.6" cy="115.6" r="2.3"/><circle class="marker" cx="32.6" cy="115.6" r="4"/></g>
+<g><title>2026-11-12 01:26 UTC · main ffe1c1e · merged #316 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="37.2" cy="115.6" r="2.3"/><circle class="marker" cx="37.2" cy="115.6" r="4"/></g>
+<g><title>2026-11-12 18:05 UTC · main 873a19c · merged #323 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="41.8" cy="115.6" r="2.3"/><circle class="marker" cx="41.8" cy="115.6" r="4"/></g>
+<g><title>2026-11-17 01:25 UTC · main 1c99aea · merged none · chat-sim moved to 9f2ae61 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="64.7" cy="115.6" r="2.3"/><circle class="marker" cx="64.7" cy="115.6" r="4"/></g>
+<g><title>2026-11-17 20:06 UTC · main 329408b · merged none · chat-sim moved to 07fb9d9 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="96.8" cy="115.6" r="2.3"/><circle class="marker" cx="96.8" cy="115.6" r="4"/></g>
+<g><title>2026-11-17 21:26 UTC · main 9ccc06b · merged #329 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="101.4" cy="115.6" r="2.3"/><circle class="marker" cx="101.4" cy="115.6" r="4"/></g>
+<g><title>2026-11-17 22:00 UTC · main ec106de · merged #341 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="106.0" cy="115.6" r="2.3"/><circle class="marker" cx="106.0" cy="115.6" r="4"/></g>
+<g><title>2026-11-18 03:37 UTC · main 3b01918 · merged #326 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="110.6" cy="115.6" r="2.3"/><circle class="marker" cx="110.6" cy="115.6" r="4"/></g>
+<g><title>2026-11-18 14:39 UTC · main 19ab1b5 · merged #344 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="115.2" cy="115.6" r="2.3"/><circle class="marker" cx="115.2" cy="115.6" r="4"/></g>
+<g><title>2026-11-18 15:26 UTC · main 50ce37d · merged #343 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="119.8" cy="115.6" r="2.3"/><circle class="marker" cx="119.8" cy="115.6" r="4"/></g>
+<g><title>2026-11-18 16:21 UTC · main 5094e1c · merged #342, #340 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="124.4" cy="115.6" r="2.3"/><circle class="marker" cx="124.4" cy="115.6" r="4"/></g>
+<g><title>2026-11-18 17:09 UTC · main b41a532 · merged #345 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="128.9" cy="115.6" r="2.3"/><circle class="marker" cx="128.9" cy="115.6" r="4"/></g>
+<g><title>2026-11-18 19:10 UTC · main aeea534 · merged #350 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="133.5" cy="115.6" r="2.3"/><circle class="marker" cx="133.5" cy="115.6" r="4"/></g>
+<g><title>2026-11-19 17:04 UTC · main aeea534 · merged none · chat-sim moved to 62ff081 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="138.1" cy="115.6" r="2.3"/><circle class="marker" cx="138.1" cy="115.6" r="4"/></g>
+<g><title>2026-11-19 18:30 UTC · main a383031 · merged #347 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="142.7" cy="115.6" r="2.3"/><circle class="marker" cx="142.7" cy="115.6" r="4"/></g>
+<g><title>2026-11-19 20:17 UTC · main c083dcd · merged #348 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="147.3" cy="115.6" r="2.3"/><circle class="marker" cx="147.3" cy="115.6" r="4"/></g>
+<g><title>2026-11-19 22:17 UTC · main df07004 · merged #353 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="151.9" cy="115.6" r="2.3"/><circle class="marker" cx="151.9" cy="115.6" r="4"/></g>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="156.5" cy="115.6" r="2.3"/><circle class="marker" cx="156.5" cy="115.6" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="161.1" cy="115.6" r="2.3"/><circle class="marker" cx="161.1" cy="115.6" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 5%: median 6, lowest 3, highest 18</title><circle class="hit" cx="165.6" cy="115.6" r="2.3"/><circle class="marker" cx="165.6" cy="115.6" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 5%: median 4, lowest 3, highest 6</title><circle class="hit" cx="170.2" cy="120.4" r="2.3"/><circle class="marker" cx="170.2" cy="120.4" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 5%: median 4, lowest 3, highest 6</title><circle class="hit" cx="174.8" cy="120.4" r="2.3"/><circle class="marker" cx="174.8" cy="120.4" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 5%: median 4, lowest 3, highest 6</title><circle class="hit" cx="179.4" cy="120.4" r="2.3"/><circle class="marker" cx="179.4" cy="120.4" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 5%: median 4, lowest 3, highest 6</title><circle class="hit" cx="184.0" cy="120.4" r="2.3"/><circle class="marker" cx="184.0" cy="120.4" r="4"/></g>
+</g>
+</svg>
+</div>
+</div>
+<h3>GroupV3</h3>
+<div class="panels">
+<div class="panel">
+<p><svg class="s1" width="14" height="6" viewBox="0 0 14 6" aria-hidden="true"><rect class="key" x="0" y="1.5" width="14" height="3" rx="1.5"/></svg>0%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 152" width="196" height="152" role="img" aria-label="Epochs without a fork at GroupV3 0%">
+<line class="grid" x1="28" x2="184" y1="130.0" y2="130.0"/>
+<text class="axis small" x="22" y="134.0" text-anchor="end">0</text>
+<line class="grid" x1="28" x2="184" y1="70.0" y2="70.0"/>
+<text class="axis small" x="22" y="74.0" text-anchor="end">25</text>
+<line class="grid" x1="28" x2="184" y1="10.0" y2="10.0"/>
+<text class="axis small" x="22" y="14.0" text-anchor="end">50</text>
+<text class="axis small" x="28.0" y="145" text-anchor="start">11-10</text>
+<text class="axis small" x="184.0" y="145" text-anchor="end">11-21</text>
+<line class="measure" x1="64.7" x2="64.7" y1="10" y2="130"/>
+<line class="measure" x1="96.8" x2="96.8" y1="10" y2="130"/>
+<line class="measure" x1="138.1" x2="138.1" y1="10" y2="130"/>
+<line class="measure" x1="156.5" x2="156.5" y1="10" y2="130"/>
+<line class="measure" x1="165.6" x2="165.6" y1="10" y2="130"/>
+<line class="measure" x1="170.2" x2="170.2" y1="10" y2="130"/>
+<line class="measure" x1="179.4" x2="179.4" y1="10" y2="130"/>
+<line class="measure" x1="184.0" x2="184.0" y1="10" y2="130"/>
+<polygon class="band" points="156.5,10.0 161.1,10.0 165.6,10.0 170.2,10.0 174.8,10.0 179.4,10.0 184.0,10.0 184.0,10.0 179.4,10.0 174.8,10.0 170.2,10.0 165.6,10.0 161.1,10.0 156.5,10.0"/>
+<g class="s1">
+<path class="series" d="M156.5 10.0 L161.1 10.0 L165.6 10.0 L170.2 10.0 L174.8 10.0 L179.4 10.0 L184.0 10.0"/>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="156.5" cy="10.0" r="2.3"/><circle class="marker" cx="156.5" cy="10.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="161.1" cy="10.0" r="2.3"/><circle class="marker" cx="161.1" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="165.6" cy="10.0" r="2.3"/><circle class="marker" cx="165.6" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="170.2" cy="10.0" r="2.3"/><circle class="marker" cx="170.2" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="174.8" cy="10.0" r="2.3"/><circle class="marker" cx="174.8" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="179.4" cy="10.0" r="2.3"/><circle class="marker" cx="179.4" cy="10.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0%: median 50, lowest 50, highest 50</title><circle class="hit" cx="184.0" cy="10.0" r="2.3"/><circle class="marker" cx="184.0" cy="10.0" r="4"/></g>
+</g>
+</svg>
+</div>
+<div class="panel">
+<p><svg class="s2" width="14" height="6" viewBox="0 0 14 6" aria-hidden="true"><rect class="key" x="0" y="1.5" width="14" height="3" rx="1.5"/></svg>0.5%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 152" width="196" height="152" role="img" aria-label="Epochs without a fork at GroupV3 0.5%">
+<line class="grid" x1="28" x2="184" y1="130.0" y2="130.0"/>
+<text class="axis small" x="22" y="134.0" text-anchor="end">0</text>
+<line class="grid" x1="28" x2="184" y1="70.0" y2="70.0"/>
+<text class="axis small" x="22" y="74.0" text-anchor="end">25</text>
+<line class="grid" x1="28" x2="184" y1="10.0" y2="10.0"/>
+<text class="axis small" x="22" y="14.0" text-anchor="end">50</text>
+<text class="axis small" x="28.0" y="145" text-anchor="start">11-10</text>
+<text class="axis small" x="184.0" y="145" text-anchor="end">11-21</text>
+<line class="measure" x1="64.7" x2="64.7" y1="10" y2="130"/>
+<line class="measure" x1="96.8" x2="96.8" y1="10" y2="130"/>
+<line class="measure" x1="138.1" x2="138.1" y1="10" y2="130"/>
+<line class="measure" x1="156.5" x2="156.5" y1="10" y2="130"/>
+<line class="measure" x1="165.6" x2="165.6" y1="10" y2="130"/>
+<line class="measure" x1="170.2" x2="170.2" y1="10" y2="130"/>
+<line class="measure" x1="179.4" x2="179.4" y1="10" y2="130"/>
+<line class="measure" x1="184.0" x2="184.0" y1="10" y2="130"/>
+<polygon class="band" points="170.2,10.0 174.8,10.0 179.4,10.0 184.0,10.0 184.0,106.0 179.4,106.0 174.8,106.0 170.2,106.0"/>
+<g class="s2">
+<path class="series" d="M170.2 73.6 L174.8 73.6 L179.4 73.6 L184.0 73.6"/>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0.5%: median 23.5, lowest 10, highest 50</title><circle class="hit" cx="170.2" cy="73.6" r="2.3"/><circle class="marker" cx="170.2" cy="73.6" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0.5%: median 23.5, lowest 10, highest 50</title><circle class="hit" cx="174.8" cy="73.6" r="2.3"/><circle class="marker" cx="174.8" cy="73.6" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0.5%: median 23.5, lowest 10, highest 50</title><circle class="hit" cx="179.4" cy="73.6" r="2.3"/><circle class="marker" cx="179.4" cy="73.6" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0.5%: median 23.5, lowest 10, highest 50</title><circle class="hit" cx="184.0" cy="73.6" r="2.3"/><circle class="marker" cx="184.0" cy="73.6" r="4"/></g>
+</g>
+</svg>
+</div>
+<div class="panel">
+<p><svg class="s3" width="14" height="6" viewBox="0 0 14 6" aria-hidden="true"><rect class="key" x="0" y="1.5" width="14" height="3" rx="1.5"/></svg>1%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 152" width="196" height="152" role="img" aria-label="Epochs without a fork at GroupV3 1%">
+<line class="grid" x1="28" x2="184" y1="130.0" y2="130.0"/>
+<text class="axis small" x="22" y="134.0" text-anchor="end">0</text>
+<line class="grid" x1="28" x2="184" y1="70.0" y2="70.0"/>
+<text class="axis small" x="22" y="74.0" text-anchor="end">25</text>
+<line class="grid" x1="28" x2="184" y1="10.0" y2="10.0"/>
+<text class="axis small" x="22" y="14.0" text-anchor="end">50</text>
+<text class="axis small" x="28.0" y="145" text-anchor="start">11-10</text>
+<text class="axis small" x="184.0" y="145" text-anchor="end">11-21</text>
+<line class="measure" x1="64.7" x2="64.7" y1="10" y2="130"/>
+<line class="measure" x1="96.8" x2="96.8" y1="10" y2="130"/>
+<line class="measure" x1="138.1" x2="138.1" y1="10" y2="130"/>
+<line class="measure" x1="156.5" x2="156.5" y1="10" y2="130"/>
+<line class="measure" x1="165.6" x2="165.6" y1="10" y2="130"/>
+<line class="measure" x1="170.2" x2="170.2" y1="10" y2="130"/>
+<line class="measure" x1="179.4" x2="179.4" y1="10" y2="130"/>
+<line class="measure" x1="184.0" x2="184.0" y1="10" y2="130"/>
+<polygon class="band" points="156.5,10.0 161.1,10.0 165.6,10.0 170.2,58.0 174.8,58.0 179.4,58.0 184.0,58.0 184.0,110.8 179.4,110.8 174.8,110.8 170.2,110.8 165.6,10.0 161.1,10.0 156.5,10.0"/>
+<g class="s3">
+<path class="series" d="M156.5 10.0 L161.1 10.0 L165.6 10.0 L170.2 96.4 L174.8 96.4 L179.4 96.4 L184.0 96.4"/>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 1%: median 50, lowest 50, highest 50</title><circle class="hit" cx="156.5" cy="10.0" r="2.3"/><circle class="marker" cx="156.5" cy="10.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 1%: median 50, lowest 50, highest 50</title><circle class="hit" cx="161.1" cy="10.0" r="2.3"/><circle class="marker" cx="161.1" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 1%: median 50, lowest 50, highest 50</title><circle class="hit" cx="165.6" cy="10.0" r="2.3"/><circle class="marker" cx="165.6" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 1%: median 14, lowest 8, highest 30</title><circle class="hit" cx="170.2" cy="96.4" r="2.3"/><circle class="marker" cx="170.2" cy="96.4" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 1%: median 14, lowest 8, highest 30</title><circle class="hit" cx="174.8" cy="96.4" r="2.3"/><circle class="marker" cx="174.8" cy="96.4" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 1%: median 14, lowest 8, highest 30</title><circle class="hit" cx="179.4" cy="96.4" r="2.3"/><circle class="marker" cx="179.4" cy="96.4" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 1%: median 14, lowest 8, highest 30</title><circle class="hit" cx="184.0" cy="96.4" r="2.3"/><circle class="marker" cx="184.0" cy="96.4" r="4"/></g>
+</g>
+</svg>
+</div>
+<div class="panel">
+<p><svg class="s4" width="14" height="6" viewBox="0 0 14 6" aria-hidden="true"><rect class="key" x="0" y="1.5" width="14" height="3" rx="1.5"/></svg>5%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 152" width="196" height="152" role="img" aria-label="Epochs without a fork at GroupV3 5%">
+<line class="grid" x1="28" x2="184" y1="130.0" y2="130.0"/>
+<text class="axis small" x="22" y="134.0" text-anchor="end">0</text>
+<line class="grid" x1="28" x2="184" y1="70.0" y2="70.0"/>
+<text class="axis small" x="22" y="74.0" text-anchor="end">25</text>
+<line class="grid" x1="28" x2="184" y1="10.0" y2="10.0"/>
+<text class="axis small" x="22" y="14.0" text-anchor="end">50</text>
+<text class="axis small" x="28.0" y="145" text-anchor="start">11-10</text>
+<text class="axis small" x="184.0" y="145" text-anchor="end">11-21</text>
+<line class="measure" x1="64.7" x2="64.7" y1="10" y2="130"/>
+<line class="measure" x1="96.8" x2="96.8" y1="10" y2="130"/>
+<line class="measure" x1="138.1" x2="138.1" y1="10" y2="130"/>
+<line class="measure" x1="156.5" x2="156.5" y1="10" y2="130"/>
+<line class="measure" x1="165.6" x2="165.6" y1="10" y2="130"/>
+<line class="measure" x1="170.2" x2="170.2" y1="10" y2="130"/>
+<line class="measure" x1="179.4" x2="179.4" y1="10" y2="130"/>
+<line class="measure" x1="184.0" x2="184.0" y1="10" y2="130"/>
+<polygon class="band" points="156.5,10.0 161.1,10.0 165.6,10.0 170.2,79.6 174.8,79.6 179.4,79.6 184.0,79.6 184.0,125.2 179.4,125.2 174.8,125.2 170.2,125.2 165.6,10.0 161.1,10.0 156.5,10.0"/>
+<g class="s4">
+<path class="series" d="M156.5 10.0 L161.1 10.0 L165.6 10.0 L170.2 106.0 L174.8 106.0 L179.4 106.0 L184.0 106.0"/>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 5%: median 50, lowest 50, highest 50</title><circle class="hit" cx="156.5" cy="10.0" r="2.3"/><circle class="marker" cx="156.5" cy="10.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 5%: median 50, lowest 50, highest 50</title><circle class="hit" cx="161.1" cy="10.0" r="2.3"/><circle class="marker" cx="161.1" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 5%: median 50, lowest 50, highest 50</title><circle class="hit" cx="165.6" cy="10.0" r="2.3"/><circle class="marker" cx="165.6" cy="10.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 5%: median 10, lowest 2, highest 21</title><circle class="hit" cx="170.2" cy="106.0" r="2.3"/><circle class="marker" cx="170.2" cy="106.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 5%: median 10, lowest 2, highest 21</title><circle class="hit" cx="174.8" cy="106.0" r="2.3"/><circle class="marker" cx="174.8" cy="106.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 5%: median 10, lowest 2, highest 21</title><circle class="hit" cx="179.4" cy="106.0" r="2.3"/><circle class="marker" cx="179.4" cy="106.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 5%: median 10, lowest 2, highest 21</title><circle class="hit" cx="184.0" cy="106.0" r="2.3"/><circle class="marker" cx="184.0" cy="106.0" r="4"/></g>
+</g>
+</svg>
+</div>
+</div>
+<p class="caption">How many epochs each run went without a fork: the first split's, else the trunk's. It moves with every change for the better, where the runs whole below can show none yet. A dashed line marks a point that measures another chat-sim commit than the point before it, so that the step is chat-sim's, not logos-chat's; an open marker a point re-rolled, whose runs drew other ids than those of the point it follows, so that every seed's run is another run, and moved whether or not logos-chat did.</p>
+</section>
+<section class="chart" id="whole">
+<h2>Runs whole at 50 epochs</h2>
+<h3>GroupV2 runs whole, of 20</h3>
+<p class="legend"><span><svg class="s1" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>0%</span><span><svg class="s2" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>0.5%</span><span><svg class="s3" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>1%</span><span><svg class="s4" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>5%</span><span><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="measure" x1="1" x2="21" y1="5" y2="5"/></svg>the goal</span><span><svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true"><line class="measure" x1="11" x2="11" y1="0" y2="14"/></svg>the measurement moved: another chat-sim commit</span></p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 312" width="820" height="312" role="img" aria-label="GroupV2 runs whole at 50 epochs">
+<line class="grid" x1="36" x2="724" y1="268.0" y2="268.0"/>
+<text class="axis" x="28" y="272.0" text-anchor="end">0</text>
+<line class="grid" x1="36" x2="724" y1="208.0" y2="208.0"/>
+<text class="axis" x="28" y="212.0" text-anchor="end">5</text>
+<line class="grid" x1="36" x2="724" y1="148.0" y2="148.0"/>
+<text class="axis" x="28" y="152.0" text-anchor="end">10</text>
+<line class="grid" x1="36" x2="724" y1="88.0" y2="88.0"/>
+<text class="axis" x="28" y="92.0" text-anchor="end">15</text>
+<line class="grid" x1="36" x2="724" y1="28.0" y2="28.0"/>
+<text class="axis" x="28" y="32.0" text-anchor="end">20</text>
+<text class="axis" x="724.0" y="284" text-anchor="middle">11-21</text>
+<text class="axis small" x="724.0" y="298" text-anchor="middle"></text>
+<text class="axis" x="663.3" y="284" text-anchor="middle">11-20</text>
+<text class="axis small" x="663.3" y="298" text-anchor="middle"></text>
+<text class="axis" x="602.6" y="284" text-anchor="middle">11-19</text>
+<text class="axis small" x="602.6" y="298" text-anchor="middle">#354</text>
+<text class="axis" x="541.9" y="284" text-anchor="middle">11-19</text>
+<text class="axis small" x="541.9" y="298" text-anchor="middle">#347</text>
+<text class="axis" x="481.2" y="284" text-anchor="middle">11-18</text>
+<text class="axis small" x="481.2" y="298" text-anchor="middle">#345</text>
+<text class="axis" x="420.5" y="284" text-anchor="middle">11-18</text>
+<text class="axis small" x="420.5" y="298" text-anchor="middle">#344</text>
+<text class="axis" x="359.8" y="284" text-anchor="middle">11-17</text>
+<text class="axis small" x="359.8" y="298" text-anchor="middle">#329</text>
+<text class="axis" x="299.1" y="284" text-anchor="middle">11-17</text>
+<text class="axis small" x="299.1" y="298" text-anchor="middle">#320</text>
+<text class="axis" x="238.4" y="284" text-anchor="middle">11-17</text>
+<text class="axis small" x="238.4" y="298" text-anchor="middle">#336</text>
+<text class="axis" x="177.6" y="284" text-anchor="middle">11-16</text>
+<text class="axis small" x="177.6" y="298" text-anchor="middle">#334</text>
+<text class="axis" x="116.9" y="284" text-anchor="middle">11-12</text>
+<text class="axis small" x="116.9" y="298" text-anchor="middle">#331, #333</text>
+<text class="axis" x="56.2" y="284" text-anchor="middle">11-11</text>
+<text class="axis small" x="56.2" y="298" text-anchor="middle">#327</text>
+<line class="measure" x1="197.9" x2="197.9" y1="28" y2="268"/>
+<line class="measure" x1="339.5" x2="339.5" y1="28" y2="268"/>
+<line class="measure" x1="521.6" x2="521.6" y1="28" y2="268"/>
+<line class="measure" x1="602.6" x2="602.6" y1="28" y2="268"/>
+<line class="measure" x1="643.1" x2="643.1" y1="28" y2="268"/>
+<line class="measure" x1="663.3" x2="663.3" y1="28" y2="268"/>
+<line class="measure" x1="703.8" x2="703.8" y1="28" y2="268"/>
+<line class="measure" x1="724.0" x2="724.0" y1="28" y2="268"/>
+<line class="measure" x1="36" x2="734" y1="28.0" y2="28.0"/>
+<text class="note" x="50" y="20.0">the goal</text>
+<text class="note" x="197.9" y="18" text-anchor="middle">chat-sim moved: 9f2ae61</text>
+<text class="note" x="521.6" y="18" text-anchor="middle">chat-sim moved: 62ff081</text>
+<text class="note" x="703.8" y="18" text-anchor="middle">chat-sim moved: 11ec241</text>
+<g class="s1">
+<path class="series" d="M36.0 28.0 L56.2 28.0 L76.5 28.0 L96.7 28.0 M197.9 28.0 M339.5 28.0 L359.8 28.0 L380.0 28.0 L400.2 28.0 L420.5 28.0 L440.7 28.0 L460.9 28.0 L481.2 28.0 L501.4 28.0 L521.6 28.0 L541.9 28.0 L562.1 28.0 L582.4 28.0 L602.6 28.0 L622.8 28.0 L643.1 28.0 L663.3 28.0 L683.5 28.0 L703.8 28.0 L724.0 28.0"/>
+<g><title>2026-11-10 18:00 UTC · main 70aa02b · merged none · 0%: 20 of 20 whole</title><circle class="hit" cx="36.0" cy="28.0" r="10.0"/><circle class="marker" cx="36.0" cy="28.0" r="4"/></g>
+<g><title>2026-11-11 09:01 UTC · main d176754 · merged #327 · 0%: 20 of 20 whole</title><circle class="hit" cx="56.2" cy="28.0" r="10.0"/><circle class="marker" cx="56.2" cy="28.0" r="4"/></g>
+<g><title>2026-11-12 01:26 UTC · main ffe1c1e · merged #316 · 0%: 20 of 20 whole</title><circle class="hit" cx="76.5" cy="28.0" r="10.0"/><circle class="marker" cx="76.5" cy="28.0" r="4"/></g>
+<g><title>2026-11-12 18:05 UTC · main 873a19c · merged #323 · 0%: 20 of 20 whole</title><circle class="hit" cx="96.7" cy="28.0" r="10.0"/><circle class="marker" cx="96.7" cy="28.0" r="4"/></g>
+<g><title>2026-11-17 01:25 UTC · main 1c99aea · merged none · chat-sim moved to 9f2ae61 · 0%: 20 of 20 whole</title><circle class="hit" cx="197.9" cy="28.0" r="10.0"/><circle class="marker" cx="197.9" cy="28.0" r="4"/></g>
+<g><title>2026-11-17 20:06 UTC · main 329408b · merged none · chat-sim moved to 07fb9d9 · 0%: 20 of 20 whole</title><circle class="hit" cx="339.5" cy="28.0" r="10.0"/><circle class="marker" cx="339.5" cy="28.0" r="4"/></g>
+<g><title>2026-11-17 21:26 UTC · main 9ccc06b · merged #329 · 0%: 20 of 20 whole</title><circle class="hit" cx="359.8" cy="28.0" r="10.0"/><circle class="marker" cx="359.8" cy="28.0" r="4"/></g>
+<g><title>2026-11-17 22:00 UTC · main ec106de · merged #341 · 0%: 20 of 20 whole</title><circle class="hit" cx="380.0" cy="28.0" r="10.0"/><circle class="marker" cx="380.0" cy="28.0" r="4"/></g>
+<g><title>2026-11-18 03:37 UTC · main 3b01918 · merged #326 · 0%: 20 of 20 whole</title><circle class="hit" cx="400.2" cy="28.0" r="10.0"/><circle class="marker" cx="400.2" cy="28.0" r="4"/></g>
+<g><title>2026-11-18 14:39 UTC · main 19ab1b5 · merged #344 · 0%: 20 of 20 whole</title><circle class="hit" cx="420.5" cy="28.0" r="10.0"/><circle class="marker" cx="420.5" cy="28.0" r="4"/></g>
+<g><title>2026-11-18 15:26 UTC · main 50ce37d · merged #343 · 0%: 20 of 20 whole</title><circle class="hit" cx="440.7" cy="28.0" r="10.0"/><circle class="marker" cx="440.7" cy="28.0" r="4"/></g>
+<g><title>2026-11-18 16:21 UTC · main 5094e1c · merged #342, #340 · 0%: 20 of 20 whole</title><circle class="hit" cx="460.9" cy="28.0" r="10.0"/><circle class="marker" cx="460.9" cy="28.0" r="4"/></g>
+<g><title>2026-11-18 17:09 UTC · main b41a532 · merged #345 · 0%: 20 of 20 whole</title><circle class="hit" cx="481.2" cy="28.0" r="10.0"/><circle class="marker" cx="481.2" cy="28.0" r="4"/></g>
+<g><title>2026-11-18 19:10 UTC · main aeea534 · merged #350 · 0%: 20 of 20 whole</title><circle class="hit" cx="501.4" cy="28.0" r="10.0"/><circle class="marker" cx="501.4" cy="28.0" r="4"/></g>
+<g><title>2026-11-19 17:04 UTC · main aeea534 · merged none · chat-sim moved to 62ff081 · 0%: 20 of 20 whole</title><circle class="hit" cx="521.6" cy="28.0" r="10.0"/><circle class="marker" cx="521.6" cy="28.0" r="4"/></g>
+<g><title>2026-11-19 18:30 UTC · main a383031 · merged #347 · 0%: 20 of 20 whole</title><circle class="hit" cx="541.9" cy="28.0" r="10.0"/><circle class="marker" cx="541.9" cy="28.0" r="4"/></g>
+<g><title>2026-11-19 20:17 UTC · main c083dcd · merged #348 · 0%: 20 of 20 whole</title><circle class="hit" cx="562.1" cy="28.0" r="10.0"/><circle class="marker" cx="562.1" cy="28.0" r="4"/></g>
+<g><title>2026-11-19 22:17 UTC · main df07004 · merged #353 · 0%: 20 of 20 whole</title><circle class="hit" cx="582.4" cy="28.0" r="10.0"/><circle class="marker" cx="582.4" cy="28.0" r="4"/></g>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 0%: 20 of 20 whole</title><circle class="hit" cx="602.6" cy="28.0" r="10.0"/><circle class="marker" cx="602.6" cy="28.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 0%: 20 of 20 whole</title><circle class="hit" cx="622.8" cy="28.0" r="10.0"/><circle class="marker" cx="622.8" cy="28.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 0%: 20 of 20 whole</title><circle class="hit" cx="643.1" cy="28.0" r="10.0"/><circle class="marker" cx="643.1" cy="28.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0%: 20 of 20 whole</title><circle class="hit" cx="663.3" cy="28.0" r="10.0"/><circle class="marker" cx="663.3" cy="28.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0%: 20 of 20 whole</title><circle class="hit" cx="683.5" cy="28.0" r="10.0"/><circle class="marker" cx="683.5" cy="28.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0%: 20 of 20 whole</title><circle class="hit" cx="703.8" cy="28.0" r="10.0"/><circle class="marker" cx="703.8" cy="28.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0%: 20 of 20 whole</title><circle class="hit" cx="724.0" cy="28.0" r="10.0"/><circle class="marker" cx="724.0" cy="28.0" r="4"/></g>
+</g>
+<g class="s2">
+<path class="series" d="M663.3 268.0 L683.5 268.0 L703.8 268.0 L724.0 268.0"/>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0.5%: 0 of 20 whole</title><circle class="hit" cx="663.3" cy="268.0" r="10.0"/><circle class="marker" cx="663.3" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0.5%: 0 of 20 whole</title><circle class="hit" cx="683.5" cy="268.0" r="10.0"/><circle class="marker" cx="683.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0.5%: 0 of 20 whole</title><circle class="hit" cx="703.8" cy="268.0" r="10.0"/><circle class="marker" cx="703.8" cy="268.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0.5%: 0 of 20 whole</title><circle class="hit" cx="724.0" cy="268.0" r="10.0"/><circle class="marker" cx="724.0" cy="268.0" r="4"/></g>
+</g>
+<g class="s3">
+<path class="series" d="M36.0 268.0 L56.2 268.0 L76.5 268.0 L96.7 268.0 M197.9 268.0 M339.5 268.0 L359.8 268.0 L380.0 268.0 L400.2 268.0 L420.5 268.0 L440.7 268.0 L460.9 268.0 L481.2 268.0 L501.4 268.0 L521.6 268.0 L541.9 268.0 L562.1 268.0 L582.4 268.0 L602.6 268.0 L622.8 268.0 L643.1 268.0 L663.3 268.0 L683.5 268.0 L703.8 268.0 L724.0 268.0"/>
+<g><title>2026-11-10 18:00 UTC · main 70aa02b · merged none · 1%: 0 of 20 whole</title><circle class="hit" cx="36.0" cy="268.0" r="10.0"/><circle class="marker" cx="36.0" cy="268.0" r="4"/></g>
+<g><title>2026-11-11 09:01 UTC · main d176754 · merged #327 · 1%: 0 of 20 whole</title><circle class="hit" cx="56.2" cy="268.0" r="10.0"/><circle class="marker" cx="56.2" cy="268.0" r="4"/></g>
+<g><title>2026-11-12 01:26 UTC · main ffe1c1e · merged #316 · 1%: 0 of 20 whole</title><circle class="hit" cx="76.5" cy="268.0" r="10.0"/><circle class="marker" cx="76.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-12 18:05 UTC · main 873a19c · merged #323 · 1%: 0 of 20 whole</title><circle class="hit" cx="96.7" cy="268.0" r="10.0"/><circle class="marker" cx="96.7" cy="268.0" r="4"/></g>
+<g><title>2026-11-17 01:25 UTC · main 1c99aea · merged none · chat-sim moved to 9f2ae61 · 1%: 0 of 20 whole</title><circle class="hit" cx="197.9" cy="268.0" r="10.0"/><circle class="marker" cx="197.9" cy="268.0" r="4"/></g>
+<g><title>2026-11-17 20:06 UTC · main 329408b · merged none · chat-sim moved to 07fb9d9 · 1%: 0 of 20 whole</title><circle class="hit" cx="339.5" cy="268.0" r="10.0"/><circle class="marker" cx="339.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-17 21:26 UTC · main 9ccc06b · merged #329 · 1%: 0 of 20 whole</title><circle class="hit" cx="359.8" cy="268.0" r="10.0"/><circle class="marker" cx="359.8" cy="268.0" r="4"/></g>
+<g><title>2026-11-17 22:00 UTC · main ec106de · merged #341 · 1%: 0 of 20 whole</title><circle class="hit" cx="380.0" cy="268.0" r="10.0"/><circle class="marker" cx="380.0" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 03:37 UTC · main 3b01918 · merged #326 · 1%: 0 of 20 whole</title><circle class="hit" cx="400.2" cy="268.0" r="10.0"/><circle class="marker" cx="400.2" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 14:39 UTC · main 19ab1b5 · merged #344 · 1%: 0 of 20 whole</title><circle class="hit" cx="420.5" cy="268.0" r="10.0"/><circle class="marker" cx="420.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 15:26 UTC · main 50ce37d · merged #343 · 1%: 0 of 20 whole</title><circle class="hit" cx="440.7" cy="268.0" r="10.0"/><circle class="marker" cx="440.7" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 16:21 UTC · main 5094e1c · merged #342, #340 · 1%: 0 of 20 whole</title><circle class="hit" cx="460.9" cy="268.0" r="10.0"/><circle class="marker" cx="460.9" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 17:09 UTC · main b41a532 · merged #345 · 1%: 0 of 20 whole</title><circle class="hit" cx="481.2" cy="268.0" r="10.0"/><circle class="marker" cx="481.2" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 19:10 UTC · main aeea534 · merged #350 · 1%: 0 of 20 whole</title><circle class="hit" cx="501.4" cy="268.0" r="10.0"/><circle class="marker" cx="501.4" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 17:04 UTC · main aeea534 · merged none · chat-sim moved to 62ff081 · 1%: 0 of 20 whole</title><circle class="hit" cx="521.6" cy="268.0" r="10.0"/><circle class="marker" cx="521.6" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 18:30 UTC · main a383031 · merged #347 · 1%: 0 of 20 whole</title><circle class="hit" cx="541.9" cy="268.0" r="10.0"/><circle class="marker" cx="541.9" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 20:17 UTC · main c083dcd · merged #348 · 1%: 0 of 20 whole</title><circle class="hit" cx="562.1" cy="268.0" r="10.0"/><circle class="marker" cx="562.1" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 22:17 UTC · main df07004 · merged #353 · 1%: 0 of 20 whole</title><circle class="hit" cx="582.4" cy="268.0" r="10.0"/><circle class="marker" cx="582.4" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 1%: 0 of 20 whole</title><circle class="hit" cx="602.6" cy="268.0" r="10.0"/><circle class="marker" cx="602.6" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 1%: 0 of 20 whole</title><circle class="hit" cx="622.8" cy="268.0" r="10.0"/><circle class="marker" cx="622.8" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 1%: 0 of 20 whole</title><circle class="hit" cx="643.1" cy="268.0" r="10.0"/><circle class="marker" cx="643.1" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 1%: 0 of 20 whole</title><circle class="hit" cx="663.3" cy="268.0" r="10.0"/><circle class="marker" cx="663.3" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 1%: 0 of 20 whole</title><circle class="hit" cx="683.5" cy="268.0" r="10.0"/><circle class="marker" cx="683.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 1%: 0 of 20 whole</title><circle class="hit" cx="703.8" cy="268.0" r="10.0"/><circle class="marker" cx="703.8" cy="268.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 1%: 0 of 20 whole</title><circle class="hit" cx="724.0" cy="268.0" r="10.0"/><circle class="marker" cx="724.0" cy="268.0" r="4"/></g>
+</g>
+<g class="s4">
+<path class="series" d="M36.0 268.0 L56.2 268.0 L76.5 268.0 L96.7 268.0 M197.9 268.0 M339.5 268.0 L359.8 268.0 L380.0 268.0 L400.2 268.0 L420.5 268.0 L440.7 268.0 L460.9 268.0 L481.2 268.0 L501.4 268.0 L521.6 268.0 L541.9 268.0 L562.1 268.0 L582.4 268.0 L602.6 268.0 L622.8 268.0 L643.1 268.0 L663.3 268.0 L683.5 268.0 L703.8 268.0 L724.0 268.0"/>
+<g><title>2026-11-10 18:00 UTC · main 70aa02b · merged none · 5%: 0 of 20 whole</title><circle class="hit" cx="36.0" cy="268.0" r="10.0"/><circle class="marker" cx="36.0" cy="268.0" r="4"/></g>
+<g><title>2026-11-11 09:01 UTC · main d176754 · merged #327 · 5%: 0 of 20 whole</title><circle class="hit" cx="56.2" cy="268.0" r="10.0"/><circle class="marker" cx="56.2" cy="268.0" r="4"/></g>
+<g><title>2026-11-12 01:26 UTC · main ffe1c1e · merged #316 · 5%: 0 of 20 whole</title><circle class="hit" cx="76.5" cy="268.0" r="10.0"/><circle class="marker" cx="76.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-12 18:05 UTC · main 873a19c · merged #323 · 5%: 0 of 20 whole</title><circle class="hit" cx="96.7" cy="268.0" r="10.0"/><circle class="marker" cx="96.7" cy="268.0" r="4"/></g>
+<g><title>2026-11-17 01:25 UTC · main 1c99aea · merged none · chat-sim moved to 9f2ae61 · 5%: 0 of 20 whole</title><circle class="hit" cx="197.9" cy="268.0" r="10.0"/><circle class="marker" cx="197.9" cy="268.0" r="4"/></g>
+<g><title>2026-11-17 20:06 UTC · main 329408b · merged none · chat-sim moved to 07fb9d9 · 5%: 0 of 20 whole</title><circle class="hit" cx="339.5" cy="268.0" r="10.0"/><circle class="marker" cx="339.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-17 21:26 UTC · main 9ccc06b · merged #329 · 5%: 0 of 20 whole</title><circle class="hit" cx="359.8" cy="268.0" r="10.0"/><circle class="marker" cx="359.8" cy="268.0" r="4"/></g>
+<g><title>2026-11-17 22:00 UTC · main ec106de · merged #341 · 5%: 0 of 20 whole</title><circle class="hit" cx="380.0" cy="268.0" r="10.0"/><circle class="marker" cx="380.0" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 03:37 UTC · main 3b01918 · merged #326 · 5%: 0 of 20 whole</title><circle class="hit" cx="400.2" cy="268.0" r="10.0"/><circle class="marker" cx="400.2" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 14:39 UTC · main 19ab1b5 · merged #344 · 5%: 0 of 20 whole</title><circle class="hit" cx="420.5" cy="268.0" r="10.0"/><circle class="marker" cx="420.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 15:26 UTC · main 50ce37d · merged #343 · 5%: 0 of 20 whole</title><circle class="hit" cx="440.7" cy="268.0" r="10.0"/><circle class="marker" cx="440.7" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 16:21 UTC · main 5094e1c · merged #342, #340 · 5%: 0 of 20 whole</title><circle class="hit" cx="460.9" cy="268.0" r="10.0"/><circle class="marker" cx="460.9" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 17:09 UTC · main b41a532 · merged #345 · 5%: 0 of 20 whole</title><circle class="hit" cx="481.2" cy="268.0" r="10.0"/><circle class="marker" cx="481.2" cy="268.0" r="4"/></g>
+<g><title>2026-11-18 19:10 UTC · main aeea534 · merged #350 · 5%: 0 of 20 whole</title><circle class="hit" cx="501.4" cy="268.0" r="10.0"/><circle class="marker" cx="501.4" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 17:04 UTC · main aeea534 · merged none · chat-sim moved to 62ff081 · 5%: 0 of 20 whole</title><circle class="hit" cx="521.6" cy="268.0" r="10.0"/><circle class="marker" cx="521.6" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 18:30 UTC · main a383031 · merged #347 · 5%: 0 of 20 whole</title><circle class="hit" cx="541.9" cy="268.0" r="10.0"/><circle class="marker" cx="541.9" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 20:17 UTC · main c083dcd · merged #348 · 5%: 0 of 20 whole</title><circle class="hit" cx="562.1" cy="268.0" r="10.0"/><circle class="marker" cx="562.1" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 22:17 UTC · main df07004 · merged #353 · 5%: 0 of 20 whole</title><circle class="hit" cx="582.4" cy="268.0" r="10.0"/><circle class="marker" cx="582.4" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 5%: 0 of 20 whole</title><circle class="hit" cx="602.6" cy="268.0" r="10.0"/><circle class="marker" cx="602.6" cy="268.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 5%: 0 of 20 whole</title><circle class="hit" cx="622.8" cy="268.0" r="10.0"/><circle class="marker" cx="622.8" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 5%: 0 of 20 whole</title><circle class="hit" cx="643.1" cy="268.0" r="10.0"/><circle class="marker" cx="643.1" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 5%: 0 of 20 whole</title><circle class="hit" cx="663.3" cy="268.0" r="10.0"/><circle class="marker" cx="663.3" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 5%: 0 of 20 whole</title><circle class="hit" cx="683.5" cy="268.0" r="10.0"/><circle class="marker" cx="683.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 5%: 0 of 20 whole</title><circle class="hit" cx="703.8" cy="268.0" r="10.0"/><circle class="marker" cx="703.8" cy="268.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 5%: 0 of 20 whole</title><circle class="hit" cx="724.0" cy="268.0" r="10.0"/><circle class="marker" cx="724.0" cy="268.0" r="4"/></g>
+</g>
+<g class="s1">
+<rect class="key" x="742.0" y="26.5" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="32.0">0% 20</text>
+</g>
+<g class="s2">
+<line class="leader" x1="731.0" y1="268.0" x2="741.0" y2="244.0"/>
+<rect class="key" x="742.0" y="242.5" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="248.0">0.5% 0</text>
+</g>
+<g class="s3">
+<line class="leader" x1="731.0" y1="268.0" x2="741.0" y2="258.0"/>
+<rect class="key" x="742.0" y="256.5" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="262.0">1% 0</text>
+</g>
+<g class="s4">
+<line class="leader" x1="731.0" y1="268.0" x2="741.0" y2="272.0"/>
+<rect class="key" x="742.0" y="270.5" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="276.0">5% 0</text>
+</g>
+</svg>
+<h3>GroupV3 runs whole, of 20</h3>
+<p class="legend"><span><svg class="s1" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>0%</span><span><svg class="s2" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>0.5%</span><span><svg class="s3" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>1%</span><span><svg class="s4" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>5%</span><span><svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="measure" x1="1" x2="21" y1="5" y2="5"/></svg>the goal</span><span><svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true"><line class="measure" x1="11" x2="11" y1="0" y2="14"/></svg>the measurement moved: another chat-sim commit</span></p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 312" width="820" height="312" role="img" aria-label="GroupV3 runs whole at 50 epochs">
+<line class="grid" x1="36" x2="724" y1="268.0" y2="268.0"/>
+<text class="axis" x="28" y="272.0" text-anchor="end">0</text>
+<line class="grid" x1="36" x2="724" y1="208.0" y2="208.0"/>
+<text class="axis" x="28" y="212.0" text-anchor="end">5</text>
+<line class="grid" x1="36" x2="724" y1="148.0" y2="148.0"/>
+<text class="axis" x="28" y="152.0" text-anchor="end">10</text>
+<line class="grid" x1="36" x2="724" y1="88.0" y2="88.0"/>
+<text class="axis" x="28" y="92.0" text-anchor="end">15</text>
+<line class="grid" x1="36" x2="724" y1="28.0" y2="28.0"/>
+<text class="axis" x="28" y="32.0" text-anchor="end">20</text>
+<text class="axis" x="724.0" y="284" text-anchor="middle">11-21</text>
+<text class="axis small" x="724.0" y="298" text-anchor="middle"></text>
+<text class="axis" x="663.3" y="284" text-anchor="middle">11-20</text>
+<text class="axis small" x="663.3" y="298" text-anchor="middle"></text>
+<text class="axis" x="602.6" y="284" text-anchor="middle">11-19</text>
+<text class="axis small" x="602.6" y="298" text-anchor="middle">#354</text>
+<text class="axis" x="541.9" y="284" text-anchor="middle">11-19</text>
+<text class="axis small" x="541.9" y="298" text-anchor="middle">#347</text>
+<text class="axis" x="481.2" y="284" text-anchor="middle">11-18</text>
+<text class="axis small" x="481.2" y="298" text-anchor="middle">#345</text>
+<text class="axis" x="420.5" y="284" text-anchor="middle">11-18</text>
+<text class="axis small" x="420.5" y="298" text-anchor="middle">#344</text>
+<text class="axis" x="359.8" y="284" text-anchor="middle">11-17</text>
+<text class="axis small" x="359.8" y="298" text-anchor="middle">#329</text>
+<text class="axis" x="299.1" y="284" text-anchor="middle">11-17</text>
+<text class="axis small" x="299.1" y="298" text-anchor="middle">#320</text>
+<text class="axis" x="238.4" y="284" text-anchor="middle">11-17</text>
+<text class="axis small" x="238.4" y="298" text-anchor="middle">#336</text>
+<text class="axis" x="177.6" y="284" text-anchor="middle">11-16</text>
+<text class="axis small" x="177.6" y="298" text-anchor="middle">#334</text>
+<text class="axis" x="116.9" y="284" text-anchor="middle">11-12</text>
+<text class="axis small" x="116.9" y="298" text-anchor="middle">#331, #333</text>
+<text class="axis" x="56.2" y="284" text-anchor="middle">11-11</text>
+<text class="axis small" x="56.2" y="298" text-anchor="middle">#327</text>
+<line class="measure" x1="197.9" x2="197.9" y1="28" y2="268"/>
+<line class="measure" x1="339.5" x2="339.5" y1="28" y2="268"/>
+<line class="measure" x1="521.6" x2="521.6" y1="28" y2="268"/>
+<line class="measure" x1="602.6" x2="602.6" y1="28" y2="268"/>
+<line class="measure" x1="643.1" x2="643.1" y1="28" y2="268"/>
+<line class="measure" x1="663.3" x2="663.3" y1="28" y2="268"/>
+<line class="measure" x1="703.8" x2="703.8" y1="28" y2="268"/>
+<line class="measure" x1="724.0" x2="724.0" y1="28" y2="268"/>
+<line class="measure" x1="36" x2="734" y1="28.0" y2="28.0"/>
+<text class="note" x="50" y="20.0">the goal</text>
+<text class="note" x="197.9" y="18" text-anchor="middle">chat-sim moved: 9f2ae61</text>
+<text class="note" x="521.6" y="18" text-anchor="middle">chat-sim moved: 62ff081</text>
+<text class="note" x="703.8" y="18" text-anchor="middle">chat-sim moved: 11ec241</text>
+<g class="s1">
+<path class="series" d="M602.6 28.0 L622.8 28.0 L643.1 28.0 L663.3 28.0 L683.5 28.0 L703.8 28.0 L724.0 28.0"/>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 0%: 20 of 20 whole</title><circle class="hit" cx="602.6" cy="28.0" r="10.0"/><circle class="marker" cx="602.6" cy="28.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 0%: 20 of 20 whole</title><circle class="hit" cx="622.8" cy="28.0" r="10.0"/><circle class="marker" cx="622.8" cy="28.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 0%: 20 of 20 whole</title><circle class="hit" cx="643.1" cy="28.0" r="10.0"/><circle class="marker" cx="643.1" cy="28.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0%: 20 of 20 whole</title><circle class="hit" cx="663.3" cy="28.0" r="10.0"/><circle class="marker" cx="663.3" cy="28.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0%: 20 of 20 whole</title><circle class="hit" cx="683.5" cy="28.0" r="10.0"/><circle class="marker" cx="683.5" cy="28.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0%: 20 of 20 whole</title><circle class="hit" cx="703.8" cy="28.0" r="10.0"/><circle class="marker" cx="703.8" cy="28.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0%: 20 of 20 whole</title><circle class="hit" cx="724.0" cy="28.0" r="10.0"/><circle class="marker" cx="724.0" cy="28.0" r="4"/></g>
+</g>
+<g class="s2">
+<path class="series" d="M663.3 256.0 L683.5 256.0 L703.8 256.0 L724.0 256.0"/>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0.5%: 1 of 20 whole</title><circle class="hit" cx="663.3" cy="256.0" r="10.0"/><circle class="marker" cx="663.3" cy="256.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0.5%: 1 of 20 whole</title><circle class="hit" cx="683.5" cy="256.0" r="10.0"/><circle class="marker" cx="683.5" cy="256.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0.5%: 1 of 20 whole</title><circle class="hit" cx="703.8" cy="256.0" r="10.0"/><circle class="marker" cx="703.8" cy="256.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0.5%: 1 of 20 whole</title><circle class="hit" cx="724.0" cy="256.0" r="10.0"/><circle class="marker" cx="724.0" cy="256.0" r="4"/></g>
+</g>
+<g class="s3">
+<path class="series" d="M602.6 160.0 L622.8 160.0 L643.1 160.0 L663.3 268.0 L683.5 268.0 L703.8 268.0 L724.0 268.0"/>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 1%: 9 of 20 whole</title><circle class="hit" cx="602.6" cy="160.0" r="10.0"/><circle class="marker" cx="602.6" cy="160.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 1%: 9 of 20 whole</title><circle class="hit" cx="622.8" cy="160.0" r="10.0"/><circle class="marker" cx="622.8" cy="160.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 1%: 9 of 20 whole</title><circle class="hit" cx="643.1" cy="160.0" r="10.0"/><circle class="marker" cx="643.1" cy="160.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 1%: 0 of 20 whole</title><circle class="hit" cx="663.3" cy="268.0" r="10.0"/><circle class="marker" cx="663.3" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 1%: 0 of 20 whole</title><circle class="hit" cx="683.5" cy="268.0" r="10.0"/><circle class="marker" cx="683.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 1%: 0 of 20 whole</title><circle class="hit" cx="703.8" cy="268.0" r="10.0"/><circle class="marker" cx="703.8" cy="268.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 1%: 0 of 20 whole</title><circle class="hit" cx="724.0" cy="268.0" r="10.0"/><circle class="marker" cx="724.0" cy="268.0" r="4"/></g>
+</g>
+<g class="s4">
+<path class="series" d="M602.6 256.0 L622.8 256.0 L643.1 256.0 L663.3 268.0 L683.5 268.0 L703.8 268.0 L724.0 268.0"/>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 5%: 1 of 20 whole</title><circle class="hit" cx="602.6" cy="256.0" r="10.0"/><circle class="marker" cx="602.6" cy="256.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 5%: 1 of 20 whole</title><circle class="hit" cx="622.8" cy="256.0" r="10.0"/><circle class="marker" cx="622.8" cy="256.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 5%: 1 of 20 whole</title><circle class="hit" cx="643.1" cy="256.0" r="10.0"/><circle class="marker" cx="643.1" cy="256.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 5%: 0 of 20 whole</title><circle class="hit" cx="663.3" cy="268.0" r="10.0"/><circle class="marker" cx="663.3" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 5%: 0 of 20 whole</title><circle class="hit" cx="683.5" cy="268.0" r="10.0"/><circle class="marker" cx="683.5" cy="268.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 5%: 0 of 20 whole</title><circle class="hit" cx="703.8" cy="268.0" r="10.0"/><circle class="marker" cx="703.8" cy="268.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 5%: 0 of 20 whole</title><circle class="hit" cx="724.0" cy="268.0" r="10.0"/><circle class="marker" cx="724.0" cy="268.0" r="4"/></g>
+</g>
+<g class="s1">
+<rect class="key" x="742.0" y="26.5" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="32.0">0% 20</text>
+</g>
+<g class="s2">
+<line class="leader" x1="731.0" y1="256.0" x2="741.0" y2="244.0"/>
+<rect class="key" x="742.0" y="242.5" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="248.0">0.5% 1</text>
+</g>
+<g class="s3">
+<line class="leader" x1="731.0" y1="268.0" x2="741.0" y2="258.0"/>
+<rect class="key" x="742.0" y="256.5" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="262.0">1% 0</text>
+</g>
+<g class="s4">
+<line class="leader" x1="731.0" y1="268.0" x2="741.0" y2="272.0"/>
+<rect class="key" x="742.0" y="270.5" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="276.0">5% 0</text>
+</g>
+</svg>
+<p class="caption">How many runs of each rate ended whole: one group, every member that joined at its tip, at epoch 50. The goal is every line at the top. A line breaks at a point where none of the rate's runs had an outcome, as when chat-sim did not build. Under the dates the axis shows, the pull requests of logos-chat the point merged, which a marker's hover text names too.</p>
+</section>
+<section class="chart" id="newest">
+<h2>The newest point</h2>
+<p class="caption">2026-11-21 01:44 UTC, main ce916b8: a row a group's rate and a column a seed.</p>
+<h3>GroupV2</h3>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 816 138" width="816" height="138" role="img" aria-label="The newest point&#x27;s GroupV2 runs">
+<text class="axis small" x="0" y="11">seed</text>
+<text class="axis small" x="75.0" y="11" text-anchor="middle">0</text>
+<text class="axis small" x="113.0" y="11" text-anchor="middle">1</text>
+<text class="axis small" x="151.0" y="11" text-anchor="middle">2</text>
+<text class="axis small" x="189.0" y="11" text-anchor="middle">3</text>
+<text class="axis small" x="227.0" y="11" text-anchor="middle">4</text>
+<text class="axis small" x="265.0" y="11" text-anchor="middle">5</text>
+<text class="axis small" x="303.0" y="11" text-anchor="middle">6</text>
+<text class="axis small" x="341.0" y="11" text-anchor="middle">7</text>
+<text class="axis small" x="379.0" y="11" text-anchor="middle">8</text>
+<text class="axis small" x="417.0" y="11" text-anchor="middle">9</text>
+<text class="axis small" x="455.0" y="11" text-anchor="middle">10</text>
+<text class="axis small" x="493.0" y="11" text-anchor="middle">11</text>
+<text class="axis small" x="531.0" y="11" text-anchor="middle">12</text>
+<text class="axis small" x="569.0" y="11" text-anchor="middle">13</text>
+<text class="axis small" x="607.0" y="11" text-anchor="middle">14</text>
+<text class="axis small" x="645.0" y="11" text-anchor="middle">15</text>
+<text class="axis small" x="683.0" y="11" text-anchor="middle">16</text>
+<text class="axis small" x="721.0" y="11" text-anchor="middle">17</text>
+<text class="axis small" x="759.0" y="11" text-anchor="middle">18</text>
+<text class="axis small" x="797.0" y="11" text-anchor="middle">19</text>
+<text class="label" x="0" y="36">0%</text>
+<g class="cell bin5"><title>0%, seed 0 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="57.0" y="19" width="36" height="26" rx="4"/><text x="71.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="85.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 1 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="95.0" y="19" width="36" height="26" rx="4"/><text x="109.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="123.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 2 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="133.0" y="19" width="36" height="26" rx="4"/><text x="147.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="161.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 3 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="171.0" y="19" width="36" height="26" rx="4"/><text x="185.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="199.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 4 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="209.0" y="19" width="36" height="26" rx="4"/><text x="223.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="237.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 5 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="247.0" y="19" width="36" height="26" rx="4"/><text x="261.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="275.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 6 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="285.0" y="19" width="36" height="26" rx="4"/><text x="299.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="313.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 7 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="323.0" y="19" width="36" height="26" rx="4"/><text x="337.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="351.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 8 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="361.0" y="19" width="36" height="26" rx="4"/><text x="375.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="389.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 9 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="399.0" y="19" width="36" height="26" rx="4"/><text x="413.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="427.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 10 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="437.0" y="19" width="36" height="26" rx="4"/><text x="451.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="465.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 11 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="475.0" y="19" width="36" height="26" rx="4"/><text x="489.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="503.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 12 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="513.0" y="19" width="36" height="26" rx="4"/><text x="527.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="541.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 13 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="551.0" y="19" width="36" height="26" rx="4"/><text x="565.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="579.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 14 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="589.0" y="19" width="36" height="26" rx="4"/><text x="603.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="617.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 15 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="627.0" y="19" width="36" height="26" rx="4"/><text x="641.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="655.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 16 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="665.0" y="19" width="36" height="26" rx="4"/><text x="679.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="693.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 17 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="703.0" y="19" width="36" height="26" rx="4"/><text x="717.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="731.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 18 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="741.0" y="19" width="36" height="26" rx="4"/><text x="755.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="769.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 19 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="779.0" y="19" width="36" height="26" rx="4"/><text x="793.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="807.0" cy="32" r="3"/></g>
+<text class="label" x="0" y="66">0.5%</text>
+<g class="cell bin0"><title>0.5%, seed 0 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 9, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 1 never joined</title><rect x="57.0" y="49" width="36" height="26" rx="4"/><text x="74.0" y="66" text-anchor="middle">5</text></g>
+<g class="cell bin1"><title>0.5%, seed 1 · 14 epochs without a fork · 7 main branches ran side by side: trunk at epoch 19, 7 main, 0 sub, 5 fell behind, 0 behind at the end, 1 never joined</title><rect x="95.0" y="49" width="36" height="26" rx="4"/><text x="112.0" y="66" text-anchor="middle">14</text></g>
+<g class="cell bin1"><title>0.5%, seed 2 · 14 epochs without a fork · 5 main branches ran side by side: trunk at epoch 23, 5 main, 0 sub, 4 fell behind, 2 behind at the end, 0 never joined</title><rect x="133.0" y="49" width="36" height="26" rx="4"/><text x="150.0" y="66" text-anchor="middle">14</text></g>
+<g class="cell bin0"><title>0.5%, seed 3 · 9 epochs without a fork · 5 main branches ran side by side: trunk at epoch 21, 5 main, 1 sub, 2 fell behind, 0 behind at the end, 0 never joined</title><rect x="171.0" y="49" width="36" height="26" rx="4"/><text x="188.0" y="66" text-anchor="middle">9</text></g>
+<g class="cell bin0"><title>0.5%, seed 4 · 8 epochs without a fork · 5 main branches ran side by side: trunk at epoch 17, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 1 never joined</title><rect x="209.0" y="49" width="36" height="26" rx="4"/><text x="226.0" y="66" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>0.5%, seed 5 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 13, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 1 never joined</title><rect x="247.0" y="49" width="36" height="26" rx="4"/><text x="264.0" y="66" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>0.5%, seed 6 · 6 epochs without a fork · 5 main branches ran side by side: trunk at epoch 17, 5 main, 0 sub, 5 fell behind, 2 behind at the end, 0 never joined</title><rect x="285.0" y="49" width="36" height="26" rx="4"/><text x="302.0" y="66" text-anchor="middle">6</text></g>
+<g class="cell bin0"><title>0.5%, seed 7 · 7 epochs without a fork · 7 main branches ran side by side: trunk at epoch 11, 7 main, 0 sub, 7 fell behind, 1 behind at the end, 1 never joined</title><rect x="323.0" y="49" width="36" height="26" rx="4"/><text x="340.0" y="66" text-anchor="middle">7</text></g>
+<g class="cell bin1"><title>0.5%, seed 8 · 13 epochs without a fork · 5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 2 fell behind, 1 behind at the end, 0 never joined</title><rect x="361.0" y="49" width="36" height="26" rx="4"/><text x="378.0" y="66" text-anchor="middle">13</text></g>
+<g class="cell bin1"><title>0.5%, seed 9 · 16 epochs without a fork · 5 main branches ran side by side: trunk at epoch 25, 5 main, 0 sub, 6 fell behind, 2 behind at the end, 0 never joined</title><rect x="399.0" y="49" width="36" height="26" rx="4"/><text x="416.0" y="66" text-anchor="middle">16</text></g>
+<g class="cell bin0"><title>0.5%, seed 10 · 3 epochs without a fork · 5 main branches ran side by side: trunk at epoch 28, 5 main, 1 sub, 2 fell behind, 1 behind at the end, 6 never joined</title><rect x="437.0" y="49" width="36" height="26" rx="4"/><text x="454.0" y="66" text-anchor="middle">3</text></g>
+<g class="cell bin0"><title>0.5%, seed 11 · 4 epochs without a fork · 6 main branches ran side by side: trunk at epoch 22, 6 main, 0 sub, 6 fell behind, 1 behind at the end, 0 never joined</title><rect x="475.0" y="49" width="36" height="26" rx="4"/><text x="492.0" y="66" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>0.5%, seed 12 · 8 epochs without a fork · 6 main branches ran side by side: trunk at epoch 21, 6 main, 0 sub, 4 fell behind, 0 behind at the end, 1 never joined</title><rect x="513.0" y="49" width="36" height="26" rx="4"/><text x="530.0" y="66" text-anchor="middle">8</text></g>
+<g class="cell bin1"><title>0.5%, seed 13 · 11 epochs without a fork · 5 main branches ran side by side: trunk at epoch 15, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 1 never joined</title><rect x="551.0" y="49" width="36" height="26" rx="4"/><text x="568.0" y="66" text-anchor="middle">11</text></g>
+<g class="cell bin1"><title>0.5%, seed 14 · 16 epochs without a fork · 7 main branches ran side by side: trunk at epoch 22, 7 main, 0 sub, 7 fell behind, 2 behind at the end, 0 never joined</title><rect x="589.0" y="49" width="36" height="26" rx="4"/><text x="606.0" y="66" text-anchor="middle">16</text></g>
+<g class="cell bin1"><title>0.5%, seed 15 · 14 epochs without a fork · 6 main branches ran side by side: trunk at epoch 20, 6 main, 0 sub, 3 fell behind, 1 behind at the end, 1 never joined</title><rect x="627.0" y="49" width="36" height="26" rx="4"/><text x="644.0" y="66" text-anchor="middle">14</text></g>
+<g class="cell bin1"><title>0.5%, seed 16 · 19 epochs without a fork · 6 main branches ran side by side: trunk at epoch 27, 6 main, 0 sub, 4 fell behind, 2 behind at the end, 0 never joined</title><rect x="665.0" y="49" width="36" height="26" rx="4"/><text x="682.0" y="66" text-anchor="middle">19</text></g>
+<g class="cell bin1"><title>0.5%, seed 17 · 12 epochs without a fork · 5 main branches ran side by side: trunk at epoch 18, 5 main, 0 sub, 3 fell behind, 2 behind at the end, 2 never joined</title><rect x="703.0" y="49" width="36" height="26" rx="4"/><text x="720.0" y="66" text-anchor="middle">12</text></g>
+<g class="cell bin0"><title>0.5%, seed 18 · 5 epochs without a fork · 6 main branches ran side by side: trunk at epoch 18, 6 main, 0 sub, 3 fell behind, 1 behind at the end, 0 never joined</title><rect x="741.0" y="49" width="36" height="26" rx="4"/><text x="758.0" y="66" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>0.5%, seed 19 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 2 fell behind, 1 behind at the end, 1 never joined</title><rect x="779.0" y="49" width="36" height="26" rx="4"/><text x="796.0" y="66" text-anchor="middle">5</text></g>
+<text class="label" x="0" y="96">1%</text>
+<g class="cell bin0"><title>1%, seed 0 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 3 fell behind, 1 behind at the end, 1 never joined</title><rect x="57.0" y="79" width="36" height="26" rx="4"/><text x="74.0" y="96" text-anchor="middle">5</text></g>
+<g class="cell bin1"><title>1%, seed 1 · 11 epochs without a fork · 5 main branches ran side by side: trunk at epoch 14, 5 main, 0 sub, 2 fell behind, 1 behind at the end, 1 never joined</title><rect x="95.0" y="79" width="36" height="26" rx="4"/><text x="112.0" y="96" text-anchor="middle">11</text></g>
+<g class="cell bin0"><title>1%, seed 2 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 13, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 0 never joined</title><rect x="133.0" y="79" width="36" height="26" rx="4"/><text x="150.0" y="96" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>1%, seed 3 · 9 epochs without a fork · 5 main branches ran side by side: trunk at epoch 14, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 1 never joined</title><rect x="171.0" y="79" width="36" height="26" rx="4"/><text x="188.0" y="96" text-anchor="middle">9</text></g>
+<g class="cell bin0"><title>1%, seed 4 · 8 epochs without a fork · 6 main branches ran side by side: trunk at epoch 17, 6 main, 0 sub, 5 fell behind, 3 behind at the end, 0 never joined</title><rect x="209.0" y="79" width="36" height="26" rx="4"/><text x="226.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>1%, seed 5 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 13, 5 main, 2 sub, 2 fell behind, 1 behind at the end, 0 never joined</title><rect x="247.0" y="79" width="36" height="26" rx="4"/><text x="264.0" y="96" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>1%, seed 6 · 6 epochs without a fork · 6 main branches ran side by side: trunk at epoch 14, 6 main, 0 sub, 3 fell behind, 1 behind at the end, 0 never joined</title><rect x="285.0" y="79" width="36" height="26" rx="4"/><text x="302.0" y="96" text-anchor="middle">6</text></g>
+<g class="cell bin0"><title>1%, seed 7 · 6 epochs without a fork · 5 main branches ran side by side: trunk at epoch 12, 5 main, 0 sub, 5 fell behind, 2 behind at the end, 0 never joined</title><rect x="323.0" y="79" width="36" height="26" rx="4"/><text x="340.0" y="96" text-anchor="middle">6</text></g>
+<g class="cell bin1"><title>1%, seed 8 · 16 epochs without a fork · 5 main branches ran side by side: trunk at epoch 20, 5 main, 0 sub, 3 fell behind, 2 behind at the end, 1 never joined</title><rect x="361.0" y="79" width="36" height="26" rx="4"/><text x="378.0" y="96" text-anchor="middle">16</text></g>
+<g class="cell bin1"><title>1%, seed 9 · 11 epochs without a fork · 5 main branches ran side by side: trunk at epoch 20, 5 main, 0 sub, 5 fell behind, 2 behind at the end, 1 never joined</title><rect x="399.0" y="79" width="36" height="26" rx="4"/><text x="416.0" y="96" text-anchor="middle">11</text></g>
+<g class="cell bin0"><title>1%, seed 10 · 3 epochs without a fork · 5 main branches ran side by side: trunk at epoch 10, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 1 never joined</title><rect x="437.0" y="79" width="36" height="26" rx="4"/><text x="454.0" y="96" text-anchor="middle">3</text></g>
+<g class="cell bin0"><title>1%, seed 11 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 13, 5 main, 0 sub, 4 fell behind, 1 behind at the end, 1 never joined</title><rect x="475.0" y="79" width="36" height="26" rx="4"/><text x="492.0" y="96" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>1%, seed 12 · 8 epochs without a fork · 5 main branches ran side by side: trunk at epoch 13, 5 main, 0 sub, 4 fell behind, 1 behind at the end, 0 never joined</title><rect x="513.0" y="79" width="36" height="26" rx="4"/><text x="530.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin1"><title>1%, seed 13 · 14 epochs without a fork · 5 main branches ran side by side: trunk at epoch 23, 5 main, 0 sub, 10 fell behind, 7 behind at the end, 2 never joined</title><rect x="551.0" y="79" width="36" height="26" rx="4"/><text x="568.0" y="96" text-anchor="middle">14</text></g>
+<g class="cell bin1"><title>1%, seed 14 · 15 epochs without a fork · 5 main branches ran side by side: trunk at epoch 21, 5 main, 0 sub, 8 fell behind, 5 behind at the end, 2 never joined</title><rect x="589.0" y="79" width="36" height="26" rx="4"/><text x="606.0" y="96" text-anchor="middle">15</text></g>
+<g class="cell bin0"><title>1%, seed 15 · 8 epochs without a fork · 5 main branches ran side by side: trunk at epoch 14, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 2 never joined</title><rect x="627.0" y="79" width="36" height="26" rx="4"/><text x="644.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>1%, seed 16 · 6 epochs without a fork · 5 main branches ran side by side: trunk at epoch 23, 5 main, 1 sub, 3 fell behind, 1 behind at the end, 2 never joined</title><rect x="665.0" y="79" width="36" height="26" rx="4"/><text x="682.0" y="96" text-anchor="middle">6</text></g>
+<g class="cell bin1"><title>1%, seed 17 · 12 epochs without a fork · 5 main branches ran side by side: trunk at epoch 21, 5 main, 0 sub, 7 fell behind, 5 behind at the end, 0 never joined</title><rect x="703.0" y="79" width="36" height="26" rx="4"/><text x="720.0" y="96" text-anchor="middle">12</text></g>
+<g class="cell bin0"><title>1%, seed 18 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 15, 5 main, 0 sub, 3 fell behind, 2 behind at the end, 0 never joined</title><rect x="741.0" y="79" width="36" height="26" rx="4"/><text x="758.0" y="96" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>1%, seed 19 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 9, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 0 never joined</title><rect x="779.0" y="79" width="36" height="26" rx="4"/><text x="796.0" y="96" text-anchor="middle">5</text></g>
+<text class="label" x="0" y="126">5%</text>
+<g class="cell bin0"><title>5%, seed 0 · 3 epochs without a fork · 5 main branches ran side by side: trunk at epoch 11, 5 main, 6 sub, 15 fell behind, 6 behind at the end, 3 never joined</title><rect x="57.0" y="109" width="36" height="26" rx="4"/><text x="74.0" y="126" text-anchor="middle">3</text></g>
+<g class="cell bin0"><title>5%, seed 1 · 5 epochs without a fork · 6 main branches ran side by side: trunk at epoch 11, 6 main, 2 sub, 4 fell behind, 2 behind at the end, 2 never joined</title><rect x="95.0" y="109" width="36" height="26" rx="4"/><text x="112.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 2 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 6 fell behind, 4 behind at the end, 3 never joined</title><rect x="133.0" y="109" width="36" height="26" rx="4"/><text x="150.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 3 · 6 epochs without a fork · 5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 12 fell behind, 8 behind at the end, 3 never joined</title><rect x="171.0" y="109" width="36" height="26" rx="4"/><text x="188.0" y="126" text-anchor="middle">6</text></g>
+<g class="cell bin0"><title>5%, seed 4 · 5 epochs without a fork · 6 main branches ran side by side: trunk at epoch 13, 6 main, 3 sub, 6 fell behind, 1 behind at the end, 1 never joined</title><rect x="209.0" y="109" width="36" height="26" rx="4"/><text x="226.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 5 · 3 epochs without a fork · 6 main branches ran side by side: trunk at epoch 11, 6 main, 0 sub, 11 fell behind, 4 behind at the end, 3 never joined</title><rect x="247.0" y="109" width="36" height="26" rx="4"/><text x="264.0" y="126" text-anchor="middle">3</text></g>
+<g class="cell bin0"><title>5%, seed 6 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 8, 5 main, 0 sub, 5 fell behind, 2 behind at the end, 1 never joined</title><rect x="285.0" y="109" width="36" height="26" rx="4"/><text x="302.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>5%, seed 7 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 9, 5 main, 0 sub, 6 fell behind, 2 behind at the end, 0 never joined</title><rect x="323.0" y="109" width="36" height="26" rx="4"/><text x="340.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 8 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 9, 5 main, 1 sub, 5 fell behind, 1 behind at the end, 0 never joined</title><rect x="361.0" y="109" width="36" height="26" rx="4"/><text x="378.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>5%, seed 9 · 4 epochs without a fork · 6 main branches ran side by side: trunk at epoch 13, 6 main, 4 sub, 9 fell behind, 5 behind at the end, 5 never joined</title><rect x="399.0" y="109" width="36" height="26" rx="4"/><text x="416.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>5%, seed 10 · 3 epochs without a fork · 6 main branches ran side by side: trunk at epoch 18, 6 main, 7 sub, 15 fell behind, 10 behind at the end, 6 never joined</title><rect x="437.0" y="109" width="36" height="26" rx="4"/><text x="454.0" y="126" text-anchor="middle">3</text></g>
+<g class="cell bin0"><title>5%, seed 11 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 11, 5 main, 1 sub, 4 fell behind, 1 behind at the end, 4 never joined</title><rect x="475.0" y="109" width="36" height="26" rx="4"/><text x="492.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>5%, seed 12 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 8, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 1 never joined</title><rect x="513.0" y="109" width="36" height="26" rx="4"/><text x="530.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>5%, seed 13 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 8 fell behind, 2 behind at the end, 4 never joined</title><rect x="551.0" y="109" width="36" height="26" rx="4"/><text x="568.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>5%, seed 14 · 6 epochs without a fork · 5 main branches ran side by side: trunk at epoch 10, 5 main, 0 sub, 12 fell behind, 0 behind at the end, 4 never joined</title><rect x="589.0" y="109" width="36" height="26" rx="4"/><text x="606.0" y="126" text-anchor="middle">6</text></g>
+<g class="cell bin0"><title>5%, seed 15 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 14, 5 main, 5 sub, 5 fell behind, 2 behind at the end, 7 never joined</title><rect x="627.0" y="109" width="36" height="26" rx="4"/><text x="644.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 16 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 8, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 1 never joined</title><rect x="665.0" y="109" width="36" height="26" rx="4"/><text x="682.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 17 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 13, 5 main, 6 sub, 4 fell behind, 3 behind at the end, 3 never joined</title><rect x="703.0" y="109" width="36" height="26" rx="4"/><text x="720.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>5%, seed 18 · 6 epochs without a fork · 9 main branches ran side by side: trunk at epoch 10, 9 main, 0 sub, 6 fell behind, 4 behind at the end, 4 never joined</title><rect x="741.0" y="109" width="36" height="26" rx="4"/><text x="758.0" y="126" text-anchor="middle">6</text></g>
+<g class="cell bin0"><title>5%, seed 19 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 10, 5 main, 0 sub, 8 fell behind, 6 behind at the end, 2 never joined</title><rect x="779.0" y="109" width="36" height="26" rx="4"/><text x="796.0" y="126" text-anchor="middle">4</text></g>
+</svg>
+<h3>GroupV3</h3>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 816 138" width="816" height="138" role="img" aria-label="The newest point&#x27;s GroupV3 runs">
+<text class="axis small" x="0" y="11">seed</text>
+<text class="axis small" x="75.0" y="11" text-anchor="middle">0</text>
+<text class="axis small" x="113.0" y="11" text-anchor="middle">1</text>
+<text class="axis small" x="151.0" y="11" text-anchor="middle">2</text>
+<text class="axis small" x="189.0" y="11" text-anchor="middle">3</text>
+<text class="axis small" x="227.0" y="11" text-anchor="middle">4</text>
+<text class="axis small" x="265.0" y="11" text-anchor="middle">5</text>
+<text class="axis small" x="303.0" y="11" text-anchor="middle">6</text>
+<text class="axis small" x="341.0" y="11" text-anchor="middle">7</text>
+<text class="axis small" x="379.0" y="11" text-anchor="middle">8</text>
+<text class="axis small" x="417.0" y="11" text-anchor="middle">9</text>
+<text class="axis small" x="455.0" y="11" text-anchor="middle">10</text>
+<text class="axis small" x="493.0" y="11" text-anchor="middle">11</text>
+<text class="axis small" x="531.0" y="11" text-anchor="middle">12</text>
+<text class="axis small" x="569.0" y="11" text-anchor="middle">13</text>
+<text class="axis small" x="607.0" y="11" text-anchor="middle">14</text>
+<text class="axis small" x="645.0" y="11" text-anchor="middle">15</text>
+<text class="axis small" x="683.0" y="11" text-anchor="middle">16</text>
+<text class="axis small" x="721.0" y="11" text-anchor="middle">17</text>
+<text class="axis small" x="759.0" y="11" text-anchor="middle">18</text>
+<text class="axis small" x="797.0" y="11" text-anchor="middle">19</text>
+<text class="label" x="0" y="36">0%</text>
+<g class="cell bin5"><title>0%, seed 0 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 52 never joined</title><rect x="57.0" y="19" width="36" height="26" rx="4"/><text x="71.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="85.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 1 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 56 never joined</title><rect x="95.0" y="19" width="36" height="26" rx="4"/><text x="109.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="123.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 2 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 57 never joined</title><rect x="133.0" y="19" width="36" height="26" rx="4"/><text x="147.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="161.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 3 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 55 never joined</title><rect x="171.0" y="19" width="36" height="26" rx="4"/><text x="185.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="199.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 4 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 38 never joined</title><rect x="209.0" y="19" width="36" height="26" rx="4"/><text x="223.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="237.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 5 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 52 never joined</title><rect x="247.0" y="19" width="36" height="26" rx="4"/><text x="261.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="275.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 6 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 51 never joined</title><rect x="285.0" y="19" width="36" height="26" rx="4"/><text x="299.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="313.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 7 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 40 never joined</title><rect x="323.0" y="19" width="36" height="26" rx="4"/><text x="337.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="351.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 8 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 37 never joined</title><rect x="361.0" y="19" width="36" height="26" rx="4"/><text x="375.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="389.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 9 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 54 never joined</title><rect x="399.0" y="19" width="36" height="26" rx="4"/><text x="413.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="427.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 10 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 44 never joined</title><rect x="437.0" y="19" width="36" height="26" rx="4"/><text x="451.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="465.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 11 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 52 never joined</title><rect x="475.0" y="19" width="36" height="26" rx="4"/><text x="489.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="503.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 12 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 54 never joined</title><rect x="513.0" y="19" width="36" height="26" rx="4"/><text x="527.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="541.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 13 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 50 never joined</title><rect x="551.0" y="19" width="36" height="26" rx="4"/><text x="565.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="579.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 14 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 51 never joined</title><rect x="589.0" y="19" width="36" height="26" rx="4"/><text x="603.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="617.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 15 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 54 never joined</title><rect x="627.0" y="19" width="36" height="26" rx="4"/><text x="641.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="655.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 16 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 38 never joined</title><rect x="665.0" y="19" width="36" height="26" rx="4"/><text x="679.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="693.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 17 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 46 never joined</title><rect x="703.0" y="19" width="36" height="26" rx="4"/><text x="717.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="731.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 18 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 39 never joined</title><rect x="741.0" y="19" width="36" height="26" rx="4"/><text x="755.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="769.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 19 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 47 never joined</title><rect x="779.0" y="19" width="36" height="26" rx="4"/><text x="793.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="807.0" cy="32" r="3"/></g>
+<text class="label" x="0" y="66">0.5%</text>
+<g class="cell bin2"><title>0.5%, seed 0 · 24 epochs without a fork · 5 main branches ran side by side: trunk at epoch 35, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 36 never joined</title><rect x="57.0" y="49" width="36" height="26" rx="4"/><text x="74.0" y="66" text-anchor="middle">24</text></g>
+<g class="cell bin1"><title>0.5%, seed 1 · 10 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 3 main, 3 sub, 5 fell behind, 0 behind at the end, 26 never joined</title><rect x="95.0" y="49" width="36" height="26" rx="4"/><text x="112.0" y="66" text-anchor="middle">10</text></g>
+<g class="cell bin2"><title>0.5%, seed 2 · 27 epochs without a fork · 5 main branches ran side by side: trunk at epoch 46, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 50 never joined</title><rect x="133.0" y="49" width="36" height="26" rx="4"/><text x="150.0" y="66" text-anchor="middle">27</text></g>
+<g class="cell bin2"><title>0.5%, seed 3 · 27 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 1 fell behind, 0 behind at the end, 52 never joined</title><rect x="171.0" y="49" width="36" height="26" rx="4"/><text x="188.0" y="66" text-anchor="middle">27</text></g>
+<g class="cell bin2"><title>0.5%, seed 4 · 20 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 4 fell behind, 0 behind at the end, 38 never joined</title><rect x="209.0" y="49" width="36" height="26" rx="4"/><text x="226.0" y="66" text-anchor="middle">20</text></g>
+<g class="cell bin1"><title>0.5%, seed 5 · 17 epochs without a fork · 5 main branches ran side by side: trunk at epoch 38, 5 main, 0 sub, 0 fell behind, 0 behind at the end, 33 never joined</title><rect x="247.0" y="49" width="36" height="26" rx="4"/><text x="264.0" y="66" text-anchor="middle">17</text></g>
+<g class="cell bin1"><title>0.5%, seed 6 · 13 epochs without a fork · 5 main branches ran side by side: trunk at epoch 43, 5 main, 1 sub, 2 fell behind, 0 behind at the end, 35 never joined</title><rect x="285.0" y="49" width="36" height="26" rx="4"/><text x="302.0" y="66" text-anchor="middle">13</text></g>
+<g class="cell bin3"><title>0.5%, seed 7 · 33 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 4 main, 0 sub, 5 fell behind, 0 behind at the end, 41 never joined</title><rect x="323.0" y="49" width="36" height="26" rx="4"/><text x="340.0" y="66" text-anchor="middle">33</text></g>
+<g class="cell bin1"><title>0.5%, seed 8 · 18 epochs without a fork · 5 main branches ran side by side: trunk at epoch 40, 5 main, 0 sub, 0 fell behind, 0 behind at the end, 26 never joined</title><rect x="361.0" y="49" width="36" height="26" rx="4"/><text x="378.0" y="66" text-anchor="middle">18</text></g>
+<g class="cell bin5"><title>0.5%, seed 9 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 1 fell behind, 0 behind at the end, 54 never joined</title><rect x="399.0" y="49" width="36" height="26" rx="4"/><text x="413.0" y="66" text-anchor="middle">50</text><circle class="whole" cx="427.0" cy="62" r="3"/></g>
+<g class="cell bin2"><title>0.5%, seed 10 · 21 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 3 fell behind, 0 behind at the end, 44 never joined</title><rect x="437.0" y="49" width="36" height="26" rx="4"/><text x="454.0" y="66" text-anchor="middle">21</text></g>
+<g class="cell bin1"><title>0.5%, seed 11 · 18 epochs without a fork · 5 main branches ran side by side: trunk at epoch 38, 5 main, 0 sub, 0 fell behind, 0 behind at the end, 39 never joined</title><rect x="475.0" y="49" width="36" height="26" rx="4"/><text x="492.0" y="66" text-anchor="middle">18</text></g>
+<g class="cell bin1"><title>0.5%, seed 12 · 19 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 3 fell behind, 0 behind at the end, 55 never joined</title><rect x="513.0" y="49" width="36" height="26" rx="4"/><text x="530.0" y="66" text-anchor="middle">19</text></g>
+<g class="cell bin2"><title>0.5%, seed 13 · 23 epochs without a fork · 5 main branches ran side by side: trunk at epoch 41, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 43 never joined</title><rect x="551.0" y="49" width="36" height="26" rx="4"/><text x="568.0" y="66" text-anchor="middle">23</text></g>
+<g class="cell bin1"><title>0.5%, seed 14 · 15 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 5 main, 1 sub, 2 fell behind, 0 behind at the end, 46 never joined</title><rect x="589.0" y="49" width="36" height="26" rx="4"/><text x="606.0" y="66" text-anchor="middle">15</text></g>
+<g class="cell bin2"><title>0.5%, seed 15 · 28 epochs without a fork · 5 main branches ran side by side: trunk at epoch 42, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 42 never joined</title><rect x="627.0" y="49" width="36" height="26" rx="4"/><text x="644.0" y="66" text-anchor="middle">28</text></g>
+<g class="cell bin2"><title>0.5%, seed 16 · 29 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 4 main, 0 sub, 1 fell behind, 0 behind at the end, 40 never joined</title><rect x="665.0" y="49" width="36" height="26" rx="4"/><text x="682.0" y="66" text-anchor="middle">29</text></g>
+<g class="cell bin3"><title>0.5%, seed 17 · 32 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 6 fell behind, 0 behind at the end, 48 never joined</title><rect x="703.0" y="49" width="36" height="26" rx="4"/><text x="720.0" y="66" text-anchor="middle">32</text></g>
+<g class="cell bin3"><title>0.5%, seed 18 · 37 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 3 fell behind, 0 behind at the end, 38 never joined</title><rect x="741.0" y="49" width="36" height="26" rx="4"/><text x="758.0" y="66" text-anchor="middle">37</text></g>
+<g class="cell bin2"><title>0.5%, seed 19 · 27 epochs without a fork · 5 main branches ran side by side: trunk at epoch 46, 5 main, 0 sub, 4 fell behind, 0 behind at the end, 40 never joined</title><rect x="779.0" y="49" width="36" height="26" rx="4"/><text x="796.0" y="66" text-anchor="middle">27</text></g>
+<text class="label" x="0" y="96">1%</text>
+<g class="cell bin2"><title>1%, seed 0 · 28 epochs without a fork · 5 main branches ran side by side: trunk at epoch 39, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 42 never joined</title><rect x="57.0" y="79" width="36" height="26" rx="4"/><text x="74.0" y="96" text-anchor="middle">28</text></g>
+<g class="cell bin1"><title>1%, seed 1 · 12 epochs without a fork · 5 main branches ran side by side: trunk at epoch 31, 5 main, 1 sub, 4 fell behind, 0 behind at the end, 22 never joined</title><rect x="95.0" y="79" width="36" height="26" rx="4"/><text x="112.0" y="96" text-anchor="middle">12</text></g>
+<g class="cell bin1"><title>1%, seed 2 · 15 epochs without a fork · 5 main branches ran side by side: trunk at epoch 37, 5 main, 0 sub, 4 fell behind, 0 behind at the end, 33 never joined</title><rect x="133.0" y="79" width="36" height="26" rx="4"/><text x="150.0" y="96" text-anchor="middle">15</text></g>
+<g class="cell bin1"><title>1%, seed 3 · 18 epochs without a fork · 5 main branches ran side by side: trunk at epoch 40, 5 main, 0 sub, 5 fell behind, 0 behind at the end, 36 never joined</title><rect x="171.0" y="79" width="36" height="26" rx="4"/><text x="188.0" y="96" text-anchor="middle">18</text></g>
+<g class="cell bin0"><title>1%, seed 4 · 9 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 4 main, 4 sub, 5 fell behind, 0 behind at the end, 32 never joined</title><rect x="209.0" y="79" width="36" height="26" rx="4"/><text x="226.0" y="96" text-anchor="middle">9</text></g>
+<g class="cell bin0"><title>1%, seed 5 · 8 epochs without a fork · 5 main branches ran side by side: trunk at epoch 41, 5 main, 3 sub, 1 fell behind, 0 behind at the end, 32 never joined</title><rect x="247.0" y="79" width="36" height="26" rx="4"/><text x="264.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin1"><title>1%, seed 6 · 13 epochs without a fork · 5 main branches ran side by side: trunk at epoch 35, 5 main, 0 sub, 0 fell behind, 0 behind at the end, 35 never joined</title><rect x="285.0" y="79" width="36" height="26" rx="4"/><text x="302.0" y="96" text-anchor="middle">13</text></g>
+<g class="cell bin0"><title>1%, seed 7 · 8 epochs without a fork · 5 main branches ran side by side: trunk at epoch 46, 5 main, 2 sub, 6 fell behind, 0 behind at the end, 28 never joined</title><rect x="323.0" y="79" width="36" height="26" rx="4"/><text x="340.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin3"><title>1%, seed 8 · 30 epochs without a fork · 5 main branches ran side by side: trunk at epoch 39, 5 main, 0 sub, 0 fell behind, 0 behind at the end, 28 never joined</title><rect x="361.0" y="79" width="36" height="26" rx="4"/><text x="378.0" y="96" text-anchor="middle">30</text></g>
+<g class="cell bin1"><title>1%, seed 9 · 17 epochs without a fork · 5 main branches ran side by side: trunk at epoch 31, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 29 never joined</title><rect x="399.0" y="79" width="36" height="26" rx="4"/><text x="416.0" y="96" text-anchor="middle">17</text></g>
+<g class="cell bin1"><title>1%, seed 10 · 11 epochs without a fork · 5 main branches ran side by side: trunk at epoch 32, 5 main, 3 sub, 0 fell behind, 0 behind at the end, 19 never joined</title><rect x="437.0" y="79" width="36" height="26" rx="4"/><text x="454.0" y="96" text-anchor="middle">11</text></g>
+<g class="cell bin0"><title>1%, seed 11 · 9 epochs without a fork · 5 main branches ran side by side: trunk at epoch 47, 5 main, 1 sub, 6 fell behind, 1 behind at the end, 32 never joined</title><rect x="475.0" y="79" width="36" height="26" rx="4"/><text x="492.0" y="96" text-anchor="middle">9</text></g>
+<g class="cell bin2"><title>1%, seed 12 · 22 epochs without a fork · 5 main branches ran side by side: trunk at epoch 39, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 42 never joined</title><rect x="513.0" y="79" width="36" height="26" rx="4"/><text x="530.0" y="96" text-anchor="middle">22</text></g>
+<g class="cell bin1"><title>1%, seed 13 · 16 epochs without a fork · 5 main branches ran side by side: trunk at epoch 37, 5 main, 1 sub, 2 fell behind, 0 behind at the end, 30 never joined</title><rect x="551.0" y="79" width="36" height="26" rx="4"/><text x="568.0" y="96" text-anchor="middle">16</text></g>
+<g class="cell bin3"><title>1%, seed 14 · 30 epochs without a fork · 5 main branches ran side by side: trunk at epoch 42, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 46 never joined</title><rect x="589.0" y="79" width="36" height="26" rx="4"/><text x="606.0" y="96" text-anchor="middle">30</text></g>
+<g class="cell bin1"><title>1%, seed 15 · 12 epochs without a fork · 5 main branches ran side by side: trunk at epoch 27, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 29 never joined</title><rect x="627.0" y="79" width="36" height="26" rx="4"/><text x="644.0" y="96" text-anchor="middle">12</text></g>
+<g class="cell bin2"><title>1%, seed 16 · 20 epochs without a fork · 5 main branches ran side by side: trunk at epoch 47, 5 main, 0 sub, 5 fell behind, 0 behind at the end, 34 never joined</title><rect x="665.0" y="79" width="36" height="26" rx="4"/><text x="682.0" y="96" text-anchor="middle">20</text></g>
+<g class="cell bin0"><title>1%, seed 17 · 9 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 4 main, 4 sub, 7 fell behind, 0 behind at the end, 30 never joined</title><rect x="703.0" y="79" width="36" height="26" rx="4"/><text x="720.0" y="96" text-anchor="middle">9</text></g>
+<g class="cell bin2"><title>1%, seed 18 · 29 epochs without a fork · 5 main branches ran side by side: trunk at epoch 40, 5 main, 0 sub, 5 fell behind, 0 behind at the end, 31 never joined</title><rect x="741.0" y="79" width="36" height="26" rx="4"/><text x="758.0" y="96" text-anchor="middle">29</text></g>
+<g class="cell bin1"><title>1%, seed 19 · 11 epochs without a fork · 5 main branches ran side by side: trunk at epoch 47, 5 main, 1 sub, 8 fell behind, 0 behind at the end, 33 never joined</title><rect x="779.0" y="79" width="36" height="26" rx="4"/><text x="796.0" y="96" text-anchor="middle">11</text></g>
+<text class="label" x="0" y="126">5%</text>
+<g class="cell bin0"><title>5%, seed 0 · 9 epochs without a fork · 5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 24 never joined</title><rect x="57.0" y="109" width="36" height="26" rx="4"/><text x="74.0" y="126" text-anchor="middle">9</text></g>
+<g class="cell bin1"><title>5%, seed 1 · 18 epochs without a fork · 5 main branches ran side by side: trunk at epoch 26, 5 main, 1 sub, 0 fell behind, 0 behind at the end, 26 never joined</title><rect x="95.0" y="109" width="36" height="26" rx="4"/><text x="112.0" y="126" text-anchor="middle">18</text></g>
+<g class="cell bin0"><title>5%, seed 2 · 5 epochs without a fork · 5 main branches ran side by side: trunk at epoch 21, 5 main, 2 sub, 12 fell behind, 0 behind at the end, 17 never joined</title><rect x="133.0" y="109" width="36" height="26" rx="4"/><text x="150.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 3 · 2 epochs without a fork · 5 main branches ran side by side: trunk at epoch 14, 5 main, 2 sub, 8 fell behind, 0 behind at the end, 8 never joined</title><rect x="171.0" y="109" width="36" height="26" rx="4"/><text x="188.0" y="126" text-anchor="middle">2</text></g>
+<g class="cell bin0"><title>5%, seed 4 · 8 epochs without a fork · 5 main branches ran side by side: trunk at epoch 22, 5 main, 0 sub, 6 fell behind, 1 behind at the end, 15 never joined</title><rect x="209.0" y="109" width="36" height="26" rx="4"/><text x="226.0" y="126" text-anchor="middle">8</text></g>
+<g class="cell bin1"><title>5%, seed 5 · 13 epochs without a fork · 5 main branches ran side by side: trunk at epoch 17, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 17 never joined</title><rect x="247.0" y="109" width="36" height="26" rx="4"/><text x="264.0" y="126" text-anchor="middle">13</text></g>
+<g class="cell bin1"><title>5%, seed 6 · 10 epochs without a fork · 5 main branches ran side by side: trunk at epoch 32, 5 main, 1 sub, 13 fell behind, 0 behind at the end, 13 never joined</title><rect x="285.0" y="109" width="36" height="26" rx="4"/><text x="302.0" y="126" text-anchor="middle">10</text></g>
+<g class="cell bin0"><title>5%, seed 7 · 4 epochs without a fork · 5 main branches ran side by side: trunk at epoch 24, 5 main, 3 sub, 13 fell behind, 2 behind at the end, 14 never joined</title><rect x="323.0" y="109" width="36" height="26" rx="4"/><text x="340.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin2"><title>5%, seed 8 · 21 epochs without a fork · 5 main branches ran side by side: trunk at epoch 32, 5 main, 0 sub, 10 fell behind, 0 behind at the end, 16 never joined</title><rect x="361.0" y="109" width="36" height="26" rx="4"/><text x="378.0" y="126" text-anchor="middle">21</text></g>
+<g class="cell bin1"><title>5%, seed 9 · 11 epochs without a fork · 5 main branches ran side by side: trunk at epoch 22, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 21 never joined</title><rect x="399.0" y="109" width="36" height="26" rx="4"/><text x="416.0" y="126" text-anchor="middle">11</text></g>
+<g class="cell bin0"><title>5%, seed 10 · 7 epochs without a fork · 5 main branches ran side by side: trunk at epoch 17, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 17 never joined</title><rect x="437.0" y="109" width="36" height="26" rx="4"/><text x="454.0" y="126" text-anchor="middle">7</text></g>
+<g class="cell bin0"><title>5%, seed 11 · 6 epochs without a fork · 5 main branches ran side by side: trunk at epoch 22, 5 main, 0 sub, 5 fell behind, 0 behind at the end, 19 never joined</title><rect x="475.0" y="109" width="36" height="26" rx="4"/><text x="492.0" y="126" text-anchor="middle">6</text></g>
+<g class="cell bin0"><title>5%, seed 12 · 7 epochs without a fork · 5 main branches ran side by side: trunk at epoch 29, 5 main, 0 sub, 7 fell behind, 0 behind at the end, 21 never joined</title><rect x="513.0" y="109" width="36" height="26" rx="4"/><text x="530.0" y="126" text-anchor="middle">7</text></g>
+<g class="cell bin1"><title>5%, seed 13 · 11 epochs without a fork · 5 main branches ran side by side: trunk at epoch 21, 5 main, 0 sub, 5 fell behind, 0 behind at the end, 16 never joined</title><rect x="551.0" y="109" width="36" height="26" rx="4"/><text x="568.0" y="126" text-anchor="middle">11</text></g>
+<g class="cell bin0"><title>5%, seed 14 · 9 epochs without a fork · 5 main branches ran side by side: trunk at epoch 34, 5 main, 1 sub, 8 fell behind, 0 behind at the end, 29 never joined</title><rect x="589.0" y="109" width="36" height="26" rx="4"/><text x="606.0" y="126" text-anchor="middle">9</text></g>
+<g class="cell bin1"><title>5%, seed 15 · 10 epochs without a fork · 5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 17 never joined</title><rect x="627.0" y="109" width="36" height="26" rx="4"/><text x="644.0" y="126" text-anchor="middle">10</text></g>
+<g class="cell bin1"><title>5%, seed 16 · 19 epochs without a fork · 5 main branches ran side by side: trunk at epoch 27, 5 main, 0 sub, 9 fell behind, 0 behind at the end, 16 never joined</title><rect x="665.0" y="109" width="36" height="26" rx="4"/><text x="682.0" y="126" text-anchor="middle">19</text></g>
+<g class="cell bin1"><title>5%, seed 17 · 17 epochs without a fork · 5 main branches ran side by side: trunk at epoch 22, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 20 never joined</title><rect x="703.0" y="109" width="36" height="26" rx="4"/><text x="720.0" y="126" text-anchor="middle">17</text></g>
+<g class="cell bin1"><title>5%, seed 18 · 13 epochs without a fork · 5 main branches ran side by side: trunk at epoch 27, 5 main, 0 sub, 6 fell behind, 1 behind at the end, 20 never joined</title><rect x="741.0" y="109" width="36" height="26" rx="4"/><text x="758.0" y="126" text-anchor="middle">13</text></g>
+<g class="cell bin1"><title>5%, seed 19 · 10 epochs without a fork · 5 main branches ran side by side: trunk at epoch 24, 5 main, 0 sub, 4 fell behind, 0 behind at the end, 22 never joined</title><rect x="779.0" y="109" width="36" height="26" rx="4"/><text x="796.0" y="126" text-anchor="middle">10</text></g>
+</svg>
+<p class="legend"><span><svg class="cell bin0" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>0 to 9</span><span><svg class="cell bin1" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>10 to 19</span><span><svg class="cell bin2" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>20 to 29</span><span><svg class="cell bin3" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>30 to 39</span><span><svg class="cell bin4" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>40 to 49</span><span><svg class="cell bin5" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>50</span><span><svg class="cell bin5" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/><circle class="whole" cx="11" cy="8" r="3"/></svg>whole</span><span><svg class="cell bin5" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/><circle class="behind" cx="11" cy="8" r="2.5"/></svg>one group, members behind</span><span><svg class="cell empty" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>no outcome</span></p>
+<p class="caption">A cell's colour is the epochs its run went without a fork; a dot marks a run that ended whole, a ring one that ended one group with members behind, and no mark one that split or stalled. Its hover text is how the run came out.</p>
+</section>
+<section class="chart" id="off">
+<h2>Members off the trunk at the end</h2>
+<h3>GroupV3</h3>
+<p class="legend"><span><svg class="s1" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>0%</span><span><svg class="s2" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>0.5%</span><span><svg class="s3" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>1%</span><span><svg class="s4" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true"><line class="series" x1="1" x2="21" y1="5" y2="5"/><circle class="key" cx="11" cy="5" r="4"/></svg>5%</span><span><svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true"><line class="measure" x1="11" x2="11" y1="0" y2="14"/></svg>the measurement moved: another chat-sim commit</span></p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 192" width="820" height="192" role="img" aria-label="GroupV3 members off the trunk at the end">
+<line class="grid" x1="36" x2="724" y1="164.0" y2="164.0"/>
+<text class="axis" x="28" y="168.0" text-anchor="end">0</text>
+<line class="grid" x1="36" x2="724" y1="114.0" y2="114.0"/>
+<text class="axis" x="28" y="118.0" text-anchor="end">20</text>
+<line class="grid" x1="36" x2="724" y1="64.0" y2="64.0"/>
+<text class="axis" x="28" y="68.0" text-anchor="end">40</text>
+<line class="grid" x1="36" x2="724" y1="14.0" y2="14.0"/>
+<text class="axis" x="28" y="18.0" text-anchor="end">60</text>
+<text class="axis" x="724.0" y="180" text-anchor="middle">11-21</text>
+<text class="axis" x="663.3" y="180" text-anchor="middle">11-20</text>
+<text class="axis" x="602.6" y="180" text-anchor="middle">11-19</text>
+<text class="axis" x="541.9" y="180" text-anchor="middle">11-19</text>
+<text class="axis" x="481.2" y="180" text-anchor="middle">11-18</text>
+<text class="axis" x="420.5" y="180" text-anchor="middle">11-18</text>
+<text class="axis" x="359.8" y="180" text-anchor="middle">11-17</text>
+<text class="axis" x="299.1" y="180" text-anchor="middle">11-17</text>
+<text class="axis" x="238.4" y="180" text-anchor="middle">11-17</text>
+<text class="axis" x="177.6" y="180" text-anchor="middle">11-16</text>
+<text class="axis" x="116.9" y="180" text-anchor="middle">11-12</text>
+<text class="axis" x="56.2" y="180" text-anchor="middle">11-11</text>
+<line class="measure" x1="197.9" x2="197.9" y1="14" y2="164"/>
+<line class="measure" x1="339.5" x2="339.5" y1="14" y2="164"/>
+<line class="measure" x1="521.6" x2="521.6" y1="14" y2="164"/>
+<line class="measure" x1="602.6" x2="602.6" y1="14" y2="164"/>
+<line class="measure" x1="643.1" x2="643.1" y1="14" y2="164"/>
+<line class="measure" x1="663.3" x2="663.3" y1="14" y2="164"/>
+<line class="measure" x1="703.8" x2="703.8" y1="14" y2="164"/>
+<line class="measure" x1="724.0" x2="724.0" y1="14" y2="164"/>
+<g class="s1">
+<path class="series" d="M602.6 164.0 L622.8 164.0 L643.1 164.0 L663.3 36.5 L683.5 36.5 L703.8 36.5 L724.0 36.5"/>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 0%: a median of 0 members off the trunk at the end</title><circle class="hit" cx="602.6" cy="164.0" r="10.0"/><circle class="marker" cx="602.6" cy="164.0" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 0%: a median of 0 members off the trunk at the end</title><circle class="hit" cx="622.8" cy="164.0" r="10.0"/><circle class="marker" cx="622.8" cy="164.0" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 0%: a median of 0 members off the trunk at the end</title><circle class="hit" cx="643.1" cy="164.0" r="10.0"/><circle class="marker" cx="643.1" cy="164.0" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0%: a median of 51 members off the trunk at the end</title><circle class="hit" cx="663.3" cy="36.5" r="10.0"/><circle class="marker" cx="663.3" cy="36.5" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0%: a median of 51 members off the trunk at the end</title><circle class="hit" cx="683.5" cy="36.5" r="10.0"/><circle class="marker" cx="683.5" cy="36.5" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0%: a median of 51 members off the trunk at the end</title><circle class="hit" cx="703.8" cy="36.5" r="10.0"/><circle class="marker" cx="703.8" cy="36.5" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0%: a median of 51 members off the trunk at the end</title><circle class="hit" cx="724.0" cy="36.5" r="10.0"/><circle class="marker" cx="724.0" cy="36.5" r="4"/></g>
+</g>
+<g class="s2">
+<path class="series" d="M663.3 44.0 L683.5 44.0 L703.8 44.0 L724.0 44.0"/>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 0.5%: a median of 48 members off the trunk at the end</title><circle class="hit" cx="663.3" cy="44.0" r="10.0"/><circle class="marker" cx="663.3" cy="44.0" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 0.5%: a median of 48 members off the trunk at the end</title><circle class="hit" cx="683.5" cy="44.0" r="10.0"/><circle class="marker" cx="683.5" cy="44.0" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 0.5%: a median of 48 members off the trunk at the end</title><circle class="hit" cx="703.8" cy="44.0" r="10.0"/><circle class="marker" cx="703.8" cy="44.0" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 0.5%: a median of 48 members off the trunk at the end</title><circle class="hit" cx="724.0" cy="44.0" r="10.0"/><circle class="marker" cx="724.0" cy="44.0" r="4"/></g>
+</g>
+<g class="s3">
+<path class="series" d="M602.6 161.5 L622.8 161.5 L643.1 161.5 L663.3 46.5 L683.5 46.5 L703.8 46.5 L724.0 46.5"/>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 1%: a median of 1 members off the trunk at the end</title><circle class="hit" cx="602.6" cy="161.5" r="10.0"/><circle class="marker" cx="602.6" cy="161.5" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 1%: a median of 1 members off the trunk at the end</title><circle class="hit" cx="622.8" cy="161.5" r="10.0"/><circle class="marker" cx="622.8" cy="161.5" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 1%: a median of 1 members off the trunk at the end</title><circle class="hit" cx="643.1" cy="161.5" r="10.0"/><circle class="marker" cx="643.1" cy="161.5" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 1%: a median of 47 members off the trunk at the end</title><circle class="hit" cx="663.3" cy="46.5" r="10.0"/><circle class="marker" cx="663.3" cy="46.5" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 1%: a median of 47 members off the trunk at the end</title><circle class="hit" cx="683.5" cy="46.5" r="10.0"/><circle class="marker" cx="683.5" cy="46.5" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 1%: a median of 47 members off the trunk at the end</title><circle class="hit" cx="703.8" cy="46.5" r="10.0"/><circle class="marker" cx="703.8" cy="46.5" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 1%: a median of 47 members off the trunk at the end</title><circle class="hit" cx="724.0" cy="46.5" r="10.0"/><circle class="marker" cx="724.0" cy="46.5" r="4"/></g>
+</g>
+<g class="s4">
+<path class="series" d="M602.6 151.5 L622.8 151.5 L643.1 151.5 L663.3 87.8 L683.5 87.8 L703.8 87.8 L724.0 87.8"/>
+<g><title>2026-11-19 23:21 UTC · main a74ad35 · merged #354 · chat-sim moved to 845b464 · 5%: a median of 5 members off the trunk at the end</title><circle class="hit" cx="602.6" cy="151.5" r="10.0"/><circle class="marker" cx="602.6" cy="151.5" r="4"/></g>
+<g><title>2026-11-19 23:54 UTC · main 66fefb9 · merged #355 · 5%: a median of 5 members off the trunk at the end</title><circle class="hit" cx="622.8" cy="151.5" r="10.0"/><circle class="marker" cx="622.8" cy="151.5" r="4"/></g>
+<g><title>2026-11-20 03:58 UTC · main 66fefb9 · merged none · chat-sim moved to 62de7ee · 5%: a median of 5 members off the trunk at the end</title><circle class="hit" cx="643.1" cy="151.5" r="10.0"/><circle class="marker" cx="643.1" cy="151.5" r="4"/></g>
+<g><title>2026-11-20 12:25 UTC · main 66fefb9 · merged none · chat-sim moved to a610fe1 · 5%: a median of 30.5 members off the trunk at the end</title><circle class="hit" cx="663.3" cy="87.8" r="10.0"/><circle class="marker" cx="663.3" cy="87.8" r="4"/></g>
+<g><title>2026-11-20 16:40 UTC · main ce916b8 · merged #357 · 5%: a median of 30.5 members off the trunk at the end</title><circle class="hit" cx="683.5" cy="87.8" r="10.0"/><circle class="marker" cx="683.5" cy="87.8" r="4"/></g>
+<g><title>2026-11-20 18:28 UTC · main ce916b8 · merged none · chat-sim moved to 11ec241 · 5%: a median of 30.5 members off the trunk at the end</title><circle class="hit" cx="703.8" cy="87.8" r="10.0"/><circle class="marker" cx="703.8" cy="87.8" r="4"/></g>
+<g><title>2026-11-21 01:44 UTC · main ce916b8 · merged none · chat-sim moved to 278bcec · 5%: a median of 30.5 members off the trunk at the end</title><circle class="hit" cx="724.0" cy="87.8" r="10.0"/><circle class="marker" cx="724.0" cy="87.8" r="4"/></g>
+</g>
+<g class="s1">
+<rect class="key" x="742.0" y="35.0" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="40.5">0% 51</text>
+</g>
+<g class="s2">
+<line class="leader" x1="731.0" y1="44.0" x2="741.0" y2="50.5"/>
+<rect class="key" x="742.0" y="49.0" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="54.5">0.5% 48</text>
+</g>
+<g class="s3">
+<line class="leader" x1="731.0" y1="46.5" x2="741.0" y2="64.5"/>
+<rect class="key" x="742.0" y="63.0" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="68.5">1% 47</text>
+</g>
+<g class="s4">
+<rect class="key" x="742.0" y="86.2" width="10" height="3" rx="1.5"/>
+<text class="label" x="756.0" y="91.8">5% 30.5</text>
+</g>
+</svg>
+<p class="caption">Behind at the end, on a line not the trunk, or never joined: the median of each rate's runs. The other half of the goal, drawn of a group once a rate of it has every run whole.</p>
+</section>
+<section id="points">
+<h2>The points</h2>
+<div class="wide"><table class="points">
+<thead><tr><th>When (UTC)</th><th>main</th><th>Pull requests merged</th><th colspan="4">GroupV2 runs whole, of 20</th><th colspan="4">GroupV3 runs whole, of 20</th><th>What moved</th><th>chat-sim</th><th></th></tr>
+<tr><th></th><th></th><th></th><th>0%</th><th>0.5%</th><th>1%</th><th>5%</th><th>0%</th><th>0.5%</th><th>1%</th><th>5%</th><th></th><th></th><th></th></tr></thead>
+<tbody>
+<tr><td>2026-11-21 01:44</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/ce916b886f0379968804b7e62b154c4d5348e4bf"><code>ce916b8</code></a></td><td class="merged"><span class="muted">none</span></td><td>20</td><td>0</td><td>0</td><td>0</td><td>20</td><td>1</td><td>0</td><td>0</td><td class="moved">chat-sim moved</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/278bcec5814142be48f0f45307d3a89da16d8c8b"><code>278bcec</code></a> <span class="muted">moved</span></td><td><a href="main/ce916b886f0379968804b7e62b154c4d5348e4bf/278bcec5814142be48f0f45307d3a89da16d8c8b/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44845197143">the run</a></td></tr>
+<tr><td>2026-11-20 18:28</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/ce916b886f0379968804b7e62b154c4d5348e4bf"><code>ce916b8</code></a></td><td class="merged"><span class="muted">none</span></td><td>20</td><td>0</td><td>0</td><td>0</td><td>20</td><td>1</td><td>0</td><td>0</td><td class="moved">chat-sim moved</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/11ec241cf64f0721ecc8d7c151254b42dd9d9517"><code>11ec241</code></a> <span class="muted">moved</span></td><td><a href="main/ce916b886f0379968804b7e62b154c4d5348e4bf/11ec241cf64f0721ecc8d7c151254b42dd9d9517/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44782289932">the run</a></td></tr>
+<tr><td>2026-11-20 16:40</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/ce916b886f0379968804b7e62b154c4d5348e4bf"><code>ce916b8</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/357">#357</a> feat(GV3): remove signers</td><td>20</td><td>0</td><td>0</td><td>0</td><td>20</td><td>1</td><td>0</td><td>0</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/a610fe1e69a8a2b168ce28bd7a6ce0cc1a403233"><code>a610fe1</code></a></td><td><a href="main/ce916b886f0379968804b7e62b154c4d5348e4bf/a610fe1e69a8a2b168ce28bd7a6ce0cc1a403233/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44764251037">the run</a></td></tr>
+<tr><td>2026-11-20 12:25</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/66fefb994d3c0fc651773f41963f329199566f3f"><code>66fefb9</code></a></td><td class="merged"><span class="muted">none</span></td><td>20</td><td>0</td><td>0</td><td>0</td><td>20</td><td>1</td><td>0</td><td>0</td><td class="moved">GroupV2 1% median 12.5 to 7 · GroupV2 5% median 6 to 4 · GroupV3 1% whole 9 to 0, median 50 to 14 · GroupV3 5% whole 1 to 0, median 50 to 10 · chat-sim moved</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/a610fe1e69a8a2b168ce28bd7a6ce0cc1a403233"><code>a610fe1</code></a> <span class="muted">moved</span></td><td><a href="main/66fefb994d3c0fc651773f41963f329199566f3f/a610fe1e69a8a2b168ce28bd7a6ce0cc1a403233/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44726799292">the run</a></td></tr>
+<tr><td>2026-11-20 03:58</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/66fefb994d3c0fc651773f41963f329199566f3f"><code>66fefb9</code></a></td><td class="merged"><span class="muted">none</span></td><td>20</td><td>-</td><td>0</td><td>0</td><td>20</td><td>-</td><td>9</td><td>1</td><td class="moved">chat-sim moved</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62de7eeaddd4cb1d6e76cc4c4016e7bc8ccba1dd"><code>62de7ee</code></a> <span class="muted">moved</span></td><td><a href="main/66fefb994d3c0fc651773f41963f329199566f3f/62de7eeaddd4cb1d6e76cc4c4016e7bc8ccba1dd/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44667332905">the run</a></td></tr>
+<tr><td>2026-11-19 23:54</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/66fefb994d3c0fc651773f41963f329199566f3f"><code>66fefb9</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/355">#355</a> feat(auth): cache generic over provider</td><td>20</td><td>-</td><td>0</td><td>0</td><td>20</td><td>-</td><td>9</td><td>1</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/845b464831706a03daa388e944c9d71f25cefe6d"><code>845b464</code></a></td><td><a href="main/66fefb994d3c0fc651773f41963f329199566f3f/845b464831706a03daa388e944c9d71f25cefe6d/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44636620028">the run</a></td></tr>
+<tr><td>2026-11-19 23:21</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/a74ad3542eff7726e24d975e3c8bb74df64ab6cc"><code>a74ad35</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/354">#354</a> fix(core): pin sds-rs at its 128 KiB content cap</td><td>20</td><td>-</td><td>0</td><td>0</td><td>20</td><td>-</td><td>9</td><td>1</td><td class="moved">chat-sim moved</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/845b464831706a03daa388e944c9d71f25cefe6d"><code>845b464</code></a> <span class="muted">moved</span></td><td><a href="main/a74ad3542eff7726e24d975e3c8bb74df64ab6cc/845b464831706a03daa388e944c9d71f25cefe6d/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44631592025">the run</a></td></tr>
+<tr><td>2026-11-19 22:17</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/df0700469f329321d1dbcfe78b227ab8767e537b"><code>df07004</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/353">#353</a> chore: switch to the new logos nix cache public key</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62ff08125a72c27e0bdd527a849f0a8d6180cc31"><code>62ff081</code></a></td><td><a href="main/df0700469f329321d1dbcfe78b227ab8767e537b/62ff08125a72c27e0bdd527a849f0a8d6180cc31/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44621393556">the run</a></td></tr>
+<tr><td>2026-11-19 20:17</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/c083dcdc70659b7d0cadd1e19292f35c7afe7e9e"><code>c083dcd</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/348">#348</a> feat(client): report a delivered GroupV3 message</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62ff08125a72c27e0bdd527a849f0a8d6180cc31"><code>62ff081</code></a></td><td><a href="main/c083dcdc70659b7d0cadd1e19292f35c7afe7e9e/62ff08125a72c27e0bdd527a849f0a8d6180cc31/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44601370712">the run</a></td></tr>
+<tr><td>2026-11-19 18:30</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/a3830314c016cb1c77fbfe12950556b0f50f0224"><code>a383031</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/347">#347</a> feat(client): report a conversation&#x27;s debug data</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62ff08125a72c27e0bdd527a849f0a8d6180cc31"><code>62ff081</code></a></td><td><a href="main/a3830314c016cb1c77fbfe12950556b0f50f0224/62ff08125a72c27e0bdd527a849f0a8d6180cc31/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44582190969">the run</a></td></tr>
+<tr><td>2026-11-19 17:04</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/aeea534b99554c03e3ef6db4df47969cf9d5254c"><code>aeea534</code></a></td><td class="merged"><span class="muted">none</span></td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">chat-sim moved</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62ff08125a72c27e0bdd527a849f0a8d6180cc31"><code>62ff081</code></a> <span class="muted">moved</span></td><td><a href="main/aeea534b99554c03e3ef6db4df47969cf9d5254c/62ff08125a72c27e0bdd527a849f0a8d6180cc31/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44565245152">the run</a></td></tr>
+<tr><td>2026-11-18 19:10</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/aeea534b99554c03e3ef6db4df47969cf9d5254c"><code>aeea534</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/350">#350</a> feat(core): Auth Cache</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td><a href="main/aeea534b99554c03e3ef6db4df47969cf9d5254c/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44370682178">the run</a></td></tr>
+<tr><td>2026-11-18 17:09</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/b41a5326b2f8ad0967a3b5368d6f95072db7577f"><code>b41a532</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/345">#345</a> feat(client): name a conversation&#x27;s type</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td><a href="main/b41a5326b2f8ad0967a3b5368d6f95072db7577f/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44348120879">the run</a></td></tr>
+<tr><td>2026-11-18 16:21</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/5094e1cdef9aea0cadb88b5179de996486534a71"><code>5094e1c</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/342">#342</a> fix(core): list a GroupV3 member&#x27;s pending invites<br><a href="https://github.com/logos-messaging/logos-chat/pull/340">#340</a> feat(core): trace a GroupV3 group in its log</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td><a href="main/5094e1cdef9aea0cadb88b5179de996486534a71/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44338813775">the run</a></td></tr>
+<tr><td>2026-11-18 15:26</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/50ce37d5c28372ddef7fe714e75fa5b9112968ca"><code>50ce37d</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/343">#343</a> fix(core): check a GroupV3 key package&#x27;s init key length</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td><a href="main/50ce37d5c28372ddef7fe714e75fa5b9112968ca/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44326420921">the run</a></td></tr>
+<tr><td>2026-11-18 14:39</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/19ab1b59a9c3d6230a0c92db61d25ee776c1c3f4"><code>19ab1b5</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/344">#344</a> fix(core): log a wakeup&#x27;s cached conversations at trace</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td><a href="main/19ab1b59a9c3d6230a0c92db61d25ee776c1c3f4/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44317741148">the run</a></td></tr>
+<tr><td>2026-11-18 03:37</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/3b019188c6ebbda0690fc1737438b005238043ce"><code>3b01918</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/326">#326</a> feat(group-v3): report a group&#x27;s sync state from its beacons</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td><a href="main/3b019188c6ebbda0690fc1737438b005238043ce/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44227334621">the run</a></td></tr>
+<tr><td>2026-11-17 22:00</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/ec106de2586fa6426a537c145b74f67ff2084672"><code>ec106de</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/341">#341</a> feat(core): let a GroupV3 member that is behind catch up</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td><a href="main/ec106de2586fa6426a537c145b74f67ff2084672/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44177806420">the run</a></td></tr>
+<tr><td>2026-11-17 21:26</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/9ccc06b5e307283102aba9f540e63eaab89d042b"><code>9ccc06b</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/329">#329</a> feat: add fork detection header field</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td><a href="main/9ccc06b5e307283102aba9f540e63eaab89d042b/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44173192192">the run</a></td></tr>
+<tr><td>2026-11-17 20:06</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/329408b136d6a78298dbbf40dc4d3dd6cbfaa98c"><code>329408b</code></a></td><td class="merged"><span class="muted">none</span></td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">GroupV2 0% whole - to 20, median - to 50 · GroupV2 1% whole - to 0, median - to 12.5 · GroupV2 5% whole - to 0, median - to 6 · chat-sim moved</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a> <span class="muted">moved</span></td><td><a href="main/329408b136d6a78298dbbf40dc4d3dd6cbfaa98c/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44157462715">the run</a></td></tr>
+<tr><td>2026-11-17 18:46</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/329408b136d6a78298dbbf40dc4d3dd6cbfaa98c"><code>329408b</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/325">#325</a> feat(group-v3): rank fork branches by vouched beacon signers</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td><a href="main/329408b136d6a78298dbbf40dc4d3dd6cbfaa98c/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44150575482">the run</a></td></tr>
+<tr><td>2026-11-17 18:46</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/7961f6214c1ee43d59085073103ff9b85b1f6c39"><code>7961f62</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/320">#320</a> feat(group-v3): re-add a forked member by private external message</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td><a href="main/7961f6214c1ee43d59085073103ff9b85b1f6c39/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44150505833">the run</a></td></tr>
+<tr><td>2026-11-17 18:42</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/8e333c750ececeee0ca1bd169815839ce52e4d2e"><code>8e333c7</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/319">#319</a> feat(group-v3): add the key channel for private external messages</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td><a href="main/8e333c750ececeee0ca1bd169815839ce52e4d2e/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44149358236">the run</a></td></tr>
+<tr><td>2026-11-17 16:44</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/988d867a4ea681b54c81be2c903d6b8e295ae51f"><code>988d867</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/339">#339</a> feat: update GV3 framing structure</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td><a href="main/988d867a4ea681b54c81be2c903d6b8e295ae51f/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44128280842">the run</a></td></tr>
+<tr><td>2026-11-17 15:28</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/2e9ecbb6459eb7ad6cfefb9f17d45e5ec729b170"><code>2e9ecbb</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/336">#336</a> feat(delivery): fetch a lost message from a connected store peer</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td><a href="main/2e9ecbb6459eb7ad6cfefb9f17d45e5ec729b170/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44113778994">the run</a></td></tr>
+<tr><td>2026-11-17 15:11</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/ec7afa6fe02f007e784edf860b425b491ea1e1e4"><code>ec7afa6</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/335">#335</a> feat(core): accept a delivery id reported after publish</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">GroupV2 0% chat-sim did not build · GroupV2 1% chat-sim did not build · GroupV2 5% chat-sim did not build</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td><a href="main/ec7afa6fe02f007e784edf860b425b491ea1e1e4/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44110545406">the run</a></td></tr>
+<tr><td>2026-11-17 01:25</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/1c99aea58f6ade0bd1bfc20426f8317f8fb5380d"><code>1c99aea</code></a></td><td class="merged"><span class="muted">none</span></td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">GroupV2 0% whole - to 20, median - to 50 · GroupV2 1% whole - to 0, median - to 12.5 · GroupV2 5% whole - to 0, median - to 6 · chat-sim moved</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a> <span class="muted">moved</span></td><td><a href="main/1c99aea58f6ade0bd1bfc20426f8317f8fb5380d/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43989511995">the run</a></td></tr>
+<tr><td>2026-11-16 22:39</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/1c99aea58f6ade0bd1bfc20426f8317f8fb5380d"><code>1c99aea</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/334">#334</a> feat(client): create GroupV3 groups by default</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td><a href="main/1c99aea58f6ade0bd1bfc20426f8317f8fb5380d/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43971373678">the run</a></td></tr>
+<tr><td>2026-11-16 22:08</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/d29d9809d0262c48009cf0eaaa2b163945dd08d8"><code>d29d980</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/332">#332</a> ci: run chat-sim on every pull request, and on main</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td><a href="main/d29d9809d0262c48009cf0eaaa2b163945dd08d8/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43966164564">the run</a></td></tr>
+<tr><td>2026-11-16 20:25</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/96172d212c2be583ce3660c74669b44e1b18922c"><code>96172d2</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/338">#338</a> feat(core): finalize the lowest-fingerprint deferred commit</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td><a href="main/96172d212c2be583ce3660c74669b44e1b18922c/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43948753440">the run</a></td></tr>
+<tr><td>2026-11-12 20:28</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/f2fd9ee192061f7c1dce33fe626c335462177cb7"><code>f2fd9ee</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/331">#331</a> feat(core): fetch what SDS reports a GroupV3 member missing<br><a href="https://github.com/logos-messaging/logos-chat/pull/333">#333</a> chore(deps): bump rusqlite to 0.42.0 for RUSTSEC-2026-0502</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">GroupV2 0% chat-sim did not build · GroupV2 1% chat-sim did not build · GroupV2 5% chat-sim did not build</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td><a href="main/f2fd9ee192061f7c1dce33fe626c335462177cb7/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43299230665">the run</a></td></tr>
+<tr><td>2026-11-12 18:05</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/873a19cdbeaa1ccfb91538ec2f3854a39488e608"><code>873a19c</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/323">#323</a> feat: add DeferredCommits</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td><a href="main/873a19cdbeaa1ccfb91538ec2f3854a39488e608/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43268404492">the run</a></td></tr>
+<tr><td>2026-11-12 01:26</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/ffe1c1e7715a3c8c5a01c215df2e20fe1a118e5e"><code>ffe1c1e</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/316">#316</a> feat(core): start GroupV3 joiners at the commit that added them</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td><a href="main/ffe1c1e7715a3c8c5a01c215df2e20fe1a118e5e/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43128937981">the run</a></td></tr>
+<tr><td>2026-11-11 09:01</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/d176754dc4830a206e05be2961ab408b128cda7a"><code>d176754</code></a></td><td class="merged"><a href="https://github.com/logos-messaging/logos-chat/pull/327">#327</a> chore: add justfile for running ci jobs</td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">nothing</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td><a href="main/d176754dc4830a206e05be2961ab408b128cda7a/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/42986640663">the run</a></td></tr>
+<tr><td>2026-11-10 18:00</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/70aa02b87bf8701c38b1e44c5a3ab7da8775bc29"><code>70aa02b</code></a></td><td class="merged"><span class="muted">none</span></td><td>20</td><td>-</td><td>0</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="moved">the first point</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td><a href="main/70aa02b87bf8701c38b1e44c5a3ab7da8775bc29/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/42863878457">the run</a></td></tr>
+</tbody>
+</table></div>
+<p class="caption">What moved is against the point before it: the runs whole and median of epochs without a fork of each group's rate where they changed, or that none of its runs had an outcome. chat-sim is the commit the point measures.</p>
+</section>
+<p class="muted">What a point holds: the guide's <a href="../guide/reports/#logos-chats-runs">Reports</a>.</p>
+</body>
+</html>

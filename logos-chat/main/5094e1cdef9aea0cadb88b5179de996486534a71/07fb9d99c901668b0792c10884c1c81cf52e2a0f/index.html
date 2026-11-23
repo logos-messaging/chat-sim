@@ -1,0 +1,1243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>chat-sim: logos-chat main 5094e1c</title>
+<style>
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;
+--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--grid:#e6e9ed;
+--band:rgba(57,135,229,.18);--rate-1:#86b6ef;--rate-2:#3987e5;--rate-3:#1c5cab;
+--rate-4:#0d366b;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;
+--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;
+--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;
+--grid:#21262d;--band:rgba(109,167,236,.22);--rate-1:#b7d3f6;--rate-2:#6da7ec;
+--rate-3:#2a78d6;--rate-4:#184f95;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;
+--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
+background:var(--bg);font:15px/1.5 system-ui,sans-serif}
+a{color:var(--link)}
+h1{overflow-wrap:anywhere}
+h2{margin-top:2.5rem}
+h3{margin-top:2rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:.25rem 0 1rem;padding:.75rem;overflow-x:auto;font-size:12px;line-height:1.45;
+background:var(--box);border:1px solid var(--line);border-radius:6px}
+.wide{overflow-x:auto}
+table{border-collapse:collapse}
+th,td{padding:.3rem 1.25rem .3rem 0;border-bottom:1px solid var(--line);text-align:left;
+vertical-align:top}
+summary{cursor:pointer}
+.file{margin:.75rem 0 0}
+.muted{color:var(--muted)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.none{color:var(--none)}
+
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.band{fill:var(--band)}
+.measure{stroke:var(--muted);stroke-dasharray:3 3}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.s1{--hue:var(--rate-1)}
+.s2{--hue:var(--rate-2)}
+.s3{--hue:var(--rate-3)}
+.s4{--hue:var(--rate-4)}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.marker.open{fill:var(--bg);stroke:var(--hue)}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+.points td{white-space:nowrap;font-variant-numeric:tabular-nums}
+.points th[colspan]{text-align:center}
+.points .merged{white-space:normal;min-width:14rem}
+.points .moved{white-space:normal;font-size:13px;color:var(--muted);min-width:12rem}
+
+.facts code{font-size:13px}
+.verdict{font-size:1.1em}
+.side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
+.heats{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 3rem}
+.sides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));
+gap:0 2.5rem}
+.sides>div{min-width:0}
+details{margin:.75rem 0}
+details.run>summary{font-size:1.1em;font-weight:600}
+summary span{font-weight:normal;margin-left:.4rem}
+details.text>summary{font-size:13px;color:var(--muted)}
+.who{font-size:14px;margin:.4rem 0}
+.lines,.runs,.rates{font-size:14px}
+.lines th,.lines td{padding:.15rem 1rem .15rem 0}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates th[colspan]{text-align:center}
+.rates td,.runs td.n{white-space:nowrap}
+.spread{margin-top:18px}
+.spread th,.spread td{height:30px;padding:0 .75rem 0 0;border:0;font-size:13px;
+vertical-align:middle;white-space:nowrap}
+.spread th{font-weight:normal;color:var(--muted)}
+.cell .outline{fill:none;stroke-width:2.5}
+.worse .outline{stroke:var(--bad)}
+.better .outline{stroke:var(--good)}
+.tick{stroke:var(--line)}
+.seed{fill:var(--muted);fill-opacity:.55}
+.head{fill:var(--fg);stroke:var(--bg);stroke-width:2}
+</style>
+</head>
+<body>
+<p class="muted"><a href="../../../../">chat-sim</a> / <a href="../../../">Over main</a></p>
+<h1>logos-chat main 5094e1c, 2026-11-18</h1>
+<p class="facts">main <a href="https://github.com/logos-messaging/logos-chat/commit/5094e1cdef9aea0cadb88b5179de996486534a71"><code>5094e1c</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a> · the measurement <a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44338813775">the run</a> · 2026-11-18 16:21 UTC</p>
+<p>Pull requests merged since the point it follows: <a href="https://github.com/logos-messaging/logos-chat/pull/342">#342</a> fix(core): list a GroupV3 member&#x27;s pending invites, <a href="https://github.com/logos-messaging/logos-chat/pull/340">#340</a> feat(core): trace a GroupV3 group in its log. It follows the point of main <a href="../../50ce37d5c28372ddef7fe714e75fa5b9112968ca/07fb9d99c901668b0792c10884c1c81cf52e2a0f/"><code>50ce37d</code></a> at chat-sim <code>07fb9d9</code>.</p>
+<p class="muted">The site keeps the runs' text of the newest 11 points, and no longer this one's: the command under each run makes it again.</p>
+<section class="chart" id="matrix">
+<h2>The matrix</h2>
+<h3>GroupV2</h3>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 816 138" width="816" height="138" role="img" aria-label="The point&#x27;s GroupV2 runs">
+<text class="axis small" x="0" y="11">seed</text>
+<text class="axis small" x="75.0" y="11" text-anchor="middle">0</text>
+<text class="axis small" x="113.0" y="11" text-anchor="middle">1</text>
+<text class="axis small" x="151.0" y="11" text-anchor="middle">2</text>
+<text class="axis small" x="189.0" y="11" text-anchor="middle">3</text>
+<text class="axis small" x="227.0" y="11" text-anchor="middle">4</text>
+<text class="axis small" x="265.0" y="11" text-anchor="middle">5</text>
+<text class="axis small" x="303.0" y="11" text-anchor="middle">6</text>
+<text class="axis small" x="341.0" y="11" text-anchor="middle">7</text>
+<text class="axis small" x="379.0" y="11" text-anchor="middle">8</text>
+<text class="axis small" x="417.0" y="11" text-anchor="middle">9</text>
+<text class="axis small" x="455.0" y="11" text-anchor="middle">10</text>
+<text class="axis small" x="493.0" y="11" text-anchor="middle">11</text>
+<text class="axis small" x="531.0" y="11" text-anchor="middle">12</text>
+<text class="axis small" x="569.0" y="11" text-anchor="middle">13</text>
+<text class="axis small" x="607.0" y="11" text-anchor="middle">14</text>
+<text class="axis small" x="645.0" y="11" text-anchor="middle">15</text>
+<text class="axis small" x="683.0" y="11" text-anchor="middle">16</text>
+<text class="axis small" x="721.0" y="11" text-anchor="middle">17</text>
+<text class="axis small" x="759.0" y="11" text-anchor="middle">18</text>
+<text class="axis small" x="797.0" y="11" text-anchor="middle">19</text>
+<text class="label" x="0" y="36">0%</text>
+<g class="cell bin5"><title>0%, seed 0 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="57.0" y="19" width="36" height="26" rx="4"/><text x="71.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="85.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 1 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="95.0" y="19" width="36" height="26" rx="4"/><text x="109.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="123.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 2 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="133.0" y="19" width="36" height="26" rx="4"/><text x="147.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="161.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 3 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="171.0" y="19" width="36" height="26" rx="4"/><text x="185.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="199.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 4 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="209.0" y="19" width="36" height="26" rx="4"/><text x="223.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="237.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 5 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="247.0" y="19" width="36" height="26" rx="4"/><text x="261.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="275.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 6 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="285.0" y="19" width="36" height="26" rx="4"/><text x="299.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="313.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 7 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="323.0" y="19" width="36" height="26" rx="4"/><text x="337.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="351.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 8 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="361.0" y="19" width="36" height="26" rx="4"/><text x="375.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="389.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 9 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="399.0" y="19" width="36" height="26" rx="4"/><text x="413.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="427.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 10 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="437.0" y="19" width="36" height="26" rx="4"/><text x="451.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="465.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 11 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="475.0" y="19" width="36" height="26" rx="4"/><text x="489.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="503.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 12 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="513.0" y="19" width="36" height="26" rx="4"/><text x="527.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="541.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 13 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="551.0" y="19" width="36" height="26" rx="4"/><text x="565.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="579.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 14 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="589.0" y="19" width="36" height="26" rx="4"/><text x="603.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="617.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 15 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="627.0" y="19" width="36" height="26" rx="4"/><text x="641.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="655.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 16 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="665.0" y="19" width="36" height="26" rx="4"/><text x="679.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="693.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 17 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="703.0" y="19" width="36" height="26" rx="4"/><text x="717.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="731.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 18 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="741.0" y="19" width="36" height="26" rx="4"/><text x="755.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="769.0" cy="32" r="3"/></g>
+<g class="cell bin5"><title>0%, seed 19 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="779.0" y="19" width="36" height="26" rx="4"/><text x="793.0" y="36" text-anchor="middle">50</text><circle class="whole" cx="807.0" cy="32" r="3"/></g>
+<text class="label" x="0" y="66">0.1%</text>
+<g class="cell bin5"><title>0.1%, seed 0 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="57.0" y="49" width="36" height="26" rx="4"/><text x="71.0" y="66" text-anchor="middle">50</text><circle class="whole" cx="85.0" cy="62" r="3"/></g>
+<g class="cell bin4"><title>0.1%, seed 1 · 46 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</title><rect x="95.0" y="49" width="36" height="26" rx="4"/><text x="112.0" y="66" text-anchor="middle">46</text></g>
+<g class="cell bin3"><title>0.1%, seed 2 · 36 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</title><rect x="133.0" y="49" width="36" height="26" rx="4"/><text x="150.0" y="66" text-anchor="middle">36</text></g>
+<g class="cell bin2"><title>0.1%, seed 3 · 22 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="171.0" y="49" width="36" height="26" rx="4"/><text x="188.0" y="66" text-anchor="middle">22</text></g>
+<g class="cell bin4"><title>0.1%, seed 4 · 41 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="209.0" y="49" width="36" height="26" rx="4"/><text x="226.0" y="66" text-anchor="middle">41</text></g>
+<g class="cell bin4"><title>0.1%, seed 5 · 42 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="247.0" y="49" width="36" height="26" rx="4"/><text x="264.0" y="66" text-anchor="middle">42</text></g>
+<g class="cell bin4"><title>0.1%, seed 6 · 41 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</title><rect x="285.0" y="49" width="36" height="26" rx="4"/><text x="302.0" y="66" text-anchor="middle">41</text></g>
+<g class="cell bin2"><title>0.1%, seed 7 · 26 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 1 never joined</title><rect x="323.0" y="49" width="36" height="26" rx="4"/><text x="340.0" y="66" text-anchor="middle">26</text></g>
+<g class="cell bin4"><title>0.1%, seed 8 · 40 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="361.0" y="49" width="36" height="26" rx="4"/><text x="378.0" y="66" text-anchor="middle">40</text></g>
+<g class="cell bin1"><title>0.1%, seed 9 · 18 epochs without a fork · every member of the plan was seated: trunk at epoch 18, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 32 never joined</title><rect x="399.0" y="49" width="36" height="26" rx="4"/><text x="416.0" y="66" text-anchor="middle">18</text></g>
+<g class="cell bin5"><title>0.1%, seed 10 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="437.0" y="49" width="36" height="26" rx="4"/><text x="451.0" y="66" text-anchor="middle">50</text><circle class="whole" cx="465.0" cy="62" r="3"/></g>
+<g class="cell bin3"><title>0.1%, seed 11 · 37 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 2 fell behind, 2 behind at the end, 0 never joined</title><rect x="475.0" y="49" width="36" height="26" rx="4"/><text x="492.0" y="66" text-anchor="middle">37</text></g>
+<g class="cell bin5"><title>0.1%, seed 12 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 3 fell behind, 3 behind at the end, 0 never joined</title><rect x="513.0" y="49" width="36" height="26" rx="4"/><text x="527.0" y="66" text-anchor="middle">50</text><circle class="behind" cx="541.0" cy="62" r="2.5"/></g>
+<g class="cell bin2"><title>0.1%, seed 13 · 21 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="551.0" y="49" width="36" height="26" rx="4"/><text x="568.0" y="66" text-anchor="middle">21</text></g>
+<g class="cell bin3"><title>0.1%, seed 14 · 34 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="589.0" y="49" width="36" height="26" rx="4"/><text x="606.0" y="66" text-anchor="middle">34</text></g>
+<g class="cell bin2"><title>0.1%, seed 15 · 27 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</title><rect x="627.0" y="49" width="36" height="26" rx="4"/><text x="644.0" y="66" text-anchor="middle">27</text></g>
+<g class="cell bin2"><title>0.1%, seed 16 · 24 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</title><rect x="665.0" y="49" width="36" height="26" rx="4"/><text x="682.0" y="66" text-anchor="middle">24</text></g>
+<g class="cell bin5"><title>0.1%, seed 17 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 2 fell behind, 2 behind at the end, 0 never joined</title><rect x="703.0" y="49" width="36" height="26" rx="4"/><text x="717.0" y="66" text-anchor="middle">50</text><circle class="behind" cx="731.0" cy="62" r="2.5"/></g>
+<g class="cell bin3"><title>0.1%, seed 18 · 36 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</title><rect x="741.0" y="49" width="36" height="26" rx="4"/><text x="758.0" y="66" text-anchor="middle">36</text></g>
+<g class="cell bin5"><title>0.1%, seed 19 · 50 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 3 fell behind, 3 behind at the end, 0 never joined</title><rect x="779.0" y="49" width="36" height="26" rx="4"/><text x="793.0" y="66" text-anchor="middle">50</text><circle class="behind" cx="807.0" cy="62" r="2.5"/></g>
+<text class="label" x="0" y="96">1%</text>
+<g class="cell bin1"><title>1%, seed 0 · 18 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined</title><rect x="57.0" y="79" width="36" height="26" rx="4"/><text x="74.0" y="96" text-anchor="middle">18</text></g>
+<g class="cell bin0"><title>1%, seed 1 · 9 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined</title><rect x="95.0" y="79" width="36" height="26" rx="4"/><text x="112.0" y="96" text-anchor="middle">9</text></g>
+<g class="cell bin1"><title>1%, seed 2 · 19 epochs without a fork · no member took part: trunk at epoch 32, 2 main, 0 sub, 5 fell behind, 5 behind at the end, 0 never joined</title><rect x="133.0" y="79" width="36" height="26" rx="4"/><text x="150.0" y="96" text-anchor="middle">19</text></g>
+<g class="cell bin0"><title>1%, seed 3 · 8 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 17 fell behind, 11 behind at the end, 1 never joined</title><rect x="171.0" y="79" width="36" height="26" rx="4"/><text x="188.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>1%, seed 4 · 8 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 9 behind at the end, 0 never joined</title><rect x="209.0" y="79" width="36" height="26" rx="4"/><text x="226.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>1%, seed 5 · 8 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 17 fell behind, 11 behind at the end, 1 never joined</title><rect x="247.0" y="79" width="36" height="26" rx="4"/><text x="264.0" y="96" text-anchor="middle">8</text></g>
+<g class="cell bin2"><title>1%, seed 6 · 21 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 19 fell behind, 13 behind at the end, 1 never joined</title><rect x="285.0" y="79" width="36" height="26" rx="4"/><text x="302.0" y="96" text-anchor="middle">21</text></g>
+<g class="cell bin1"><title>1%, seed 7 · 10 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 21 fell behind, 14 behind at the end, 1 never joined</title><rect x="323.0" y="79" width="36" height="26" rx="4"/><text x="340.0" y="96" text-anchor="middle">10</text></g>
+<g class="cell bin1"><title>1%, seed 8 · 13 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 15 main, 0 sub, 16 fell behind, 8 behind at the end, 0 never joined</title><rect x="361.0" y="79" width="36" height="26" rx="4"/><text x="378.0" y="96" text-anchor="middle">13</text></g>
+<g class="cell bin0"><title>1%, seed 9 · 6 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 7 main, 0 sub, 10 fell behind, 7 behind at the end, 2 never joined</title><rect x="399.0" y="79" width="36" height="26" rx="4"/><text x="416.0" y="96" text-anchor="middle">6</text></g>
+<g class="cell bin1"><title>1%, seed 10 · 12 epochs without a fork · no member took part: trunk at epoch 18, 4 main, 0 sub, 5 fell behind, 3 behind at the end, 0 never joined</title><rect x="437.0" y="79" width="36" height="26" rx="4"/><text x="454.0" y="96" text-anchor="middle">12</text></g>
+<g class="cell bin0"><title>1%, seed 11 · 5 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 15 fell behind, 8 behind at the end, 1 never joined</title><rect x="475.0" y="79" width="36" height="26" rx="4"/><text x="492.0" y="96" text-anchor="middle">5</text></g>
+<g class="cell bin1"><title>1%, seed 12 · 18 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 7 main, 0 sub, 15 fell behind, 9 behind at the end, 0 never joined</title><rect x="513.0" y="79" width="36" height="26" rx="4"/><text x="530.0" y="96" text-anchor="middle">18</text></g>
+<g class="cell bin2"><title>1%, seed 13 · 23 epochs without a fork · no member took part: trunk at epoch 27, 2 main, 0 sub, 24 fell behind, 24 behind at the end, 2 never joined</title><rect x="551.0" y="79" width="36" height="26" rx="4"/><text x="568.0" y="96" text-anchor="middle">23</text></g>
+<g class="cell bin1"><title>1%, seed 14 · 17 epochs without a fork · every member of the plan was seated: trunk at epoch 46, 12 main, 0 sub, 13 fell behind, 7 behind at the end, 2 never joined</title><rect x="589.0" y="79" width="36" height="26" rx="4"/><text x="606.0" y="96" text-anchor="middle">17</text></g>
+<g class="cell bin1"><title>1%, seed 15 · 15 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 7 main, 0 sub, 16 fell behind, 10 behind at the end, 2 never joined</title><rect x="627.0" y="79" width="36" height="26" rx="4"/><text x="644.0" y="96" text-anchor="middle">15</text></g>
+<g class="cell bin1"><title>1%, seed 16 · 11 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 7 fell behind, 3 behind at the end, 0 never joined</title><rect x="665.0" y="79" width="36" height="26" rx="4"/><text x="682.0" y="96" text-anchor="middle">11</text></g>
+<g class="cell bin1"><title>1%, seed 17 · 15 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 13 fell behind, 10 behind at the end, 0 never joined</title><rect x="703.0" y="79" width="36" height="26" rx="4"/><text x="720.0" y="96" text-anchor="middle">15</text></g>
+<g class="cell bin0"><title>1%, seed 18 · 3 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 15 fell behind, 9 behind at the end, 0 never joined</title><rect x="741.0" y="79" width="36" height="26" rx="4"/><text x="758.0" y="96" text-anchor="middle">3</text></g>
+<g class="cell bin1"><title>1%, seed 19 · 19 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 12 fell behind, 6 behind at the end, 0 never joined</title><rect x="779.0" y="79" width="36" height="26" rx="4"/><text x="796.0" y="96" text-anchor="middle">19</text></g>
+<text class="label" x="0" y="126">5%</text>
+<g class="cell bin0"><title>5%, seed 0 · 8 epochs without a fork · no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined</title><rect x="57.0" y="109" width="36" height="26" rx="4"/><text x="74.0" y="126" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>5%, seed 1 · 3 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined</title><rect x="95.0" y="109" width="36" height="26" rx="4"/><text x="112.0" y="126" text-anchor="middle">3</text></g>
+<g class="cell bin0"><title>5%, seed 2 · 4 epochs without a fork · no member took part: trunk at epoch 4, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 2 never joined</title><rect x="133.0" y="109" width="36" height="26" rx="4"/><text x="150.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>5%, seed 3 · 6 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 21 main, 0 sub, 40 fell behind, 17 behind at the end, 2 never joined</title><rect x="171.0" y="109" width="36" height="26" rx="4"/><text x="188.0" y="126" text-anchor="middle">6</text></g>
+<g class="cell bin0"><title>5%, seed 4 · 5 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 22 main, 0 sub, 41 fell behind, 18 behind at the end, 2 never joined</title><rect x="209.0" y="109" width="36" height="26" rx="4"/><text x="226.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 5 · 8 epochs without a fork · no member took part: trunk at epoch 30, 15 main, 0 sub, 19 fell behind, 13 behind at the end, 1 never joined</title><rect x="247.0" y="109" width="36" height="26" rx="4"/><text x="264.0" y="126" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>5%, seed 6 · 8 epochs without a fork · no member took part: trunk at epoch 16, 4 main, 0 sub, 4 fell behind, 2 behind at the end, 1 never joined</title><rect x="285.0" y="109" width="36" height="26" rx="4"/><text x="302.0" y="126" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>5%, seed 7 · 9 epochs without a fork · no member took part: trunk at epoch 10, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 2 never joined</title><rect x="323.0" y="109" width="36" height="26" rx="4"/><text x="340.0" y="126" text-anchor="middle">9</text></g>
+<g class="cell bin0"><title>5%, seed 8 · 9 epochs without a fork · no member took part: trunk at epoch 9, 2 main, 0 sub, 3 fell behind, 3 behind at the end, 1 never joined</title><rect x="361.0" y="109" width="36" height="26" rx="4"/><text x="378.0" y="126" text-anchor="middle">9</text></g>
+<g class="cell bin0"><title>5%, seed 9 · 5 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 35 fell behind, 18 behind at the end, 3 never joined</title><rect x="399.0" y="109" width="36" height="26" rx="4"/><text x="416.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 10 · 5 epochs without a fork · every member of the plan was seated: trunk at epoch 49, 15 main, 0 sub, 28 fell behind, 13 behind at the end, 3 never joined</title><rect x="437.0" y="109" width="36" height="26" rx="4"/><text x="454.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 11 · 5 epochs without a fork · the trunk reached epoch 50: trunk at epoch 50, 16 main, 0 sub, 32 fell behind, 15 behind at the end, 7 never joined</title><rect x="475.0" y="109" width="36" height="26" rx="4"/><text x="492.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin0"><title>5%, seed 12 · 5 epochs without a fork · no member took part: trunk at epoch 5, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 2 never joined</title><rect x="513.0" y="109" width="36" height="26" rx="4"/><text x="530.0" y="126" text-anchor="middle">5</text></g>
+<g class="cell bin1"><title>5%, seed 13 · 11 epochs without a fork · every member of the plan was seated: trunk at epoch 23, 8 main, 0 sub, 8 fell behind, 7 behind at the end, 21 never joined</title><rect x="551.0" y="109" width="36" height="26" rx="4"/><text x="568.0" y="126" text-anchor="middle">11</text></g>
+<g class="cell bin0"><title>5%, seed 14 · 8 epochs without a fork · every member of the plan was seated: trunk at epoch 18, 24 main, 0 sub, 6 fell behind, 3 behind at the end, 6 never joined</title><rect x="589.0" y="109" width="36" height="26" rx="4"/><text x="606.0" y="126" text-anchor="middle">8</text></g>
+<g class="cell bin0"><title>5%, seed 15 · 6 epochs without a fork · every member of the plan was seated: trunk at epoch 7, 3 main, 0 sub, 2 fell behind, 2 behind at the end, 44 never joined</title><rect x="627.0" y="109" width="36" height="26" rx="4"/><text x="644.0" y="126" text-anchor="middle">6</text></g>
+<g class="cell bin0"><title>5%, seed 16 · 4 epochs without a fork · no member took part: trunk at epoch 4, 1 main, 0 sub, 1 fell behind, 1 behind at the end, 1 never joined</title><rect x="665.0" y="109" width="36" height="26" rx="4"/><text x="682.0" y="126" text-anchor="middle">4</text></g>
+<g class="cell bin0"><title>5%, seed 17 · 6 epochs without a fork · every member of the plan was seated: trunk at epoch 41, 15 main, 0 sub, 25 fell behind, 13 behind at the end, 11 never joined</title><rect x="703.0" y="109" width="36" height="26" rx="4"/><text x="720.0" y="126" text-anchor="middle">6</text></g>
+<g class="cell bin1"><title>5%, seed 18 · 18 epochs without a fork · no member took part: trunk at epoch 25, 4 main, 0 sub, 13 fell behind, 9 behind at the end, 5 never joined</title><rect x="741.0" y="109" width="36" height="26" rx="4"/><text x="758.0" y="126" text-anchor="middle">18</text></g>
+<g class="cell bin0"><title>5%, seed 19 · 6 epochs without a fork · no member took part: trunk at epoch 29, 9 main, 0 sub, 19 fell behind, 12 behind at the end, 1 never joined</title><rect x="779.0" y="109" width="36" height="26" rx="4"/><text x="796.0" y="126" text-anchor="middle">6</text></g>
+</svg>
+<p class="legend"><span><svg class="cell bin0" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>0 to 9</span><span><svg class="cell bin1" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>10 to 19</span><span><svg class="cell bin2" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>20 to 29</span><span><svg class="cell bin3" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>30 to 39</span><span><svg class="cell bin4" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>40 to 49</span><span><svg class="cell bin5" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>50</span><span><svg class="cell bin5" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/><circle class="whole" cx="11" cy="8" r="3"/></svg>whole</span><span><svg class="cell bin5" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/><circle class="behind" cx="11" cy="8" r="2.5"/></svg>one group, members behind</span><span><svg class="cell empty" width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><rect x="0" y="0" width="22" height="16" rx="3"/></svg>no outcome</span></p>
+<p class="caption">A row a group's rate and a column a seed: a cell's colour is the epochs its run went without a fork; a dot marks a run that ended whole, a ring one that ended one group with members behind, and no mark one that split or stalled. Its hover text is how the run came out.</p>
+</section>
+<section id="rates">
+<h2>The rates</h2>
+<div class="wide"><table class="rates">
+<thead><tr><th rowspan="2">Group</th><th rowspan="2">Loss</th><th rowspan="2" class="n">Runs</th><th rowspan="2" class="n">Whole</th><th rowspan="2" class="n">Behind</th><th rowspan="2" class="n">Split</th><th rowspan="2" class="n">Stalled</th><th rowspan="2" class="n">No outcome</th><th colspan="3">Epochs without a fork</th><th rowspan="2" class="n">Off the trunk at the end, median</th><th rowspan="2">A run's wall time</th></tr>
+<tr><th class="n">lowest</th><th class="n">median</th><th class="n">highest</th></tr></thead>
+<tbody>
+<tr><td>GroupV2</td><td>0%</td><td class="n">20</td><td class="n">20</td><td class="n">0</td><td class="n">0</td><td class="n">0</td><td class="n">0</td><td class="n">50</td><td class="n">50</td><td class="n">50</td><td class="n">0</td><td>-</td></tr>
+<tr><td>GroupV2</td><td>0.1%</td><td class="n">20</td><td class="n">2</td><td class="n">3</td><td class="n">15</td><td class="n">0</td><td class="n">0</td><td class="n">18</td><td class="n">38.5</td><td class="n">50</td><td class="n">2</td><td>-</td></tr>
+<tr><td>GroupV2</td><td>1%</td><td class="n">20</td><td class="n">0</td><td class="n">0</td><td class="n">20</td><td class="n">0</td><td class="n">0</td><td class="n">3</td><td class="n">12.5</td><td class="n">23</td><td class="n">19</td><td>-</td></tr>
+<tr><td>GroupV2</td><td>5%</td><td class="n">20</td><td class="n">0</td><td class="n">0</td><td class="n">19</td><td class="n">1</td><td class="n">0</td><td class="n">3</td><td class="n">6</td><td class="n">18</td><td class="n">32.5</td><td>-</td></tr>
+</tbody>
+</table></div>
+<p class="caption">Whole: one group, every member that joined at its tip, at epoch 50; behind: one group, some members behind; stalled: one group that stopped growing short of 50; split: it forked. Off the trunk: behind at the end, on a line not the trunk, or never joined. A run's wall time is the runner's, while its run.json is kept.</p>
+</section>
+<section id="runs">
+<h2>The runs</h2>
+<details>
+<summary>GroupV2 0% <span class="muted">20 runs</span></summary>
+<div class="wide"><table class="runs">
+<thead><tr><th class="n">seed</th><th class="n">epochs without a fork</th><th>how it ended</th><th>what the grow came to</th><th class="n">wall time</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">1</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">2</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">3</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">4</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">5</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">6</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">7</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">8</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">9</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">10</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">11</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">12</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">13</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">14</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">15</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">16</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">17</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">18</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">19</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+</tbody>
+</table></div>
+<details class="run">
+<summary>seed 0 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-0</pre>
+</details>
+<details class="run">
+<summary>seed 1 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-1</pre>
+</details>
+<details class="run">
+<summary>seed 2 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 3 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-2</pre>
+</details>
+<details class="run">
+<summary>seed 3 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 4 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-3</pre>
+</details>
+<details class="run">
+<summary>seed 4 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-4</pre>
+</details>
+<details class="run">
+<summary>seed 5 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 6 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-5</pre>
+</details>
+<details class="run">
+<summary>seed 6 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 7 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-6</pre>
+</details>
+<details class="run">
+<summary>seed 7 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 8 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-7</pre>
+</details>
+<details class="run">
+<summary>seed 8 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 9 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-8</pre>
+</details>
+<details class="run">
+<summary>seed 9 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 10 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-9</pre>
+</details>
+<details class="run">
+<summary>seed 10 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 11 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-10</pre>
+</details>
+<details class="run">
+<summary>seed 11 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 12 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-11</pre>
+</details>
+<details class="run">
+<summary>seed 12 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 13 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-12</pre>
+</details>
+<details class="run">
+<summary>seed 13 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-13</pre>
+</details>
+<details class="run">
+<summary>seed 14 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 15 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-14</pre>
+</details>
+<details class="run">
+<summary>seed 15 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 16 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-15</pre>
+</details>
+<details class="run">
+<summary>seed 16 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 17 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-16</pre>
+</details>
+<details class="run">
+<summary>seed 17 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 18 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-17</pre>
+</details>
+<details class="run">
+<summary>seed 18 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 19 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-18</pre>
+</details>
+<details class="run">
+<summary>seed 19 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 20 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-19</pre>
+</details>
+</details>
+<details>
+<summary>GroupV2 0.1% <span class="muted">20 runs</span></summary>
+<div class="wide"><table class="runs">
+<thead><tr><th class="n">seed</th><th class="n">epochs without a fork</th><th>how it ended</th><th>what the grow came to</th><th class="n">wall time</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">1</td><td class="n">46</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">2</td><td class="n">36</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">3</td><td class="n">22</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">4</td><td class="n">41</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">5</td><td class="n">42</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">6</td><td class="n">41</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">7</td><td class="n">26</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">8</td><td class="n">40</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">9</td><td class="n">18</td><td>split</td><td>every member of the plan was seated: trunk at epoch 18, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 32 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">10</td><td class="n">50</td><td>whole</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">11</td><td class="n">37</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 2 fell behind, 2 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">12</td><td class="n">50</td><td>behind</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 3 fell behind, 3 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">13</td><td class="n">21</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">14</td><td class="n">34</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">15</td><td class="n">27</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">16</td><td class="n">24</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">17</td><td class="n">50</td><td>behind</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 2 fell behind, 2 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">18</td><td class="n">36</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">19</td><td class="n">50</td><td>behind</td><td>the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 3 fell behind, 3 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+</tbody>
+</table></div>
+<details class="run">
+<summary>seed 0 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-0</pre>
+</details>
+<details class="run">
+<summary>seed 1 <span class="muted">split at 46, 1 line and 2 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 46 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-1</pre>
+</details>
+<details class="run">
+<summary>seed 2 <span class="muted">split at 36, 1 line and 2 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 36 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 3 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-2</pre>
+</details>
+<details class="run">
+<summary>seed 3 <span class="muted">split at 22, 2 lines and 2 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 22 · the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 4 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-3</pre>
+</details>
+<details class="run">
+<summary>seed 4 <span class="muted">split at 41, 1 line and 1 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 41 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-4</pre>
+</details>
+<details class="run">
+<summary>seed 5 <span class="muted">split at 42, 1 line and 1 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 42 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 6 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-5</pre>
+</details>
+<details class="run">
+<summary>seed 6 <span class="muted">split at 41, 1 line and 2 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 41 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 7 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-6</pre>
+</details>
+<details class="run">
+<summary>seed 7 <span class="muted">split at 26, 1 line and 2 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 26 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 8 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-7</pre>
+</details>
+<details class="run">
+<summary>seed 8 <span class="muted">split at 40, 1 line and 1 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 40 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 9 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-8</pre>
+</details>
+<details class="run">
+<summary>seed 9 <span class="muted">split at 18, 1 line and 50 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 18 · every member of the plan was seated: trunk at epoch 18, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 32 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 10 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-9</pre>
+</details>
+<details class="run">
+<summary>seed 10 <span class="muted">50 whole</span></summary>
+<div>
+<p>whole · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 11 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-10</pre>
+</details>
+<details class="run">
+<summary>seed 11 <span class="muted">split at 37, 1 line and 3 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 37 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 2 fell behind, 2 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 12 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-11</pre>
+</details>
+<details class="run">
+<summary>seed 12 <span class="muted">50, behind, 3 of 51 members off the trunk</span></summary>
+<div>
+<p>whole, members behind · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 3 fell behind, 3 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 13 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-12</pre>
+</details>
+<details class="run">
+<summary>seed 13 <span class="muted">split at 21, 1 line and 1 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 21 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-13</pre>
+</details>
+<details class="run">
+<summary>seed 14 <span class="muted">split at 34, 1 line and 1 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 34 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 15 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-14</pre>
+</details>
+<details class="run">
+<summary>seed 15 <span class="muted">split at 27, 1 line and 2 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 27 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 16 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-15</pre>
+</details>
+<details class="run">
+<summary>seed 16 <span class="muted">split at 24, 1 line and 1 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 24 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 17 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-16</pre>
+</details>
+<details class="run">
+<summary>seed 17 <span class="muted">50, behind, 2 of 51 members off the trunk</span></summary>
+<div>
+<p>whole, members behind · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 2 fell behind, 2 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 18 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-17</pre>
+</details>
+<details class="run">
+<summary>seed 18 <span class="muted">split at 36, 1 line and 3 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 36 · the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 19 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-18</pre>
+</details>
+<details class="run">
+<summary>seed 19 <span class="muted">50, behind, 3 of 51 members off the trunk</span></summary>
+<div>
+<p>whole, members behind · the trunk reached epoch 50: trunk at epoch 50, 1 main, 0 sub, 3 fell behind, 3 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 20 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-19</pre>
+</details>
+</details>
+<details>
+<summary>GroupV2 1% <span class="muted">20 runs</span></summary>
+<div class="wide"><table class="runs">
+<thead><tr><th class="n">seed</th><th class="n">epochs without a fork</th><th>how it ended</th><th>what the grow came to</th><th class="n">wall time</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td class="n">18</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">1</td><td class="n">9</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">2</td><td class="n">19</td><td>split</td><td>no member took part: trunk at epoch 32, 2 main, 0 sub, 5 fell behind, 5 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">3</td><td class="n">8</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 17 fell behind, 11 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">4</td><td class="n">8</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 9 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">5</td><td class="n">8</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 17 fell behind, 11 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">6</td><td class="n">21</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 19 fell behind, 13 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">7</td><td class="n">10</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 21 fell behind, 14 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">8</td><td class="n">13</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 15 main, 0 sub, 16 fell behind, 8 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">9</td><td class="n">6</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 7 main, 0 sub, 10 fell behind, 7 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">10</td><td class="n">12</td><td>split</td><td>no member took part: trunk at epoch 18, 4 main, 0 sub, 5 fell behind, 3 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">11</td><td class="n">5</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 15 fell behind, 8 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">12</td><td class="n">18</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 7 main, 0 sub, 15 fell behind, 9 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">13</td><td class="n">23</td><td>split</td><td>no member took part: trunk at epoch 27, 2 main, 0 sub, 24 fell behind, 24 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">14</td><td class="n">17</td><td>split</td><td>every member of the plan was seated: trunk at epoch 46, 12 main, 0 sub, 13 fell behind, 7 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">15</td><td class="n">15</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 7 main, 0 sub, 16 fell behind, 10 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">16</td><td class="n">11</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 7 fell behind, 3 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">17</td><td class="n">15</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 13 fell behind, 10 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">18</td><td class="n">3</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 15 fell behind, 9 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">19</td><td class="n">19</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 12 fell behind, 6 behind at the end, 0 never joined</td><td class="n">-</td></tr>
+</tbody>
+</table></div>
+<details class="run">
+<summary>seed 0 <span class="muted">split at 18, 7 lines and 18 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 18 · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 8 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-0</pre>
+</details>
+<details class="run">
+<summary>seed 1 <span class="muted">split at 9, 11 lines and 21 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 9 · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 18 fell behind, 9 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-1</pre>
+</details>
+<details class="run">
+<summary>seed 2 <span class="muted">split at 19, 1 line and 6 of 33 members off the trunk</span></summary>
+<div>
+<p>split at epoch 19 · no member took part: trunk at epoch 32, 2 main, 0 sub, 5 fell behind, 5 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 3 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-2</pre>
+</details>
+<details class="run">
+<summary>seed 3 <span class="muted">split at 8, 8 lines and 21 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 8 · the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 17 fell behind, 11 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 4 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-3</pre>
+</details>
+<details class="run">
+<summary>seed 4 <span class="muted">split at 8, 7 lines and 17 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 8 · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 16 fell behind, 9 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-4</pre>
+</details>
+<details class="run">
+<summary>seed 5 <span class="muted">split at 8, 7 lines and 20 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 8 · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 17 fell behind, 11 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 6 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-5</pre>
+</details>
+<details class="run">
+<summary>seed 6 <span class="muted">split at 21, 11 lines and 29 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 21 · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 19 fell behind, 13 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 7 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-6</pre>
+</details>
+<details class="run">
+<summary>seed 7 <span class="muted">split at 10, 8 lines and 24 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 10 · the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 21 fell behind, 14 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 8 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-7</pre>
+</details>
+<details class="run">
+<summary>seed 8 <span class="muted">split at 13, 14 lines and 22 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 13 · the trunk reached epoch 50: trunk at epoch 50, 15 main, 0 sub, 16 fell behind, 8 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 9 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-8</pre>
+</details>
+<details class="run">
+<summary>seed 9 <span class="muted">split at 6, 6 lines and 15 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 6 · the trunk reached epoch 50: trunk at epoch 50, 7 main, 0 sub, 10 fell behind, 7 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 10 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-9</pre>
+</details>
+<details class="run">
+<summary>seed 10 <span class="muted">split at 12, 3 lines and 6 of 19 members off the trunk</span></summary>
+<div>
+<p>split at epoch 12 · no member took part: trunk at epoch 18, 4 main, 0 sub, 5 fell behind, 3 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 11 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-10</pre>
+</details>
+<details class="run">
+<summary>seed 11 <span class="muted">split at 5, 8 lines and 17 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 5 · the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 15 fell behind, 8 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 12 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-11</pre>
+</details>
+<details class="run">
+<summary>seed 12 <span class="muted">split at 18, 6 lines and 16 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 18 · the trunk reached epoch 50: trunk at epoch 50, 7 main, 0 sub, 15 fell behind, 9 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 13 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-12</pre>
+</details>
+<details class="run">
+<summary>seed 13 <span class="muted">split at 23, 1 line and 27 of 28 members off the trunk</span></summary>
+<div>
+<p>split at epoch 23 · no member took part: trunk at epoch 27, 2 main, 0 sub, 24 fell behind, 24 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-13</pre>
+</details>
+<details class="run">
+<summary>seed 14 <span class="muted">split at 17, 11 lines and 25 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 17 · every member of the plan was seated: trunk at epoch 46, 12 main, 0 sub, 13 fell behind, 7 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 15 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-14</pre>
+</details>
+<details class="run">
+<summary>seed 15 <span class="muted">split at 15, 6 lines and 20 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 15 · the trunk reached epoch 50: trunk at epoch 50, 7 main, 0 sub, 16 fell behind, 10 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 16 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-15</pre>
+</details>
+<details class="run">
+<summary>seed 16 <span class="muted">split at 11, 7 lines and 12 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 11 · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 7 fell behind, 3 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 17 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-16</pre>
+</details>
+<details class="run">
+<summary>seed 17 <span class="muted">split at 15, 11 lines and 23 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 15 · the trunk reached epoch 50: trunk at epoch 50, 12 main, 0 sub, 13 fell behind, 10 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 18 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-17</pre>
+</details>
+<details class="run">
+<summary>seed 18 <span class="muted">split at 3, 7 lines and 16 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 3 · the trunk reached epoch 50: trunk at epoch 50, 8 main, 0 sub, 15 fell behind, 9 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 19 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-18</pre>
+</details>
+<details class="run">
+<summary>seed 19 <span class="muted">split at 19, 8 lines and 15 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 19 · the trunk reached epoch 50: trunk at epoch 50, 9 main, 0 sub, 12 fell behind, 6 behind at the end, 0 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 20 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-19</pre>
+</details>
+</details>
+<details>
+<summary>GroupV2 5% <span class="muted">20 runs</span></summary>
+<div class="wide"><table class="runs">
+<thead><tr><th class="n">seed</th><th class="n">epochs without a fork</th><th>how it ended</th><th>what the grow came to</th><th class="n">wall time</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td class="n">8</td><td>split</td><td>no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">1</td><td class="n">3</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">2</td><td class="n">4</td><td>split</td><td>no member took part: trunk at epoch 4, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">3</td><td class="n">6</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 21 main, 0 sub, 40 fell behind, 17 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">4</td><td class="n">5</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 22 main, 0 sub, 41 fell behind, 18 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">5</td><td class="n">8</td><td>split</td><td>no member took part: trunk at epoch 30, 15 main, 0 sub, 19 fell behind, 13 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">6</td><td class="n">8</td><td>split</td><td>no member took part: trunk at epoch 16, 4 main, 0 sub, 4 fell behind, 2 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">7</td><td class="n">9</td><td>split</td><td>no member took part: trunk at epoch 10, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">8</td><td class="n">9</td><td>split</td><td>no member took part: trunk at epoch 9, 2 main, 0 sub, 3 fell behind, 3 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">9</td><td class="n">5</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 35 fell behind, 18 behind at the end, 3 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">10</td><td class="n">5</td><td>split</td><td>every member of the plan was seated: trunk at epoch 49, 15 main, 0 sub, 28 fell behind, 13 behind at the end, 3 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">11</td><td class="n">5</td><td>split</td><td>the trunk reached epoch 50: trunk at epoch 50, 16 main, 0 sub, 32 fell behind, 15 behind at the end, 7 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">12</td><td class="n">5</td><td>split</td><td>no member took part: trunk at epoch 5, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 2 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">13</td><td class="n">11</td><td>split</td><td>every member of the plan was seated: trunk at epoch 23, 8 main, 0 sub, 8 fell behind, 7 behind at the end, 21 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">14</td><td class="n">8</td><td>split</td><td>every member of the plan was seated: trunk at epoch 18, 24 main, 0 sub, 6 fell behind, 3 behind at the end, 6 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">15</td><td class="n">6</td><td>split</td><td>every member of the plan was seated: trunk at epoch 7, 3 main, 0 sub, 2 fell behind, 2 behind at the end, 44 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">16</td><td class="n">4</td><td>stalled</td><td>no member took part: trunk at epoch 4, 1 main, 0 sub, 1 fell behind, 1 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">17</td><td class="n">6</td><td>split</td><td>every member of the plan was seated: trunk at epoch 41, 15 main, 0 sub, 25 fell behind, 13 behind at the end, 11 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">18</td><td class="n">18</td><td>split</td><td>no member took part: trunk at epoch 25, 4 main, 0 sub, 13 fell behind, 9 behind at the end, 5 never joined</td><td class="n">-</td></tr>
+<tr><td class="n">19</td><td class="n">6</td><td>split</td><td>no member took part: trunk at epoch 29, 9 main, 0 sub, 19 fell behind, 12 behind at the end, 1 never joined</td><td class="n">-</td></tr>
+</tbody>
+</table></div>
+<details class="run">
+<summary>seed 0 <span class="muted">split at 8, 2 lines and 9 of 15 members off the trunk</span></summary>
+<div>
+<p>split at epoch 8 · no member took part: trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-0</pre>
+</details>
+<details class="run">
+<summary>seed 1 <span class="muted">split at 3, 16 lines and 42 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 3 · the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 38 fell behind, 19 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-1</pre>
+</details>
+<details class="run">
+<summary>seed 2 <span class="muted">split at 4, 1 line and 3 of 7 members off the trunk</span></summary>
+<div>
+<p>split at epoch 4 · no member took part: trunk at epoch 4, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 3 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-2</pre>
+</details>
+<details class="run">
+<summary>seed 3 <span class="muted">split at 6, 20 lines and 42 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 6 · the trunk reached epoch 50: trunk at epoch 50, 21 main, 0 sub, 40 fell behind, 17 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 4 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-3</pre>
+</details>
+<details class="run">
+<summary>seed 4 <span class="muted">split at 5, 21 lines and 44 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 5 · the trunk reached epoch 50: trunk at epoch 50, 22 main, 0 sub, 41 fell behind, 18 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-4</pre>
+</details>
+<details class="run">
+<summary>seed 5 <span class="muted">split at 8, 14 lines and 32 of 37 members off the trunk</span></summary>
+<div>
+<p>split at epoch 8 · no member took part: trunk at epoch 30, 15 main, 0 sub, 19 fell behind, 13 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 6 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-5</pre>
+</details>
+<details class="run">
+<summary>seed 6 <span class="muted">split at 8, 3 lines and 6 of 17 members off the trunk</span></summary>
+<div>
+<p>split at epoch 8 · no member took part: trunk at epoch 16, 4 main, 0 sub, 4 fell behind, 2 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 7 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-6</pre>
+</details>
+<details class="run">
+<summary>seed 7 <span class="muted">split at 9, 1 line and 5 of 12 members off the trunk</span></summary>
+<div>
+<p>split at epoch 9 · no member took part: trunk at epoch 10, 2 main, 0 sub, 1 fell behind, 1 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 8 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-7</pre>
+</details>
+<details class="run">
+<summary>seed 8 <span class="muted">split at 9, 1 line and 7 of 11 members off the trunk</span></summary>
+<div>
+<p>split at epoch 9 · no member took part: trunk at epoch 9, 2 main, 0 sub, 3 fell behind, 3 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 9 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-8</pre>
+</details>
+<details class="run">
+<summary>seed 9 <span class="muted">split at 5, 16 lines and 39 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 5 · the trunk reached epoch 50: trunk at epoch 50, 17 main, 0 sub, 35 fell behind, 18 behind at the end, 3 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 10 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-9</pre>
+</details>
+<details class="run">
+<summary>seed 10 <span class="muted">split at 5, 14 lines and 33 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 5 · every member of the plan was seated: trunk at epoch 49, 15 main, 0 sub, 28 fell behind, 13 behind at the end, 3 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 11 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-10</pre>
+</details>
+<details class="run">
+<summary>seed 11 <span class="muted">split at 5, 15 lines and 40 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 5 · the trunk reached epoch 50: trunk at epoch 50, 16 main, 0 sub, 32 fell behind, 15 behind at the end, 7 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 12 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-11</pre>
+</details>
+<details class="run">
+<summary>seed 12 <span class="muted">split at 5, 1 line and 6 of 7 members off the trunk</span></summary>
+<div>
+<p>split at epoch 5 · no member took part: trunk at epoch 5, 2 main, 0 sub, 0 fell behind, 0 behind at the end, 2 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 13 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-12</pre>
+</details>
+<details class="run">
+<summary>seed 13 <span class="muted">split at 11, 7 lines and 45 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 11 · every member of the plan was seated: trunk at epoch 23, 8 main, 0 sub, 8 fell behind, 7 behind at the end, 21 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-13</pre>
+</details>
+<details class="run">
+<summary>seed 14 <span class="muted">split at 8, 23 lines and 45 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 8 · every member of the plan was seated: trunk at epoch 18, 24 main, 0 sub, 6 fell behind, 3 behind at the end, 6 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 15 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-14</pre>
+</details>
+<details class="run">
+<summary>seed 15 <span class="muted">split at 6, 2 lines and 50 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 6 · every member of the plan was seated: trunk at epoch 7, 3 main, 0 sub, 2 fell behind, 2 behind at the end, 44 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 16 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-15</pre>
+</details>
+<details class="run">
+<summary>seed 16 <span class="muted">4, stalled, 2 of 6 members off the trunk</span></summary>
+<div>
+<p>whole, members behind · no member took part: trunk at epoch 4, 1 main, 0 sub, 1 fell behind, 1 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 17 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-16</pre>
+</details>
+<details class="run">
+<summary>seed 17 <span class="muted">split at 6, 14 lines and 48 of 51 members off the trunk</span></summary>
+<div>
+<p>split at epoch 6 · every member of the plan was seated: trunk at epoch 41, 15 main, 0 sub, 25 fell behind, 13 behind at the end, 11 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 18 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-17</pre>
+</details>
+<details class="run">
+<summary>seed 18 <span class="muted">split at 18, 3 lines and 18 of 26 members off the trunk</span></summary>
+<div>
+<p>split at epoch 18 · no member took part: trunk at epoch 25, 4 main, 0 sub, 13 fell behind, 9 behind at the end, 5 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 19 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-18</pre>
+</details>
+<details class="run">
+<summary>seed 19 <span class="muted">split at 6, 8 lines and 21 of 30 members off the trunk</span></summary>
+<div>
+<p>split at epoch 6 · no member took part: trunk at epoch 29, 9 main, 0 sub, 19 fell behind, 12 behind at the end, 1 never joined</p>
+</div>
+<p class="side">Run it again:</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 07fb9d99c901668b0792c10884c1c81cf52e2a0f
+# move both pins to 5094e1cdef9aea0cadb88b5179de996486534a71, then
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 20 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-19</pre>
+</details>
+</details>
+</section>
+<p class="muted">What the page shows: the guide's <a href="../../../../guide/reports/#the-pages-of-logos-chats-runs">Reports</a>.</p>
+</body>
+</html>

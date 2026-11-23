@@ -1,0 +1,80 @@
+conversation 9f1a35c82e
+  split at epoch 8
+  51 of 51 seats share a log
+
+  branch A: epoch 50, state 3bd28e6efb2a4bc0, 51 members
+    on it: 0ffdd9dd, 128c4073, 1636d0e3, 2e2031a4, 361d2cc6, 391d9bb4, 3985f579, 3f2cabfb, 5993f1b9,
+      5e279cea, 610b514e, 66c10d6f, 7d869483, 812f6e50, 863358ff, 8a4b489f, 9165d133, 9ce33990,
+      9e064c7b, b8fb40b9, bc86d7ee, bca42c00, c624565d, ca45ed2f, cc80c3c2, d40d1dfa, d63b0210,
+      d9e6018e, db36ef65, df82bfa3, e334d18e, f944ba27, fbe043ef
+  branch B: epoch 46, state d6a30602bc02a9f0, 47 members
+    on it: 5bfba91b, e77d2a3a
+  branch C: epoch 34, state 173bd5067cf08c68, 35 members
+    on it: 3c74f666
+  branch D: epoch 38, state 4bcdbdfb98bfdc4c, 39 members
+    on it: 73aac696
+  branch E: epoch 34, state 6725b6e9d2c5896f, 35 members
+    on it: 4abfe0fa
+  branch F: epoch 8, state 8c92be39402b9267, 9 members
+    on it: 10ed278a
+  branch G: epoch 41, state 8ec7e13111e996f9, 42 members
+    on it: 53ca4bcc
+  branch H: epoch 39, state a68e0c3ff7260d99, 40 members
+    on it: ae35f211
+  branch I: epoch 45, state dd740c39cc23984b, 46 members
+    on it: cfcf9840
+
+  installation  account   name   epoch  position      branch
+  0ffdd9dd      70656572  group  50     tip           A
+  128c4073      70656572  group  50     tip           A
+  1636d0e3      70656572  group  50     tip           A
+  2e2031a4      70656572  group  50     tip           A
+  361d2cc6      70656572  group  50     tip           A
+  391d9bb4      70656572  group  50     tip           A
+  3985f579      70656572  group  50     tip           A
+  3f2cabfb      70656572  group  50     tip           A
+  5993f1b9      70656572  group  50     tip           A
+  5e279cea      70656572  group  50     tip           A
+  66c10d6f      70656572  group  50     tip           A
+  7d869483      70656572  group  50     tip           A
+  812f6e50      70656572  group  50     tip           A
+  863358ff      70656572  group  50     tip           A
+  8a4b489f      70656572  group  50     tip           A
+  9165d133      70656572  group  50     tip           A
+  9ce33990      6b6573    group  50     tip           A
+  9e064c7b      7361726f  group  50     tip           A
+  b8fb40b9      70656572  group  50     tip           A
+  bc86d7ee      70656572  group  50     tip           A
+  bca42c00      70656572  group  50     tip           A
+  ca45ed2f      70656572  group  50     tip           A
+  cc80c3c2      70656572  group  50     tip           A
+  d40d1dfa      70656572  group  50     tip           A
+  d9e6018e      70656572  group  50     tip           A
+  db36ef65      70656572  group  50     tip           A
+  df82bfa3      70656572  group  50     tip           A
+  e334d18e      70656572  group  50     tip           A
+  f944ba27      70656572  group  50     tip           A
+  fbe043ef      70656572  group  50     tip           A
+  610b514e      70656572  group  46     behind        A
+  c624565d      70656572  group  47     behind        A
+  d63b0210      70656572  group  48     behind        A
+  5bfba91b      70656572  group  46     tip           B
+  e77d2a3a      70656572  group  46     tip           B
+  3c74f666      70656572  group  34     tip           C
+  73aac696      70656572  group  38     tip           D
+  4abfe0fa      70656572  group  34     tip           E
+  10ed278a      6d697261  group  8      tip           F
+  53ca4bcc      746f6d6f  group  41     tip           G
+  ae35f211      70656572  group  39     tip           H
+  cfcf9840      706178    group  45     tip           I
+  171ccf70      70656572  group  32     behind        -
+  5adbb2ef      70656572  group  14     behind        -
+  72ebd165      72617961  group  29     behind        -
+  769c9f9f      70656572  group  32     behind        -
+  9bbcb294      70656572  group  18     behind        -
+  bcc28f3a      70656572  group  45     behind        -
+  d9a38229      70656572  group  33     behind        -
+  f84f0c23      70656572  group  22     behind        -
+  f0b84463      70656572  group  -      never joined  -
+
+lines: 77610 read, 77607 records, 0 without a stamp, 0 malformed, 0 unknown
