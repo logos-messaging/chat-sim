@@ -12,13 +12,15 @@ main's point at the base at the current measurement is on gh-pages with an outco
 base's jobs would do, whose runs stand in for the base's. `spread` names main's point at the base,
 or else the nearest before it, that can be read, whose runs the head's are placed among. `comment`
 writes the comment in Markdown: for `pr` and `main` from the matrix `tools/sim matrix` wrote of the
-runs, each group's apart, for `pr` after main's runs of the two groups side by side, and for `long`
-a row for each scenario with what `tools/sim compare` said of its runs against the base's, or
-against what `tools/sim/expected` holds when there is no base. `measurement` prints the chat-sim
-commit a run measures. `running` writes the update that moves a check run on logos-chat to in
-progress while the runs go, and `check` the one that completes it with the groups' verdicts; `post`
-says where the comment goes on a logos-chat pull request, an edit of the App's comment there or a
-new one, and writes it for GitHub's API.
+runs, each group's apart, for `pr` with a picture of the runs that moved, and for `long` a row for
+each scenario with what `tools/sim compare` said of its runs against the base's, or against what
+`tools/sim/expected` holds when there is no base. It says where the picture is, so that the
+workflow posts the comment once the Pages site serves it. `measurement` prints the chat-sim commit
+a run measures. `running` writes the update that moves a check run on logos-chat to in progress
+while the runs go, and `check` the one that completes it with the groups' verdicts; `post` says
+where the comment goes on a logos-chat pull request, an edit of the App's comment there or a new
+one, and writes it for GitHub's API; `built` says whether the Pages site has built a push to
+gh-pages, which the comment's picture waits for.
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Callable, Collection, Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Collection, List, Optional, Sequence, Tuple
 
 import measure
 
@@ -67,6 +69,22 @@ MEASURED = (
 )
 # What a matrix of `tools/sim matrix` holds.
 MATRIX = {"head", "base", "base_point", "cells", "counts", "verdict", "groups", "summary", "spread"}
+# What a cell's run at the head can be against the base's at the same seed, and those of them
+# where it moved.
+CHANGES = ("same", "changed", "better", "worse", "re-rolled")
+MOVED = ("better", "worse", "changed")
+# What a group's runs at the head can come to against the base's, each as a group's line words it,
+# in the order the line says them: what went wrong at the head before what moved, as the verdict
+# has it, and the runs the base has no outcome for last.
+STANDINGS = {
+    "no-outcome": "no outcome",
+    "worse": "worse",
+    "better": "better",
+    "changed": "changed",
+    "re-rolled": "re-rolled",
+    "same": "same",
+    "uncompared": "not compared",
+}
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _PR = re.compile(r"[1-9][0-9]*")
@@ -112,30 +130,31 @@ _ENDED = (
 )
 # Of the members a run seated, those `compare` counts off the trunk at the end.
 _OFF_TRUNK = "behind, on another line, or never joined"
-_PR_FOOT = (
-    f"A cell: how the run ended ({_ENDED}), at the epoch of its first fork, or else of the trunk "
-    "(50 is the goal) · the lines and the members off the trunk at the end, of the members "
-    f"seated, where there are any ({_OFF_TRUNK}), and how many of those never joined, where any "
-    "did · where it is better or worse, what the base's run had of the first of these that moved "
-    "· the change against the merge base at the same seed (changed: the run differs but is no "
-    "better or worse; re-rolled: the run drew other ids than the base's, so the two are not "
-    "compared). One cell moving can be the loss pattern shifting under your change; main's 20 "
-    "seeds after the merge are the measurement. This check blocks nothing yet. Run a cell again "
-    "with the command in its fold."
+# The mark of each of `STANDINGS` that leads a group's line of the comment on a pull request: a
+# missing run, at the head or at the base, is black.
+_MARKS = {
+    "no-outcome": "⚫",
+    "worse": "🔴",
+    "better": "🟢",
+    "changed": "🟡",
+    "re-rolled": "🔁",
+    "same": "⚪",
+    "uncompared": "⚫",
+}
+# How to read the trees the runs are drawn as: what they draw, what main's spread draws over them,
+# and what the comment cannot tell.
+_TREES = (
+    "A tree is one run, left to right by epoch from 0 to the goal of 50. The head's tree sits over "
+    "the base's.",
+    "The top line is the trunk. Each line below left the line it drops from at that epoch and "
+    "stops at its dot. The thicker a line, the more members it ended with.",
+    "The ring and its number count the members that never joined.",
 )
-_SIDES_FOOT = (
-    "A row: main's runs of a rate, a seed each, GroupV2's · GroupV3's: how many of those with an "
-    "outcome split; the epoch of the first fork of the runs that split, from the lowest to the "
-    "highest; and the median of the lines off the trunk at the end, the median of the members "
-    f"off it ({_OFF_TRUNK}) out of the median of the members seated, and the median of those "
-    "that never joined. A seed fixes the numbers each member's frames are drawn against, and the "
-    "groups send other frames, so seed 0 of one group is no twin of seed 0 of the other: the "
-    "groups compare by their spreads."
+_BAND = (
+    "The grey band is where main's {seeds} seeds at {commit} first forked. A run inside it may be "
+    "the loss pattern moving under your change, not the change itself."
 )
-_NO_SIDES = [
-    "No point of main at this chat-sim's measurement that can be read is among the base's hundred "
-    "newest commits, so main's runs of the two groups are not set side by side."
-]
+_MEASURED_AFTER = "Main's seeds after the merge are the measurement. This check blocks nothing yet."
 _OFF = {"lines_off_trunk": "line", "members_off_trunk": "member"}
 _MAIN_FOOT = (
     f"A row: the runs of a group at a rate of loss, a seed each, by how each ended ({_ENDED}); "
@@ -235,12 +254,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "comment",
         help="write the comment on what the run jobs came to",
         description="Writes the comment in Markdown. For pr and main it is drawn from --matrix: "
-        "for pr the verdict of each group, main's runs of the two groups side by side a row a "
-        "rate, a row a group's rate and a cell a seed, and a fold for each cell with its runs and "
-        "the command that runs it again; for main a row a group's rate with how its runs ended "
-        "and forked. For long it is a row for each scenario from the "
+        "for pr a line that says nothing moved, or else a line for each group by how its runs "
+        "compare, the picture of the runs that moved on the report's page with a link to each "
+        "one's page, and how to read the trees; for main a row a group's rate with how its runs "
+        "ended and forked. For long it is a row for each scenario from the "
         "outcomes.json the run jobs uploaded under RUNS and the compare.txt written beside it, "
-        "and the output of each compare.",
+        "and the output of each compare. With --out it is written there, and standard output "
+        "says, as a line for $GITHUB_OUTPUT, where the picture is that it shows, or nothing.",
     )
     comment.add_argument(
         "runs",
@@ -267,6 +287,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     comment.add_argument("--chat-sim", metavar="SHA", required=True, help="chat-sim's commit")
     comment.add_argument("--run-url", metavar="URL", required=True, help="the workflow run's page")
     comment.add_argument("--report-url", metavar="URL", help="the page of the run's report")
+    comment.add_argument(
+        "--out",
+        metavar="FILE",
+        type=Path,
+        help="where to write the comment, instead of standard output",
+    )
     comment.set_defaults(command=_comment)
     measured = commands.add_parser(
         "measurement",
@@ -349,6 +375,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--out", metavar="FILE", type=Path, required=True, help="where to write what is sent"
     )
     post.set_defaults(command=_post)
+    built = commands.add_parser(
+        "built",
+        help="say whether the Pages site has built a push to gh-pages",
+        description="Prints true where, among --builds, the Pages site built the push of "
+        "--commit or a push after it, and so serves what --commit holds; else false.",
+    )
+    built.add_argument(
+        "--builds",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help="the site's newest builds, a JSON array as gh api lists repos/<repo>/pages/builds",
+    )
+    built.add_argument("--commit", metavar="SHA", required=True, help="the commit pushed")
+    built.set_defaults(command=_built)
     args = parser.parse_args(argv)
     return args.command(parser, args)
 
@@ -468,6 +509,89 @@ def compares(matrix: dict) -> bool:
     return matrix["base"] is not None and matrix["counts"]["compared"] > 0
 
 
+def moved(cell: dict) -> bool:
+    """Whether the head's run of `cell` came out otherwise than the base's at the same seed, from
+    the same draws: better, worse, or changed."""
+    return cell["change"] in MOVED
+
+
+def seeds_of(matrix: dict, scenario: str) -> List[int]:
+    """The epochs of the first fork, or else of the trunk, of main's seeds of `scenario` in
+    `matrix`'s spread, lowest first; none without a spread."""
+    spread = matrix["spread"]
+    if spread is None:
+        return []
+    return sorted(
+        seed["epochs"]
+        for seed in spread["seeds"]
+        if seed["scenario"] == scenario and seed["epochs"] is not None
+    )
+
+
+def within(matrix: dict, cell: dict) -> Optional[bool]:
+    """Whether the head's run of `cell` first forked, or else ended its trunk, within the epochs
+    of main's seeds of its scenario, from the lowest to the highest; `None` without those seeds or
+    an epoch of the head's."""
+    seeds, epochs = seeds_of(matrix, cell["scenario"]), cell["epochs"]["head"]
+    if not seeds or epochs is None:
+        return None
+    return seeds[0] <= epochs <= seeds[-1]
+
+
+def seeded(matrix: dict, cells: Sequence[dict]) -> int:
+    """How many of main's seeds in `matrix`'s spread the scenario of `cells` with the fewest has,
+    as `seeds_of` counts them; 0 without a spread."""
+    scenarios = {cell["scenario"] for cell in cells}
+    return min((len(seeds_of(matrix, scenario)) for scenario in scenarios), default=0)
+
+
+def tally(matrix: dict, group: str) -> dict:
+    """The runs of `group` in `matrix` by how they compare: how many there are, how many of each
+    of `STANDINGS`, how many moved and how many of those first forked beyond main's seeds, and how
+    many seeds of main's their scenarios have, as `seeded` counts them."""
+    cells = [cell for cell in matrix["cells"] if cell["group"] == group]
+    shifted = [cell for cell in cells if moved(cell)]
+    return {
+        "cells": len(cells),
+        **{change: sum(cell["change"] == change for cell in cells) for change in CHANGES},
+        "no-outcome": sum(cell["head"] is None for cell in cells),
+        "uncompared": sum(cell["head"] is not None and cell["change"] is None for cell in cells),
+        "moved": len(shifted),
+        "beyond": sum(within(matrix, cell) is False for cell in shifted),
+        "seeds": seeded(matrix, cells),
+    }
+
+
+def told(counts: dict) -> Tuple[List[str], List[str]]:
+    """What a group's line says of its runs from their `tally`, as two lists of `STANDINGS`: the
+    ones it leads with, what went wrong at the head and what moved, or else the first the runs
+    have; and the rest the runs have, said after them, the same last."""
+    had = [one for one in STANDINGS if counts[one]]
+    led = [one for one in had if one == "no-outcome" or one in MOVED] or had[:1]
+    return led, sorted((one for one in had if one not in led), key=lambda one: one == "same")
+
+
+def run_page(cell: dict) -> str:
+    """Where the page of `cell`'s run is, under its pull request's report."""
+    return f"head/{cell['scenario']}/{cell['run']}/"
+
+
+def moved_image(revision: str, dark: bool = False) -> str:
+    """The name of the picture of the runs that moved at `revision`, under its pull request's
+    report, in the light theme or the dark. It names the revision, since GitHub's image proxy
+    keeps a picture it fetched once."""
+    return f"moved-{revision}{'-dark' if dark else ''}.svg"
+
+
+def picture(matrix: dict, facts: dict) -> Optional[str]:
+    """Where the picture of the runs that moved is that the comment on a pull request shows, in
+    the light theme: under the report's page, where it has one and a run of `matrix` moved; else
+    `None`."""
+    if not facts["report_url"] or not any(moved(cell) for cell in matrix["cells"]):
+        return None
+    return facts["report_url"] + moved_image(facts["revision"])
+
+
 def concluded(matrix: dict, required: bool) -> str:
     """The check's conclusion of `matrix`: a failure where the verdict of a group's runs fails it,
     else a success where one's succeeds, else neutral, so that one group's runs standing higher
@@ -522,49 +646,61 @@ def post_to(pages: Sequence[Sequence[dict]], login: str, pr: str) -> Tuple[str, 
     return "PATCH", f"{ON_LOGOS_CHAT}/issues/comments/{found['id']}"
 
 
+def built_since(builds: Sequence[dict], commit: str) -> bool:
+    """Whether the Pages site serves `commit` of gh-pages, from its `builds` as the API lists
+    them: it built the push of `commit`, or a push after it, which holds `commit` too and can have
+    cut the build of `commit` short."""
+    ours = next((one for one in builds if one["commit"] == commit), None)
+    return ours is not None and any(
+        one["status"] == "built" and one["created_at"] >= ours["created_at"] for one in builds
+    )
+
+
 def render_pr(matrix: dict, facts: dict) -> str:
-    """The comment on a pull request: the verdict of each group; main's runs of the two groups
-    side by side where the matrix has its spread, or else, against a base, why not; a row a
-    group's rate and a cell a seed, beside them main's spread; what a cell says, and under it a
-    fold for each cell with its runs and the command that runs it again."""
+    """The comment on a pull request. Where every run came out the same as the base's, one line
+    that says so. Else a line for each group by how its runs compare; where a run moved and the
+    report has a page, the picture of the runs that moved and a link to each one's page; the
+    links; and with the picture, how to read its trees. A head chat-sim does not build at, or runs
+    with nothing to compare, have the verdict line alone."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
-    cells, spread = matrix["cells"], matrix["spread"]
-    seeds = sorted({cell["seed"] for cell in cells})
-    against = compares(matrix)
-    columns = [f"Seed {seed}" for seed in seeds]
-    if spread is not None:
-        columns.append(_spread_head(spread))
-    lines = [_verdict_line(headline(matrix), facts, matrix["base_point"])]
-    if spread is not None:
-        lines += ["", *sides(spread)]
-    elif facts["base"]:
-        lines += ["", *_NO_SIDES]
-    lines += [
-        "",
-        "| Group | Loss | " + " | ".join(columns) + " |",
-        "|---" * (len(columns) + 2) + "|",
-    ]
-    for rate, row in _rows(cells):
-        said = {cell["seed"]: words(cell, against) for cell in row}
-        shown = [said.get(seed, "-") for seed in seeds]
-        if spread is not None:
-            shown.append(spread_of(spread, row[0]["scenario"]))
-        lines.append(f"| {GROUPS[row[0]['group']]} | {rate} | " + " | ".join(shown) + " |")
-    lines += ["", _PR_FOOT]
-    for cell in cells:
-        opened = " open" if cell["change"] in ("better", "worse") else ""
+    point = matrix["base_point"]
+    if not compares(matrix):
+        return _verdict_line(headline(matrix), facts, point) + "\n"
+    cells, head, base = matrix["cells"], _commit(facts["revision"]), _merge_base(facts, point)
+    if all(cell["change"] == "same" for cell in cells):
+        groups = " and ".join(GROUPS[one["group"]] for one in matrix["groups"])
+        return (
+            f"{_MARKS['same']} **Nothing moved.** All {len(cells)} runs of {groups} at {head} "
+            f"replayed {base} exactly. {_links(facts)}\n"
+        )
+    said = [_group_line(matrix, one["group"]) for one in matrix["groups"]]
+    # A backslash breaks the line wherever the comment is rendered, the check's summary and the
+    # run's summary too, where the end of a line alone does not.
+    lines = [f"{line}\\" for line in said[:-1]] + said[-1:]
+    shown, shifted = picture(matrix, facts), [cell for cell in cells if moved(cell)]
+    if shown is not None:
+        report = facts["report_url"]
+        dark = report + moved_image(facts["revision"], dark=True)
+        alt = "; ".join(f"{_run_name(cell)}: {cell['change']}" for cell in shifted)
+        opened = " · ".join(f"[{_run_name(cell)}]({report}{run_page(cell)})" for cell in shifted)
         lines += [
             "",
-            f"<details{opened}><summary>{GROUPS[cell['group']]} {_rate(cell['rate'])} loss, seed "
-            f"{cell['seed']}: "
-            f"{words(cell, against)}</summary>",
+            f'<picture><source media="(prefers-color-scheme: dark)" srcset="{html.escape(dark)}">'
+            f'<img alt="{html.escape(alt)}" src="{html.escape(shown)}"></picture>',
             "",
-            f"- **head** {_commit(facts['revision'])} · {_ran(cell, 'head')}",
+            f"Open a run: {opened}",
         ]
-        if facts["base"]:
-            lines.append(f"- **base** {_commit(facts['base'])} · {_ran(cell, 'base')}")
-        lines += ["", "```sh", *again(cell, facts), "```", "", "</details>"]
+    lines += ["", f"{_links(facts)} · {head} against {base}"]
+    if shown is not None:
+        lines += [
+            "",
+            "<details><summary>How to read the trees</summary>",
+            "",
+            *_trees(matrix, shifted),
+            "",
+            "</details>",
+        ]
     return "".join(f"{line}\n" for line in lines)
 
 
@@ -595,32 +731,6 @@ def render_main(matrix: dict, facts: dict) -> str:
         lines.append(f"| {named} | {one['runs']} | {counted} | {reached} | {forked} |")
     lines += ["", _MAIN_FOOT]
     return "".join(f"{line}\n" for line in lines)
-
-
-def sides(spread: dict) -> List[str]:
-    """Main's runs in `spread` of the two groups side by side, as lines of Markdown: a row a rate
-    of how many split, the epochs of the first fork, the medians off the trunk and of those that
-    never joined, each GroupV2's, then GroupV3's, and what a row says."""
-    rates: Dict[object, Dict[str, dict]] = {}
-    for one in spread["summary"]:
-        rates.setdefault(one["loss"], {})[one["group"]] = one
-    lines = [
-        f"**{' · '.join(GROUPS.values())}**, main's {spread_seeds(spread)} of each rate at "
-        f"{_commit(spread['logos_chat'])}",
-        "",
-        "| Loss | Split | First fork | Lines off the trunk, median | "
-        "Members off the trunk, median | Never joined, median |",
-        "|---|---|---|---|---|---|",
-    ]
-    for loss in sorted(rates, key=lambda loss: (loss is None, loss or 0)):
-        held = [rates[loss].get(group) for group in GROUPS]
-        rate = next(one for one in held if one is not None)["rate"]
-        shown = [
-            " · ".join("-" if one is None else said(one) for one in held)
-            for said in (_split, _first_fork, _lines_off, _members_off, _never_joined)
-        ]
-        lines.append(f"| {_rate(rate)} | " + " | ".join(shown) + " |")
-    return lines + ["", _SIDES_FOOT]
 
 
 def render(
@@ -825,8 +935,7 @@ def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         if (args.base_runs is None) != (not args.base):
             parser.error("--base-runs: given with --base, and only with it")
         swept = scenarios(args.suite, args.expected)
-        sys.stdout.write(render(swept, args.runs, args.base_runs, facts))
-        return 0
+        return _written(render(swept, args.runs, args.base_runs, facts), None, args.out)
     if args.matrix is None or args.runs is not None or args.base_runs is not None:
         parser.error(f"--matrix: the {args.suite} suite is written from its matrix alone")
     matrix = _matrix(args.matrix)
@@ -836,8 +945,19 @@ def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         parser.error("--matrix: a matrix with a base is given with --base, and only with it")
     if matrix["base_point"] is not None and matrix["base_point"]["logos_chat"] != args.base:
         parser.error("--matrix: main's point that stood in for the base is not at --base")
-    written = render_pr(matrix, facts) if args.suite == "pr" else render_main(matrix, facts)
-    sys.stdout.write(written)
+    if args.suite == "main":
+        return _written(render_main(matrix, facts), None, args.out)
+    return _written(render_pr(matrix, facts), picture(matrix, facts), args.out)
+
+
+def _written(comment: str, shown: Optional[str], out: Optional[Path]) -> int:
+    """Writes `comment` to `out`, and then says where the picture it shows is, `shown`, or
+    nothing; without `out`, writes it to standard output."""
+    if out is None:
+        sys.stdout.write(comment)
+        return 0
+    out.write_text(comment, encoding="utf-8")
+    print(f"picture={shown or ''}")
     return 0
 
 
@@ -912,6 +1032,23 @@ def _post(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     args.out.write_text(json.dumps({"body": body}), encoding="utf-8")
     print(f"method={method}")
     print(f"endpoint={endpoint}")
+    return 0
+
+
+def _built(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    if _SHA.fullmatch(args.commit) is None:
+        parser.error(f"--commit: {args.commit!r} is not a commit's 40 hex digits")
+    try:
+        builds = json.loads(_read(parser, "--builds", args.builds))
+    except ValueError as error:
+        parser.error(f"--builds: {args.builds}: {error}")
+    if not isinstance(builds, list) or not all(
+        isinstance(one, dict)
+        and all(isinstance(one.get(key), str) for key in ("commit", "status", "created_at"))
+        for one in builds
+    ):
+        parser.error(f"--builds: {args.builds}: not builds, each with its commit, status and time")
+    print("true" if built_since(builds, args.commit) else "false")
     return 0
 
 
@@ -1021,14 +1158,55 @@ def _unbuilt_comment(facts: dict) -> str:
     return "".join(f"{line}\n" for line in lines)
 
 
-def _rows(cells: List[dict]) -> List[Tuple[str, List[dict]]]:
-    """The cells a row a scenario, in their order, each row by its rate of loss."""
-    rows: List[Tuple[str, List[dict]]] = []
-    for cell in cells:
-        if not rows or rows[-1][1][0]["scenario"] != cell["scenario"]:
-            rows.append((_rate(cell["rate"]), []))
-        rows[-1][1].append(cell)
-    return rows
+def _group_line(matrix: dict, group: str) -> str:
+    """The line of the comment on a pull request on the runs of `group`, as `told` orders it: the
+    mark of what it leads with, and how many runs each of those has, or of a group whose runs led
+    with the same, how many of all; where any moved and the matrix has main's seeds, how many of
+    those first forked beyond them; and how many runs each of the rest has."""
+    counts = tally(matrix, group)
+    led, rest = told(counts)
+    if led == ["same"]:
+        said = f"same in {counts['same']} of {counts['cells']} runs"
+    else:
+        shown = [f"{STANDINGS[one]} in {counts[one]}" for one in led]
+        shown[0] += " run" if counts[led[0]] == 1 else " runs"
+        said = ", ".join(shown)
+    line = f"{_MARKS[led[0]]} **{GROUPS[group]}: {said}**"
+    if counts["moved"] and counts["seeds"]:
+        beyond = f"{counts['beyond']} beyond" if counts["beyond"] else "all within"
+        line += f", {beyond} main's {counts['seeds']} seeds"
+    if rest:
+        line += " · " + ", ".join(f"{counts[one]} {STANDINGS[one]}" for one in rest)
+    return line
+
+
+def _merge_base(facts: dict, point: Optional[dict]) -> str:
+    """The merge base the head's runs were held to, as the comment on a pull request names it:
+    main's run of it, linked, where main's point stood in for the base's runs."""
+    said = f"its merge base {_commit(facts['base'])}"
+    return said if point is None else f"[main's run]({point['run_url']}) of {said}"
+
+
+def _links(facts: dict) -> str:
+    """The links of the comment on a pull request: the report's page where it has one, and the
+    run."""
+    if not facts["report_url"]:
+        return f"[The run]({facts['run_url']})"
+    return f"[The report]({facts['report_url']}) · [the run]({facts['run_url']})"
+
+
+def _run_name(cell: dict) -> str:
+    """A cell's run as the comment on a pull request names it: its group, rate and seed."""
+    return f"{GROUPS[cell['group']]} {_rate(cell['rate'])} seed {cell['seed']}"
+
+
+def _trees(matrix: dict, shown: Sequence[dict]) -> List[str]:
+    """How to read the trees of the cells `shown`, a bullet each, with what the band of main's
+    seeds is where `matrix` has seeds of their scenarios."""
+    seeds, band = seeded(matrix, shown), []
+    if seeds:
+        band = [_BAND.format(seeds=seeds, commit=_commit(matrix["spread"]["logos_chat"]))]
+    return [f"- {said}" for said in (*_TREES, *band, _MEASURED_AFTER)]
 
 
 def words(cell: dict, against: bool) -> str:
@@ -1054,28 +1232,11 @@ def words(cell: dict, against: bool) -> str:
     return f"{said}, {_missing(cell, 'base')} at the base" if against else said
 
 
-def spread_seeds(spread: dict) -> str:
-    """How many seeds of a rate main ran in `spread`: `20 seeds`, or `seeds` where its rates
-    ran other counts."""
-    runs = {one["runs"] for one in spread["summary"]}
-    return f"{runs.pop()} seeds" if len(runs) == 1 else "seeds"
-
-
 def _extent(spread: dict) -> str:
     """The lowest, the highest and the median of a summary's values, or `-` without any."""
     if spread["median"] is None:
         return "-"
     return f"{spread['lowest']} to {spread['highest']}, median {spread['median']}"
-
-
-def _split(one: dict) -> str:
-    """How many of a summary's runs with an outcome split, and how many had none, or `-` where
-    none had one."""
-    without = one["no-outcome"]
-    if without == one["runs"]:
-        return "-"
-    said = f"{one['split']} of {one['runs'] - without}"
-    return said if not without else f"{said}, {without} with no outcome"
 
 
 def _first_fork(one: dict) -> str:
@@ -1098,20 +1259,6 @@ def _members_off(one: dict) -> str:
 def _never_joined(one: dict) -> str:
     median = one["never_joined"]["median"]
     return "-" if median is None else str(median)
-
-
-def _spread_head(spread: dict) -> str:
-    """The head of the column of main's spread: how many seeds of a rate main ran, and where."""
-    return f"main's {spread_seeds(spread)} at {_commit(spread['logos_chat'])}"
-
-
-def spread_of(spread: dict, scenario: str) -> str:
-    """Main's runs of a scenario in a few words: how many ended whole, and the lowest and the
-    highest epochs without a fork."""
-    one = next((one for one in spread["summary"] if one["scenario"] == scenario), None)
-    if one is None or one["epochs"]["lowest"] is None:
-        return "-"
-    return f"{one['whole']} whole, {one['epochs']['lowest']} to {one['epochs']['highest']}"
 
 
 def _ended_at(epochs: int, ended: str) -> str:
@@ -1145,14 +1292,6 @@ def _moved(cell: dict) -> str:
     if part in ("epochs", "ended"):
         return _ended_at(cell["epochs"]["base"], cell["ended"]["base"])
     return f"{was} {_OFF[part]}{'' if was == 1 else 's'} off"
-
-
-def _ran(cell: dict, side: str) -> str:
-    """What a side's run of a cell came to: its verdict and how its grow ended."""
-    outcome = cell[side]
-    if outcome is None:
-        return _missing(cell, side)
-    return html.escape(f"{outcome['verdict']} · {outcome['came_to']}", quote=False)
 
 
 def _missing(cell: dict, side: str) -> str:

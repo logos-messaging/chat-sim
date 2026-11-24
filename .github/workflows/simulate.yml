@@ -16,16 +16,18 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # pairs each run with the base's of its scenario and seed and says the verdict
 # of each group, and for pr places the head's runs among main's twenty seeds of
 # the point at the base, or of the nearest before it; the comment is drawn from
-# what it wrote, kept as the artifact matrix, and for pr opens with that point's
-# runs of the two groups side by side. long runs the two scenarios of fifty
-# epochs and every other one tools/sim/expected holds but the goal's on either
-# group, as many runs as it holds, a job a scenario a side, and holds them to
-# the base's runs, or without a base to what is held.
+# what it wrote, kept as the artifact matrix, and for pr says of each group how
+# many of its runs moved and whether those stand within that point's runs, with
+# a picture of the runs that moved. long runs the two scenarios of fifty epochs
+# and every other one tools/sim/expected holds but the goal's on either group,
+# as many runs as it holds, a job a scenario a side, and holds them to the
+# base's runs, or without a base to what is held.
 # The publish job keeps a main run on the Pages site as a point of main,
 # logos-chat/main/<sha>/<measurement>/, with the point's page, and draws the
 # graph over main, logos-chat/index.html, from every point again; it keeps a pr
-# run for a pull request in logos-chat/pr-<N>/, with its report page; and it
-# keeps a long run handed no base and no pr, held to what is expected, in
+# run for a pull request in logos-chat/pr-<N>/, with its report page, a page for
+# each run and the picture of the runs that moved; and it keeps a long run
+# handed no base and no pr, held to what is expected, in
 # logos-chat/long/<sha>/<measurement>/, with each scenario's compare and its
 # page, and draws the graph over main again, which links the newest. Each keeps
 # its runs' text, and the build's log of a job that could not build chat-sim.
@@ -36,18 +38,20 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # A main run handed a pr ran at the pull request's head, not at a commit of
 # main: it keeps no point, and measure-main.yml does not wait on it.
 # A pr run handed a pr posts the comment on that pull request of logos-chat as
-# the App chat-sim, editing the App's oldest comment there or writing one. A
-# pr run handed check_run, the id of a check run the App made on logos-chat,
-# moves it to in progress once the runs are planned, with this run as its
-# details, and completes it with the groups' verdicts once the comment is
-# posted, with the report page as its details, or this run without one: a
-# failure when either group's runs are worse in two or more and better in none,
-# else a success when either group's are better, and neutral otherwise; the
-# repository variable CHAT_SIM_CHECK_REQUIRED set to true also fails it where
-# chat-sim does not build at the revision or a run there has no outcome. The plan job and the comment job each mint a token of
-# their own, for logos-chat alone, from the variable CHAT_SIM_APP_CLIENT_ID
-# and the secret CHAT_SIM_APP_PRIVATE_KEY; without them, each says so and
-# posts nothing, and the comment is in the run's summary alone.
+# the App chat-sim, editing the App's oldest comment there or writing one. The
+# post job does so after the publish job and, where the comment shows a picture,
+# once the Pages site has built it, waiting ten minutes at most. A pr run handed
+# check_run, the id of a check run the App made on logos-chat, moves it to in
+# progress once the runs are planned, with this run as its details, and
+# completes it with the groups' verdicts once the comment is posted, with the
+# report page as its details, or this run without one: a failure when either
+# group's runs are worse in two or more and better in none, else a success when
+# either group's are better, and neutral otherwise; the repository variable
+# CHAT_SIM_CHECK_REQUIRED set to true also fails it where chat-sim does not
+# build at the revision or a run there has no outcome. The plan job and the post
+# job each mint a token of their own, for logos-chat alone, from the variable
+# CHAT_SIM_APP_CLIENT_ID and the secret CHAT_SIM_APP_PRIVATE_KEY; without them,
+# each says so and posts nothing, and the comment is in the run's summary alone.
 # Started by hand. Every hour, measure-main.yml starts main at logos-chat main's
 # tip if the tip has no point at the current measurement, no run of main at it
 # is going, and no run of main at it ended at that measurement without its
@@ -160,7 +164,7 @@ jobs:
             --points "$RUNNER_TEMP/points" --history "$RUNNER_TEMP/history.json" \
             --pages origin/gh-pages >> "$GITHUB_OUTPUT"
       # The check run moves to in progress last: a step after it that failed
-      # would leave it in progress with no comment job to complete it. A step's
+      # would leave it in progress with no post job to complete it. A step's
       # if cannot read a secret, so this step reads whether it is set.
       - name: Ask whether the App's client ID and key are set
         id: app
@@ -302,12 +306,17 @@ jobs:
       contents: read
       pages: read              # read the Pages site's address
 
+    # For the post job: the report page's address, and the picture's that the
+    # comment shows, or nothing, which it waits for on the Pages site.
+    outputs:
+      report: ${{ steps.report.outputs.url }}
+      picture: ${{ steps.comment.outputs.picture }}
+
     env:
       SUITE: ${{ needs.plan.outputs.suite }}
       REVISION: ${{ needs.plan.outputs.revision }}
       BASE: ${{ needs.plan.outputs.base }}
       PR: ${{ needs.plan.outputs.pr }}
-      CHECK_RUN: ${{ needs.plan.outputs.check_run }}
       RUNS: ${{ needs.plan.outputs.runs }}
       SCENARIOS: ${{ needs.plan.outputs.scenarios }}
       POINT: ${{ needs.plan.outputs.point }}
@@ -431,7 +440,10 @@ jobs:
             page="logos-chat/pr-$PR/"
           fi
           echo "url=${url%/}/$page" >> "$GITHUB_OUTPUT"
+      # The comment goes to comment.md, and where the picture is that it shows
+      # to the step's outputs.
       - name: Write the comment
+        id: comment
         env:
           REPORT_URL: ${{ steps.report.outputs.url }}
         run: |
@@ -452,77 +464,13 @@ jobs:
             --suite "$SUITE" --revision "$REVISION" --pr "$PR" \
             --expected tools/sim/expected --chat-sim "$GITHUB_SHA" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            > "$RUNNER_TEMP/comment.md"
+            --out "$RUNNER_TEMP/comment.md" >> "$GITHUB_OUTPUT"
           cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload the comment
         uses: actions/upload-artifact@v7
         with:
           name: comment
           path: ${{ runner.temp }}/comment.md
-      # The comment on the pull request, and the check run, through a token of
-      # this job's own. A step's if cannot read a secret, so this step reads
-      # whether it is set.
-      - name: Ask whether the App's client ID and key are set
-        id: app
-        if: ${{ needs.plan.outputs.suite == 'pr' && needs.plan.outputs.pr != '' }}
-        env:
-          CLIENT_ID: ${{ vars.CHAT_SIM_APP_CLIENT_ID }}
-          KEY: ${{ secrets.CHAT_SIM_APP_PRIVATE_KEY != '' }}
-        run: |
-          if [ -n "$CLIENT_ID" ] && [ "$KEY" = true ]; then
-            echo "set=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::CHAT_SIM_APP_CLIENT_ID or CHAT_SIM_APP_PRIVATE_KEY is not set, so nothing is posted on logos-chat: the comment is in the run's summary."
-          fi
-      - name: Mint a token for logos-chat's pull request and its checks
-        id: token
-        if: ${{ steps.app.outputs.set == 'true' }}
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.CHAT_SIM_APP_CLIENT_ID }}
-          private-key: ${{ secrets.CHAT_SIM_APP_PRIVATE_KEY }}
-          owner: logos-messaging
-          repositories: logos-chat
-          permission-checks: write
-          permission-pull-requests: write
-      - name: Find the App's comment on the pull request
-        id: posting
-        if: ${{ steps.token.outcome == 'success' }}
-        env:
-          GH_TOKEN: ${{ steps.token.outputs.token }}
-          LOGIN: ${{ steps.token.outputs.app-slug }}[bot]
-        run: |
-          gh api --paginate --slurp "repos/logos-messaging/logos-chat/issues/$PR/comments" \
-            > "$RUNNER_TEMP/comments.json"
-          python3 .github/scripts/simulate.py post --comments "$RUNNER_TEMP/comments.json" \
-            --login "$LOGIN" --pr "$PR" --comment "$RUNNER_TEMP/comment.md" \
-            --out "$RUNNER_TEMP/posted.json" >> "$GITHUB_OUTPUT"
-      - name: Edit the App's comment on the pull request, or write it
-        if: ${{ steps.token.outcome == 'success' }}
-        env:
-          GH_TOKEN: ${{ steps.token.outputs.token }}
-          METHOD: ${{ steps.posting.outputs.method }}
-          ENDPOINT: ${{ steps.posting.outputs.endpoint }}
-        run: gh api --silent -X "$METHOD" "$ENDPOINT" --input "$RUNNER_TEMP/posted.json"
-      # A run cancelled leaves the check run in progress, and so does a comment
-      # job that failed before this step, until it runs again.
-      - name: Complete the check run with the verdict
-        if: ${{ steps.token.outcome == 'success' && needs.plan.outputs.check_run != '' }}
-        env:
-          GH_TOKEN: ${{ steps.token.outputs.token }}
-          REPORT_URL: ${{ steps.report.outputs.url }}
-          REQUIRED: ${{ vars.CHAT_SIM_CHECK_REQUIRED }}
-        run: |
-          given=()
-          if [ -n "$REPORT_URL" ]; then
-            given+=(--report-url "$REPORT_URL")
-          fi
-          python3 .github/scripts/simulate.py check --matrix "$RUNNER_TEMP/matrix.json" \
-            --comment "$RUNNER_TEMP/comment.md" --required "$REQUIRED" "${given[@]}" \
-            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            > "$RUNNER_TEMP/check.json"
-          gh api --silent -X PATCH "repos/logos-messaging/logos-chat/check-runs/$CHECK_RUN" \
-            --input "$RUNNER_TEMP/check.json"
 
   publish:
     name: Publish to GitHub Pages
@@ -544,6 +492,10 @@ jobs:
 
     permissions:
       contents: write          # push to the gh-pages branch
+
+    # For the post job: the commit pushed to gh-pages, or nothing where gh-pages held the run.
+    outputs:
+      pushed: ${{ steps.push.outputs.pushed }}
 
     # Serialize with the other jobs that publish to gh-pages, queued as they are.
     concurrency:
@@ -661,6 +613,7 @@ jobs:
             --run-number "$GITHUB_RUN_NUMBER" --time "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
       - name: Push to gh-pages
+        id: push
         run: |
           said="the point of logos-chat main $REVISION at $MEASUREMENT"
           if [ "$SUITE" = pr ]; then
@@ -677,3 +630,131 @@ jobs:
           git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git -C site commit -qm "Publish $said"
           git -C site push origin gh-pages
+          echo "pushed=$(git -C site rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  post:
+    name: Post the comment and complete the check
+    needs: [plan, comment, publish]
+    # After publish, so that the picture the comment shows is on the Pages site
+    # when the comment lands. It runs whether publish succeeded, failed or was
+    # skipped, so that the check run is completed all the same.
+    if: >-
+      ${{ !cancelled() && needs.comment.result == 'success' &&
+      needs.plan.outputs.suite == 'pr' && needs.plan.outputs.pr != '' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: read              # ask whether the Pages site has built publish's push
+
+    env:
+      PR: ${{ needs.plan.outputs.pr }}
+      CHECK_RUN: ${{ needs.plan.outputs.check_run }}
+
+    steps:
+      # The tree that ran, whose .github/scripts/simulate.py says where the
+      # comment goes and writes the check's update.
+      - uses: actions/checkout@v4
+      - name: Download the comment
+        uses: actions/download-artifact@v8
+        with:
+          name: comment
+          path: ${{ runner.temp }}
+      - name: Download the matrix
+        uses: actions/download-artifact@v8
+        with:
+          name: matrix
+          path: ${{ runner.temp }}
+      # The comment on the pull request, and the check run, through a token of
+      # this job's own. A step's if cannot read a secret, so this step reads
+      # whether it is set.
+      - name: Ask whether the App's client ID and key are set
+        id: app
+        env:
+          CLIENT_ID: ${{ vars.CHAT_SIM_APP_CLIENT_ID }}
+          KEY: ${{ secrets.CHAT_SIM_APP_PRIVATE_KEY != '' }}
+        run: |
+          if [ -n "$CLIENT_ID" ] && [ "$KEY" = true ]; then
+            echo "set=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CHAT_SIM_APP_CLIENT_ID or CHAT_SIM_APP_PRIVATE_KEY is not set, so nothing is posted on logos-chat: the comment is in the run's summary."
+          fi
+      - name: Mint a token for logos-chat's pull request and its checks
+        id: token
+        if: ${{ steps.app.outputs.set == 'true' }}
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CHAT_SIM_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CHAT_SIM_APP_PRIVATE_KEY }}
+          owner: logos-messaging
+          repositories: logos-chat
+          permission-checks: write
+          permission-pull-requests: write
+      # The site serves publish's push once it has built it, or a push after
+      # it, about a minute after. The picture itself is not asked for: the
+      # site's cache keeps a 404 it answered, for the comment's readers too.
+      # Where publish pushed nothing, the site holds the picture already.
+      # Without publish, or a build in ten minutes, the comment goes out all
+      # the same, and its picture may not show.
+      - name: Wait for the Pages site to build the comment's picture
+        if: ${{ steps.token.outcome == 'success' && needs.comment.outputs.picture != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISHED: ${{ needs.publish.result }}
+          PUSHED: ${{ needs.publish.outputs.pushed }}
+        run: |
+          if [ "$PUBLISHED" != success ]; then
+            echo "::warning::The publish job's result is $PUBLISHED, so the comment's picture may not show: the comment is posted all the same."
+            exit 0
+          fi
+          while [ -n "$PUSHED" ]; do
+            if gh api "repos/$GITHUB_REPOSITORY/pages/builds?per_page=10" > "$RUNNER_TEMP/builds.json"; then
+              built=$(python3 .github/scripts/simulate.py built --builds "$RUNNER_TEMP/builds.json" --commit "$PUSHED")
+              if [ "$built" = true ]; then
+                exit 0
+              fi
+            fi
+            if [ "$SECONDS" -ge 600 ]; then
+              echo "::warning::The Pages site did not build $PUSHED in ten minutes, so the comment's picture may not show: the comment is posted all the same."
+              exit 0
+            fi
+            sleep 10
+          done
+      - name: Find the App's comment on the pull request
+        id: posting
+        if: ${{ steps.token.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          LOGIN: ${{ steps.token.outputs.app-slug }}[bot]
+        run: |
+          gh api --paginate --slurp "repos/logos-messaging/logos-chat/issues/$PR/comments" \
+            > "$RUNNER_TEMP/comments.json"
+          python3 .github/scripts/simulate.py post --comments "$RUNNER_TEMP/comments.json" \
+            --login "$LOGIN" --pr "$PR" --comment "$RUNNER_TEMP/comment.md" \
+            --out "$RUNNER_TEMP/posted.json" >> "$GITHUB_OUTPUT"
+      - name: Edit the App's comment on the pull request, or write it
+        if: ${{ steps.token.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          METHOD: ${{ steps.posting.outputs.method }}
+          ENDPOINT: ${{ steps.posting.outputs.endpoint }}
+        run: gh api --silent -X "$METHOD" "$ENDPOINT" --input "$RUNNER_TEMP/posted.json"
+      # A run cancelled leaves the check run in progress, and so does a comment
+      # job that failed, or this one before this step, until it runs again.
+      - name: Complete the check run with the verdict
+        if: ${{ steps.token.outcome == 'success' && needs.plan.outputs.check_run != '' }}
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          REPORT_URL: ${{ needs.comment.outputs.report }}
+          REQUIRED: ${{ vars.CHAT_SIM_CHECK_REQUIRED }}
+        run: |
+          given=()
+          if [ -n "$REPORT_URL" ]; then
+            given+=(--report-url "$REPORT_URL")
+          fi
+          python3 .github/scripts/simulate.py check --matrix "$RUNNER_TEMP/matrix.json" \
+            --comment "$RUNNER_TEMP/comment.md" --required "$REQUIRED" "${given[@]}" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            > "$RUNNER_TEMP/check.json"
+          gh api --silent -X PATCH "repos/logos-messaging/logos-chat/check-runs/$CHECK_RUN" \
+            --input "$RUNNER_TEMP/check.json"
