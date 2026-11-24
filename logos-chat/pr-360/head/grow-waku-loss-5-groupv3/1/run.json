@@ -221,14 +221,14 @@
   "wire": null,
   "load": {
     "start": [
-      2.5537109375,
-      1.05859375,
-      0.400390625
+      1.833984375,
+      0.76904296875,
+      0.31005859375
     ],
     "end": [
-      2.42919921875,
-      1.0576171875,
-      0.40380859375
+      1.833984375,
+      0.76904296875,
+      0.31005859375
     ]
   },
   "nodes": [
@@ -243,15 +243,15 @@
         "cut": [],
         "delay_ms": 518,
         "frames": {
-          "arrived": 409,
+          "arrived": 339,
           "dropped": {
             "cut": 0,
-            "loss": 21,
+            "loss": 18,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 388
+          "passed": 321
         },
         "loss": 0.05,
         "own": [
@@ -263,7 +263,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 21
+        "loss": 18
       }
     },
     {
@@ -277,15 +277,15 @@
         "cut": [],
         "delay_ms": 529,
         "frames": {
-          "arrived": 420,
+          "arrived": 351,
           "dropped": {
             "cut": 0,
-            "loss": 16,
+            "loss": 15,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 404
+          "passed": 336
         },
         "loss": 0.05,
         "own": [
@@ -297,7 +297,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 16
+        "loss": 15
       }
     },
     {
@@ -311,15 +311,15 @@
         "cut": [],
         "delay_ms": 543,
         "frames": {
-          "arrived": 409,
+          "arrived": 330,
           "dropped": {
             "cut": 0,
-            "loss": 20,
+            "loss": 18,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 389
+          "passed": 312
         },
         "loss": 0.05,
         "own": [
@@ -331,7 +331,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 20
+        "loss": 18
       }
     },
     {
@@ -405,15 +405,15 @@
         "cut": [],
         "delay_ms": 636,
         "frames": {
-          "arrived": 384,
+          "arrived": 315,
           "dropped": {
             "cut": 0,
-            "loss": 17,
+            "loss": 13,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 367
+          "passed": 302
         },
         "loss": 0.05,
         "own": [
@@ -425,7 +425,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 17
+        "loss": 13
       }
     },
     {
@@ -439,15 +439,15 @@
         "cut": [],
         "delay_ms": 388,
         "frames": {
-          "arrived": 379,
+          "arrived": 310,
           "dropped": {
             "cut": 0,
-            "loss": 15,
+            "loss": 14,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 364
+          "passed": 296
         },
         "loss": 0.05,
         "own": [
@@ -459,7 +459,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 15
+        "loss": 14
       }
     },
     {
@@ -593,15 +593,15 @@
         "cut": [],
         "delay_ms": 522,
         "frames": {
-          "arrived": 360,
+          "arrived": 297,
           "dropped": {
             "cut": 0,
-            "loss": 24,
+            "loss": 19,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 336
+          "passed": 278
         },
         "loss": 0.05,
         "own": [
@@ -613,12 +613,12 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 24
+        "loss": 19
       }
     },
     {
       "account": "70656572",
-      "app_id": null,
+      "app_id": "cb0de6fabb3d5b08ad227061bdfcff146aeb6f2e77d1214ed4a5e63046084fcb",
       "inbound_errors": {},
       "installation": "cb0de6fa",
       "name": "peer13",
@@ -627,24 +627,28 @@
         "cut": [],
         "delay_ms": 536,
         "frames": {
-          "arrived": 0,
+          "arrived": 284,
           "dropped": {
             "cut": 0,
-            "loss": 0,
+            "loss": 12,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 0
+          "passed": 272
         },
         "loss": 0.05,
-        "own": [],
+        "own": [
+          "cb0de6fabb3d5b08ad227061bdfcff146aeb6f2e77d1214ed4a5e63046084fcb"
+        ],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
       "seated": true,
-      "network_dropped": {}
+      "network_dropped": {
+        "loss": 12
+      }
     },
     {
       "account": "70656572",
@@ -678,7 +682,7 @@
     },
     {
       "account": "70656572",
-      "app_id": "6d584977aadb3dec997e09e65ec7fdf2f4cc97ec27476b65a7429678aab44123",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "6d584977",
       "name": "peer15",
@@ -687,28 +691,24 @@
         "cut": [],
         "delay_ms": 583,
         "frames": {
-          "arrived": 354,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
-            "loss": 20,
+            "loss": 0,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 334
+          "passed": 0
         },
         "loss": 0.05,
-        "own": [
-          "6d584977aadb3dec997e09e65ec7fdf2f4cc97ec27476b65a7429678aab44123"
-        ],
+        "own": [],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
       "seated": true,
-      "network_dropped": {
-        "loss": 20
-      }
+      "network_dropped": {}
     },
     {
       "account": "70656572",
@@ -721,15 +721,15 @@
         "cut": [],
         "delay_ms": 622,
         "frames": {
-          "arrived": 334,
+          "arrived": 266,
           "dropped": {
             "cut": 0,
-            "loss": 12,
+            "loss": 9,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 322
+          "passed": 257
         },
         "loss": 0.05,
         "own": [
@@ -741,7 +741,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 12
+        "loss": 9
       }
     },
     {
@@ -755,15 +755,15 @@
         "cut": [],
         "delay_ms": 313,
         "frames": {
-          "arrived": 319,
+          "arrived": 250,
           "dropped": {
             "cut": 0,
-            "loss": 14,
+            "loss": 11,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 305
+          "passed": 239
         },
         "loss": 0.05,
         "own": [
@@ -775,7 +775,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 14
+        "loss": 11
       }
     },
     {
@@ -789,15 +789,15 @@
         "cut": [],
         "delay_ms": 404,
         "frames": {
-          "arrived": 297,
+          "arrived": 238,
           "dropped": {
             "cut": 0,
-            "loss": 19,
+            "loss": 15,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 278
+          "passed": 223
         },
         "loss": 0.05,
         "own": [
@@ -809,7 +809,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 19
+        "loss": 15
       }
     },
     {
@@ -853,15 +853,15 @@
         "cut": [],
         "delay_ms": 486,
         "frames": {
-          "arrived": 288,
+          "arrived": 225,
           "dropped": {
             "cut": 0,
-            "loss": 12,
+            "loss": 9,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 276
+          "passed": 216
         },
         "loss": 0.05,
         "own": [
@@ -873,12 +873,12 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 12
+        "loss": 9
       }
     },
     {
       "account": "70656572",
-      "app_id": null,
+      "app_id": "1b68cbe6f181a2a6a59db547e7a7583e3d95c7b2410eb65aeb532ee0175b1e2f",
       "inbound_errors": {},
       "installation": "1b68cbe6",
       "name": "peer21",
@@ -886,6 +886,40 @@
         "armed": false,
         "cut": [],
         "delay_ms": 506,
+        "frames": {
+          "arrived": 205,
+          "dropped": {
+            "cut": 0,
+            "loss": 9,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 196
+        },
+        "loss": 0.05,
+        "own": [
+          "1b68cbe6f181a2a6a59db547e7a7583e3d95c7b2410eb65aeb532ee0175b1e2f"
+        ],
+        "seed": 1,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 9
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": null,
+      "inbound_errors": {},
+      "installation": "630e82d1",
+      "name": "peer22",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 517,
         "frames": {
           "arrived": 0,
           "dropped": {
@@ -905,40 +939,6 @@
       },
       "seated": true,
       "network_dropped": {}
-    },
-    {
-      "account": "70656572",
-      "app_id": "630e82d131b8f9bfeb26c66e6398d781fc8e2723b863b47e33b1f9a45bb3b228",
-      "inbound_errors": {},
-      "installation": "630e82d1",
-      "name": "peer22",
-      "network": {
-        "armed": false,
-        "cut": [],
-        "delay_ms": 517,
-        "frames": {
-          "arrived": 264,
-          "dropped": {
-            "cut": 0,
-            "loss": 16,
-            "welcome_loss": 0,
-            "withheld": 0
-          },
-          "held": 0,
-          "passed": 248
-        },
-        "loss": 0.05,
-        "own": [
-          "630e82d131b8f9bfeb26c66e6398d781fc8e2723b863b47e33b1f9a45bb3b228"
-        ],
-        "seed": 1,
-        "welcome_loss": 0.05,
-        "withheld": null
-      },
-      "seated": true,
-      "network_dropped": {
-        "loss": 16
-      }
     },
     {
       "account": "70656572",
@@ -972,7 +972,7 @@
     },
     {
       "account": "70656572",
-      "app_id": "e06e7f050ea571f947f03e1f308670e9bc8b89dffd576037f8e4fa78711ed91d",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "e06e7f05",
       "name": "peer24",
@@ -981,28 +981,24 @@
         "cut": [],
         "delay_ms": 543,
         "frames": {
-          "arrived": 234,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
-            "loss": 16,
+            "loss": 0,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 218
+          "passed": 0
         },
         "loss": 0.05,
-        "own": [
-          "e06e7f050ea571f947f03e1f308670e9bc8b89dffd576037f8e4fa78711ed91d"
-        ],
+        "own": [],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
       "seated": true,
-      "network_dropped": {
-        "loss": 16
-      }
+      "network_dropped": {}
     },
     {
       "account": "70656572",
@@ -1036,7 +1032,7 @@
     },
     {
       "account": "70656572",
-      "app_id": null,
+      "app_id": "4b8a8bb926381c7923273fbc8ca0a3c38f6b77cd0d7c00490f8f14d65bebe878",
       "inbound_errors": {},
       "installation": "4b8a8bb9",
       "name": "peer26",
@@ -1045,24 +1041,28 @@
         "cut": [],
         "delay_ms": 604,
         "frames": {
-          "arrived": 0,
+          "arrived": 174,
           "dropped": {
             "cut": 0,
-            "loss": 0,
+            "loss": 11,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 0
+          "passed": 163
         },
         "loss": 0.05,
-        "own": [],
+        "own": [
+          "4b8a8bb926381c7923273fbc8ca0a3c38f6b77cd0d7c00490f8f14d65bebe878"
+        ],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
       "seated": true,
-      "network_dropped": {}
+      "network_dropped": {
+        "loss": 11
+      }
     },
     {
       "account": "70656572",
@@ -1075,15 +1075,15 @@
         "cut": [],
         "delay_ms": 634,
         "frames": {
-          "arrived": 231,
+          "arrived": 163,
           "dropped": {
             "cut": 0,
-            "loss": 16,
+            "loss": 7,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 215
+          "passed": 156
         },
         "loss": 0.05,
         "own": [
@@ -1095,7 +1095,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 16
+        "loss": 7
       }
     },
     {
@@ -1109,15 +1109,15 @@
         "cut": [],
         "delay_ms": 386,
         "frames": {
-          "arrived": 224,
+          "arrived": 144,
           "dropped": {
             "cut": 0,
-            "loss": 6,
+            "loss": 3,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 218
+          "passed": 141
         },
         "loss": 0.05,
         "own": [
@@ -1129,12 +1129,12 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 6
+        "loss": 3
       }
     },
     {
       "account": "70656572",
-      "app_id": null,
+      "app_id": "b5c682c7e96ce3e067e8a9670f0537771f11548f7a759ffb2ad70056aee130c6",
       "inbound_errors": {},
       "installation": "b5c682c7",
       "name": "peer29",
@@ -1143,24 +1143,28 @@
         "cut": [],
         "delay_ms": 422,
         "frames": {
-          "arrived": 0,
+          "arrived": 131,
           "dropped": {
             "cut": 0,
-            "loss": 0,
+            "loss": 2,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 0
+          "passed": 129
         },
         "loss": 0.05,
-        "own": [],
+        "own": [
+          "b5c682c7e96ce3e067e8a9670f0537771f11548f7a759ffb2ad70056aee130c6"
+        ],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
       "seated": true,
-      "network_dropped": {}
+      "network_dropped": {
+        "loss": 2
+      }
     },
     {
       "account": "70656572",
@@ -1203,6 +1207,36 @@
         "cut": [],
         "delay_ms": 500,
         "frames": {
+          "arrived": 0,
+          "dropped": {
+            "cut": 0,
+            "loss": 0,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 0
+        },
+        "loss": 0.05,
+        "own": [],
+        "seed": 1,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {}
+    },
+    {
+      "account": "70656572",
+      "app_id": null,
+      "inbound_errors": {},
+      "installation": "a5a183e1",
+      "name": "peer32",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 512,
+        "frames": {
           "arrived": 1,
           "dropped": {
             "cut": 0,
@@ -1226,14 +1260,48 @@
     },
     {
       "account": "70656572",
-      "app_id": null,
+      "app_id": "a43cda2643c82962bdbe6d329c7b6299e0139499937c4709256d13cb71b1cd4a",
       "inbound_errors": {},
-      "installation": "a5a183e1",
-      "name": "peer32",
+      "installation": "a43cda26",
+      "name": "peer33",
       "network": {
         "armed": false,
         "cut": [],
-        "delay_ms": 512,
+        "delay_ms": 522,
+        "frames": {
+          "arrived": 83,
+          "dropped": {
+            "cut": 0,
+            "loss": 12,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 71
+        },
+        "loss": 0.05,
+        "own": [
+          "a43cda2643c82962bdbe6d329c7b6299e0139499937c4709256d13cb71b1cd4a"
+        ],
+        "seed": 1,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 12
+      }
+    },
+    {
+      "account": "70656572",
+      "app_id": null,
+      "inbound_errors": {},
+      "installation": "db3576a9",
+      "name": "peer34",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 536,
         "frames": {
           "arrived": 0,
           "dropped": {
@@ -1256,74 +1324,6 @@
     },
     {
       "account": "70656572",
-      "app_id": "a43cda2643c82962bdbe6d329c7b6299e0139499937c4709256d13cb71b1cd4a",
-      "inbound_errors": {},
-      "installation": "a43cda26",
-      "name": "peer33",
-      "network": {
-        "armed": false,
-        "cut": [],
-        "delay_ms": 522,
-        "frames": {
-          "arrived": 186,
-          "dropped": {
-            "cut": 0,
-            "loss": 16,
-            "welcome_loss": 0,
-            "withheld": 0
-          },
-          "held": 0,
-          "passed": 170
-        },
-        "loss": 0.05,
-        "own": [
-          "a43cda2643c82962bdbe6d329c7b6299e0139499937c4709256d13cb71b1cd4a"
-        ],
-        "seed": 1,
-        "welcome_loss": 0.05,
-        "withheld": null
-      },
-      "seated": true,
-      "network_dropped": {
-        "loss": 16
-      }
-    },
-    {
-      "account": "70656572",
-      "app_id": "db3576a94271391878e8916e875737b2a491eb8a528995dd2845e4a78cfe66b1",
-      "inbound_errors": {},
-      "installation": "db3576a9",
-      "name": "peer34",
-      "network": {
-        "armed": false,
-        "cut": [],
-        "delay_ms": 536,
-        "frames": {
-          "arrived": 193,
-          "dropped": {
-            "cut": 0,
-            "loss": 8,
-            "welcome_loss": 0,
-            "withheld": 0
-          },
-          "held": 0,
-          "passed": 185
-        },
-        "loss": 0.05,
-        "own": [
-          "db3576a94271391878e8916e875737b2a491eb8a528995dd2845e4a78cfe66b1"
-        ],
-        "seed": 1,
-        "welcome_loss": 0.05,
-        "withheld": null
-      },
-      "seated": true,
-      "network_dropped": {
-        "loss": 8
-      }
-    },
-    {
-      "account": "70656572",
       "app_id": "f96a70dce5a70fcbf75a8a4a364b1a008eea9fa1f447f5a1ae8e842f3d7897f2",
       "inbound_errors": {},
       "installation": "f96a70dc",
@@ -1333,15 +1333,15 @@
         "cut": [],
         "delay_ms": 552,
         "frames": {
-          "arrived": 169,
+          "arrived": 58,
           "dropped": {
             "cut": 0,
-            "loss": 9,
+            "loss": 4,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 160
+          "passed": 54
         },
         "loss": 0.05,
         "own": [
@@ -1353,7 +1353,7 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 9
+        "loss": 4
       }
     },
     {
@@ -1367,15 +1367,15 @@
         "cut": [],
         "delay_ms": 581,
         "frames": {
-          "arrived": 162,
+          "arrived": 62,
           "dropped": {
             "cut": 0,
-            "loss": 7,
+            "loss": 5,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 155
+          "passed": 57
         },
         "loss": 0.05,
         "own": [
@@ -1387,12 +1387,12 @@
       },
       "seated": true,
       "network_dropped": {
-        "loss": 7
+        "loss": 5
       }
     },
     {
       "account": "70656572",
-      "app_id": null,
+      "app_id": "c68280d61a45920b55cf61681109d658ae4e154cf674330843739af0b189c430",
       "inbound_errors": {},
       "installation": "c68280d6",
       "name": "peer37",
@@ -1401,7 +1401,7 @@
         "cut": [],
         "delay_ms": 620,
         "frames": {
-          "arrived": 0,
+          "arrived": 30,
           "dropped": {
             "cut": 0,
             "loss": 0,
@@ -1409,10 +1409,12 @@
             "withheld": 0
           },
           "held": 0,
-          "passed": 0
+          "passed": 30
         },
         "loss": 0.05,
-        "own": [],
+        "own": [
+          "c68280d61a45920b55cf61681109d658ae4e154cf674330843739af0b189c430"
+        ],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
@@ -1422,7 +1424,7 @@
     },
     {
       "account": "70656572",
-      "app_id": "bbab81fd9c01e4c91b5d33371044e3a235bba91ac8e9d61b2480f6e742f463ed",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "bbab81fd",
       "name": "peer38",
@@ -1431,32 +1433,28 @@
         "cut": [],
         "delay_ms": 302,
         "frames": {
-          "arrived": 143,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
-            "loss": 11,
+            "loss": 0,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 132
+          "passed": 0
         },
         "loss": 0.05,
-        "own": [
-          "bbab81fd9c01e4c91b5d33371044e3a235bba91ac8e9d61b2480f6e742f463ed"
-        ],
+        "own": [],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
       "seated": true,
-      "network_dropped": {
-        "loss": 11
-      }
+      "network_dropped": {}
     },
     {
       "account": "70656572",
-      "app_id": "70c46b76378e866e16b547a4f67db89b409624b2de33ac08e589abeb9deaca85",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "70c46b76",
       "name": "peer39",
@@ -1464,40 +1462,6 @@
         "armed": false,
         "cut": [],
         "delay_ms": 402,
-        "frames": {
-          "arrived": 131,
-          "dropped": {
-            "cut": 0,
-            "loss": 2,
-            "welcome_loss": 0,
-            "withheld": 0
-          },
-          "held": 0,
-          "passed": 129
-        },
-        "loss": 0.05,
-        "own": [
-          "70c46b76378e866e16b547a4f67db89b409624b2de33ac08e589abeb9deaca85"
-        ],
-        "seed": 1,
-        "welcome_loss": 0.05,
-        "withheld": null
-      },
-      "seated": true,
-      "network_dropped": {
-        "loss": 2
-      }
-    },
-    {
-      "account": "70656572",
-      "app_id": null,
-      "inbound_errors": {},
-      "installation": "abfd232d",
-      "name": "peer40",
-      "network": {
-        "armed": false,
-        "cut": [],
-        "delay_ms": 438,
         "frames": {
           "arrived": 0,
           "dropped": {
@@ -1517,6 +1481,40 @@
       },
       "seated": true,
       "network_dropped": {}
+    },
+    {
+      "account": "70656572",
+      "app_id": "abfd232d80548b02fd2066f19ac4475a3d63cb2276df11a71c5e7268c449d8e2",
+      "inbound_errors": {},
+      "installation": "abfd232d",
+      "name": "peer40",
+      "network": {
+        "armed": false,
+        "cut": [],
+        "delay_ms": 438,
+        "frames": {
+          "arrived": 14,
+          "dropped": {
+            "cut": 0,
+            "loss": 1,
+            "welcome_loss": 0,
+            "withheld": 0
+          },
+          "held": 0,
+          "passed": 13
+        },
+        "loss": 0.05,
+        "own": [
+          "abfd232d80548b02fd2066f19ac4475a3d63cb2276df11a71c5e7268c449d8e2"
+        ],
+        "seed": 1,
+        "welcome_loss": 0.05,
+        "withheld": null
+      },
+      "seated": true,
+      "network_dropped": {
+        "loss": 1
+      }
     },
     {
       "account": "70656572",
@@ -1545,12 +1543,12 @@
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
+      "seated": false,
       "network_dropped": {}
     },
     {
       "account": "70656572",
-      "app_id": "58ccbaec36543366cfda9e9b5bba071aab882a7686d444b9ee8b2c3f512dd8ca",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "58ccbaec",
       "name": "peer42",
@@ -1559,32 +1557,28 @@
         "cut": [],
         "delay_ms": 506,
         "frames": {
-          "arrived": 100,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
-            "loss": 4,
+            "loss": 0,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 96
+          "passed": 0
         },
         "loss": 0.05,
-        "own": [
-          "58ccbaec36543366cfda9e9b5bba071aab882a7686d444b9ee8b2c3f512dd8ca"
-        ],
+        "own": [],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
-      "network_dropped": {
-        "loss": 4
-      }
+      "seated": false,
+      "network_dropped": {}
     },
     {
       "account": "70656572",
-      "app_id": "6a19ece650a5221119ec21877789dff3bb49d860e7cb19d5108df6549968ec53",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "6a19ece6",
       "name": "peer43",
@@ -1593,32 +1587,28 @@
         "cut": [],
         "delay_ms": 516,
         "frames": {
-          "arrived": 113,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
-            "loss": 7,
+            "loss": 0,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 106
+          "passed": 0
         },
         "loss": 0.05,
-        "own": [
-          "6a19ece650a5221119ec21877789dff3bb49d860e7cb19d5108df6549968ec53"
-        ],
+        "own": [],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
-      "network_dropped": {
-        "loss": 7
-      }
+      "seated": false,
+      "network_dropped": {}
     },
     {
       "account": "70656572",
-      "app_id": "7f01dffb9dddd62d5b379a59b33120dcf0da2e52bc05e081092ebdc8f65ec0bd",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "7f01dffb",
       "name": "peer44",
@@ -1627,32 +1617,28 @@
         "cut": [],
         "delay_ms": 527,
         "frames": {
-          "arrived": 74,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
-            "loss": 1,
+            "loss": 0,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 73
+          "passed": 0
         },
         "loss": 0.05,
-        "own": [
-          "7f01dffb9dddd62d5b379a59b33120dcf0da2e52bc05e081092ebdc8f65ec0bd"
-        ],
+        "own": [],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
-      "network_dropped": {
-        "loss": 1
-      }
+      "seated": false,
+      "network_dropped": {}
     },
     {
       "account": "70656572",
-      "app_id": "5a90ab838cf00db65f6588e8d58883fe96a0444115182d7a2681d8ca616a1596",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "5a90ab83",
       "name": "peer45",
@@ -1661,28 +1647,24 @@
         "cut": [],
         "delay_ms": 542,
         "frames": {
-          "arrived": 82,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
-            "loss": 1,
+            "loss": 0,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 81
+          "passed": 0
         },
         "loss": 0.05,
-        "own": [
-          "5a90ab838cf00db65f6588e8d58883fe96a0444115182d7a2681d8ca616a1596"
-        ],
+        "own": [],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
-      "network_dropped": {
-        "loss": 1
-      }
+      "seated": false,
+      "network_dropped": {}
     },
     {
       "account": "70656572",
@@ -1711,12 +1693,12 @@
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
+      "seated": false,
       "network_dropped": {}
     },
     {
       "account": "70656572",
-      "app_id": "503f150ef4587b41e0a438ba32be6d5c73c6a4d708b8418af49b10f78fb95113",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "503f150e",
       "name": "peer47",
@@ -1725,28 +1707,24 @@
         "cut": [],
         "delay_ms": 600,
         "frames": {
-          "arrived": 30,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
-            "loss": 3,
+            "loss": 0,
             "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
-          "passed": 27
+          "passed": 0
         },
         "loss": 0.05,
-        "own": [
-          "503f150ef4587b41e0a438ba32be6d5c73c6a4d708b8418af49b10f78fb95113"
-        ],
+        "own": [],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
-      "network_dropped": {
-        "loss": 3
-      }
+      "seated": false,
+      "network_dropped": {}
     },
     {
       "account": "70656572",
@@ -1759,11 +1737,11 @@
         "cut": [],
         "delay_ms": 633,
         "frames": {
-          "arrived": 1,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
             "loss": 0,
-            "welcome_loss": 1,
+            "welcome_loss": 0,
             "withheld": 0
           },
           "held": 0,
@@ -1775,10 +1753,8 @@
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
-      "network_dropped": {
-        "welcome_loss": 1
-      }
+      "seated": false,
+      "network_dropped": {}
     },
     {
       "account": "70656572",
@@ -1807,7 +1783,7 @@
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
+      "seated": false,
       "network_dropped": {}
     },
     {
@@ -1837,12 +1813,12 @@
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
+      "seated": false,
       "network_dropped": {}
     },
     {
       "account": "70656572",
-      "app_id": "90557d4409209394e9184d1bf69c278b036c5f7d4ae1aa2afc3ebb1fb700f5a3",
+      "app_id": null,
       "inbound_errors": {},
       "installation": "90557d44",
       "name": "peer51",
@@ -1851,7 +1827,7 @@
         "cut": [],
         "delay_ms": 459,
         "frames": {
-          "arrived": 9,
+          "arrived": 0,
           "dropped": {
             "cut": 0,
             "loss": 0,
@@ -1859,17 +1835,15 @@
             "withheld": 0
           },
           "held": 0,
-          "passed": 9
+          "passed": 0
         },
         "loss": 0.05,
-        "own": [
-          "90557d4409209394e9184d1bf69c278b036c5f7d4ae1aa2afc3ebb1fb700f5a3"
-        ],
+        "own": [],
         "seed": 1,
         "welcome_loss": 0.05,
         "withheld": null
       },
-      "seated": true,
+      "seated": false,
       "network_dropped": {}
     },
     {
@@ -6351,24 +6325,24 @@
   "held_to": null,
   "check": null,
   "unchecked": "a `grow` step expects no outcome",
-  "verdict": "split at epoch 9",
-  "at_tip": 27,
-  "seated": 51,
+  "verdict": "split at epoch 12",
+  "at_tip": 21,
+  "seated": 40,
   "grow": {
     "behind": [],
     "ended": "5 main branches ran side by side",
     "fell_behind": [
       {
-        "epoch": 6,
+        "epoch": 13,
+        "name": "raya"
+      },
+      {
+        "epoch": 16,
         "name": "tomo"
       },
       {
-        "epoch": 7,
-        "name": "pax"
-      },
-      {
-        "epoch": 9,
-        "name": "peer7"
+        "epoch": 16,
+        "name": "peer21"
       }
     ],
     "lines": [
@@ -6383,51 +6357,45 @@
           "tomo",
           "peer7",
           "peer12",
-          "peer15",
-          "peer16",
+          "peer17",
           "peer18",
-          "peer22",
-          "peer24",
-          "peer38",
-          "peer42",
-          "peer44",
-          "peer47",
-          "peer51"
+          "peer20",
+          "peer21",
+          "peer26",
+          "peer28",
+          "peer36",
+          "peer37",
+          "peer40"
         ]
       },
       {
-        "epoch": 15,
-        "forked_at": 9,
+        "epoch": 12,
+        "forked_at": 12,
         "from": 0,
         "kind": "main",
         "members": [
-          "peer17",
-          "peer27",
-          "peer28",
-          "peer35",
-          "peer39",
-          "peer43"
+          "peer16"
         ]
       },
       {
-        "epoch": 16,
-        "forked_at": 13,
+        "epoch": 17,
+        "forked_at": 15,
         "from": 0,
         "kind": "main",
         "members": [
           "raya",
+          "peer27",
           "peer33",
-          "peer36",
-          "peer45"
+          "peer35"
         ]
       },
       {
-        "epoch": 18,
-        "forked_at": 18,
+        "epoch": 16,
+        "forked_at": 16,
         "from": 0,
         "kind": "main",
         "members": [
-          "peer34"
+          "peer13"
         ]
       },
       {
@@ -6436,7 +6404,7 @@
         "from": 0,
         "kind": "main",
         "members": [
-          "peer20"
+          "peer29"
         ]
       }
     ],
@@ -6448,24 +6416,19 @@
       "peer9",
       "peer10",
       "peer11",
-      "peer13",
       "peer14",
+      "peer15",
       "peer19",
-      "peer21",
+      "peer22",
       "peer23",
+      "peer24",
       "peer25",
-      "peer26",
-      "peer29",
       "peer30",
       "peer31",
       "peer32",
-      "peer37",
-      "peer40",
-      "peer41",
-      "peer46",
-      "peer48",
-      "peer49",
-      "peer50"
+      "peer34",
+      "peer38",
+      "peer39"
     ],
     "removed": [],
     "rounds": [
@@ -6553,7 +6516,7 @@
           "peer16"
         ],
         "refused": [],
-        "settled_s": 180.0
+        "settled_s": 121.95
       },
       {
         "adders": [
@@ -6563,7 +6526,7 @@
           "peer17"
         ],
         "refused": [],
-        "settled_s": 180.0
+        "settled_s": 121.5
       },
       {
         "adders": [
@@ -6585,13 +6548,13 @@
           "peer20"
         ],
         "refused": [],
-        "settled_s": 180.0
+        "settled_s": 121.6
       },
       {
         "adders": [
           "pax",
           "saro",
-          "peer12"
+          "peer7"
         ],
         "joiners": [
           "peer21",
@@ -6623,7 +6586,7 @@
           "peer27"
         ],
         "refused": [],
-        "settled_s": 0.85
+        "settled_s": 121.95
       },
       {
         "adders": [
@@ -6633,11 +6596,11 @@
           "peer28"
         ],
         "refused": [],
-        "settled_s": 120.95
+        "settled_s": 180.0
       },
       {
         "adders": [
-          "peer24",
+          "peer26",
           "peer12",
           "peer7"
         ],
@@ -6651,9 +6614,9 @@
       },
       {
         "adders": [
-          "peer16",
+          "peer17",
           "raya",
-          "peer20"
+          "peer21"
         ],
         "joiners": [
           "peer32",
@@ -6666,14 +6629,14 @@
       {
         "adders": [
           "peer27",
-          "peer33"
+          "peer29"
         ],
         "joiners": [
           "peer35",
           "peer36"
         ],
         "refused": [],
-        "settled_s": 121.35
+        "settled_s": 180.0
       },
       {
         "adders": [
@@ -6698,60 +6661,6 @@
         ],
         "refused": [],
         "settled_s": 180.0
-      },
-      {
-        "adders": [
-          "saro",
-          "peer34",
-          "peer17"
-        ],
-        "joiners": [
-          "peer41",
-          "peer42",
-          "peer43"
-        ],
-        "refused": [],
-        "settled_s": 180.0
-      },
-      {
-        "adders": [
-          "peer7",
-          "peer33",
-          "tomo"
-        ],
-        "joiners": [
-          "peer44",
-          "peer45",
-          "peer46"
-        ],
-        "refused": [],
-        "settled_s": 180.0
-      },
-      {
-        "adders": [
-          "peer20",
-          "peer35",
-          "tomo"
-        ],
-        "joiners": [
-          "peer47",
-          "peer48",
-          "peer49"
-        ],
-        "refused": [],
-        "settled_s": 180.0
-      },
-      {
-        "adders": [
-          "peer12",
-          "peer47"
-        ],
-        "joiners": [
-          "peer50",
-          "peer51"
-        ],
-        "refused": [],
-        "settled_s": 180.0
       }
     ],
     "trunk_epoch": 19
@@ -6759,6 +6668,6 @@
   "page": null,
   "unshared": [],
   "rig": "one process",
-  "virtual_s": 3724.75,
-  "wall_s": 3.614582172
+  "virtual_s": 3068.6,
+  "wall_s": 2.562613721
 }

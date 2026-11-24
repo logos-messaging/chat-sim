@@ -7,7 +7,11 @@
   "runs": 18,
   "unbuilt": 0
  },
- "base_point": null,
+ "base_point": {
+  "logos_chat": "e1d76cf8c62bae2c215ed0dcc3c8ac9e8107fd9e",
+  "measurement": "278bcec5814142be48f0f45307d3a89da16d8c8b",
+  "run_url": "https://github.com/logos-messaging/chat-sim/actions/runs/45418493349"
+ },
  "cells": [
   {
    "scenario": "grow-waku-loss-0.5",
@@ -535,15 +539,15 @@
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
     "verdict": "split at epoch 24",
-    "at_tip": 38,
-    "seated": 74,
-    "virtual_s": 5597.65,
-    "trunk_epoch": 35,
+    "at_tip": 53,
+    "seated": 103,
+    "virtual_s": 8064.6,
+    "trunk_epoch": 50,
     "ended": "split",
-    "lines_off_trunk": 4,
-    "members_off_trunk": 42,
-    "never_joined": 36,
-    "came_to": "5 main branches ran side by side: trunk at epoch 35, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 36 never joined",
+    "lines_off_trunk": 1,
+    "members_off_trunk": 54,
+    "never_joined": 49,
+    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 4 fell behind, 1 behind at the end, 49 never joined",
     "stopped": null
    },
    "base": {
@@ -552,15 +556,15 @@
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
     "verdict": "split at epoch 24",
-    "at_tip": 38,
-    "seated": 74,
-    "virtual_s": 5597.65,
-    "trunk_epoch": 35,
+    "at_tip": 53,
+    "seated": 103,
+    "virtual_s": 8064.6,
+    "trunk_epoch": 50,
     "ended": "split",
-    "lines_off_trunk": 4,
-    "members_off_trunk": 42,
-    "never_joined": 36,
-    "came_to": "5 main branches ran side by side: trunk at epoch 35, 5 main, 0 sub, 1 fell behind, 0 behind at the end, 36 never joined",
+    "lines_off_trunk": 1,
+    "members_off_trunk": 54,
+    "never_joined": 49,
+    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 2 main, 0 sub, 4 fell behind, 1 behind at the end, 49 never joined",
     "stopped": null
    },
    "unbuilt": {
@@ -592,15 +596,15 @@
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
     "verdict": "split at epoch 10",
-    "at_tip": 86,
-    "seated": 112,
-    "virtual_s": 7840.259,
+    "at_tip": 68,
+    "seated": 107,
+    "virtual_s": 8063.35,
     "trunk_epoch": 50,
     "ended": "split",
-    "lines_off_trunk": 5,
-    "members_off_trunk": 64,
-    "never_joined": 26,
-    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 3 main, 3 sub, 5 fell behind, 0 behind at the end, 26 never joined",
+    "lines_off_trunk": 2,
+    "members_off_trunk": 59,
+    "never_joined": 39,
+    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 5 fell behind, 0 behind at the end, 39 never joined",
     "stopped": null
    },
    "base": {
@@ -609,15 +613,15 @@
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
     "verdict": "split at epoch 10",
-    "at_tip": 86,
-    "seated": 112,
-    "virtual_s": 7840.259,
+    "at_tip": 68,
+    "seated": 107,
+    "virtual_s": 8063.35,
     "trunk_epoch": 50,
     "ended": "split",
-    "lines_off_trunk": 5,
-    "members_off_trunk": 64,
-    "never_joined": 26,
-    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 3 main, 3 sub, 5 fell behind, 0 behind at the end, 26 never joined",
+    "lines_off_trunk": 2,
+    "members_off_trunk": 59,
+    "never_joined": 39,
+    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 5 fell behind, 0 behind at the end, 39 never joined",
     "stopped": null
    },
    "unbuilt": {
@@ -649,15 +653,15 @@
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
     "verdict": "split at epoch 27",
-    "at_tip": 48,
-    "seated": 98,
-    "virtual_s": 7635.7,
-    "trunk_epoch": 46,
+    "at_tip": 53,
+    "seated": 108,
+    "virtual_s": 8238.9,
+    "trunk_epoch": 50,
     "ended": "split",
-    "lines_off_trunk": 4,
-    "members_off_trunk": 55,
-    "never_joined": 50,
-    "came_to": "5 main branches ran side by side: trunk at epoch 46, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 50 never joined",
+    "lines_off_trunk": 2,
+    "members_off_trunk": 59,
+    "never_joined": 55,
+    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 0 fell behind, 0 behind at the end, 55 never joined",
     "stopped": null
    },
    "base": {
@@ -666,15 +670,15 @@
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
     "verdict": "split at epoch 27",
-    "at_tip": 48,
-    "seated": 98,
-    "virtual_s": 7635.7,
-    "trunk_epoch": 46,
+    "at_tip": 53,
+    "seated": 108,
+    "virtual_s": 8238.9,
+    "trunk_epoch": 50,
     "ended": "split",
-    "lines_off_trunk": 4,
-    "members_off_trunk": 55,
-    "never_joined": 50,
-    "came_to": "5 main branches ran side by side: trunk at epoch 46, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 50 never joined",
+    "lines_off_trunk": 2,
+    "members_off_trunk": 59,
+    "never_joined": 55,
+    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 0 fell behind, 0 behind at the end, 55 never joined",
     "stopped": null
    },
    "unbuilt": {
@@ -705,7 +709,7 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 28",
+    "verdict": "split at epoch 24",
     "at_tip": 41,
     "seated": 83,
     "virtual_s": 6375.65,
@@ -714,7 +718,7 @@
     "lines_off_trunk": 4,
     "members_off_trunk": 47,
     "never_joined": 42,
-    "came_to": "5 main branches ran side by side: trunk at epoch 39, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 42 never joined",
+    "came_to": "5 main branches ran side by side: trunk at epoch 39, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 42 never joined",
     "stopped": null
    },
    "base": {
@@ -722,7 +726,7 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 28",
+    "verdict": "split at epoch 24",
     "at_tip": 41,
     "seated": 83,
     "virtual_s": 6375.65,
@@ -731,7 +735,7 @@
     "lines_off_trunk": 4,
     "members_off_trunk": 47,
     "never_joined": 42,
-    "came_to": "5 main branches ran side by side: trunk at epoch 39, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 42 never joined",
+    "came_to": "5 main branches ran side by side: trunk at epoch 39, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 42 never joined",
     "stopped": null
    },
    "unbuilt": {
@@ -740,8 +744,8 @@
    },
    "change": "same",
    "epochs": {
-    "head": 28,
-    "base": 28
+    "head": 24,
+    "base": 24
    },
    "ended": {
     "head": "split",
@@ -763,15 +767,15 @@
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
     "verdict": "split at epoch 12",
-    "at_tip": 49,
+    "at_tip": 53,
     "seated": 71,
-    "virtual_s": 5242.55,
-    "trunk_epoch": 31,
+    "virtual_s": 5126.6,
+    "trunk_epoch": 33,
     "ended": "split",
-    "lines_off_trunk": 5,
-    "members_off_trunk": 45,
-    "never_joined": 22,
-    "came_to": "5 main branches ran side by side: trunk at epoch 31, 5 main, 1 sub, 4 fell behind, 0 behind at the end, 22 never joined",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 42,
+    "never_joined": 18,
+    "came_to": "5 main branches ran side by side: trunk at epoch 33, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 18 never joined",
     "stopped": null
    },
    "base": {
@@ -780,15 +784,15 @@
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
     "verdict": "split at epoch 12",
-    "at_tip": 49,
+    "at_tip": 53,
     "seated": 71,
-    "virtual_s": 5242.55,
-    "trunk_epoch": 31,
+    "virtual_s": 5126.6,
+    "trunk_epoch": 33,
     "ended": "split",
-    "lines_off_trunk": 5,
-    "members_off_trunk": 45,
-    "never_joined": 22,
-    "came_to": "5 main branches ran side by side: trunk at epoch 31, 5 main, 1 sub, 4 fell behind, 0 behind at the end, 22 never joined",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 42,
+    "never_joined": 18,
+    "came_to": "5 main branches ran side by side: trunk at epoch 33, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 18 never joined",
     "stopped": null
    },
    "unbuilt": {
@@ -819,16 +823,16 @@
     "network_seed": 3,
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 15",
-    "at_tip": 46,
-    "seated": 79,
-    "virtual_s": 6074.8,
-    "trunk_epoch": 37,
+    "verdict": "split at epoch 14",
+    "at_tip": 54,
+    "seated": 94,
+    "virtual_s": 6857.3,
+    "trunk_epoch": 41,
     "ended": "split",
     "lines_off_trunk": 4,
-    "members_off_trunk": 45,
-    "never_joined": 33,
-    "came_to": "5 main branches ran side by side: trunk at epoch 37, 5 main, 0 sub, 4 fell behind, 0 behind at the end, 33 never joined",
+    "members_off_trunk": 57,
+    "never_joined": 40,
+    "came_to": "5 main branches ran side by side: trunk at epoch 41, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 40 never joined",
     "stopped": null
    },
    "base": {
@@ -836,16 +840,16 @@
     "network_seed": 3,
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 15",
-    "at_tip": 46,
-    "seated": 79,
-    "virtual_s": 6074.8,
-    "trunk_epoch": 37,
+    "verdict": "split at epoch 14",
+    "at_tip": 54,
+    "seated": 94,
+    "virtual_s": 6857.3,
+    "trunk_epoch": 41,
     "ended": "split",
     "lines_off_trunk": 4,
-    "members_off_trunk": 45,
-    "never_joined": 33,
-    "came_to": "5 main branches ran side by side: trunk at epoch 37, 5 main, 0 sub, 4 fell behind, 0 behind at the end, 33 never joined",
+    "members_off_trunk": 57,
+    "never_joined": 40,
+    "came_to": "5 main branches ran side by side: trunk at epoch 41, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 40 never joined",
     "stopped": null
    },
    "unbuilt": {
@@ -854,8 +858,8 @@
    },
    "change": "same",
    "epochs": {
-    "head": 15,
-    "base": 15
+    "head": 14,
+    "base": 14
    },
    "ended": {
     "head": "split",
@@ -876,16 +880,16 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 9",
-    "at_tip": 27,
-    "seated": 51,
-    "virtual_s": 3724.75,
+    "verdict": "split at epoch 12",
+    "at_tip": 21,
+    "seated": 40,
+    "virtual_s": 3068.6,
     "trunk_epoch": 19,
     "ended": "split",
     "lines_off_trunk": 4,
-    "members_off_trunk": 36,
-    "never_joined": 24,
-    "came_to": "5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 24 never joined",
+    "members_off_trunk": 26,
+    "never_joined": 19,
+    "came_to": "5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 19 never joined",
     "stopped": null
    },
    "base": {
@@ -893,16 +897,16 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 9",
-    "at_tip": 27,
-    "seated": 51,
-    "virtual_s": 3724.75,
+    "verdict": "split at epoch 12",
+    "at_tip": 21,
+    "seated": 40,
+    "virtual_s": 3068.6,
     "trunk_epoch": 19,
     "ended": "split",
     "lines_off_trunk": 4,
-    "members_off_trunk": 36,
-    "never_joined": 24,
-    "came_to": "5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 24 never joined",
+    "members_off_trunk": 26,
+    "never_joined": 19,
+    "came_to": "5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 19 never joined",
     "stopped": null
    },
    "unbuilt": {
@@ -911,8 +915,8 @@
    },
    "change": "same",
    "epochs": {
-    "head": 9,
-    "base": 9
+    "head": 12,
+    "base": 12
    },
    "ended": {
     "head": "split",
@@ -933,16 +937,16 @@
     "network_seed": 2,
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 18",
-    "at_tip": 28,
-    "seated": 54,
-    "virtual_s": 4152.3,
-    "trunk_epoch": 26,
+    "verdict": "split at epoch 14",
+    "at_tip": 27,
+    "seated": 49,
+    "virtual_s": 3851.409,
+    "trunk_epoch": 23,
     "ended": "split",
-    "lines_off_trunk": 5,
-    "members_off_trunk": 35,
-    "never_joined": 26,
-    "came_to": "5 main branches ran side by side: trunk at epoch 26, 5 main, 1 sub, 0 fell behind, 0 behind at the end, 26 never joined",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 30,
+    "never_joined": 22,
+    "came_to": "5 main branches ran side by side: trunk at epoch 23, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 22 never joined",
     "stopped": null
    },
    "base": {
@@ -950,16 +954,16 @@
     "network_seed": 2,
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 18",
-    "at_tip": 28,
-    "seated": 54,
-    "virtual_s": 4152.3,
-    "trunk_epoch": 26,
+    "verdict": "split at epoch 14",
+    "at_tip": 27,
+    "seated": 49,
+    "virtual_s": 3851.409,
+    "trunk_epoch": 23,
     "ended": "split",
-    "lines_off_trunk": 5,
-    "members_off_trunk": 35,
-    "never_joined": 26,
-    "came_to": "5 main branches ran side by side: trunk at epoch 26, 5 main, 1 sub, 0 fell behind, 0 behind at the end, 26 never joined",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 30,
+    "never_joined": 22,
+    "came_to": "5 main branches ran side by side: trunk at epoch 23, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 22 never joined",
     "stopped": null
    },
    "unbuilt": {
@@ -968,8 +972,8 @@
    },
    "change": "same",
    "epochs": {
-    "head": 18,
-    "base": 18
+    "head": 14,
+    "base": 14
    },
    "ended": {
     "head": "split",
@@ -991,15 +995,15 @@
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
     "verdict": "split at epoch 5",
-    "at_tip": 41,
+    "at_tip": 42,
     "seated": 58,
-    "virtual_s": 4390.65,
-    "trunk_epoch": 21,
+    "virtual_s": 4033.6,
+    "trunk_epoch": 20,
     "ended": "split",
-    "lines_off_trunk": 6,
-    "members_off_trunk": 41,
-    "never_joined": 17,
-    "came_to": "5 main branches ran side by side: trunk at epoch 21, 5 main, 2 sub, 12 fell behind, 0 behind at the end, 17 never joined",
+    "lines_off_trunk": 5,
+    "members_off_trunk": 42,
+    "never_joined": 15,
+    "came_to": "5 main branches ran side by side: trunk at epoch 20, 5 main, 1 sub, 9 fell behind, 1 behind at the end, 15 never joined",
     "stopped": null
    },
    "base": {
@@ -1008,15 +1012,15 @@
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
     "verdict": "split at epoch 5",
-    "at_tip": 41,
+    "at_tip": 42,
     "seated": 58,
-    "virtual_s": 4390.65,
-    "trunk_epoch": 21,
+    "virtual_s": 4033.6,
+    "trunk_epoch": 20,
     "ended": "split",
-    "lines_off_trunk": 6,
-    "members_off_trunk": 41,
-    "never_joined": 17,
-    "came_to": "5 main branches ran side by side: trunk at epoch 21, 5 main, 2 sub, 12 fell behind, 0 behind at the end, 17 never joined",
+    "lines_off_trunk": 5,
+    "members_off_trunk": 42,
+    "never_joined": 15,
+    "came_to": "5 main branches ran side by side: trunk at epoch 20, 5 main, 1 sub, 9 fell behind, 1 behind at the end, 15 never joined",
     "stopped": null
    },
    "unbuilt": {
@@ -1082,9 +1086,9 @@
  ],
  "summary": null,
  "spread": {
-  "logos_chat": "ce916b886f0379968804b7e62b154c4d5348e4bf",
+  "logos_chat": "e1d76cf8c62bae2c215ed0dcc3c8ac9e8107fd9e",
   "measurement": "278bcec5814142be48f0f45307d3a89da16d8c8b",
-  "run_url": "https://github.com/logos-messaging/chat-sim/actions/runs/44845197143",
+  "run_url": "https://github.com/logos-messaging/chat-sim/actions/runs/45418493349",
   "summary": [
    {
     "scenario": "grow-waku-loss-0.5",
@@ -1195,31 +1199,31 @@
     "rate": "0.5%",
     "runs": 20,
     "no-outcome": 0,
-    "whole": 1,
+    "whole": 0,
     "behind": 0,
-    "split": 19,
+    "split": 20,
     "stalled": 0,
     "epochs": {
-     "lowest": 10,
-     "median": 23.5,
-     "highest": 50
+     "lowest": 6,
+     "median": 25.5,
+     "highest": 42
     },
     "split_at": {
-     "lowest": 10,
-     "median": 23,
-     "highest": 37
+     "lowest": 6,
+     "median": 25.5,
+     "highest": 42
     },
     "lines_off_trunk": {
-     "median": 4
+     "median": 3
     },
     "members_off_trunk": {
-     "median": 48
+     "median": 56.5
     },
     "never_joined": {
-     "median": 40.5
+     "median": 42.5
     },
     "seated": {
-     "median": 92
+     "median": 103.5
     }
    },
    {
@@ -1234,26 +1238,26 @@
     "split": 20,
     "stalled": 0,
     "epochs": {
-     "lowest": 8,
-     "median": 14,
-     "highest": 30
+     "lowest": 6,
+     "median": 12.5,
+     "highest": 42
     },
     "split_at": {
-     "lowest": 8,
-     "median": 14,
-     "highest": 30
+     "lowest": 6,
+     "median": 12.5,
+     "highest": 42
     },
     "lines_off_trunk": {
-     "median": 4
+     "median": 4.5
     },
     "members_off_trunk": {
-     "median": 47
+     "median": 50.5
     },
     "never_joined": {
      "median": 32
     },
     "seated": {
-     "median": 83.5
+     "median": 91
     }
    },
    {
@@ -1269,25 +1273,25 @@
     "stalled": 0,
     "epochs": {
      "lowest": 2,
-     "median": 10,
+     "median": 8.5,
      "highest": 21
     },
     "split_at": {
      "lowest": 2,
-     "median": 10,
+     "median": 8.5,
      "highest": 21
     },
     "lines_off_trunk": {
      "median": 4
     },
     "members_off_trunk": {
-     "median": 30.5
+     "median": 28
     },
     "never_joined": {
-     "median": 17
+     "median": 17.5
     },
     "seated": {
-     "median": 49
+     "median": 45
     }
    }
   ],
@@ -1673,7 +1677,7 @@
    {
     "scenario": "grow-waku-loss-0.5-groupv3",
     "seed": 3,
-    "epochs": 27,
+    "epochs": 6,
     "ended": "split"
    },
    {
@@ -1691,55 +1695,55 @@
    {
     "scenario": "grow-waku-loss-0.5-groupv3",
     "seed": 6,
-    "epochs": 13,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 7,
-    "epochs": 33,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 8,
-    "epochs": 18,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 9,
-    "epochs": 50,
-    "ended": "whole"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 10,
-    "epochs": 21,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 11,
-    "epochs": 18,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 12,
     "epochs": 19,
     "ended": "split"
    },
    {
     "scenario": "grow-waku-loss-0.5-groupv3",
+    "seed": 7,
+    "epochs": 41,
+    "ended": "split"
+   },
+   {
+    "scenario": "grow-waku-loss-0.5-groupv3",
+    "seed": 8,
+    "epochs": 34,
+    "ended": "split"
+   },
+   {
+    "scenario": "grow-waku-loss-0.5-groupv3",
+    "seed": 9,
+    "epochs": 38,
+    "ended": "split"
+   },
+   {
+    "scenario": "grow-waku-loss-0.5-groupv3",
+    "seed": 10,
+    "epochs": 35,
+    "ended": "split"
+   },
+   {
+    "scenario": "grow-waku-loss-0.5-groupv3",
+    "seed": 11,
+    "epochs": 26,
+    "ended": "split"
+   },
+   {
+    "scenario": "grow-waku-loss-0.5-groupv3",
+    "seed": 12,
+    "epochs": 25,
+    "ended": "split"
+   },
+   {
+    "scenario": "grow-waku-loss-0.5-groupv3",
     "seed": 13,
-    "epochs": 23,
+    "epochs": 39,
     "ended": "split"
    },
    {
     "scenario": "grow-waku-loss-0.5-groupv3",
     "seed": 14,
-    "epochs": 15,
+    "epochs": 9,
     "ended": "split"
    },
    {
@@ -1751,19 +1755,19 @@
    {
     "scenario": "grow-waku-loss-0.5-groupv3",
     "seed": 16,
-    "epochs": 29,
+    "epochs": 42,
     "ended": "split"
    },
    {
     "scenario": "grow-waku-loss-0.5-groupv3",
     "seed": 17,
-    "epochs": 32,
+    "epochs": 16,
     "ended": "split"
    },
    {
     "scenario": "grow-waku-loss-0.5-groupv3",
     "seed": 18,
-    "epochs": 37,
+    "epochs": 23,
     "ended": "split"
    },
    {
@@ -1775,7 +1779,7 @@
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 0,
-    "epochs": 28,
+    "epochs": 24,
     "ended": "split"
    },
    {
@@ -1787,13 +1791,13 @@
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 2,
-    "epochs": 15,
+    "epochs": 14,
     "ended": "split"
    },
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 3,
-    "epochs": 18,
+    "epochs": 6,
     "ended": "split"
    },
    {
@@ -1811,7 +1815,7 @@
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 6,
-    "epochs": 13,
+    "epochs": 14,
     "ended": "split"
    },
    {
@@ -1823,7 +1827,7 @@
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 8,
-    "epochs": 30,
+    "epochs": 25,
     "ended": "split"
    },
    {
@@ -1835,7 +1839,7 @@
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 10,
-    "epochs": 11,
+    "epochs": 18,
     "ended": "split"
    },
    {
@@ -1847,7 +1851,7 @@
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 12,
-    "epochs": 22,
+    "epochs": 18,
     "ended": "split"
    },
    {
@@ -1859,7 +1863,7 @@
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 14,
-    "epochs": 30,
+    "epochs": 9,
     "ended": "split"
    },
    {
@@ -1871,7 +1875,7 @@
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 16,
-    "epochs": 20,
+    "epochs": 42,
     "ended": "split"
    },
    {
@@ -1883,7 +1887,7 @@
    {
     "scenario": "grow-waku-loss-1-groupv3",
     "seed": 18,
-    "epochs": 29,
+    "epochs": 13,
     "ended": "split"
    },
    {
@@ -1895,13 +1899,13 @@
    {
     "scenario": "grow-waku-loss-5-groupv3",
     "seed": 0,
-    "epochs": 9,
+    "epochs": 12,
     "ended": "split"
    },
    {
     "scenario": "grow-waku-loss-5-groupv3",
     "seed": 1,
-    "epochs": 18,
+    "epochs": 14,
     "ended": "split"
    },
    {
@@ -1925,13 +1929,13 @@
    {
     "scenario": "grow-waku-loss-5-groupv3",
     "seed": 5,
-    "epochs": 13,
+    "epochs": 9,
     "ended": "split"
    },
    {
     "scenario": "grow-waku-loss-5-groupv3",
     "seed": 6,
-    "epochs": 10,
+    "epochs": 7,
     "ended": "split"
    },
    {
@@ -1949,7 +1953,7 @@
    {
     "scenario": "grow-waku-loss-5-groupv3",
     "seed": 9,
-    "epochs": 11,
+    "epochs": 7,
     "ended": "split"
    },
    {
@@ -1973,7 +1977,7 @@
    {
     "scenario": "grow-waku-loss-5-groupv3",
     "seed": 13,
-    "epochs": 11,
+    "epochs": 12,
     "ended": "split"
    },
    {
@@ -1991,25 +1995,25 @@
    {
     "scenario": "grow-waku-loss-5-groupv3",
     "seed": 16,
-    "epochs": 19,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 17,
-    "epochs": 17,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 18,
     "epochs": 13,
     "ended": "split"
    },
    {
     "scenario": "grow-waku-loss-5-groupv3",
+    "seed": 17,
+    "epochs": 18,
+    "ended": "split"
+   },
+   {
+    "scenario": "grow-waku-loss-5-groupv3",
+    "seed": 18,
+    "epochs": 17,
+    "ended": "split"
+   },
+   {
+    "scenario": "grow-waku-loss-5-groupv3",
     "seed": 19,
-    "epochs": 10,
+    "epochs": 6,
     "ended": "split"
    }
   ]
