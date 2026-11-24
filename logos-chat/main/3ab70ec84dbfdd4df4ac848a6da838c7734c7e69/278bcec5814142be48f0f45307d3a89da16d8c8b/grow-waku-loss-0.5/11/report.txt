@@ -1,0 +1,79 @@
+conversation 2ab6b9e7fa
+  split at epoch 3
+  55 of 55 seats share a log
+
+  branch A: epoch 28, state 52ec34adf91354e5, 46 members
+    on it: 028d6701, 0845c45d, 0b5b7ed5, 15667472, 2392b769, 26aa7b23, 2a87fe91, 31461844, 352b9ec1,
+      367bcad6, 3b032d70, 45391ceb, 4a891b05, 53aa7c7e, 5701a99d, 58430376, 5f6609dc, 601f2ceb,
+      719eecc6, 842caff4, 8bfaf2c5, 915ea289, 9e82abb7, a57f9c12, a8dc9a32, b0397647, b2bba27d,
+      c14c6981, c38804a9, c6c12284, c741092c, c75afa2c, ca1f7ac1, d7482e42, db698f8f, dc7c28c1,
+      ebddae8b, f1a5c02b, fd93a793, fe21b498
+  branch B: epoch 20, state bc10b2c91ad1e14e, 29 members
+    on it: 32e9c9af, 3809428b, 7152747b, 7256cebf, 7cc0fcf1, c7a305cf
+  branch C: epoch 23, state 9ccc3f8466b576fe, 35 members
+    on it: 07284c94, 171ab36f, 634ff041, 7a6ae577, e02e3cca
+  branch D: epoch 27, state 313775d4150d8a66, 44 members
+    on it: 459e1eb4
+  branch E: epoch 3, state eae6dff374a62b84, 6 members
+    on it: 5586ea0f
+  branch F: epoch 19, state fb83ac7aca4d9b97, 28 members
+    on it: d6572259
+
+  installation  account   name   epoch  position      branch
+  028d6701      70656572  group  28     tip           A
+  0845c45d      70656572  group  28     tip           A
+  0b5b7ed5      70656572  group  28     tip           A
+  15667472      70656572  group  28     tip           A
+  2392b769      70656572  group  28     tip           A
+  26aa7b23      70656572  group  28     tip           A
+  2a87fe91      70656572  group  28     tip           A
+  31461844      70656572  group  28     tip           A
+  352b9ec1      70656572  group  28     tip           A
+  367bcad6      70656572  group  28     tip           A
+  3b032d70      72617961  group  28     tip           A
+  45391ceb      70656572  group  28     tip           A
+  4a891b05      70656572  group  28     tip           A
+  53aa7c7e      70656572  group  28     tip           A
+  5701a99d      70656572  group  28     tip           A
+  58430376      70656572  group  28     tip           A
+  5f6609dc      70656572  group  28     tip           A
+  601f2ceb      70656572  group  28     tip           A
+  719eecc6      70656572  group  28     tip           A
+  842caff4      70656572  group  28     tip           A
+  8bfaf2c5      70656572  group  28     tip           A
+  915ea289      70656572  group  28     tip           A
+  9e82abb7      70656572  group  28     tip           A
+  a57f9c12      70656572  group  28     tip           A
+  a8dc9a32      70656572  group  28     tip           A
+  b0397647      70656572  group  28     tip           A
+  b2bba27d      7361726f  group  28     tip           A
+  c14c6981      70656572  group  28     tip           A
+  c38804a9      70656572  group  28     tip           A
+  c6c12284      70656572  group  28     tip           A
+  c741092c      70656572  group  28     tip           A
+  c75afa2c      70656572  group  28     tip           A
+  ca1f7ac1      70656572  group  28     tip           A
+  d7482e42      70656572  group  28     tip           A
+  db698f8f      70656572  group  28     tip           A
+  dc7c28c1      70656572  group  28     tip           A
+  ebddae8b      70656572  group  28     tip           A
+  f1a5c02b      70656572  group  28     tip           A
+  fd93a793      70656572  group  28     tip           A
+  fe21b498      70656572  group  28     tip           A
+  32e9c9af      70656572  group  20     tip           B
+  3809428b      70656572  group  20     tip           B
+  7152747b      70656572  group  20     tip           B
+  7256cebf      70656572  group  20     tip           B
+  7cc0fcf1      70656572  group  20     tip           B
+  c7a305cf      6b6573    group  20     tip           B
+  07284c94      746f6d6f  group  23     tip           C
+  171ab36f      70656572  group  23     tip           C
+  634ff041      70656572  group  23     tip           C
+  7a6ae577      70656572  group  23     tip           C
+  e02e3cca      70656572  group  21     behind        C
+  459e1eb4      70656572  group  27     tip           D
+  5586ea0f      706178    group  3      tip           E
+  d6572259      6d697261  group  19     tip           F
+  26158fd8      70656572  group  -      never joined  -
+
+lines: 66522 read, 66514 records, 0 without a stamp, 0 malformed, 0 unknown
