@@ -263,8 +263,9 @@ wrote of the runs, a point the matrix’s cells and summary, and a long run what
 the output of each <code dir="auto">compare</code>, and each keeps each run’s <code dir="auto">run.txt</code>, <code dir="auto">report.txt</code> and <code dir="auto">run.json</code>, or, of a
 job that could not build chat-sim, the build’s log, <code dir="auto">build.log</code>, which the job uploads beside each run’s
 <code dir="auto">unbuilt</code> marker. A run’s <code dir="auto">report.json</code>, ten times the rest, stays in the workflow run’s artifacts. Each
-has a page drawn from what it keeps (see <a href="#the-pages-of-logos-chats-runs">The pages of logos-chat’s runs</a>),
-and the comment links it.</p>
+has a page drawn from what it keeps, and the comment links it. A pull request’s run also has a page for
+each of its runs and, where a run moved, a picture of the runs that moved, which its comment shows (see
+<a href="#the-pages-of-logos-chats-runs">The pages of logos-chat’s runs</a>).</p>
 <p>A <code dir="auto">pr</code> run whose base has its point on <code dir="auto">gh-pages</code> at the measurement runs nothing at the base: a point’s
 seeds 0 to 2 are runs 1 to 3 of its sweeps, the runs a pull request asks of the base, so the point’s
 cells stand in for the base’s, outcomes and ids as the point holds them. A point at another measurement
@@ -273,15 +274,14 @@ nothing, or one the plan cannot read: the jobs at the base run them, and a warni
 When a point stands in, the matrix names it as <code dir="auto">base_point</code>, and the pull request’s directory holds
 no <code dir="auto">base/</code>: the point’s own directory holds those runs’ text while it keeps it. The comment places the
 head’s runs among main’s twenty seeds of each group’s rate at the point at the base, or else at the
-newest point
-at the measurement of the base’s hundred newest commits that logos-chat’s commits API lists, passing over
-one the plan cannot read, with a warning that says why. The matrix
-holds that point as <code dir="auto">spread</code>, and the comment opens with its runs of the two groups side by side, a row a
-rate: how many split, the epoch of the first fork from the lowest to the highest, and the medians of the
-lines and of the members off the trunk at the end, and of those that never joined. A re-rolled cell says
-whether its epochs are within that point’s runs or below the lowest, and the title of a re-rolled verdict
-how many fell below. With no such point, the comment has no such column, and against a base says why
-main’s runs of the two groups are not side by side.</p>
+newest point at the measurement of the base’s hundred newest commits that logos-chat’s commits API
+lists, passing over one the plan cannot read, with a warning that says why. The matrix holds that point
+as <code dir="auto">spread</code>. A run of the head stands within main’s seeds when its epochs without a fork, the first
+fork’s or else the trunk’s, are from the lowest of those seeds’ to the highest. Each group’s line in the
+comment says how many of its runs that moved stand beyond them. The title of a re-rolled verdict says
+how many re-rolled runs fell below the lowest. The trees of the runs draw main’s seeds as a grey band
+over their epochs. With no such point, the comment says nothing of main’s seeds, and the trees have no
+band. The same goes for a rate the point holds no runs of, and for its group’s line.</p>
 
 
 
@@ -339,7 +339,15 @@ main’s runs of the two groups are not side by side.</p>
 
 
 
-<table><thead><tr><th>Path</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/point.json</code></td><td>the point of the logos-chat commit <code dir="auto">&#x3C;sha></code>, measured by the chat-sim commit <code dir="auto">&#x3C;measurement></code></td></tr><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/&#x3C;scenario>/&#x3C;run>/</code></td><td>the text of each of the point’s runs, <code dir="auto">&#x3C;run></code> its number in a sweep of its scenario</td></tr><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/index.html</code></td><td>the point’s page</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/long.json</code></td><td>the long run of the logos-chat commit <code dir="auto">&#x3C;sha></code>, measured by the chat-sim commit <code dir="auto">&#x3C;measurement></code></td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/&#x3C;scenario>/compare.txt</code></td><td>what <code dir="auto">compare</code> printed of the scenario’s runs, held to what <code dir="auto">tools/sim/expected/</code> holds of it</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/&#x3C;scenario>/&#x3C;run>/</code></td><td>the text of each of the long run’s runs, <code dir="auto">&#x3C;run></code> its number in the sweep of its scenario</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/index.html</code></td><td>the long run’s page</td></tr><tr><td><code dir="auto">logos-chat/index.html</code></td><td>the graph over main, drawn again from every point’s <code dir="auto">point.json</code> each time a point or a long run is written (see <a href="#over-main">Over main</a>)</td></tr><tr><td><code dir="auto">logos-chat/pr-N/matrix.json</code></td><td>the matrix of the newest run for pull request N, the head’s runs beside the base’s, or beside main’s point at the base</td></tr><tr><td><code dir="auto">logos-chat/pr-N/meta.json</code></td><td>what ran: the pull request’s number as <code dir="auto">pr</code>, the <code dir="auto">revision</code> and the <code dir="auto">base</code>, <code dir="auto">null</code> without one, chat-sim’s commit as <code dir="auto">chat_sim</code>, the <code dir="auto">measurement</code>, the workflow run’s <code dir="auto">run_url</code> and <code dir="auto">run_number</code>, and the <code dir="auto">time</code> it was written, in UTC</td></tr><tr><td><code dir="auto">logos-chat/pr-N/head/&#x3C;scenario>/&#x3C;run>/</code>, <code dir="auto">logos-chat/pr-N/base/&#x3C;scenario>/&#x3C;run>/</code></td><td>the text of each run at the head and at the base; no <code dir="auto">base/</code> when main’s point stood in</td></tr><tr><td><code dir="auto">logos-chat/pr-N/index.html</code></td><td>the report of the run</td></tr></tbody></table>
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Path</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/point.json</code></td><td>the point of the logos-chat commit <code dir="auto">&#x3C;sha></code>, measured by the chat-sim commit <code dir="auto">&#x3C;measurement></code></td></tr><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/&#x3C;scenario>/&#x3C;run>/</code></td><td>the text of each of the point’s runs, <code dir="auto">&#x3C;run></code> its number in a sweep of its scenario</td></tr><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/index.html</code></td><td>the point’s page</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/long.json</code></td><td>the long run of the logos-chat commit <code dir="auto">&#x3C;sha></code>, measured by the chat-sim commit <code dir="auto">&#x3C;measurement></code></td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/&#x3C;scenario>/compare.txt</code></td><td>what <code dir="auto">compare</code> printed of the scenario’s runs, held to what <code dir="auto">tools/sim/expected/</code> holds of it</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/&#x3C;scenario>/&#x3C;run>/</code></td><td>the text of each of the long run’s runs, <code dir="auto">&#x3C;run></code> its number in the sweep of its scenario</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/index.html</code></td><td>the long run’s page</td></tr><tr><td><code dir="auto">logos-chat/index.html</code></td><td>the graph over main, drawn again from every point’s <code dir="auto">point.json</code> each time a point or a long run is written (see <a href="#over-main">Over main</a>)</td></tr><tr><td><code dir="auto">logos-chat/pr-N/matrix.json</code></td><td>the matrix of the newest run for pull request N, the head’s runs beside the base’s, or beside main’s point at the base</td></tr><tr><td><code dir="auto">logos-chat/pr-N/meta.json</code></td><td>what ran: the pull request’s number as <code dir="auto">pr</code>, the <code dir="auto">revision</code> and the <code dir="auto">base</code>, <code dir="auto">null</code> without one, chat-sim’s commit as <code dir="auto">chat_sim</code>, the <code dir="auto">measurement</code>, the workflow run’s <code dir="auto">run_url</code> and <code dir="auto">run_number</code>, and the <code dir="auto">time</code> it was written, in UTC</td></tr><tr><td><code dir="auto">logos-chat/pr-N/head/&#x3C;scenario>/&#x3C;run>/</code>, <code dir="auto">logos-chat/pr-N/base/&#x3C;scenario>/&#x3C;run>/</code></td><td>the text of each run at the head and at the base; no <code dir="auto">base/</code> when main’s point stood in</td></tr><tr><td><code dir="auto">logos-chat/pr-N/head/&#x3C;scenario>/&#x3C;run>/index.html</code></td><td>the page of each run: the head’s and the base’s at its seed</td></tr><tr><td><code dir="auto">logos-chat/pr-N/moved-&#x3C;revision>.svg</code>, <code dir="auto">logos-chat/pr-N/moved-&#x3C;revision>-dark.svg</code></td><td>the picture of the runs that moved at the head <code dir="auto">&#x3C;revision></code>, which the comment shows, in the light theme and in the dark; none where no run moved</td></tr><tr><td><code dir="auto">logos-chat/pr-N/index.html</code></td><td>the report of the run</td></tr></tbody></table>
 <p>The measurement is the newest chat-sim commit that touches what a run measures: <code dir="auto">crates/</code>,
 <code dir="auto">Cargo.toml</code>, <code dir="auto">Cargo.lock</code>, <code dir="auto">.cargo/</code>, <code dir="auto">rust-toolchain.toml</code>, <code dir="auto">flake.nix</code>, <code dir="auto">flake.lock</code>,
 <code dir="auto">tools/forks/forks/</code>, <code dir="auto">tools/sim/sim/</code> or <code dir="auto">tools/sim/scenarios/</code>. A commit to the guide or to the pages
@@ -433,8 +441,72 @@ the App has none, so a pull request holds one comment of chat-sim’s. A <code d
 id of a check run the App made on logos-chat, moves that check to in progress once its runs are planned,
 with the workflow run as its details and the runs at the head as its title, <code dir="auto">18 runs in progress</code>, and
 completes it once the comment is posted, with the comment as its summary and the pull request’s report
-page as its details, or the workflow run where the report has no address. Each group has a verdict of its
-own, over its runs alone, and its own conclusion and title:</p>
+page as its details, or the workflow run where the report has no address.</p>
+<p>The comment takes one of four shapes:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Where</th><th>The comment</th></tr></thead><tbody><tr><td>chat-sim did not build at the head</td><td>the verdict line, <code dir="auto">chat-sim does not build against this commit</code>, with the head, its merge base where there is one, and the links to the report and the run; then that the build’s errors are on the report page, or in the run where the report has no address</td></tr><tr><td>no pair of runs was compared, as with no base</td><td>the verdict line alone: <code dir="auto">chat-sim:</code> and the check’s title, then the head, its merge base where there is one, and the links</td></tr><tr><td>every run is <code dir="auto">same</code></td><td>one line: <code dir="auto">Nothing moved</code>, how many runs of which groups at the head replayed the merge base exactly, or main’s run of it where main’s point stood in, and the links to the report and the run</td></tr><tr><td>any other</td><td>a line for each group; where a run moved, the picture of the runs that moved; the links; and with the picture, how to read the trees</td></tr></tbody></table>
+<p>A group’s line, GroupV2’s first, holds in turn:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Part</th><th>Says</th></tr></thead><tbody><tr><td>The mark</td><td>of what the line leads with, the first of these: ⚫ no outcome at the head, 🔴 worse, 🟢 better, 🟡 changed, 🔁 re-rolled, ⚪ same, ⚫ not compared</td></tr><tr><td>In bold</td><td>the group, how many of its runs had no outcome at the head, and how many came out worse, better or changed, such as <code dir="auto">GroupV3: worse in 2 runs, better in 1</code>; where none did, the first of re-rolled, the same and not compared that its runs have, such as <code dir="auto">re-rolled in 6 runs</code> or <code dir="auto">same in 8 of 9 runs</code></td></tr><tr><td>Main’s seeds</td><td>where a run moved and the matrix holds main’s seeds of each of the group’s rates, how many of those runs stand beyond them: <code dir="auto">all within main's 20 seeds</code>, or <code dir="auto">1 beyond main's 20 seeds</code></td></tr><tr><td>The rest</td><td>how many runs each of the rest has, the same last, such as <code dir="auto">· 1 not compared, 6 same</code></td></tr></tbody></table>
+<p>Where a run moved and the report has an address, the picture of the runs that moved follows the lines.
+It draws each such run’s tree at the head over the base’s, as the report page draws them (see
+<a href="#the-pages-of-logos-chats-runs">The pages of logos-chat’s runs</a>). Its source is <code dir="auto">moved-&#x3C;revision>.svg</code>
+beside the report, and <code dir="auto">moved-&#x3C;revision>-dark.svg</code> for a reader whose theme is dark. Its name holds the
+revision, since GitHub’s image proxy keeps a picture it has fetched once. Its alt text names each run
+and its change. Under it, <code dir="auto">Open a run:</code> links the page of each of those runs. The links to the report
+and the run follow, with the head and the merge base. A fold, <code dir="auto">How to read the trees</code>, closes a
+comment with the picture. It says what a tree draws, what the grey band of main’s seeds is where the
+matrix holds those seeds, and that main’s seeds after the merge are the measurement.</p>
+<p>Each group has a verdict of its own in the check, over its runs alone, and its own conclusion and
+title:</p>
 
 
 
@@ -502,20 +574,31 @@ place them among, and stops before the semicolon where it has none. <code dir="a
 <code dir="auto">no outcome at the base, no comparison</code> where no run at the base has one.</p>
 <p>With chat-sim’s repository variable <code dir="auto">CHAT_SIM_CHECK_REQUIRED</code> set to <code dir="auto">true</code>, for when the check is made
 required on logos-chat, a head chat-sim does not build at, or a run with no outcome at the head, fails it;
-any value but <code dir="auto">true</code> or <code dir="auto">false</code> fails the comment job before the check completes. <code dir="auto">no-base</code> stays neutral
-either way: what it lacks is the base’s, which the pull request cannot give. The comment and the check go
-out before the publish job writes the run’s page: until it and Pages have, their link to the report opens
-the page of the pull request’s previous run, or no page yet on its first. The plan job and the comment job
-each mint a token of their own with <code dir="auto">actions/create-github-app-token</code>, for logos-chat alone and the
-permissions their steps need, from the repository variable <code dir="auto">CHAT_SIM_APP_CLIENT_ID</code> and the repository
-secret <code dir="auto">CHAT_SIM_APP_PRIVATE_KEY</code>; the run jobs hold none, and no job hands its token to another. Without
-the variable or the secret, each says so on the run and posts nothing, and the comment is in the run’s
-summary alone. A run that is cancelled leaves the check in progress, and so does one whose comment job
-failed, until that job runs again.</p>
+any value but <code dir="auto">true</code> or <code dir="auto">false</code> fails the post job before the check completes. <code dir="auto">no-base</code> stays neutral
+either way: what it lacks is the base’s, which the pull request cannot give.</p>
+<p>The comment job writes the comment, and the post job posts it and completes the check. The post job runs
+after the publish job, whatever publish came to, so that the check is completed all the same. Where the
+comment shows a picture, the post job first waits for the Pages site to build what publish pushed:
+every 10 seconds it asks GitHub’s API for the site’s builds, until the build of that push, or of a
+later one, is done, for up to ten minutes. It never asks for the picture before then, since the site’s
+cache keeps a 404 it answered for a while, and would serve it to the comment’s readers too. Where
+publish pushed nothing, as gh-pages held the run already, it does not wait. Where publish did not
+succeed, or the site has not built the push in ten minutes, a warning on the run says so, and the
+comment goes out all the same, its picture perhaps missing. Where the comment shows no picture, the post
+job does not wait: until Pages serves what publish pushed, about a minute later, the comment’s link to
+the report opens the page of the pull request’s previous run, or no page yet on its first.</p>
+<p>The plan job and the post job each mint a token of their own with <code dir="auto">actions/create-github-app-token</code>, for
+logos-chat alone and the permissions their steps need, from the repository variable
+<code dir="auto">CHAT_SIM_APP_CLIENT_ID</code> and the repository secret <code dir="auto">CHAT_SIM_APP_PRIVATE_KEY</code>. The run, comment and
+publish jobs hold none, and no job hands its token to another. Without the variable or the secret, each
+says so on the run and posts nothing, and the comment is in the run’s summary alone. A run that is
+cancelled leaves the check in progress. So does one whose comment job failed, or whose post job failed
+before it completed the check, until that job runs again.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="the-pages-of-logos-chats-runs">The pages of logos-chat’s runs</h2><a class="sl-anchor-link" href="#the-pages-of-logos-chats-runs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “The pages of logos-chat’s runs”</span></a></div>
 <p>The publish job draws the page of each run it keeps, <code dir="auto">index.html</code> in its directory, from what it keeps
 there. The comment links it: a <code dir="auto">pr</code> run’s for a pull request, a <code dir="auto">main</code> run’s point, and a <code dir="auto">long</code> run’s
-page, where the publish job keeps one.</p>
+page, where the publish job keeps one. A pull request’s comment also links the page of each run that
+moved.</p>
 <p>The report of a pull request’s run, <code dir="auto">logos-chat/pr-N/</code>:</p>
 
 
@@ -542,9 +625,60 @@ page, where the publish job keeps one.</p>
 
 
 
-<table><thead><tr><th>Part</th><th>Shows</th></tr></thead><tbody><tr><td>The head</td><td>the pull request’s number, the head and its merge base, chat-sim’s commit, links to the pull request and to the workflow run, and when, in UTC</td></tr><tr><td>The verdict</td><td>the comment’s verdict line, in its words; where main’s point stood in for the base, its words link the point’s page, or its <code dir="auto">point.json</code> until the point has a page</td></tr><tr><td>The matrix</td><td>of each group, under its name, GroupV2 first: the head’s cells and the base’s side by side, a row a rate and a column a seed, coloured as <a href="#over-main">the newest point</a> is; an outline marks a cell of the head that stands lower (<code dir="auto">worse</code>) or higher (<code dir="auto">better</code>) than the base’s. Where the matrix holds a <code dir="auto">spread</code>, main’s runs of each rate beside them in the comment’s words (<code dir="auto">2 whole, 18 to 50</code>), and a strip for each rate placing the head’s three runs among main’s twenty seeds of that point by their epochs without a fork, or a line that says the point holds no runs of the group</td></tr><tr><td>The cells</td><td>a fold for each cell, named by its group, rate and seed, GroupV2’s first and within a group open and first where it moved: of each side, the run’s verdict and what it came to, the lines of its <code dir="auto">grow</code> from <code dir="auto">run.json</code> (each line’s kind, the line it forked from, the epoch it forked at, the epoch it reached and its members), who fell behind and at which epoch, who was behind at the end and who never joined, and its <code dir="auto">run.txt</code> and <code dir="auto">report.txt</code>; then the command that runs the cell again, as the comment’s fold has it. Where main’s point stood in, the base’s side is the point’s run, with the point’s page linked, and its text shown from the point’s directory while the point keeps it</td></tr></tbody></table>
-<p>Where chat-sim did not build at the head, the build’s log takes the place of the matrix and the cells.
-Every job built the same commit, so the page shows the first job’s.</p>
+
+
+
+
+<table><thead><tr><th>Part</th><th>Shows</th></tr></thead><tbody><tr><td>The head</td><td>the pull request’s number, the head and its merge base, chat-sim’s commit, links to the pull request and to the workflow run, and when, in UTC; then which commit ran against which merge base, and where main’s point stood in for the base, <code dir="auto">main's run of it</code>, linking the point’s page, or its <code dir="auto">point.json</code> until the point has a page</td></tr><tr><td>The verdicts</td><td>a line for each group, in the order and the words of the comment’s: a chip, in its colour, for each of what the line leads with and how many runs it has, or of the same and how many of all; where the matrix holds main’s seeds, how many of the runs that moved stand beyond them; then how many runs each of the rest has</td></tr><tr><td>The key</td><td>the head’s tree on top and the base’s under it, how thick a line of 1, of 10 and of the most members is drawn, the ring of the members that never joined, main’s band where the matrix holds a <code dir="auto">spread</code>, and the outline of a run that moved where one did</td></tr><tr><td>The trees</td><td>of each group, under its name, GroupV2 first: a row a rate and a column a seed, each row headed by its rate and the epochs at which main’s seeds of it first forked, such as <code dir="auto">main 3 to 19</code>. Each run shows the head’s tree over the base’s on the grey band of main’s seeds, each tree with a ring that counts its members that never joined, where any did. Above them it says where the head’s run first forked, or how its trunk ended. A run that moved also says what the base’s run had, and is outlined in its change’s colour. One that was re-rolled, or where a side did not build, is dashed. Each run links its page</td></tr><tr><td>How to read them</td><td>a paragraph on the trees, and a link to this section of the guide</td></tr></tbody></table>
+<p>A tree is drawn from the <code dir="auto">grow</code> of the run’s <code dir="auto">run.json</code> (see
+<a href="../simulations/#a-group-that-grows">A group that grows</a>), left to right by epoch from 0 to 50, the goal.
+The trunk is the top line. Each other line leaves the line it forked from at the epoch it forked at,
+drops to its row and runs to the epoch it reached, with a dot at its tip. The more members a line ended
+with, the thicker it is drawn, by the square root of its members against the most of any line drawn
+with it.
+Under each line come the lines that left it, the latest to leave first, each followed by the lines that
+left it in turn, so that no drop crosses a line. A line’s hover text says which line it is, the line it
+left, its members and its epochs. The base’s run is the one in <code dir="auto">base/</code>, or main’s point’s while the
+point keeps its text. A run whose <code dir="auto">run.json</code> holds no such lineage, as one of an earlier measurement,
+or whose text the site does not keep, is sketched from how it came out: its trunk dashed to the trunk’s
+epoch, and a mark down from the epoch of its first fork. The base’s run of a re-rolled run is not drawn,
+since it drew other ids. A side with no outcome says that it does not build or came to none.</p>
+<p>The page of each run, <code dir="auto">logos-chat/pr-N/head/&#x3C;scenario>/&#x3C;run>/</code>, beside the head’s text:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Part</th><th>Shows</th></tr></thead><tbody><tr><td>The head</td><td>the run’s group, rate and seed, and its change; in a sentence, how the head’s run came out against the base’s and, where it moved or was re-rolled, whether it stands within main’s seeds of its rate; then the head, the merge base and chat-sim’s commit</td></tr><tr><td>The trees</td><td>both sides’ trees large on one axis of epochs, the head’s over the base’s, on main’s band: each line labelled with its members, its epochs and the line it left where that is not the trunk; a mark at the epoch of the first fork; who fell behind, at the epoch they did; and how many members were seated, on the trunk, on the lines off it and behind at the end, with the ring of those that never joined</td></tr><tr><td>Run it yourself</td><td>the command that runs the run again</td></tr><tr><td>The text</td><td>of each side, a link to each text file the site keeps of its run: the head’s, then the base’s in <code dir="auto">base/</code>, or main’s point’s while the point keeps it</td></tr></tbody></table>
+<p>The picture the comment shows, <code dir="auto">moved-&#x3C;revision>.svg</code> and its dark copy, is written with the report
+where a run moved. It has a panel for each run that moved, three a row. A panel holds the run’s group,
+rate and seed, its change and what the base’s run had, and where the matrix holds a <code dir="auto">spread</code>, the epochs
+at which main’s seeds of its rate first forked. Under them come the head’s tree over the base’s on
+main’s band, with their rings as on the report page. Each copy is an SVG that stands alone, with the
+colours of the light theme or of the dark written in. It is written once, with the run’s report, and
+never drawn again, so that it stays what the posted comment shows.</p>
+<p>Where chat-sim did not build at the head, the build’s log takes the place of the verdicts and the trees,
+and no run has a page. Every job built the same commit, so the page shows the first job’s.</p>
 <p>The page of a point, <code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/</code>:</p>
 
 
@@ -576,10 +710,13 @@ Every job built the same commit, so the page shows the first job’s.</p>
 could not build links its own. A page runs no script and loads nothing from outside its directory, and
 what a run, a pull request’s title or an API says reaches it as text.</p>
 <p>When a point past the newest eleven loses its runs’ text, its page is drawn again from its
-<code dir="auto">point.json</code> alone, and so is the report of a pull request whose base it stood in for, so that no link
-leads to text the site no longer holds: the command under each run makes it again. A point kept before
-its page was drawn gets one the next time a point is written; until then a report it stood in for links
-its <code dir="auto">point.json</code>, and the report is drawn again with the point’s page.</p>
+<code dir="auto">point.json</code> alone, so that no link leads to text the site no longer holds: the command under each run
+makes it again. So are the report of a pull request whose base it stood in for and the page of each of
+that report’s runs. Their base trees, drawn from the point’s runs while it kept them, are then sketched
+from how those runs came out, and each run’s page says the site no longer keeps the point’s text. The
+picture the comment shows is not drawn again. A point kept before its page was drawn gets one the next
+time a point is written; until then a report it stood in for and its runs’ pages link its <code dir="auto">point.json</code>,
+and they are drawn again with the point’s page.</p>
 <p>The page of a long run, <code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/</code>:</p>
 
 
