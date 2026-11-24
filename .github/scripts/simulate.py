@@ -16,11 +16,12 @@ runs, each group's apart, for `pr` with a picture of the runs that moved, and fo
 each scenario with what `tools/sim compare` said of its runs against the base's, or against what
 `tools/sim/expected` holds when there is no base. It says where the picture is, so that the
 workflow posts the comment once the Pages site serves it. `measurement` prints the chat-sim commit
-a run measures. `running` writes the update that moves a check run on logos-chat to in progress
-while the runs go, and `check` the one that completes it with the groups' verdicts; `post` says
-where the comment goes on a logos-chat pull request, an edit of the App's comment there or a new
-one, and writes it for GitHub's API; `built` says whether the Pages site has built a push to
-gh-pages, which the comment's picture waits for.
+a run measures, and `changed` whether a commit changes a path chat-sim's own CI holds its runs to
+against its merge base with another. `running` writes the update that moves a check run on
+logos-chat to in progress while the runs go, and `check` the one that completes it with the
+groups' verdicts; `post` says where the comment goes on a logos-chat pull request, an edit of the
+App's comment there or a new one, and writes it for GitHub's API; `built` says whether the Pages
+site has built a push to gh-pages, which the comment's picture waits for.
 """
 
 from __future__ import annotations
@@ -63,10 +64,15 @@ MEASURED = (
     "rust-toolchain.toml",
     "flake.nix",
     "flake.lock",
+    "tools/forks/__main__.py",
     "tools/forks/forks/",
+    "tools/sim/__main__.py",
     "tools/sim/sim/",
     "tools/sim/scenarios/",
 )
+# What chat-sim's own CI holds its runs to besides what a run measures: the outcomes it expects,
+# and the workflow that runs them.
+HELD = (*MEASURED, "tools/sim/expected/", ".github/workflows/ci.yml")
 # What a matrix of `tools/sim matrix` holds.
 MATRIX = {"head", "base", "base_point", "cells", "counts", "verdict", "groups", "summary", "spread"}
 # What a cell's run at the head can be against the base's at the same seed, and those of them
@@ -304,6 +310,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--tree", metavar="DIR", type=Path, default=Path(), help="the checkout (default: .)"
     )
     measured.set_defaults(command=_measurement)
+    held = commands.add_parser(
+        "changed",
+        help="say whether a commit changes a path chat-sim's CI holds its runs to",
+        description="Prints, as a line for $GITHUB_OUTPUT, true when the tree's HEAD changes "
+        "what a run measures, tools/sim/expected or ci.yml against its merge base with --since, "
+        "or when --since is empty or no commit of the tree; else false.",
+    )
+    held.add_argument(
+        "--since",
+        metavar="SHA",
+        required=True,
+        help="the commit to compare from, a pull request's base or the commit before a push: "
+        "nothing or forty zeros for none",
+    )
+    held.add_argument(
+        "--tree", metavar="DIR", type=Path, default=Path(), help="the checkout (default: .)"
+    )
+    held.set_defaults(command=_changed)
     running = commands.add_parser(
         "running",
         help="print the update that moves a check run to in progress",
@@ -418,6 +442,28 @@ def measurement(tree: Path) -> Optional[str]:
     if shallow != "false":
         return None
     return _git(tree, "log", "-1", "--format=%H", "--", *MEASURED) or None
+
+
+def changed(tree: Path, since: str) -> bool:
+    """Whether HEAD of `tree` changes a path of `HELD` against its merge base with `since`, or
+    `since` is empty or no commit of `tree`."""
+    if not since:
+        return True
+    found = subprocess.run(
+        ["git", "-C", str(tree), "merge-base", since, "HEAD"], capture_output=True, text=True
+    )
+    if found.returncode != 0:
+        return True
+    base = found.stdout.strip()
+    # diff-tree reads trees alone, so a clone without blobs serves it.
+    diff = subprocess.run(
+        ["git", "-C", str(tree), "diff-tree", "-r", "--quiet", base, "HEAD", "--", *HELD],
+        capture_output=True,
+        text=True,
+    )
+    if diff.returncode not in (0, 1):
+        diff.check_returncode()
+    return diff.returncode == 1
 
 
 def jobs(suite: str, revision: str, base: str, swept: Sequence[Tuple[str, int]]) -> List[dict]:
@@ -966,6 +1012,13 @@ def _measurement(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     if measured is None:
         parser.error(f"--tree: {args.tree} is a shallow clone, or no commit touches {MEASURED}")
     print(f"measurement={measured}")
+    return 0
+
+
+def _changed(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    if args.since and _SHA.fullmatch(args.since) is None:
+        parser.error(f"--since: {args.since!r} is not a commit's 40 hex digits")
+    print(f"changed={str(changed(args.tree, args.since)).lower()}")
     return 0
 
 

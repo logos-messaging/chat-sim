@@ -586,7 +586,7 @@ class Spread(GhPages):
                 self.assertIn("not a list of commits, each with its sha", err)
 
 
-class Measurement(unittest.TestCase):
+class History(unittest.TestCase):
     """A history of three commits: to crates/, then to the guide, then to tools/forks/forks/."""
 
     def setUp(self):
@@ -615,6 +615,8 @@ class Measurement(unittest.TestCase):
         self.git("commit", "-qm", path)
         return self.git("rev-parse", "HEAD")
 
+
+class Measurement(History):
     def test_is_the_newest_commit_to_what_a_run_measures(self):
         self.assertEqual(simulate.measurement(self.tree), self.shas[2])
         self.change("guide/d")
@@ -648,6 +650,59 @@ class Measurement(unittest.TestCase):
 
         self.assertEqual((status, out), (2, ""))
         self.assertIn("shallow clone", err)
+
+
+class Changed(History):
+    """Whether HEAD changes a path chat-sim's CI holds its runs to, since a commit."""
+
+    def test_a_commit_to_what_a_run_measures_since_the_base_changes_it(self):
+        self.assertTrue(simulate.changed(self.tree, self.shas[1]))
+        status, out, _ = run("changed", "--since", self.shas[1], "--tree", str(self.tree))
+        self.assertEqual((status, out), (0, "changed=true\n"))
+
+    def test_commits_to_the_guide_alone_change_nothing(self):
+        since = self.shas[2]
+        self.change("guide/d")
+        self.change("guide/e")
+
+        self.assertFalse(simulate.changed(self.tree, since))
+        status, out, _ = run("changed", "--since", since, "--tree", str(self.tree))
+        self.assertEqual((status, out), (0, "changed=false\n"))
+
+    def test_a_commit_to_what_is_expected_or_to_ci_yml_changes_it(self):
+        for path in ("tools/sim/expected/x.json", ".github/workflows/ci.yml"):
+            with self.subTest(path=path):
+                since = self.git("rev-parse", "HEAD")
+                self.change(path)
+                self.assertTrue(simulate.changed(self.tree, since))
+
+    def test_a_commit_to_another_workflow_changes_nothing(self):
+        since = self.shas[2]
+        self.change(".github/workflows/simulate.yml")
+        self.assertFalse(simulate.changed(self.tree, since))
+
+    def test_no_commit_to_compare_from_changes_it(self):
+        for since in ("", "0" * 40, REVISION):
+            with self.subTest(since=since):
+                self.assertTrue(simulate.changed(self.tree, since))
+                status, out, _ = run("changed", "--since", since, "--tree", str(self.tree))
+                self.assertEqual((status, out), (0, "changed=true\n"))
+
+    def test_the_base_moving_what_a_run_measures_after_the_branch_left_it_changes_nothing(self):
+        self.git("checkout", "-q", "-b", "base")
+        self.change("crates/harness/d")
+        base = self.git("rev-parse", "HEAD")
+        self.git("checkout", "-q", "-")
+        self.change("guide/e")
+
+        self.assertFalse(simulate.changed(self.tree, base))
+
+    def test_a_since_that_is_not_a_commit_s_digits_is_refused(self):
+        for since in ("master", self.shas[1][:7]):
+            with self.subTest(since=since):
+                status, out, err = run("changed", "--since", since, "--tree", str(self.tree))
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn("not a commit's 40 hex digits", err)
 
 
 class Title(unittest.TestCase):
@@ -1725,6 +1780,48 @@ class Workflow(unittest.TestCase):
 
         self.assertIn("\n      - uses: actions/checkout@v4\n\n", before)
         self.assertIn("\n            --scenarios tools/sim/scenarios \\\n", step)
+
+
+class CiWorkflow(unittest.TestCase):
+    """ci.yml as it is written, a job by its name."""
+
+    def setUp(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        parts = re.split(r"(?m)^  ([\w-]+):\n", workflow.split("\njobs:\n", 1)[1])
+        self.jobs = dict(zip(parts[1::2], parts[2::2]))
+
+    def test_the_sims_run_only_when_a_path_they_depend_on_changed(self):
+        measured = self.jobs["measured"]
+
+        self.assertIn("\n          fetch-depth: 0\n", measured)
+        self.assertIn('simulate.py changed --since "$SINCE" >> "$GITHUB_OUTPUT"', measured)
+        self.assertIn(
+            "SINCE: ${{ github.event.pull_request.base.sha || "
+            "!github.event.forced && github.event.before || '' }}",
+            measured,
+        )
+        for name in ("sim-one-process", "list-expected"):
+            with self.subTest(job=name):
+                self.assertIn(
+                    "\n    needs: measured\n"
+                    "    if: ${{ needs.measured.outputs.changed == 'true' }}\n",
+                    self.jobs[name],
+                )
+        self.assertIn("\n    needs: list-expected\n", self.jobs["sim-expected"])
+        self.assertNotIn("\n    if: ", self.jobs["sim-expected"])
+
+    def test_publish_is_skipped_with_the_sims(self):
+        publish = self.jobs["publish"]
+        condition = publish.split("\n    if: >-\n", 1)[1].split("\n    runs-on: ", 1)[0]
+
+        self.assertIn("\n    needs: [measured, sim-one-process, sim-expected]\n", publish)
+        self.assertIn("!cancelled() && needs.measured.outputs.changed == 'true' &&", condition)
+
+    def test_lint_test_and_tools_run_whatever_changed(self):
+        for name in ("lint", "test", "tools"):
+            with self.subTest(job=name):
+                self.assertNotIn("\n    needs: ", self.jobs[name])
+                self.assertNotIn("\n    if: ", self.jobs[name])
 
 
 if __name__ == "__main__":

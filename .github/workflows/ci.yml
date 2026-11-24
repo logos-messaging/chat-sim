@@ -67,8 +67,31 @@ jobs:
       - run: python3 -m unittest discover -s tools/sim
       - run: python3 -m unittest discover -s .github/scripts
 
+  # The sims run only when a path they depend on changed. Skipped, they
+  # publish nothing either, so the last report stands.
+  measured:
+    name: Ask whether a path the sims depend on changed
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changed.outputs.changed }}
+    steps:
+      # The whole history, for the merge base, without the contents of past files.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          filter: blob:none
+      # Against the pull request's base, or the commit before the push. A force
+      # push is handed none, so the sims run.
+      - id: changed
+        env:
+          SINCE: ${{ github.event.pull_request.base.sha || !github.event.forced && github.event.before || '' }}
+        run: python3 .github/scripts/simulate.py changed --since "$SINCE" >> "$GITHUB_OUTPUT"
+
   sim-one-process:
     name: Sim in one process
+    needs: measured
+    if: ${{ needs.measured.outputs.changed == 'true' }}
     environment: ${{ github.ref == 'refs/heads/master' && 'public-cache' || '' }}
     runs-on: ubuntu-latest
     steps:
@@ -108,6 +131,8 @@ jobs:
 
   list-expected:
     name: List the scenarios held to what is expected
+    needs: measured
+    if: ${{ needs.measured.outputs.changed == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       scenarios: ${{ steps.list.outputs.scenarios }}
@@ -197,10 +222,13 @@ jobs:
 
   publish:
     name: Publish the report to GitHub Pages
-    needs: [sim-one-process, sim-expected]
+    needs: [measured, sim-one-process, sim-expected]
     # Runs when a sim job fails as well, the run whose report is wanted most.
-    # Skipped for a pull request from a fork, whose GITHUB_TOKEN can't push.
-    if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
+    # Skipped with the sims, and for a pull request from a fork, whose
+    # GITHUB_TOKEN can't push.
+    if: >-
+      ${{ !cancelled() && needs.measured.outputs.changed == 'true' &&
+      github.event.pull_request.head.repo.fork != true }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
