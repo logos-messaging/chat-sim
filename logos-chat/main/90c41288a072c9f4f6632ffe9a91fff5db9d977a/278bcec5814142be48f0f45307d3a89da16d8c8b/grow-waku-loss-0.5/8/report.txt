@@ -1,0 +1,45 @@
+conversation 328307a950
+  split at epoch 7
+  22 of 22 seats share a log
+
+  branch A: epoch 11, state 7199fd48105b4312, 21 members
+    on it: 0d05df81, 130ba73a, 19d985d4, 1bbb6ae6, 2092bcb7, 541f757f, 7f09f50b, 8b9fca77, a9881435,
+      b314e810, b45edebc, d982f281
+  branch B: epoch 9, state 0a4bba3e949dc7c3, 19 members
+    on it: 98d7fa86, 9ce884aa
+  branch C: epoch 10, state 0c65e337a07f75f9, 20 members
+    on it: 594b07fc, 738acae6
+  branch D: epoch 8, state b78533721a4325ec, 14 members
+    on it: 1d3ac305, cf4b0e64
+  branch E: epoch 9, state 390f04bd9f409e2d, 18 members
+    on it: cdd01c91
+  branch F: epoch 8, state 39b02b43eaededc8, 16 members
+    on it: eb091716
+  branch G: epoch 9, state 55faa2fd8f9bae04, 19 members
+    on it: 487ca805
+
+  installation  account   name   epoch  position  branch
+  0d05df81      70656572  group  11     tip       A
+  130ba73a      70656572  group  11     tip       A
+  19d985d4      7361726f  group  11     tip       A
+  1bbb6ae6      70656572  group  11     tip       A
+  2092bcb7      70656572  group  11     tip       A
+  541f757f      72617961  group  11     tip       A
+  7f09f50b      70656572  group  11     tip       A
+  8b9fca77      70656572  group  11     tip       A
+  a9881435      70656572  group  11     tip       A
+  b314e810      70656572  group  11     tip       A
+  b45edebc      706178    group  11     tip       A
+  d982f281      746f6d6f  group  11     tip       A
+  98d7fa86      70656572  group  9      tip       B
+  9ce884aa      70656572  group  9      tip       B
+  594b07fc      6b6573    group  10     tip       C
+  738acae6      70656572  group  10     tip       C
+  1d3ac305      70656572  group  8      tip       D
+  cf4b0e64      6d697261  group  8      tip       D
+  cdd01c91      70656572  group  9      tip       E
+  eb091716      70656572  group  8      tip       F
+  487ca805      70656572  group  9      tip       G
+  d3db6d5a      70656572  group  5      behind    -
+
+lines: 2685 read, 2675 records, 0 without a stamp, 0 malformed, 0 unknown

@@ -1,0 +1,45 @@
+conversation ea373f158f
+  split at epoch 5
+  25 of 25 seats share a log
+
+  branch A: epoch 15, state 3b497ee9f704146c, 25 members
+    on it: 0e91a452, 1fa3a4f5, 3d49e196, 3f549fb1, 506c5d65, 55e5d919, 5b2330e1, 5c51fb81, 6bb6e984,
+      747ee919, 790f3c28, 8944fe60, 99eda065, a14d9dab, a757435e, bfe8ea7b, cc388b3d, dbc8eba3,
+      e707362b
+  branch B: epoch 5, state 4d222211d0c0bee7, 7 members
+    on it: 1c89ad6a
+  branch C: epoch 11, state 7b994dc83759e151, 19 members
+    on it: 1032f398
+  branch D: epoch 15, state c50332f32b0f41d9, 25 members
+    on it: c3d564c7
+  branch E: epoch 9, state e6cd8e3a485a7385, 16 members
+    on it: 346aeac0
+
+  installation  account   name   epoch  position  branch
+  0e91a452      70656572  group  15     tip       A
+  1fa3a4f5      70656572  group  15     tip       A
+  3d49e196      70656572  group  15     tip       A
+  3f549fb1      6b6573    group  15     tip       A
+  506c5d65      7361726f  group  15     tip       A
+  55e5d919      70656572  group  15     tip       A
+  5b2330e1      70656572  group  15     tip       A
+  5c51fb81      70656572  group  15     tip       A
+  6bb6e984      70656572  group  15     tip       A
+  747ee919      70656572  group  15     tip       A
+  790f3c28      70656572  group  15     tip       A
+  8944fe60      70656572  group  15     tip       A
+  99eda065      70656572  group  15     tip       A
+  a14d9dab      70656572  group  15     tip       A
+  a757435e      70656572  group  15     tip       A
+  bfe8ea7b      70656572  group  15     tip       A
+  cc388b3d      70656572  group  15     tip       A
+  dbc8eba3      70656572  group  15     tip       A
+  e707362b      70656572  group  15     tip       A
+  1c89ad6a      706178    group  5      tip       B
+  1032f398      70656572  group  11     tip       C
+  c3d564c7      6d697261  group  15     tip       D
+  346aeac0      72617961  group  9      tip       E
+  76e7de04      746f6d6f  group  13     behind    -
+  ec2db029      70656572  group  12     behind    -
+
+lines: 1393 read, 1393 records, 0 without a stamp, 0 malformed, 0 unknown

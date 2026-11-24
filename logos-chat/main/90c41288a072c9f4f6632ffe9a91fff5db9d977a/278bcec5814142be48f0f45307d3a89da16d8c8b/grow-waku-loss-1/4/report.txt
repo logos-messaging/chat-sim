@@ -1,0 +1,47 @@
+conversation 500ddfb1db
+  split at epoch 9
+  27 of 27 seats share a log
+
+  branch A: epoch 14, state 9856a51e20aeb01b, 27 members
+    on it: 3c74f666, 53ca4bcc, 5adbb2ef, 72ebd165, 73aac696, 769c9f9f, 7d869483, 863358ff, 8a4b489f,
+      9165d133, 9bbcb294, 9ce33990, 9e064c7b, ae35f211, b8fb40b9, bc86d7ee, bcc28f3a, cfcf9840,
+      d63b0210, d9a38229, f0b84463, f84f0c23, f944ba27
+  branch B: epoch 14, state 2d5bcb97988836e8, 27 members
+    on it: 128c4073
+  branch C: epoch 10, state 8598427795df63cb, 21 members
+    on it: e77d2a3a
+  branch D: epoch 9, state 948a1a09b62cd2c4, 18 members
+    on it: fbe043ef
+  branch E: epoch 12, state beaa8da54c174313, 25 members
+    on it: 10ed278a
+
+  installation  account   name   epoch  position  branch
+  3c74f666      70656572  group  14     tip       A
+  53ca4bcc      746f6d6f  group  14     tip       A
+  5adbb2ef      70656572  group  14     tip       A
+  72ebd165      72617961  group  14     tip       A
+  73aac696      70656572  group  14     tip       A
+  769c9f9f      70656572  group  14     tip       A
+  7d869483      70656572  group  14     tip       A
+  863358ff      70656572  group  14     tip       A
+  8a4b489f      70656572  group  14     tip       A
+  9165d133      70656572  group  14     tip       A
+  9bbcb294      70656572  group  14     tip       A
+  9ce33990      6b6573    group  14     tip       A
+  9e064c7b      7361726f  group  14     tip       A
+  ae35f211      70656572  group  14     tip       A
+  b8fb40b9      70656572  group  14     tip       A
+  bc86d7ee      70656572  group  14     tip       A
+  bcc28f3a      70656572  group  14     tip       A
+  cfcf9840      706178    group  14     tip       A
+  d63b0210      70656572  group  14     tip       A
+  d9a38229      70656572  group  14     tip       A
+  f0b84463      70656572  group  14     tip       A
+  f84f0c23      70656572  group  14     tip       A
+  f944ba27      70656572  group  14     tip       A
+  128c4073      70656572  group  14     tip       B
+  e77d2a3a      70656572  group  10     tip       C
+  fbe043ef      70656572  group  9      tip       D
+  10ed278a      6d697261  group  12     tip       E
+
+lines: 1952 read, 1952 records, 0 without a stamp, 0 malformed, 0 unknown
