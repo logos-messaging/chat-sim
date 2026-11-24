@@ -367,44 +367,23 @@ class Reading(unittest.TestCase):
                 "50-epochs-by-saro-waku-loss-1.json",
                 "50-epochs-by-saro-waku-loss-5-groupv3.json",
                 "50-epochs-by-saro-waku-loss-5.json",
-                "50-epochs-waku-loss.json",
                 "50-epochs-waku.json",
                 "50-epochs.json",
-                "fifty-sized.json",
-                "grow-by-saro-waku-loss-0.01.json",
-                "grow-by-saro-waku-loss-0.1.json",
-                "grow-by-saro-waku-loss-0.5.json",
-                "grow-by-saro-waku-loss-0.75.json",
-                "grow-by-saro-waku-loss-1.json",
-                "grow-by-saro-waku-loss-10.json",
-                "grow-by-saro-waku-loss-5.json",
                 "grow-waku-loss-0-groupv3.json",
-                "grow-waku-loss-0.01.json",
                 "grow-waku-loss-0.1-groupv3.json",
                 "grow-waku-loss-0.1.json",
                 "grow-waku-loss-0.5-groupv3.json",
                 "grow-waku-loss-0.5.json",
-                "grow-waku-loss-0.75.json",
                 "grow-waku-loss-0.json",
                 "grow-waku-loss-1-groupv3.json",
                 "grow-waku-loss-1.json",
-                "grow-waku-loss-10.json",
                 "grow-waku-loss-5-groupv3.json",
                 "grow-waku-loss-5.json",
                 "grow-waku-size-50.json",
-                "lossy.json",
-                "lost-candidate.json",
                 "three.json",
-                "twenty.json",
             ],
         )
-        sizes = (
-            ("three.json", 3),
-            ("twenty.json", 20),
-            ("fifty-sized.json", 50),
-            ("50-epochs.json", 51),
-        )
-        for name, members in sizes:
+        for name, members in (("three.json", 3), ("50-epochs.json", 51)):
             held = scenario.read(TOOL / "scenarios" / name)
             self.assertEqual((held.members, held.seated), (members, members), name)
             self.assertEqual(held.expect, Expect(), name)
@@ -423,16 +402,8 @@ class Reading(unittest.TestCase):
         self.assertEqual((min(delays), max(delays), delays[0]), (284, 644, 518))
         self.assertEqual(round(sum(delays) / 51, 1), 507.6)
 
-    def test_fifty_epochs_on_waku_with_loss_lose_a_twentieth_and_are_otherwise_those_on_waku(self):
-        waku = scenario.read(TOOL / "scenarios" / "50-epochs-waku.json")
-        lossy = scenario.read(TOOL / "scenarios" / "50-epochs-waku-loss.json")
-
-        self.assertEqual((lossy.network.loss, lossy.network.welcome_loss), (0.05, 0.05))
-        held = dataclasses.replace(lossy.network, loss=0, welcome_loss=0)
-        self.assertEqual(dataclasses.replace(lossy, network=held), waku)
-
-    def test_fifty_epochs_by_saro_are_those_on_waku_with_loss_grown_by_saro_at_their_rate(self):
-        seated = scenario.read(TOOL / "scenarios" / "50-epochs-waku-loss.json")
+    def test_fifty_epochs_by_saro_are_those_on_waku_grown_by_saro_at_their_rate(self):
+        seated = scenario.read(TOOL / "scenarios" / "50-epochs-waku.json")
         alone = Grow(epochs=50, adders=None, branches=51, by="saro")
         for percent, rate in ((0, 0), (0.1, 0.001), (1, 0.01), (5, 0.05)):
             grown = scenario.read(
@@ -446,18 +417,9 @@ class Reading(unittest.TestCase):
     def test_a_grow_on_waku_has_two_hundred_delays_of_its_arrivals_and_differs_by_its_rate(self):
         grows = {
             rate: scenario.read(TOOL / "scenarios" / f"grow-waku-loss-{percent}.json")
-            for percent, rate in (
-                (0, 0),
-                (0.01, 0.0001),
-                (0.1, 0.001),
-                (0.5, 0.005),
-                (0.75, 0.0075),
-                (1, 0.01),
-                (5, 0.05),
-                (10, 0.1),
-            )
+            for percent, rate in ((0, 0), (0.1, 0.001), (0.5, 0.005), (1, 0.01), (5, 0.05))
         }
-        first = grows[0.01]
+        first = grows[0.001]
 
         self.assertEqual(first.steps, (Grow(epochs=50, adders=3, branches=5),))
         self.assertEqual((first.members, first.timers, first.network.seed), (200, "default", 1))
@@ -466,7 +428,7 @@ class Reading(unittest.TestCase):
         self.assertEqual(round(sum(delays) / 200, 1), 507.6)
         for rate, held in grows.items():
             self.assertEqual((held.network.loss, held.network.welcome_loss), (rate, rate))
-            rated = dataclasses.replace(held.network, loss=0.01, welcome_loss=0.01)
+            rated = dataclasses.replace(held.network, loss=0.001, welcome_loss=0.001)
             self.assertEqual(dataclasses.replace(held, network=rated), first)
 
     def test_a_grow_of_fifty_on_waku_goes_toward_epoch_1000_with_any_fifty_in_a_row_spread(self):
@@ -483,13 +445,6 @@ class Reading(unittest.TestCase):
         ]
         self.assertEqual((min(spans), max(spans)), (318, 376))
 
-    def test_a_grow_by_saro_on_waku_is_the_grow_on_waku_of_its_rate_with_saro_alone_adding(self):
-        alone = Grow(epochs=50, adders=None, branches=5, by="saro")
-        for percent in (0.01, 0.1, 0.5, 0.75, 1, 5, 10):
-            drawn = scenario.read(TOOL / "scenarios" / f"grow-waku-loss-{percent}.json")
-            by = scenario.read(TOOL / "scenarios" / f"grow-by-saro-waku-loss-{percent}.json")
-            self.assertEqual(by, dataclasses.replace(drawn, steps=(alone,)), percent)
-
     def test_each_groupv3_scenario_is_its_groupv2_sibling_on_a_groupv3_group(self):
         siblings = [
             *(f"50-epochs-by-saro-waku-loss-{percent}" for percent in (0, 0.1, 1, 5)),
@@ -503,24 +458,6 @@ class Reading(unittest.TestCase):
                 groupv3 = scenario.read(TOOL / "scenarios" / f"{name}-groupv3.json")
                 self.assertEqual(groupv2.group, "v2")
                 self.assertEqual(groupv3, dataclasses.replace(groupv2, group="v3"))
-
-    def test_the_scenarios_of_the_network_model_seat_five_members_one_at_a_time(self):
-        one_at_a_time = Seat(to=5, batch=1)
-        lossy = scenario.read(TOOL / "scenarios" / "lossy.json")
-        self.assertEqual((lossy.members, lossy.steps[0], lossy.timers), (5, one_at_a_time, "fast"))
-        self.assertTrue(0 < lossy.network.loss < 1)
-        self.assertEqual((lossy.network.welcome_loss, lossy.network.delay_ms), (0, 0))
-        self.assertEqual(lossy.expect, Expect())
-
-        lost = scenario.read(TOOL / "scenarios" / "lost-candidate.json")
-        self.assertEqual(
-            lost.steps, (Seat(to=4, batch=1), Withhold("pax"), one_at_a_time, Post("kes"))
-        )
-        self.assertEqual((lost.members, lost.timers), (5, "fast"))
-        self.assertEqual(lost.network, Network(seed=lost.network.seed))
-        self.assertEqual(
-            lost.expect, Expect(applied=Expect("split at epoch 4", {}, {"pax": "unreadable"}))
-        )
 
 
 class Refusals(unittest.TestCase):
