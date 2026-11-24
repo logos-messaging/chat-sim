@@ -16,13 +16,13 @@ point that loses it is drawn again from its point.json. The points are in the or
 runs' numbers, which GitHub gives in the order the runs were started and a re-run keeps;
 `previous` names the point a new one follows. `pr` keeps the newest run of a logos-chat pull
 request in `logos-chat/pr-N/` the same way: its matrix, both sides' runs' text, its `meta.json`,
-its report page and a page for each run, and where a run moved, the picture of the runs that
-moved the comment shows. `long` keeps a run of the long suite at a commit of main, held to what is
-expected, in `logos-chat/long/<sha>/<measurement>/` the same way: its `long.json`, each
-scenario's compare output, its runs' text and its page; the newest fifteen long runs keep their
-text. `trend` draws the graph over main, `logos-chat/index.html`, from the `point.json` of every
-point, and links the newest long run; one it cannot read is left out, with a warning. `closed`
-names the runs of logos-chat's pull requests that are no longer open.
+the scenario files it ran, its report page and a page for each run, and where a run moved, the
+picture of the runs that moved the comment shows. `long` keeps a run of the long suite at a
+commit of main, held to what is expected, in `logos-chat/long/<sha>/<measurement>/` the same way:
+its `long.json`, each scenario's compare output, its runs' text and its page; the newest fifteen
+long runs keep their text. `trend` draws the graph over main, `logos-chat/index.html`, from the
+`point.json` of every point, and links the newest long run; one it cannot read is left out, with
+a warning. `closed` names the runs of logos-chat's pull requests that are no longer open.
 
 The pages run no script, and every text that comes from a run, from a pull request's title or
 from an API is escaped.
@@ -68,6 +68,17 @@ LONG_WINDOW = 15
 # The text of a run the site keeps, and the build's log of one whose job could not build
 # chat-sim. Its report.json, ten times the rest, stays in the artifacts.
 TEXTS = ("run.txt", "report.txt", "run.json", "build.log")
+# Where a pull request's run keeps a copy of each scenario file it ran, which its page describes
+# and links.
+SCENARIOS = "scenarios"
+# The member that creates a run's group: tools/sim's first peer.
+_CREATOR = "saro"
+# What the scenarios of a pull request's run test, each a grow; and how a column of its trees runs.
+_TESTS = "How many epochs a growing group of logos-chat clients lasts before it first forks."
+_SEEDS = (
+    "A column is a seed, the same at the head and at the base. At one revision a seed runs the "
+    "same every time, so where a column's two trees differ, the pull request changed the run."
+)
 # How many rates of a group the graph over main tells apart, a hue of `_STYLE`'s ramp each.
 HUES = 4
 # The repositories whose commits and pull requests a point names.
@@ -447,6 +458,10 @@ box-shadow:0 0 0 1px var(--bad)}
 .ran{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:.75rem 0 .25rem;
 font-size:16px}
 .reading{max-width:52rem;color:var(--muted)}
+.how{max-width:52rem;margin:.25rem 0 .5rem;padding-left:1.25rem}
+.about{max-width:52rem;margin:0 0 1rem}
+#scenarios+.lead{max-width:52rem}
+.about a{white-space:nowrap}
 """
 # The picture of the runs that moved, beside `_TREES`: an image, so its text sets its own font.
 _PICTURE = """
@@ -569,10 +584,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Writes the run of the pr suite for a logos-chat pull request to "
         "logos-chat/pr-N/ of SITE: the matrix, each run's run.txt, report.txt and run.json, or "
         "build.log of a job that could not build chat-sim, at the revision under head/ and at "
-        "the base under base/, meta.json, the report page, index.html, the page of each run, "
-        "index.html in its directory under head/, and where a run moved, the picture of the runs "
-        "that moved, light and dark, moved-REVISION.svg and moved-REVISION-dark.svg. What was "
-        "there is replaced, unless it is a run of a higher number.",
+        "the base under base/, meta.json, each scenario file it ran under scenarios/, the report "
+        "page, index.html, the page of each run, index.html in its directory under head/, and "
+        "where a run moved, the picture of the runs that moved, light and dark, "
+        "moved-REVISION.svg and moved-REVISION-dark.svg. What was there is replaced, unless it "
+        "is a run of a higher number.",
     )
     _add_ran(pr, runs="the run jobs at the revision uploaded")
     pr.add_argument("--pr", metavar="N", type=int, required=True, help="the pull request")
@@ -582,6 +598,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         metavar="DIR",
         type=Path,
         help="what the run jobs at the base uploaded, given with --base and only with it",
+    )
+    pr.add_argument(
+        "--scenarios",
+        metavar="DIR",
+        type=Path,
+        required=True,
+        help="tools/sim/scenarios: a file a scenario, each the matrix ran kept and described",
     )
     pr.set_defaults(command=_pr)
     held = commands.add_parser(
@@ -838,11 +861,14 @@ def write_point(
     return point
 
 
-def write_pr(matrix: dict, runs: Path, base_runs: Optional[Path], site: Path, meta: dict) -> dict:
+def write_pr(
+    matrix: dict, runs: Path, base_runs: Optional[Path], scenarios: Path, site: Path, meta: dict
+) -> dict:
     """Writes the run of a logos-chat pull request to `logos-chat/pr-N/` of `site`, replacing
     what was there: `matrix` as matrix.json, each run's text under `runs` in
     `head/<scenario>/<run>/` and under `base_runs` in `base/<scenario>/<run>/`, at any depth and
-    each run by number, `meta`, which says what ran, as meta.json, the report page and its runs'
+    each run by number, the file in `scenarios` of each scenario the matrix ran in
+    `scenarios/`, `meta`, which says what ran, as meta.json, the report page and its runs'
     pages, and the picture of the runs that moved. The picture is written here alone, so that a
     page drawn again never changes what a comment posted shows.
 
@@ -852,6 +878,12 @@ def write_pr(matrix: dict, runs: Path, base_runs: Optional[Path], site: Path, me
     copies = _texts(runs, out / "head")
     if base_runs is not None:
         copies += _texts(base_runs, out / "base")
+    for name in sorted({cell["scenario"] for cell in matrix["cells"]}):
+        source = scenarios / f"{name}.json"
+        if not source.is_file():
+            raise Unreadable(f"{source}: no such file, and the matrix ran {name}")
+        _grow_of(_json(source), str(source))
+        copies.append((source, out / SCENARIOS / source.name))
     _replace(out, copies)
     (out / "matrix.json").write_text(json.dumps(matrix, indent=1) + "\n", encoding="utf-8")
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
@@ -996,15 +1028,16 @@ def draw_point(directory: Path, point: dict) -> None:
 
 
 def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
-    """Writes the report page of the run of a logos-chat pull request kept in `out`, its
-    index.html, from `matrix` and `meta`, which `out` holds, and the runs' text it keeps, and the
-    page of each run: what each group's runs came to against the base's, a line a group; then of
-    each group each run's tree, a row a rate and a column a seed, the head's over the base's on
-    the band where main's seeds of its rate first forked, each linked to the run's page. Where
-    chat-sim did not build at the head, the build's log takes the place of the runs. Where main's
-    point stood in for the base's runs, the point's page, or its point.json until it has one, is
-    linked, and the base's trees are drawn from the point's runs while the point keeps their
-    text, else sketched from how they came out."""
+    """Writes the report page of the run of a logos-chat pull request kept in `out`, its index.html,
+    from `matrix` and `meta`, which `out` holds, and the runs' text it keeps, and the page of each
+    run: what each group's runs came to against the base's, a line a group; what the scenarios test
+    and how, from the copies of their files `out` keeps; then of each group each scenario's file,
+    linked to its copy where `out` keeps one, and each run's tree, a row a rate and a column a seed,
+    the head's over the base's on the band where main's seeds of its rate first forked, each linked
+    to the run's page. Where chat-sim did not build at the head, the build's log takes the place of
+    the scenarios and the runs. Where main's point stood in for the base's runs, the point's page,
+    or its point.json until it has one, is linked, and the base's trees are drawn from the point's
+    runs while the point keeps their text, else sketched from how they came out."""
     head, base, point = meta["revision"], meta["base"], matrix["base_point"]
     facts = {"revision": head, "base": base or "", "chat_sim": meta["chat_sim"]}
     page = None
@@ -1042,16 +1075,23 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
         drawn = {_run_href(cell): _trees(out, matrix, cell) for cell in matrix["cells"]}
         most = _most([tree for both in drawn.values() for tree in both])
         width = _widths(most, 1.2, 4.6)
+        told = _told(out, matrix["cells"])
+        every = _shared(list(told.values()))
         body += (
             f'<p class="muted">Ran {verdict}.</p>\n'
             + _verdicts(matrix)
+            + _scenarios(told, every)
             + '<section class="chart" id="runs">\n'
             + _forks_key(matrix, most, width)
         )
         for key, called in simulate.GROUPS.items():
             cells = [cell for cell in matrix["cells"] if group(cell) == key]
             if cells:
-                body += f"<h2>{_e(called)}</h2>\n" + _forks(matrix, cells, drawn, width)
+                body += (
+                    f"<h2>{_e(called)}</h2>\n"
+                    + _about(out, cells, told, every)
+                    + _forks(matrix, cells, drawn, width)
+                )
         body += (
             f'<p class="reading">A tree is one run, left to right by epoch from 0 to {_TOP}, the '
             "goal. The top line is the trunk. Each line below left the line it drops from at that "
@@ -1146,6 +1186,187 @@ def draw_moved(out: Path, matrix: dict, meta: dict) -> None:
     for dark in (False, True):
         picture = _picture(matrix, cells, trees, dark)
         (out / simulate.moved_image(meta["revision"], dark)).write_text(picture, encoding="utf-8")
+
+
+def describe(scenario: object) -> List[str]:
+    """How the run of a scenario file of a `grow` step alone, as tools/sim takes it, tests what
+    `_TESTS` says, a sentence each, as a pull request's report page says it, where a row of
+    trees is headed by its rate of loss: its group and timers, who adds whom, what the trunk is,
+    when a run ends, and what its network does to the frames each member receives. Refuses a
+    scenario of any other step, or one whose fields it reads are not of their kinds."""
+    grow = _grow_of(scenario)
+    members, network = scenario["members"], scenario.get("network", {})
+    said = [
+        _group_said(scenario),
+        f"{_CREATOR} creates the group, and the other {members - 1} members wait to be added.",
+        *_adds(grow),
+    ]
+    if "size" in grow:
+        said.append(
+            f"An adder whose add would take the group above {grow['size']} members first removes "
+            "the member added longest ago that does not add that round."
+        )
+    if "by" in grow:
+        said.append(f"The trunk is the line {_CREATOR} is on.")
+    else:
+        said.append(
+            f"The trunk starts at {_CREATOR}'s first state and, at each fork, follows the state "
+            "more members hold or have gone past."
+        )
+    said.append(
+        f"A run goes on past its first fork, and ends at the start of a round once the trunk "
+        f"reaches epoch {grow['epochs']}, the trunk and the branches off it number "
+        f"{grow['branches']} or more, all {members} members have been added, or no member can "
+        "add."
+    )
+    late = _late(network.get("delay_ms", 0), members)
+    return said + ([late] if late else []) + ([_lost(network)] if "network" in scenario else [])
+
+
+def _grow_of(scenario: object, where: str = "") -> dict:
+    """The grow step of `scenario`, a scenario of that step alone whose fields `describe` reads
+    are of their kinds: refuses any other."""
+    steps = scenario.get("steps") if isinstance(scenario, dict) else None
+    grow = steps[0] if isinstance(steps, list) and len(steps) == 1 else None
+    if not isinstance(grow, dict) or grow.get("step") != "grow":
+        raise Unreadable(f"{where or 'it'} is not a scenario of a grow step alone")
+    network = scenario.get("network", {})
+    network = network if isinstance(network, dict) else {"delay_ms": None}
+    delay, timers = network.get("delay_ms", 0), scenario.get("timers", "fast")
+    whole = [scenario.get("members"), grow.get("epochs"), grow.get("branches")]
+    whole += [grow.get("size", 0), grow.get("adders", 1)]
+    whole += list(delay.values()) if isinstance(delay, dict) else [delay]
+    whole += list(timers.values()) if isinstance(timers, dict) else []
+    shares = [network.get("loss", 0), network.get("welcome_loss", 0)]
+    if (
+        any(type(one) is not int for one in whole)
+        or any(type(one) not in (int, float) for one in shares)
+        or type(grow.get("by", "")) is not str
+        or not isinstance(timers, dict) and timers not in ("fast", "default")
+    ):
+        raise Unreadable(f"{where or 'it'}: a field of its grow is not of its kind")
+    return grow
+
+
+def _adds(grow: dict) -> List[str]:
+    """Who adds a member each round of a `grow` step, and when one can."""
+    if "by" in grow:
+        return [
+            f"Each round, {grow['by']} alone adds the next member.",
+            f"{grow['by']} can add while no member has gone past its state, unless it was "
+            "refused a whole round on that state.",
+        ]
+    drawn = (
+        "one of the members that can add, and it adds"
+        if grow["adders"] == 1
+        else f"one to {grow['adders']} of the members that can add, and each adds"
+    )
+    return [
+        f"Each round, the seed draws {drawn} the next member at once, on whatever branch it is on.",
+        "A member can add once it holds the group, while no member has gone past its state, "
+        "unless it was refused a whole round on that state.",
+    ]
+
+
+def _group_said(scenario: dict) -> str:
+    """The kind of group a scenario's creator creates, and the timers it runs on: a GroupV3
+    group's own, whatever the file says."""
+    if group(scenario) == "v3":
+        if "timers" in scenario:
+            return "A GroupV3 group, on timers of its own, whatever the file's timers say."
+        return "A GroupV3 group, on timers of its own."
+    timers = scenario.get("timers", "fast")
+    if timers == "default":
+        return "A GroupV2 group, on GroupV2's default timers."
+    if timers == "fast":
+        return "A GroupV2 group, on the harness's fast timers."
+    given = ", ".join(f"{name} {milliseconds} ms" for name, milliseconds in timers.items())
+    return f"A GroupV2 group, on GroupV2's default timers but {given}."
+
+
+def _late(delay: object, members: int) -> str:
+    """How late each member receives every frame, `delay` one duration for every member or one by
+    name, where a member it does not name has none: nothing where none is late."""
+    each = [delay]
+    if isinstance(delay, dict):
+        each = list(delay.values()) + [0] * (len(delay) < members)
+    least, most = min(each), max(each)
+    if not most:
+        return ""
+    if least == most:
+        return f"Each member receives every frame {most} ms late."
+    return (
+        f"Each member receives every frame late, by a delay of its own from {least} to {most} ms."
+    )
+
+
+def _lost(network: dict) -> str:
+    """What a network loses of the frames each member receives, at the rate a row is headed by,
+    and of its Welcomes, which are lost at their own rate."""
+    loss, welcomes = network.get("loss", 0), network.get("welcome_loss", 0)
+    row = "A row is a rate of loss: each member loses that share of the frames it receives"
+    if welcomes == loss:
+        return f"{row}, at random, Welcomes among them."
+    if not welcomes:
+        return f"{row}, at random, but no Welcome."
+    return f"{row} other than Welcomes, at random, and {_share(welcomes)} of its Welcomes."
+
+
+def _share(fraction: float) -> str:
+    return f"{fraction * 100:g}%"
+
+
+def _told(out: Path, cells: Sequence[dict]) -> Dict[str, List[str]]:
+    """What `describe` says of the scenario of each of `cells`, by name, from the copy of its file
+    `out` keeps: nothing where a copy is missing or one it cannot say, as of a run kept before
+    the copies were."""
+    told: Dict[str, List[str]] = {}
+    for name in dict.fromkeys(cell["scenario"] for cell in cells):
+        try:
+            told[name] = describe(_json(out / SCENARIOS / f"{name}.json"))
+        except Unreadable:
+            return {}
+    return told
+
+
+def _shared(said: Sequence[List[str]]) -> List[str]:
+    """The sentences each of `said` holds, in the order of the first: none of none."""
+    return [one for one in said[0] if all(one in other for other in said[1:])] if said else []
+
+
+def _scenarios(told: Dict[str, List[str]], every: List[str]) -> str:
+    """What the scenarios of a pull request's run test and how, `told` what `describe` says of
+    each by name: what they test, the sentences `every` one of them holds, how a column's seed
+    runs, and where the guide says how a grow runs. Nothing without them."""
+    if not told:
+        return ""
+    guide = _link("../../guide/simulations/#a-group-that-grows", "A group that grows")
+    return (
+        f'<h2 id="scenarios">The scenarios</h2>\n<p class="lead">{_e(_TESTS)}</p>\n'
+        + '<ul class="how">\n'
+        + "".join(f"<li>{_e(one)}</li>\n" for one in [*every, _SEEDS])
+        + "</ul>\n"
+        + f"<p class=\"muted\">How the files' grow step runs: the guide's {guide}.</p>\n"
+    )
+
+
+def _about(out: Path, cells: Sequence[dict], told: Dict[str, List[str]], every: List[str]) -> str:
+    """The line under a group's name on a pull request's report page: what `describe` says of
+    each of its scenarios, `told`, that not `every` scenario of the page has, then each
+    scenario's file, linked to the copy `out` keeps where it keeps one, with what its own
+    sentences say."""
+    names = list(dict.fromkeys(cell["scenario"] for cell in cells))
+    theirs = [told[name] for name in names if name in told]
+    ours = [one for one in _shared(theirs) if one not in every]
+    files = []
+    for name in names:
+        own = [one for one in told.get(name, []) if one not in every and one not in ours]
+        copy, shown = f"{SCENARIOS}/{name}.json", f"<code>{_e(name)}.json</code>"
+        if (out / copy).is_file():
+            shown = _link(copy, f"{name}.json", code=True)
+        files.append(shown + (f" ({_e(' '.join(own))})" if own else ""))
+    said = "".join(f"{_e(one)} " for one in ours)
+    return f'<p class="about">{said}The scenario files: {" · ".join(files)}</p>\n'
 
 
 def draw_long(directory: Path, long: dict) -> None:
@@ -1642,6 +1863,8 @@ def _pr(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         parser.error("--base-runs: given with --base, and only with it")
     if args.base_runs is not None and not args.base_runs.is_dir():
         parser.error(f"--base-runs: no such directory: {args.base_runs}")
+    if not args.scenarios.is_dir():
+        parser.error(f"--scenarios: no such directory: {args.scenarios}")
     matrix = _check_ran(parser, args)
     if (matrix["base"] is None) != (not args.base):
         parser.error("MATRIX: a matrix with a base is given with --base, and only with it")
@@ -1661,6 +1884,7 @@ def _pr(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
             matrix,
             args.runs,
             args.base_runs,
+            args.scenarios,
             args.site,
             {
                 "pr": args.pr,

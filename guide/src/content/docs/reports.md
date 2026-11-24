@@ -139,7 +139,8 @@ request's head and at its base, and
 those of
 `long` at a commit of logos-chat's main, held to what is expected, as a long run. A pull request's run
 keeps the matrix [`tools/sim matrix`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#a-matrix-of-a-revisions-runs-beside-its-bases)
-wrote of the runs, a point the matrix's cells and summary, and a long run what each scenario came to and
+wrote of the runs and a copy of each scenario file it ran, a point the matrix's cells and summary,
+and a long run what each scenario came to and
 the output of each `compare`, and each keeps each run's `run.txt`, `report.txt` and `run.json`, or, of a
 job that could not build chat-sim, the build's log, `build.log`, which the job uploads beside each run's
 `unbuilt` marker. A run's `report.json`, ten times the rest, stays in the workflow run's artifacts. Each
@@ -178,6 +179,7 @@ band. The same goes for a rate the point holds no runs of, and for its group's l
 | `logos-chat/pr-N/meta.json` | what ran: the pull request's number as `pr`, the `revision` and the `base`, `null` without one, chat-sim's commit as `chat_sim`, the `measurement`, the workflow run's `run_url` and `run_number`, and the `time` it was written, in UTC |
 | `logos-chat/pr-N/head/<scenario>/<run>/`, `logos-chat/pr-N/base/<scenario>/<run>/` | the text of each run at the head and at the base; no `base/` when main's point stood in |
 | `logos-chat/pr-N/head/<scenario>/<run>/index.html` | the page of each run: the head's and the base's at its seed |
+| `logos-chat/pr-N/scenarios/<scenario>.json` | a copy of each scenario file the run ran, from `tools/sim/scenarios/` at chat-sim's commit, which the report describes and links |
 | `logos-chat/pr-N/moved-<revision>.svg`, `logos-chat/pr-N/moved-<revision>-dark.svg` | the picture of the runs that moved at the head `<revision>`, which the comment shows, in the light theme and in the dark; none where no run moved |
 | `logos-chat/pr-N/index.html` | the report of the run |
 
@@ -337,8 +339,9 @@ The report of a pull request's run, `logos-chat/pr-N/`:
 |---|---|
 | The head | the pull request's number, the head and its merge base, chat-sim's commit, links to the pull request and to the workflow run, and when, in UTC; then which commit ran against which merge base, and where main's point stood in for the base, `main's run of it`, linking the point's page, or its `point.json` until the point has a page |
 | The verdicts | a line for each group, in the order and the words of the comment's: a chip, in its colour, for each of what the line leads with and how many runs it has, or of the same and how many of all; where the matrix holds main's seeds, how many of the runs that moved stand beyond them; then how many runs each of the rest has |
+| The scenarios | what the run's scenarios test, how many epochs a growing group lasts before it first forks, then how, drawn from the copies of their files: of what each says, the sentences all of them share, such as who creates the group and who adds each round, what the trunk is, when a run ends, how late each member receives every frame, and that a row is the rate of loss of the frames each member receives; then that a column is a seed, which at one revision runs the same every time, and a link to [A group that grows](../simulations/#a-group-that-grows). A run kept before the report kept the copies, or whose copies it cannot say, has none, and its files are still named under each group, linked where the site keeps their copies |
 | The key | the head's tree on top and the base's under it, how thick a line of 1, of 10 and of the most members is drawn, the ring of the members that never joined, main's band where the matrix holds a `spread`, and the outline of a run that moved where one did |
-| The trees | of each group, under its name, GroupV2 first: a row a rate and a column a seed, each row headed by its rate and the epochs at which main's seeds of it first forked, such as `main 3 to 19`. Each run shows the head's tree over the base's on the grey band of main's seeds, each tree with a ring that counts its members that never joined, where any did. Above them it says where the head's run first forked, or how its trunk ended. A run that moved also says what the base's run had, and is outlined in its change's colour. One that was re-rolled, or where a side did not build, is dashed. Each run links its page |
+| The trees | of each group, under its name, GroupV2 first, and a line that says what its scenarios share that the others do not, such as its timers, and links the copy of each scenario's file the run keeps, with what that file alone says; then a row a rate and a column a seed, each row headed by its rate and the epochs at which main's seeds of it first forked, such as `main 3 to 19`. Each run shows the head's tree over the base's on the grey band of main's seeds, each tree with a ring that counts its members that never joined, where any did. Above them it says where the head's run first forked, or how its trunk ended. A run that moved also says what the base's run had, and is outlined in its change's colour. One that was re-rolled, or where a side did not build, is dashed. Each run links its page |
 | How to read them | a paragraph on the trees, and a link to this section of the guide |
 
 A tree is drawn from the `grow` of the run's `run.json` (see
@@ -372,8 +375,8 @@ main's band, with their rings as on the report page. Each copy is an SVG that st
 colours of the light theme or of the dark written in. It is written once, with the run's report, and
 never drawn again, so that it stays what the posted comment shows.
 
-Where chat-sim did not build at the head, the build's log takes the place of the verdicts and the trees,
-and no run has a page. Every job built the same commit, so the page shows the first job's.
+Where chat-sim did not build at the head, the build's log takes the place of the verdicts, the scenarios
+and the trees, and no run has a page. Every job built the same commit, so the page shows the first job's.
 
 The page of a point, `logos-chat/main/<sha>/<measurement>/`:
 
