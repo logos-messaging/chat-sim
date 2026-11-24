@@ -3,7 +3,8 @@ name: Prune Pages
 # Deletes the reports of pull requests that are no longer open from gh-pages.
 # reports/pr-<N>/ holds a pull request's report, and nothing else removes it.
 # Closing a pull request prunes; the weekly run sweeps up any report a publish
-# recreated after its pull request closed.
+# recreated after its pull request closed. A pull request closed with merge
+# conflicts starts no run, so the next prune takes its report.
 #
 # logos-chat/pr-<N>/ holds the run of logos-chat's pull request N, its report
 # page among it. The weekly run removes each whose pull request logos-chat's
@@ -16,12 +17,9 @@ name: Prune Pages
 # logos-chat's main, about 30 MB a point, and of every long run, about 10 MB a
 # Sunday, long after the tree let it go past the newest eleven points and
 # fifteen long runs.
-#
-# pull_request_target runs this file from the base branch with a write token,
-# and it never checks out the pull request's code.
 
 on:
-  pull_request_target:
+  pull_request:
     types: [closed]
   schedule:
     - cron: "23 4 * * 1"
@@ -37,6 +35,9 @@ permissions:
 jobs:
   prune:
     name: Prune closed pull requests' pages
+    # Skipped for a pull request from a fork, whose GITHUB_TOKEN can't push and
+    # which publishes no report.
+    if: ${{ github.event.pull_request.head.repo.fork != true }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -101,7 +102,7 @@ jobs:
       # whoever dispatched the run chose it, and pages.py refuses one that is
       # not the number of a pull request.
       - name: Remove the runs of logos-chat's closed pull requests
-        if: ${{ github.event_name != 'pull_request_target' }}
+        if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -140,7 +141,7 @@ jobs:
       # the branch as pushed and builds once. The checkout is shallow, so the
       # head's parent is read from the commit itself.
       - name: Rewrite gh-pages as one commit of its tree
-        if: ${{ github.event_name != 'pull_request_target' && !inputs.pr }}
+        if: ${{ github.event_name != 'pull_request' && !inputs.pr }}
         shell: bash
         run: |
           set -euo pipefail

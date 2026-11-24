@@ -55,8 +55,9 @@ min on a CI run of master.
 
 A row and its page are those of the newest CI run of master, or of the pull request, to publish a
 report: newest by run number, which a re-run keeps. A push to a pull request cancels its older run if
-that is still going. A pull request's row and page go when it closes, and a weekly sweep removes any
-that a late run wrote again. A pull request from a fork gets neither: its token cannot push to the site.
+that is still going. A pull request's row and page go when it closes. One closed with merge conflicts
+keeps them until another closes or a weekly sweep runs. That sweep also removes any that a late run
+wrote again. A pull request from a fork gets neither: its token cannot push to the site.
 
 ## A report page
 
