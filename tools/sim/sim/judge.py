@@ -3,51 +3,22 @@
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple
-from urllib.parse import quote
 
 if TYPE_CHECKING:
     from .run import Settings
 
-# The token of a share address: what follows `token=` in its query.
-_TOKEN = re.compile(r"[?&]token=([^&#]*)")
-
-
-# What `encodeURIComponent` leaves as it is, beyond what `quote` does.
-_UNESCAPED = "!*'()"
-
-
-class NoAddress(Exception):
-    """Why an address is no share address. It never quotes the address, which holds a token."""
-
-
-def collector(address: str) -> Tuple[str, str]:
-    """Where a collector's page is, and its token, as a share address gives them."""
-    token = _TOKEN.search(address)
-    if not token or not token[1]:
-        raise NoAddress("the address holds no token")
-    base = address.partition("?")[0]
-    return (base if base.endswith("/") else base + "/"), token[1]
-
-
-def page_of(address: str, conversation: str) -> str:
-    """The address of a conversation's page on a collector, which holds no token."""
-    # Escaped as a browser's `encodeURIComponent` escapes it, which is how the page reads it.
-    return f"{collector(address)[0]}#{quote(conversation, safe=_UNESCAPED)}"
-
 
 def judge(settings: Settings, installations: List[str], report: dict) -> None:
-    """Writes the expectation, has `forks` report on the logs and check them, and shares them.
+    """Writes the expectation, and has `forks` report on the logs and check them.
 
     `installations` are the ids of the peers in the order they started. The report gains
-    `verdict` and `at_tip`, `check` or why there is none as `unchecked`, and `page` or `unshared`
-    when the logs were to be shared. Its `held_to` says which outcome is expected of a run
-    that withheld a candidate. A run of a `grow` step is reported on and not checked, and each
-    member the report knows is counted at the tip or not.
+    `verdict` and `at_tip`, and `check` or why there is none as `unchecked`. Its `held_to` says
+    which outcome is expected of a run that withheld a candidate. A run of a `grow` step is
+    reported on and not checked, and each member the report knows is counted at the tip or not.
     """
     out: Path = settings.out
     convo = report["conversation"]
@@ -74,16 +45,6 @@ def judge(settings: Settings, installations: List[str], report: dict) -> None:
             *_forks(settings, "check", "--expect", str(out / "expect.json"), str(out))
         )
 
-    if settings.share is not None:
-        status, _, complained = _forks(settings, "share", "--to", settings.share, str(out))
-        if status == 0:
-            report["page"] = page_of(settings.share, convo)
-        else:
-            # `forks share` quotes no token. What it complained of is kept all the same, and
-            # nothing a run writes may hold one.
-            token = collector(settings.share)[1]
-            report["unshared"] = complained.replace(token, "TOKEN").splitlines()
-
 
 def _checked(status: int, said: str, complained: str) -> Tuple[Optional[dict], Optional[str]]:
     """What `forks check` found, or why it found nothing.
@@ -102,17 +63,6 @@ def _ending(command: str, status: int, complained: str) -> str:
     how = f"status {status}" if status >= 0 else f"signal {-status}"
     last = complained.splitlines()[-1:]
     return f"{command} ended with {how}" + (f": {last[0]}" if last else "")
-
-
-def unreadable(settings: Settings, address: str) -> Optional[str]:
-    """Why `forks share` refuses a share address, in its words, or `None` when it takes it."""
-    # `forks` reads the address before the help it is asked for, and with that it sends nothing.
-    status, _, complained = _forks(settings, "share", "--to", address, "--help")
-    if status == 0:
-        return None
-    complained = complained.replace(collector(address)[1], "TOKEN")
-    _, refused, why = complained.rpartition("argument --to: ")
-    return why.strip() if refused else _ending("forks share", status, complained)
 
 
 def _forks(settings: Settings, *arguments: str) -> Tuple[int, str, str]:

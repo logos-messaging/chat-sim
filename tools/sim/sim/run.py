@@ -57,8 +57,6 @@ class Settings:
     chat_cli: Optional[Path]
     scenario: Scenario
     out: Path
-    # The share address of a collector the run's logs go to.
-    share: Optional[str] = None
     # The runner that does the scenario in one process, where no peer runs `chat_cli`.
     one_process: Optional[Path] = None
     # The image whose chat-cli each peer runs in a container, where no peer runs `chat_cli`.
@@ -107,8 +105,6 @@ def run(settings: Settings, watch: Watch) -> dict:
         "at_tip": None,
         "seated": scenario.seated,
         "grow": None,
-        "page": None,
-        "unshared": [],
     }
     if settings.one_process is not None:
         one_process.run(settings, report, watch)

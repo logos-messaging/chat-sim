@@ -102,10 +102,6 @@ def row(number: int, seconds: float, report: dict) -> str:
         said.append(f"wire seed {report['wire']['seed']}")
     if report["withheld"] is not None:
         said.append(_withheld(report["withheld"]))
-    if report["page"] is not None:
-        said.append(report["page"])
-    elif report["unshared"]:
-        said.append(f"not shared: {report['unshared'][0]}")
     at_tip = "-" if report["at_tip"] is None else f"{report['at_tip']} of {report['seated']}"
     if _one_process(report):
         seconds = report["virtual_s"]
@@ -364,9 +360,6 @@ def _outcome(report: dict) -> List[str]:
         lines.append("the report is as expected")
     else:
         lines += [f"not as expected: {difference}" for difference in check["differences"]]
-    if report["page"] is not None:
-        lines.append(f"shared: {report['page']}")
-    lines += [f"not shared: {complaint}" for complaint in report["unshared"]]
     return lines
 
 

@@ -55,18 +55,6 @@ def find_runs(paths: Iterable[Path]) -> List[RunLog]:
     return runs
 
 
-def left_out(run: RunLog) -> List[Path]:
-    """The `.log` files of a run's directory that are parts of the run and not among its own.
-
-    A run found by the files that were named may lack them; found by its directory, it has them.
-    """
-    directory = run.parts[-1].parent
-    beside = {file.resolve() for file in _held(directory)} - set(run.parts)
-    return sorted(
-        file for file in beside if file.parent == directory and _place(file.name)[0] == run.name
-    )
-
-
 def _in_order(found: Dict[_Place, Path]) -> Tuple[Path, ...]:
     return tuple(found[place] for place in sorted(found))
 

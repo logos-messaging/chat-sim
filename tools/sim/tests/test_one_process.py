@@ -21,7 +21,7 @@ from sim.run import REPOSITORY, Settings, run
 from sim.sweep import Interrupts, sweep
 
 from tests import FIXTURES, STANDIN_RUNNER, stand_in, stand_in_runner, standin_runner
-from tests.test_run import APPLIED, TOKEN, Collector, Driven, Scratch, said, withholding
+from tests.test_run import APPLIED, Driven, Scratch, said, withholding
 from tests.test_sweep import cells
 from tests.test_table import NETWORK
 from tests.test_table import report as whole_run
@@ -1297,23 +1297,6 @@ class CommandLine(Scratch):
             # A process the command started and did not reap would be a child of this one.
             with self.assertRaises(ChildProcessError):
                 os.waitpid(-1, os.WNOHANG)
-
-    def test_the_log_of_a_shared_run_is_on_the_collector_and_the_token_is_in_no_file(self):
-        collector = Collector(self.scratch)
-        self.addCleanup(collector.stop)
-
-        status, printed = self.sim(
-            "run", str(self.scenario()), "--share", f"{collector.base}?token={TOKEN}"
-        )
-
-        self.assertEqual(status, 0, printed)
-        report = json.loads((self.out / "run.json").read_text(encoding="utf-8"))
-        self.assertEqual(report["page"], f"{collector.base}#{report['conversation']}")
-        self.assertIn(f"\nshared: {report['page']}\n", printed)
-        self.assertNotIn(TOKEN, printed)
-        self.assertNotIn(TOKEN, self.written())
-        (log,) = collector.kept.rglob("*.log")
-        self.assertEqual(log.read_bytes(), (self.out / "group.log").read_bytes())
 
 
 class Signals(Driven):

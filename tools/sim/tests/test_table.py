@@ -2,7 +2,6 @@ import unittest
 
 from sim import table
 
-PAGE = "http://127.0.0.1:8750/#2a30d6a2c1"
 NETWORK = {"seed": 7, "loss": 0.05, "welcome_loss": 0, "delay_ms": 0}
 
 
@@ -83,8 +82,6 @@ def report(**changed) -> dict:
         "at_tip": 3,
         "seated": 3,
         "grow": None,
-        "page": None,
-        "unshared": [],
     }
     whole.update(changed)
     return whole
@@ -370,32 +367,16 @@ class Render(unittest.TestCase):
             text,
         )
 
-    def test_a_check_that_was_not_made_is_told_after_the_verdict_and_before_the_page(self):
+    def test_a_check_that_was_not_made_is_told_after_the_verdict(self):
         text = table.render(
-            report(ok=False, check=None, unchecked="forks check ended with signal 9", page=PAGE)
+            report(ok=False, check=None, unchecked="forks check ended with signal 9")
         )
 
         self.assertIn(
             "\nwhole: 3 of 3 members at the tip\n"
             "not checked: forks check ended with signal 9\n"
-            f"shared: {PAGE}\n",
+            "load average ",
             text,
-        )
-
-    def test_a_shared_run_gives_the_page_of_its_conversation(self):
-        self.assertIn(
-            f"\nthe report is as expected\nshared: {PAGE}\nload average ",
-            table.render(report(page=PAGE)),
-        )
-
-    def test_a_run_that_could_not_be_shared_says_why(self):
-        unshared = ["forks: saro.log: 127.0.0.1:8750 did not answer", "forks: 2 runs not tried"]
-
-        self.assertIn(
-            "\nthe report is as expected\n"
-            "not shared: forks: saro.log: 127.0.0.1:8750 did not answer\n"
-            "not shared: forks: 2 runs not tried\n",
-            table.render(report(unshared=unshared)),
         )
 
     def test_durations_are_named_each_with_its_milliseconds(self):
@@ -563,29 +544,19 @@ class Row(unittest.TestCase):
             "as expected; network seed 7; wire seed 70",
         )
 
-    def test_a_run_that_withheld_a_candidate_says_whose_and_whether_applied_before_its_page(self):
-        told = report(network=NETWORK, withheld=withheld(), page=PAGE)
+    def test_a_run_that_withheld_a_candidate_says_whose_and_whether_applied(self):
+        told = report(network=NETWORK, withheld=withheld())
 
         self.assertTrue(
             table.row(1, 1.0, told).endswith(
-                "  as expected; network seed 7; "
-                f"withheld from pax: the candidate of raya, applied; {PAGE}"
+                "  as expected; network seed 7; withheld from pax: the candidate of raya, applied"
             )
         )
         told["withheld"]["applied"] = False
         self.assertTrue(
-            table.row(1, 1.0, dict(told, page=None)).endswith(
+            table.row(1, 1.0, told).endswith(
                 "  as expected; network seed 7; "
                 "withheld from pax: the candidate of raya, not applied"
-            )
-        )
-
-    def test_a_shared_run_ends_with_the_page_of_its_conversation(self):
-        self.assertTrue(table.row(1, 1.0, report(page=PAGE)).endswith(f"  as expected; {PAGE}"))
-        unshared = report(unshared=["forks: saro.log: no answer", "forks: 2 runs not tried"])
-        self.assertTrue(
-            table.row(1, 1.0, unshared).endswith(
-                "  as expected; not shared: forks: saro.log: no answer"
             )
         )
 

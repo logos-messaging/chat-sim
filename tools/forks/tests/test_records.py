@@ -1,7 +1,7 @@
 import unittest
 from typing import Optional
 
-from forks.records import MAX_CONVO, MAX_NUMBER, Counts, instant, read_complete_lines, read_lines
+from forks.records import MAX_CONVO, MAX_NUMBER, Counts, instant, read_lines
 
 TARGET = "libchat::mls_trace"
 ROSTER = "a3f91c07:5be2c0d1,7b1e44d9:91c0e3a7"
@@ -403,30 +403,6 @@ class LineBreaks(unittest.TestCase):
     def test_a_windows_line_ending_is_no_part_of_a_value(self):
         reading = read_lines(self.LOG.replace(b"\n", b"\r\n"), "saro")
         self.assertEqual(reading.counts, self.COUNTS)
-
-
-class Chunks(unittest.TestCase):
-    LOG = LineBreaks.LOG
-
-    def test_a_whole_log_is_read_to_its_end(self):
-        self.assertEqual(read_lines(self.LOG, "saro").consumed, len(self.LOG))
-
-    def test_a_chunk_that_ends_mid_line_leaves_the_half_line_unread(self):
-        whole = read_lines(self.LOG, "saro")
-        for cut in range(len(self.LOG) + 1):
-            with self.subTest(cut=cut):
-                first = read_complete_lines(self.LOG[:cut], "saro")
-                self.assertEqual(first.consumed, self.LOG.rfind(b"\n", 0, cut) + 1)
-                rest = read_complete_lines(
-                    self.LOG[first.consumed :], "saro", first.counts.lines + 1
-                )
-                self.assertEqual(first.consumed + rest.consumed, len(self.LOG))
-                self.assertEqual(first.records + rest.records, whole.records)
-                self.assertEqual(first.counts + rest.counts, whole.counts)
-
-    def test_a_chunk_without_a_line_break_reads_nothing(self):
-        reading = read_complete_lines(tracing(EPOCH).encode(), "saro")
-        self.assertEqual((reading.records, reading.counts, reading.consumed), ([], Counts(), 0))
 
 
 class Instants(unittest.TestCase):

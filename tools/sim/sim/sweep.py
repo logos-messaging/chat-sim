@@ -108,7 +108,6 @@ def sweep(
                 "network_seed": None if one["network"] is None else one["network"]["seed"],
                 "wire_seed": None if one["wire"] is None else one["wire"]["seed"],
                 "withheld": one["withheld"],
-                "page": one["page"],
             }
         )
         tell(table.row(number, seconds, one))

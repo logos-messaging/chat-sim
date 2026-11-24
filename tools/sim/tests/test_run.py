@@ -23,9 +23,6 @@ from sim.run import CLUSTER_ID, Settings, run
 from tests import forks_whose, stand_in, standin
 
 TOOL = Path(__file__).resolve().parents[1]
-FORKS = TOOL.parent / "forks"
-
-TOKEN = "a-token-of-the-collector-0123456789"
 
 
 def given(arguments: List[str], flag: str) -> List[str]:
@@ -838,31 +835,6 @@ class Running(Scratch):
 
         self.assertRegex(unchecked, "^forks check ended with status 2: .*nowhere")
 
-    def test_what_forks_complains_of_a_share_is_kept_without_the_token(self):
-        # A `forks` that quotes the address it was to send to.
-        forks = self.scratch / "forks"
-        forks.mkdir()
-        (forks / "__main__.py").write_text(
-            "import sys\n"
-            "if sys.argv[1] == 'share':\n"
-            "    sys.exit(f'forks: {sys.argv[3]} did not answer')\n",
-            encoding="utf-8",
-        )
-        settings = Settings(
-            chat_cli=stand_in(self.scratch),
-            scenario=scenario.scenario(said()),
-            out=self.out,
-            share=f"http://127.0.0.1:1/?token={TOKEN}",
-            forks=forks,
-        )
-        report = self.report_of(settings)
-
-        self.assertIsNone(report["page"])
-        self.assertEqual(
-            report["unshared"], ["forks: http://127.0.0.1:1/?token=TOKEN did not answer"]
-        )
-        self.assertNotIn(TOKEN, self.written())
-
     def test_a_peer_that_ends_with_its_input_ended_as_it_was_asked(self):
         report = self.run_of()
 
@@ -1274,38 +1246,6 @@ class Running(Scratch):
         )
 
 
-class Collector:
-    """`forks serve` as a process of its own, on a port the system picked."""
-
-    def __init__(self, scratch: Path) -> None:
-        self.kept = scratch / "collected"
-        token_file = scratch / "token"
-        token_file.write_text(TOKEN, encoding="utf-8")
-        self.served = subprocess.Popen(
-            [
-                sys.executable,
-                "-B",
-                str(FORKS),
-                "serve",
-                "--data",
-                str(self.kept),
-                "--token-file",
-                str(token_file),
-                "--port",
-                "0",
-            ],
-            stdin=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        # Its first line says where it serves.
-        self.base = self.served.stderr.readline().split()[-1]
-
-    def stop(self) -> None:
-        self.served.kill()
-        self.served.communicate()
-
-
 class CommandLine(Scratch):
     """The command, run in this process."""
 
@@ -1461,108 +1401,6 @@ class CommandLine(Scratch):
             "not checked: forks check ended with status 1: RuntimeError: the check broke\n",
             printed,
         )
-
-    def test_a_share_address_without_a_token_is_refused_and_not_quoted(self):
-        scenario_file = str(self.scenario())
-
-        self.assertEqual(
-            self.refused("run", scenario_file, "--share", "http://127.0.0.1:1/"),
-            "sim run: error: argument --share: the address holds no token",
-        )
-        # An address where a scenario was to stand is a word of the command line like another.
-        misplaced = self.refused("run", "--share", f"http://127.0.0.1:1/?token={TOKEN}")
-        self.assertNotIn(TOKEN, misplaced)
-
-    def test_a_share_address_out_of_its_place_is_not_quoted_in_the_refusal(self):
-        address = f"http://127.0.0.1:1/?token={TOKEN}"
-
-        self.assertEqual(
-            self.refused("run", str(self.scenario()), address),
-            "sim: error: unrecognized arguments: ADDRESS",
-        )
-        self.assertEqual(
-            self.refused("sweep", str(self.scenario()), "--runs", address),
-            "sim sweep: error: argument --runs: invalid int value: ADDRESS",
-        )
-
-    def test_a_share_address_the_fork_tool_refuses_is_refused_before_anything_is_started(self):
-        scenario_file = str(self.scenario())
-        refusals = [
-            (
-                "the address holds a token that is not 16 to 128 characters of A-Z, a-z, 0-9, "
-                "_ and -",
-                "http://127.0.0.1:1/?token=sh0rtT0ken",
-            ),
-            ("the address is not http or https", f"127.0.0.1:1/?token={TOKEN}"),
-            ("the address holds a fragment", f"http://127.0.0.1:1/?token={TOKEN}#2a30d6a2c1"),
-            (
-                "the address holds more than one token",
-                f"http://127.0.0.1:1/?token={TOKEN}&token={TOKEN}",
-            ),
-            ("the address holds a user or a password", f"http://saro@127.0.0.1:1/?token={TOKEN}"),
-        ]
-        for why, address in refusals:
-            for command in (["run"], ["sweep", "--runs", "2"]):
-                with self.subTest(why=why, command=command[0]):
-                    self.assertEqual(
-                        self.refused(*command, scenario_file, "--share", address),
-                        f"sim: error: --share: {why}",
-                    )
-                    self.assertFalse(self.out.exists())
-
-    def test_a_fork_tool_that_cannot_read_a_share_address_is_said_without_the_token(self):
-        # A `forks` that quotes the address it was to read, and its token by itself.
-        quotes = forks_whose(
-            "share",
-            "address = sys.argv[3]\n"
-            "sys.exit(f'forks: no share to {address} by {address.partition(\"token=\")[2]}')",
-            self.scratch,
-        )
-        with mock.patch("sim.cli.Settings", functools.partial(Settings, forks=quotes)):
-            refusal = self.refused(
-                "run", str(self.scenario()), "--share", f"http://127.0.0.1:1/?token={TOKEN}"
-            )
-
-        self.assertEqual(
-            refusal,
-            "sim: error: --share: forks share ended with status 1: "
-            "forks: no share to ADDRESS by TOKEN",
-        )
-        self.assertFalse(self.out.exists())
-
-    def test_the_logs_of_a_shared_run_are_on_the_collector_and_the_token_is_in_no_file(self):
-        collector = Collector(self.scratch)
-        self.addCleanup(collector.stop)
-
-        status, printed = self.sim(
-            "run", str(self.scenario()), "--share", f"{collector.base}?token={TOKEN}"
-        )
-
-        self.assertEqual(status, 0, printed)
-        report = self.report()
-        self.assertEqual(report["page"], f"{collector.base}#{report['conversation']}")
-        self.assertEqual(report["unshared"], [])
-        self.assertIn(f"\nshared: {report['page']}\n", printed)
-        self.assertNotIn(TOKEN, printed)
-        self.assertNotIn(TOKEN, self.written())
-        self.assertEqual(len(list(collector.kept.rglob("*.log"))), 3)
-
-    def test_logs_that_could_not_be_shared_are_said_so_without_the_token(self):
-        # Nothing listens there: the socket that held the port is closed.
-        with socket.create_server(("127.0.0.1", 0)) as held:
-            port = held.getsockname()[1]
-
-        status, printed = self.sim(
-            "run", str(self.scenario()), "--share", f"http://127.0.0.1:{port}/?token={TOKEN}"
-        )
-
-        report = self.report()
-        self.assertEqual(status, 0)
-        self.assertIsNone(report["page"])
-        self.assertTrue(report["unshared"])
-        self.assertIn(f"\nnot shared: {report['unshared'][0]}\n", printed)
-        self.assertNotIn(TOKEN, printed)
-        self.assertNotIn(TOKEN, self.written())
 
     def test_the_signal_handlers_of_the_caller_are_put_back(self):
         before = [signal.getsignal(signum) for signum in SIGNALS]

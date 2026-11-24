@@ -103,7 +103,6 @@ class Sweeping(Scratch):
                 "network_seed": None,
                 "wire_seed": None,
                 "withheld": None,
-                "page": None,
             },
         )
         self.assertEqual((second["stopped"], len(second["differences"])), (unread, 1))
@@ -199,15 +198,6 @@ class Sweeping(Scratch):
                     )
                 self.assertEqual(run.call_args.args[0].out, out / str(first))
                 self.assertEqual((report["from"], lines[-1]), (first, counted))
-
-    def test_a_shared_run_has_the_page_of_its_conversation_in_its_row(self):
-        whole = whole_run()
-        whole["page"] = "http://127.0.0.1:8750/#2a30d6a2c1"
-        with mock.patch("sim.sweep.run", return_value=whole):
-            report = self.sweep_of(1, {})
-
-        self.assertEqual(report["rows"][0]["page"], whole["page"])
-        self.assertTrue(self.said[1].endswith(f"as expected; {whole['page']}"))
 
     def test_each_run_has_the_seed_after_that_of_the_run_before_and_its_row_names_it(self):
         report = self.sweep_of(3, {}, network={"seed": 7})

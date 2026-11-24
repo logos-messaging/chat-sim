@@ -9,15 +9,13 @@ import argparse
 import contextlib
 import json
 import os
-import re
 import shutil
 import signal
 import sys
 from pathlib import Path
-from typing import Callable, Iterator, NoReturn, Optional, Sequence
-from urllib.parse import unquote
+from typing import Callable, Iterator, Optional, Sequence
 
-from . import compare, containers, judge, matrix, scenario, table
+from . import compare, containers, matrix, scenario, table
 from .peers import Watch
 from .run import NoDirectory, Settings, run
 from .sweep import Interrupts, sweep
@@ -33,7 +31,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     when it wrote the matrix. A command a signal interrupted returns 128 and the signal's
     number.
     """
-    parser = _Parser(
+    parser = argparse.ArgumentParser(
         prog="sim",
         description="Starts headless chat-cli peers on a delivery network of their own or on a "
         "fleet preset, has them do the steps of a scenario, and holds the fork report of their "
@@ -162,7 +160,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             chat_cli=None if args.chat_cli is None else args.chat_cli.resolve(),
             scenario=scenario.read(args.scenario),
             out=args.out,
-            share=args.share,
             one_process=None if args.one_process is None else args.one_process.resolve(),
             image=args.image,
             engine=engine,
@@ -192,10 +189,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 f"--runs: run {number} would have {said} {seeded.seed}, "
                 f"and {scenario.MOST_SEED} is the most"
             )
-    if settings.share is not None:
-        refusal = judge.unreadable(settings, settings.share)
-        if refusal is not None:
-            parser.error(f"--share: {refusal}")
     try:
         return args.run(args, settings)
     except NoDirectory as refused:
@@ -227,21 +220,6 @@ def _add_arguments(command: argparse.ArgumentParser) -> None:
     command.add_argument(
         "--out", metavar="DIR", type=Path, required=True, help="the directory to make and write to"
     )
-    command.add_argument(
-        "--share",
-        metavar="ADDRESS",
-        type=_share_address,
-        help="the share address of a collector to send every peer's log to: ...?token=TOKEN",
-    )
-
-
-def _share_address(address: str) -> str:
-    """A share address as it was given. A refusal never quotes it: it holds a token."""
-    try:
-        judge.collector(address)
-    except judge.NoAddress as refused:
-        raise argparse.ArgumentTypeError(str(refused)) from None
-    return address
 
 
 def _run(args: argparse.Namespace, settings: Settings) -> int:
@@ -319,17 +297,3 @@ def _handling(take: Callable[[int], None]) -> Iterator[None]:
     finally:
         for signum, handler in zip(handled, before):
             signal.signal(signum, handler)
-
-
-class _Parser(argparse.ArgumentParser):
-    """A parser that quotes no token in what it refuses, wherever on the command line it stood."""
-
-    def error(self, message: str) -> NoReturn:
-        # A share address out of its place is quoted like any other word, and its token with it.
-        super().error(
-            re.sub(
-                r"\S+",
-                lambda word: "ADDRESS" if "token=" in unquote(word[0]) else word[0],
-                message,
-            )
-        )
