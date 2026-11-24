@@ -608,6 +608,7 @@ jobs:
           fi
           python3 .github/scripts/pages.py pr "$RUNNER_TEMP/matrix/matrix.json" \
             "$RUNNER_TEMP/revision" site --pr "$PR" "${base[@]}" \
+            --scenarios tools/sim/scenarios \
             --revision "$REVISION" --measurement "$MEASUREMENT" --chat-sim "$GITHUB_SHA" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             --run-number "$GITHUB_RUN_NUMBER" --time "$(date -u +%Y-%m-%dT%H:%M:%SZ)"

@@ -36,6 +36,11 @@ GOAL = "50-epochs-by-saro-waku-loss-{}"
 # The goal of each group, by the group's name in a scenario: UPLOADED holds GroupV2's runs of it,
 # and the tests copy them as GroupV3's.
 HELD_GOALS = {"v2": GOAL, "v3": "50-epochs-by-saro-waku-loss-{}-groupv3"}
+# What a pull request's report page says each scenario of the runs it is given loses.
+WELCOMED = (
+    "A row is a rate of loss: each member loses that share of the frames it receives, at random, "
+    "Welcomes among them."
+)
 
 
 def write(path: Path, text: str) -> None:
@@ -977,6 +982,7 @@ class PullRequest(LogosChat):
         head = self.uploaded() if head is None else head
         given = [str(self.matrix(head, base)), str(head), str(self.site), "--pr", "316"]
         given += ["--revision", REVISION, "--measurement", MEASUREMENT]
+        given += ["--scenarios", str(SCENARIOS)]
         if base is not None:
             given += ["--base", BASE, "--base-runs", str(base)]
         status, out, err = self.run_pages("pr", *given, *self.ran(run_number, minute))
@@ -1003,11 +1009,15 @@ class PullRequest(LogosChat):
             for run in (1, 2)
         ]
         pictures = [simulate.moved_image(REVISION, dark) for dark in (False, True)]
-        kept = ["index.html", "matrix.json", "meta.json", *texts, *drawn, *pictures]
+        scenarios = [f"scenarios/{GOAL.format(rate)}.json" for rate in ("0.1", "1", "5")]
+        kept = ["index.html", "matrix.json", "meta.json", *texts, *drawn, *pictures, *scenarios]
         self.assertEqual(self.files(out), sorted(kept))
         self.assertEqual(
             (out / "head" / GOAL.format(1) / "2" / "run.json").read_bytes(),
             self.run_json(head, "1/1").read_bytes(),
+        )
+        self.assertEqual(
+            (out / scenarios[1]).read_bytes(), (SCENARIOS / f"{GOAL.format(1)}.json").read_bytes()
         )
         matrix = pages.read_matrix(out / "matrix.json")
         self.assertEqual(matrix["verdict"], "hint")
@@ -1043,13 +1053,14 @@ class PullRequest(LogosChat):
         nothing.mkdir()
         given = [str(matrix), str(head), str(self.site), "--pr", "316", "--revision", REVISION]
         given += ["--measurement", MEASUREMENT, "--base", BASE, "--base-runs", str(nothing)]
+        given += ["--scenarios", str(SCENARIOS)]
         status, _, err = self.run_pages("pr", *given, *self.ran(1, 0))
 
         self.assertEqual(status, 0, err)
         out = self.site / "logos-chat" / "pr-316"
         self.assertEqual(
             {path.split("/")[0] for path in self.files(out)},
-            {"head", "index.html", "matrix.json", "meta.json"},
+            {"head", "index.html", "matrix.json", "meta.json", "scenarios"},
         )
         kept = pages.read_matrix(out / "matrix.json")
         self.assertEqual((kept["verdict"], kept["base_point"]["logos_chat"]), ("same", FA5282A))
@@ -1161,7 +1172,7 @@ class PullRequest(LogosChat):
         head = self.uploaded()
         with_base, alone = self.matrix(head, UPLOADED), self.matrix(head)
         given = [str(head), str(self.site), "--revision", REVISION, "--measurement", MEASUREMENT]
-        given += self.ran(1, 1)
+        given += [*self.ran(1, 1), "--scenarios", str(SCENARIOS)]
         said, runs = [*given, "--pr", "316"], ["--base-runs", str(UPLOADED)]
         for flag, argv in (
             ("--base-runs", [str(with_base), *said, "--base", BASE]),
@@ -1175,6 +1186,28 @@ class PullRequest(LogosChat):
                 status, _, err = self.run_pages("pr", *argv)
                 self.assertEqual(status, 2)
                 self.assertIn(flag, err.splitlines()[-1])
+        self.assertFalse((self.site / "logos-chat").exists())
+
+    def test_scenarios_that_do_not_hold_each_scenario_the_matrix_ran_as_a_grow_are_refused(self):
+        head = self.uploaded()
+        given = [str(self.matrix(head)), str(head), str(self.site), "--pr", "316"]
+        given += ["--revision", REVISION, "--measurement", MEASUREMENT, *self.ran(1, 1)]
+        held, seated = self.scratch / "held", self.scratch / "seated"
+        for scenarios in (held, seated):
+            scenarios.mkdir()
+            for rate in ("1", "5"):
+                shutil.copy(SCENARIOS / f"{GOAL.format(rate)}.json", scenarios)
+        missing, three = held / f"{GOAL.format('0.1')}.json", seated / f"{GOAL.format('0.1')}.json"
+        shutil.copy(SCENARIOS / "three.json", three)
+        for scenarios, said in (
+            (self.scratch / "none", "--scenarios: no such directory"),
+            (held, f"{missing}: no such file, and the matrix ran {GOAL.format('0.1')}"),
+            (seated, f"{three} is not a scenario of a grow step alone"),
+        ):
+            with self.subTest(scenarios=scenarios):
+                status, _, err = self.run_pages("pr", *given, "--scenarios", str(scenarios))
+                self.assertEqual(status, 2)
+                self.assertIn(said, err.splitlines()[-1])
         self.assertFalse((self.site / "logos-chat").exists())
 
 
@@ -1851,6 +1884,137 @@ LOG = (
 )
 
 
+class Describe(unittest.TestCase):
+    """How the run of a scenario of a grow step tests what a pull request's report page says the
+    scenarios test, as that page says it."""
+
+    def test_each_scenario_a_suite_runs_is_said_and_one_of_any_other_step_refused(self):
+        goals = {
+            goal.format(rate)
+            for goal in simulate.GOALS.values()
+            for rates in simulate.RATES.values()
+            for rate in rates
+        }
+        said = set()
+        for path in sorted(SCENARIOS.glob("*.json")):
+            scenario = json.loads(path.read_text(encoding="utf-8"))
+            with self.subTest(scenario=path.stem):
+                if [step["step"] for step in scenario["steps"]] != ["grow"]:
+                    with self.assertRaisesRegex(pages.Unreadable, "not a scenario of a grow step"):
+                        pages.describe(scenario)
+                    continue
+                told = pages.describe(scenario)
+                self.assertTrue(all(one.endswith(".") for one in told))
+                said.add(path.stem)
+        self.assertLessEqual(goals, said)
+
+    def test_a_grow_of_drawn_adders_says_who_adds_what_the_trunk_is_and_when_a_run_ends(self):
+        grow = json.loads((SCENARIOS / "grow-waku-loss-1-groupv3.json").read_text("utf-8"))
+        self.assertEqual(
+            pages.describe(grow),
+            [
+                "A GroupV3 group, on timers of its own, whatever the file's timers say.",
+                "saro creates the group, and the other 199 members wait to be added.",
+                "Each round, the seed draws one to 3 of the members that can add, and each adds "
+                "the next member at once, on whatever branch it is on.",
+                "A member can add once it holds the group, while no member has gone past its "
+                "state, unless it was refused a whole round on that state.",
+                "The trunk starts at saro's first state and, at each fork, follows the state more "
+                "members hold or have gone past.",
+                "A run goes on past its first fork, and ends at the start of a round once the "
+                "trunk reaches epoch 50, the trunk and the branches off it number 5 or more, all "
+                "200 members have been added, or no member can add.",
+                "Each member receives every frame late, by a delay of its own from 268 to 659 ms.",
+                "A row is a rate of loss: each member loses that share of the frames it receives, "
+                "at random, Welcomes among them.",
+            ],
+        )
+
+    def test_a_grow_by_one_member_of_one_adder_or_of_a_size_says_so_with_its_timers(self):
+        def grow(**step) -> dict:
+            return {"members": 9, "steps": [{"step": "grow", "epochs": 7, "branches": 2, **step}]}
+
+        self.assertEqual(
+            pages.describe(grow(by="saro")),
+            [
+                "A GroupV2 group, on the harness's fast timers.",
+                "saro creates the group, and the other 8 members wait to be added.",
+                "Each round, saro alone adds the next member.",
+                "saro can add while no member has gone past its state, unless it was refused a "
+                "whole round on that state.",
+                "The trunk is the line saro is on.",
+                "A run goes on past its first fork, and ends at the start of a round once the "
+                "trunk reaches epoch 7, the trunk and the branches off it number 2 or more, all 9 "
+                "members have been added, or no member can add.",
+            ],
+        )
+        self.assertEqual(
+            pages.describe({**grow(adders=1), "timers": "default"})[:3],
+            [
+                "A GroupV2 group, on GroupV2's default timers.",
+                "saro creates the group, and the other 8 members wait to be added.",
+                "Each round, the seed draws one of the members that can add, and it adds the next "
+                "member at once, on whatever branch it is on.",
+            ],
+        )
+        sized = pages.describe({**grow(adders=2, size=4), "timers": {"voting_delay": 900}})
+        self.assertEqual(
+            sized[0], "A GroupV2 group, on GroupV2's default timers but voting_delay 900 ms."
+        )
+        self.assertEqual(
+            sized[4],
+            "An adder whose add would take the group above 4 members first removes the member "
+            "added longest ago that does not add that round.",
+        )
+        self.assertEqual(
+            pages.describe({**grow(adders=2), "group": "v3"})[0],
+            "A GroupV3 group, on timers of its own.",
+        )
+
+    def test_how_late_frames_come_and_what_is_lost_of_them_and_of_welcomes_is_said_last(self):
+        def said(**network) -> List[str]:
+            grow = {"step": "grow", "epochs": 7, "branches": 2, "adders": 1}
+            return pages.describe({"members": 3, "steps": [grow], "network": network})[-2:]
+
+        self.assertEqual(
+            said(seed=1, delay_ms={"saro": 40, "raya": 90}, loss=0.05),
+            [
+                "Each member receives every frame late, by a delay of its own from 0 to 90 ms.",
+                "A row is a rate of loss: each member loses that share of the frames it receives, "
+                "at random, but no Welcome.",
+            ],
+        )
+        self.assertEqual(
+            said(seed=1, delay_ms=40, loss=0.01, welcome_loss=0.5)[0],
+            "Each member receives every frame 40 ms late.",
+        )
+        self.assertEqual(
+            said(seed=1, delay_ms=40, loss=0.01, welcome_loss=0.5)[1],
+            "A row is a rate of loss: each member loses that share of the frames it receives other "
+            "than Welcomes, at random, and 50% of its Welcomes.",
+        )
+        quiet = said(seed=1, delay_ms={"saro": 0, "raya": 0, "pax": 0})
+        self.assertNotIn("late", " ".join(quiet))
+        self.assertTrue(quiet[-1].endswith("at random, Welcomes among them."))
+
+    def test_a_scenario_whose_grow_it_cannot_say_is_refused(self):
+        grow = {"step": "grow", "epochs": 7, "branches": 2, "adders": 1}
+        for scenario in (
+            [],
+            {"members": 3},
+            {"members": 3, "steps": [grow, {"step": "heal"}]},
+            {"members": "3", "steps": [grow]},
+            {"members": 3, "steps": [{**grow, "adders": 1.5}]},
+            {"members": 3, "steps": [{**grow, "by": 1}]},
+            {"members": 3, "steps": [grow], "timers": "slow"},
+            {"members": 3, "steps": [grow], "network": {"delay_ms": [40]}},
+            {"members": 3, "steps": [grow], "network": {"loss": "1%"}},
+            {"members": 3, "steps": [grow], "network": []},
+        ):
+            with self.subTest(scenario=scenario), self.assertRaises(pages.Unreadable):
+                pages.describe(scenario)
+
+
 class Pages(LogosChat):
     """The report page of a pull request's run, the page of each of its runs and the picture of
     those that moved, and the page of main's point, as pr and point draw them from what they
@@ -1868,7 +2032,7 @@ class Pages(LogosChat):
         """Writes the run of pull request 316 at REVISION against `revision`, its base, whose runs
         are under `base`, or against none where `base` is `None`, and returns its directory."""
         given = [str(matrix), str(head), str(self.site), "--pr", "316", "--revision", REVISION]
-        given += ["--measurement", MEASUREMENT]
+        given += ["--measurement", MEASUREMENT, "--scenarios", str(SCENARIOS)]
         if base is not None:
             given += ["--base", revision, "--base-runs", str(base)]
         status, _, err = self.run_pages("pr", *given, *self.ran(1, 0))
@@ -1917,6 +2081,15 @@ class Pages(LogosChat):
         runs = self.drawn(directory).split('<section class="chart" id="runs">', 1)[1]
         legend = runs.split('<p class="legend">', 1)[1].split("</p>", 1)[0]
         return re.findall(r"(?:</svg>|</span>)([^<]+)</span>", legend)
+
+    def items(self, page: str) -> List[str]:
+        """The text of each item of the lists of `page`."""
+        return [html.unescape(one) for one in re.findall(r"<li>(.*?)</li>", page)]
+
+    def about(self, page: str, group: str) -> Parsed:
+        """The line under the name of `group` on a pull request's report `page`."""
+        found = re.search(rf'<h2>{simulate.GROUPS[group]}</h2>\n<p class="about">(.*?)</p>', page)
+        return Parsed(found[1])
 
     def forks(
         self, directory: Path, group: str = "GroupV2"
@@ -2297,6 +2470,110 @@ class Pages(LogosChat):
         self.assertEqual(
             self.stands_alone(out / f"head/{v3.format(1)}/2").h1, ["GroupV3 · 1% loss · seed 1"]
         )
+
+    def test_the_report_says_what_its_scenarios_test_and_how_and_links_each_one_s_file(self):
+        base, head = self.uploaded(groupv3=True), self.uploaded(groupv3=True)
+        out = self.pr(head, self.matrix(head, base), base)
+        page = self.drawn(out)
+
+        self.stands_alone(out)
+        verdicts, scenarios, runs = (
+            page.index('<ul class="verdicts">'),
+            page.index('<h2 id="scenarios">'),
+            page.index('id="runs"'),
+        )
+        self.assertLess(verdicts, scenarios)
+        self.assertLess(scenarios, runs)
+        section = page[scenarios:runs]
+        self.assertEqual(
+            re.findall(r'<p class="lead">(.*?)</p>', section),
+            ["How many epochs a growing group of logos-chat clients lasts before it first forks."],
+        )
+        self.assertEqual(
+            self.items(section),
+            [
+                "saro creates the group, and the other 50 members wait to be added.",
+                "Each round, saro alone adds the next member.",
+                "saro can add while no member has gone past its state, unless it was refused a "
+                "whole round on that state.",
+                "The trunk is the line saro is on.",
+                "A run goes on past its first fork, and ends at the start of a round once the "
+                "trunk reaches epoch 50, the trunk and the branches off it number 51 or more, all "
+                "51 members have been added, or no member can add.",
+                "Each member receives every frame late, by a delay of its own from 284 to 644 ms.",
+                WELCOMED,
+                "A column is a seed, the same at the head and at the base. At one revision a seed "
+                "runs the same every time, so where a column's two trees differ, the pull request "
+                "changed the run.",
+            ],
+        )
+        self.assertIn("../../guide/simulations/#a-group-that-grows", Parsed(section).links)
+        for group, timers in (
+            ("v2", "A GroupV2 group, on GroupV2's default timers."),
+            ("v3", "A GroupV3 group, on timers of its own, whatever the file's timers say."),
+        ):
+            names = [HELD_GOALS[group].format(rate) for rate in ("0.1", "1", "5")]
+            with self.subTest(group=group):
+                about = self.about(page, group)
+                self.assertEqual(
+                    about.text,
+                    f"{timers} The scenario files: " + " · ".join(f"{one}.json" for one in names),
+                )
+                self.assertEqual(about.links, [f"scenarios/{one}.json" for one in names])
+
+    def test_what_some_scenarios_alone_say_is_said_under_their_group_or_beside_their_file(self):
+        base, head = self.uploaded(groupv3=True), self.uploaded(groupv3=True)
+        out = self.pr(head, self.matrix(head, base), base)
+        lone = out / "scenarios" / f"{GOAL.format(1)}.json"
+        scenario = json.loads(lone.read_text(encoding="utf-8"))
+        scenario["network"]["welcome_loss"] = 0
+        lone.write_text(json.dumps(scenario), encoding="utf-8")
+        pages.draw_pr(
+            out, pages.read_matrix(out / "matrix.json"), pages.read_pr_meta(out / "meta.json")
+        )
+        page = self.drawn(out)
+
+        self.assertNotIn(WELCOMED, self.items(page.split('id="runs"')[0]))
+        unwelcomed = WELCOMED.replace("Welcomes among them", "but no Welcome")
+        self.assertEqual(
+            self.about(page, "v2").text,
+            "A GroupV2 group, on GroupV2's default timers. The scenario files: "
+            f"{GOAL.format('0.1')}.json ({WELCOMED}) · {GOAL.format(1)}.json ({unwelcomed}) · "
+            f"{GOAL.format(5)}.json ({WELCOMED})",
+        )
+        v3 = HELD_GOALS["v3"]
+        self.assertEqual(
+            self.about(page, "v3").text,
+            f"A GroupV3 group, on timers of its own, whatever the file's timers say. {WELCOMED} "
+            "The scenario files: "
+            + " · ".join(f"{v3.format(rate)}.json" for rate in ("0.1", "1", "5")),
+        )
+
+    def test_a_run_whose_scenario_copies_it_cannot_say_names_its_files_and_describes_none(self):
+        for spoilt in ("kept none", "not a grow", "not JSON"):
+            with self.subTest(spoilt=spoilt):
+                out = self.pr(self.uploaded(), self.matrix(self.uploaded()), None)
+                lone = out / "scenarios" / f"{GOAL.format(1)}.json"
+                if spoilt == "kept none":
+                    shutil.rmtree(out / "scenarios")
+                elif spoilt == "not a grow":
+                    shutil.copy(SCENARIOS / "three.json", lone)
+                else:
+                    lone.write_text("{", encoding="utf-8")
+                pages.draw_pr(
+                    out,
+                    pages.read_matrix(out / "matrix.json"),
+                    pages.read_pr_meta(out / "meta.json"),
+                )
+                page = self.drawn(out)
+
+                self.assertNotIn('id="scenarios"', page)
+                names = [GOAL.format(rate) for rate in ("0.1", "1", "5")]
+                said = "The scenario files: " + " · ".join(f"{one}.json" for one in names)
+                self.assertEqual(self.about(page, "v2").text, said)
+                kept = [] if spoilt == "kept none" else [f"scenarios/{one}.json" for one in names]
+                self.assertEqual(self.about(page, "v2").links, kept)
+                self.stands_alone(out)
 
     def test_against_main_s_spread_of_group_v2_alone_group_v3_s_trees_have_no_band(self):
         base, head = self.uploaded(groupv3=True), self.uploaded(groupv3=True)

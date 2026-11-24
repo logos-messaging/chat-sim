@@ -1718,6 +1718,14 @@ class Workflow(unittest.TestCase):
         self.assertIn("simulate.py built --builds", post)
         self.assertNotIn("curl", post)
 
+    def test_publish_keeps_the_scenario_files_of_the_tree_that_ran(self):
+        publish = self.jobs["publish"]
+        before, written = publish.split("pages.py pr ", 1)
+        step = written.split("\n\n", 1)[0]
+
+        self.assertIn("\n      - uses: actions/checkout@v4\n\n", before)
+        self.assertIn("\n            --scenarios tools/sim/scenarios \\\n", step)
+
 
 if __name__ == "__main__":
     unittest.main()

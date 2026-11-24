@@ -64,7 +64,8 @@ comment says how the runs of each group at each rate ended, and for `long` what 
 came to and which moved from the base's, or from those `tools/sim/expected` holds when there is no
 base. The workflow's publish job keeps a `main` run handed no `pr` on the Pages site as a point of
 logos-chat's main, with the matrix's cells and summary, a `pr` run under the number of its pull
-request, with the matrix, and a `long` run with no base as a long run of logos-chat's main, with
+request, with the matrix and the scenario files it ran, and a `long` run with no base as a long
+run of logos-chat's main, with
 what each scenario came to and the output of each `compare`, each with its runs' text, or the
 build's log where chat-sim did not build, and a page drawn from them, which the comment links. A
 `pr` run also gets a page for each of its runs and the picture of the runs that moved; the guide's
