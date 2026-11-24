@@ -6,16 +6,8 @@
 <meta name="color-scheme" content="light dark">
 <title>chat-sim: master</title>
 <style>
-:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;
---line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--grid:#e6e9ed;
---band:rgba(57,135,229,.18);--rate-1:#86b6ef;--rate-2:#3987e5;--rate-3:#1c5cab;
---rate-4:#0d366b;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;
---w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
-@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;
---box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;
---grid:#21262d;--band:rgba(109,167,236,.22);--rate-1:#b7d3f6;--rate-2:#6da7ec;
---rate-3:#2a78d6;--rate-4:#184f95;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;
---w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--band:rgba(57,135,229,.18);--rate-1:#86b6ef;--rate-2:#3987e5;--rate-3:#1c5cab;--rate-4:#0d366b;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--band:rgba(109,167,236,.22);--rate-1:#b7d3f6;--rate-2:#6da7ec;--rate-3:#2a78d6;--rate-4:#184f95;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
 body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
 background:var(--bg);font:15px/1.5 system-ui,sans-serif}
 a{color:var(--link)}
@@ -40,7 +32,7 @@ summary{cursor:pointer}
 <body>
 <p class="muted"><a href="../../">chat-sim</a> / <a href="../">Reports</a></p>
 <h1>master</h1>
-<p>Commit <a href="https://github.com/logos-messaging/chat-sim/commit/278bcec5814142be48f0f45307d3a89da16d8c8b"><code>278bcec</code></a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44838930106">CI run</a> · 2026-11-21 02:03 UTC</p>
+<p>Commit <a href="https://github.com/logos-messaging/chat-sim/commit/030a8d39c782a8206397ffd92db22b7ac137b009"><code>030a8d3</code></a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/45396563197">CI run</a> · 2026-11-24 15:05 UTC</p>
 <p><a href="#held">Held to what is expected</a>: 19 of 19 as expected · <a href="#fifty-epochs">Fifty epochs</a></p>
 <h2 id="held">Held to what is expected</h2>
 <p>Each scenario CI sweeps, held by <code>tools/sim compare</code> to the outcomes <code>tools/sim/expected/</code> holds for its runs.</p>
@@ -84,10 +76,10 @@ summary{cursor:pointer}
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-0/1/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 3626.644s on a virtual clock in 47.640s of wall time, seed 0, network seed 1, loss 0.0, welcome loss 0.0
+<pre>51 members, default group timers, one process, 3626.644s on a virtual clock in 46.644s of wall time, seed 0, network seed 1, loss 0.0, welcome loss 0.0
 whole: 51 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.13 at the start, 1.90 at the end
+load average 2.03 at the start, 1.70 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        f95e254c     2700    2698     2     0       0
@@ -220,10 +212,10 @@ lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-0/2/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 3626.894s on a virtual clock in 46.911s of wall time, seed 1, network seed 2, loss 0.0, welcome loss 0.0
+<pre>51 members, default group timers, one process, 3626.894s on a virtual clock in 46.449s of wall time, seed 1, network seed 2, loss 0.0, welcome loss 0.0
 whole: 51 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.90 at the start, 1.42 at the end
+load average 1.70 at the start, 1.41 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        01469e2a     2697    2696     1     0       0
@@ -369,10 +361,10 @@ lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-0-groupv3/1/run.txt">run.txt</a></p>
-<pre>51 members, GroupV3, one process, 6050.294s on a virtual clock in 81.997s of wall time, seed 0, network seed 1, loss 0.0, welcome loss 0.0
+<pre>51 members, GroupV3, one process, 6050.294s on a virtual clock in 84.840s of wall time, seed 0, network seed 1, loss 0.0, welcome loss 0.0
 whole: 51 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.24 at the start, 1.49 at the end
+load average 2.28 at the start, 1.37 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        f95e254c     1476    1476     0     0       0
@@ -505,10 +497,10 @@ lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-0-groupv3/2/run.txt">run.txt</a></p>
-<pre>51 members, GroupV3, one process, 6050.294s on a virtual clock in 81.829s of wall time, seed 1, network seed 2, loss 0.0, welcome loss 0.0
+<pre>51 members, GroupV3, one process, 6050.294s on a virtual clock in 82.603s of wall time, seed 1, network seed 2, loss 0.0, welcome loss 0.0
 whole: 51 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.49 at the start, 1.15 at the end
+load average 1.37 at the start, 1.19 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        01469e2a     1487    1487     0     0       0
@@ -654,10 +646,10 @@ lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-0.1/1/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 3626.644s on a virtual clock in 38.617s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
+<pre>51 members, default group timers, one process, 3626.644s on a virtual clock in 37.946s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
 whole: 51 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.13 at the start, 1.58 at the end
+load average 1.91 at the start, 1.61 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        f95e254c     2700    2698     2     0       0
@@ -790,10 +782,10 @@ lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-0.1/2/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 3790.744s on a virtual clock in 30.613s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
+<pre>51 members, default group timers, one process, 3790.744s on a virtual clock in 30.198s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
 split at epoch 46: 50 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.58 at the start, 1.35 at the end
+load average 1.61 at the start, 1.37 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        01469e2a     2695    2692     1     2       8
@@ -947,10 +939,10 @@ lines: 3322 read, 3322 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-0.1-groupv3/1/run.txt">run.txt</a></p>
-<pre>51 members, GroupV3, one process, 6109.294s on a virtual clock in 50.534s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
+<pre>51 members, GroupV3, one process, 6109.294s on a virtual clock in 81.887s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
 whole: 51 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.36 at the start, 1.75 at the end
+load average 2.27 at the start, 1.61 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        f95e254c     1485    1485     0     0       0
@@ -1084,10 +1076,10 @@ lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-0.1-groupv3/2/run.txt">run.txt</a></p>
-<pre>51 members, GroupV3, one process, 6109.294s on a virtual clock in 49.341s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
+<pre>51 members, GroupV3, one process, 6109.294s on a virtual clock in 81.860s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
 whole: 51 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.75 at the start, 1.35 at the end
+load average 1.61 at the start, 1.43 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        01469e2a     1495    1493     0     2       0
@@ -1234,10 +1226,10 @@ lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-1/1/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 6076.244s on a virtual clock in 282.826s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
+<pre>51 members, default group timers, one process, 6076.244s on a virtual clock in 357.257s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
 split at epoch 18: 42 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.10 at the start, 1.08 at the end
+load average 2.02 at the start, 1.11 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        f95e254c     7834    7745     1    88       8
@@ -1395,10 +1387,10 @@ lines: 130360 read, 130331 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-1/2/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 5686.050s on a virtual clock in 230.557s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
+<pre>51 members, default group timers, one process, 5686.050s on a virtual clock in 289.406s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
 split at epoch 9: 42 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.08 at the start, 1.15 at the end
+load average 1.34 at the start, 1.12 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        01469e2a     7105    7040     0    65       8
@@ -1580,10 +1572,10 @@ lines: 121230 read, 121230 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-1-groupv3/1/run.txt">run.txt</a></p>
-<pre>51 members, GroupV3, one process, 6580.650s on a virtual clock in 69.100s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
+<pre>51 members, GroupV3, one process, 6580.650s on a virtual clock in 50.285s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
 whole, members behind: 50 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.15 at the start, 1.44 at the end
+load average 2.19 at the start, 1.51 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        f95e254c     1529    1511     0    18       0
@@ -1718,10 +1710,10 @@ lines: 1376 read, 1376 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-1-groupv3/2/run.txt">run.txt</a></p>
-<pre>51 members, GroupV3, one process, 6699.294s on a virtual clock in 68.917s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
+<pre>51 members, GroupV3, one process, 6699.294s on a virtual clock in 48.161s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
 whole: 51 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.44 at the start, 1.37 at the end
+load average 1.51 at the start, 1.32 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        01469e2a     1537    1518     0    19       0
@@ -1868,10 +1860,10 @@ lines: 1377 read, 1377 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-5/1/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 1961.200s on a virtual clock in 0.901s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
+<pre>51 members, default group timers, one process, 1961.200s on a virtual clock in 0.892s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
 split at epoch 8: 8 of 15 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.18 at the start, 2.17 at the end
+load average 2.39 at the start, 2.39 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        f95e254c      462     436     0    26       0
@@ -1975,10 +1967,10 @@ lines: 3040 read, 3040 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-5/2/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 7070.894s on a virtual clock in 288.430s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
+<pre>51 members, default group timers, one process, 7070.894s on a virtual clock in 281.684s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
 split at epoch 3: 30 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.17 at the start, 1.29 at the end
+load average 2.39 at the start, 1.08 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        01469e2a     8661    8260     1   400       3
@@ -2174,10 +2166,10 @@ lines: 255351 read, 255164 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-5-groupv3/1/run.txt">run.txt</a></p>
-<pre>51 members, GroupV3, one process, 7701.650s on a virtual clock in 62.601s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
+<pre>51 members, GroupV3, one process, 7701.650s on a virtual clock in 69.710s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
 whole, members behind: 45 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.06 at the start, 1.56 at the end
+load average 2.12 at the start, 1.47 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        f95e254c     1584    1498     0    86       0
@@ -2313,10 +2305,10 @@ lines: 1327 read, 1327 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="50-epochs-by-saro-waku-loss-5-groupv3/2/run.txt">run.txt</a></p>
-<pre>51 members, GroupV3, one process, 7996.650s on a virtual clock in 64.258s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
+<pre>51 members, GroupV3, one process, 7996.650s on a virtual clock in 72.983s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
 whole, members behind: 45 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.56 at the start, 1.19 at the end
+load average 1.47 at the start, 1.20 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        01469e2a     1636    1560     0    76       0
@@ -2467,10 +2459,10 @@ lines: 1338 read, 1338 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-0/1/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 3625.359s on a virtual clock in 413.780s of wall time, seed 0, network seed 1, loss 0, welcome loss 0
+<pre>200 members, default group timers, one process, 3625.359s on a virtual clock in 457.636s of wall time, seed 0, network seed 1, loss 0, welcome loss 0
 whole: 103 of 103 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.05 at the start, 1.24 at the end
+load average 2.33 at the start, 1.14 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c     8000    7998     2     0       0
@@ -2810,10 +2802,10 @@ lines: 2896 read, 2896 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-0/2/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 3626.959s on a virtual clock in 413.247s of wall time, seed 1, network seed 2, loss 0, welcome loss 0
+<pre>200 members, default group timers, one process, 3626.959s on a virtual clock in 459.420s of wall time, seed 1, network seed 2, loss 0, welcome loss 0
 whole: 107 of 107 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.24 at the start, 1.05 at the end
+load average 1.14 at the start, 1.06 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a     8314    8311     3     0       0
@@ -3157,10 +3149,10 @@ lines: 2775 read, 2775 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-0/3/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 3626.659s on a virtual clock in 442.437s of wall time, seed 2, network seed 3, loss 0, welcome loss 0
+<pre>200 members, default group timers, one process, 3626.659s on a virtual clock in 494.664s of wall time, seed 2, network seed 3, loss 0, welcome loss 0
 whole: 108 of 108 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.05 at the start, 1.12 at the end
+load average 1.06 at the start, 1.18 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         c7c680ca     8500    8497     3     0       0
@@ -3520,10 +3512,10 @@ lines: 2870 read, 2870 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-0-groupv3/1/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 7946.900s on a virtual clock in 87.717s of wall time, seed 0, network seed 1, loss 0, welcome loss 0
+<pre>200 members, GroupV3, one process, 7946.900s on a virtual clock in 87.255s of wall time, seed 0, network seed 1, loss 0, welcome loss 0
 whole: 51 of 103 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.43 at the start, 1.47 at the end
+load average 2.08 at the start, 1.38 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c     1681    1681     0     0       0
@@ -3806,10 +3798,10 @@ lines: 1526 read, 1526 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-0-groupv3/2/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 8296.800s on a virtual clock in 87.701s of wall time, seed 1, network seed 2, loss 0, welcome loss 0
+<pre>200 members, GroupV3, one process, 8296.800s on a virtual clock in 88.386s of wall time, seed 1, network seed 2, loss 0, welcome loss 0
 whole: 51 of 107 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.47 at the start, 1.11 at the end
+load average 1.38 at the start, 1.31 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a     1682    1682     0     0       0
@@ -4092,10 +4084,10 @@ lines: 1526 read, 1526 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-0-groupv3/3/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 8238.750s on a virtual clock in 88.122s of wall time, seed 2, network seed 3, loss 0, welcome loss 0
+<pre>200 members, GroupV3, one process, 8238.750s on a virtual clock in 87.554s of wall time, seed 2, network seed 3, loss 0, welcome loss 0
 whole: 51 of 108 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.10 at the start, 1.15 at the end
+load average 1.31 at the start, 1.26 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         c7c680ca     1693    1693     0     0       0
@@ -4393,10 +4385,10 @@ lines: 1526 read, 1526 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-0.1/1/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 3895.809s on a virtual clock in 278.946s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
+<pre>200 members, default group timers, one process, 3895.809s on a virtual clock in 282.557s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
 split at epoch 39: 102 of 103 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.07 at the start, 1.21 at the end
+load average 2.19 at the start, 1.16 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c     7921    7913     2     6       0
@@ -4749,10 +4741,10 @@ lines: 17069 read, 17069 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-0.1/2/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 3281.050s on a virtual clock in 75.391s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
+<pre>200 members, default group timers, one process, 3281.050s on a virtual clock in 75.428s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
 split at epoch 14: 72 of 74 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.19 at the start, 1.05 at the end
+load average 1.16 at the start, 1.20 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a     3906    3904     0     2       1
@@ -5076,10 +5068,10 @@ lines: 15546 read, 15546 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-0.1/3/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 2500.559s on a virtual clock in 132.757s of wall time, seed 2, network seed 3, loss 0.001, welcome loss 0.001
+<pre>200 members, default group timers, one process, 2500.559s on a virtual clock in 135.027s of wall time, seed 2, network seed 3, loss 0.001, welcome loss 0.001
 split at epoch 16: 59 of 59 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.05 at the start, 1.11 at the end
+load average 1.20 at the start, 1.29 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         c7c680ca     4366    4354     7     5       4
@@ -5400,10 +5392,10 @@ lines: 23445 read, 23445 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-0.1-groupv3/1/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 7946.900s on a virtual clock in 51.238s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
+<pre>200 members, GroupV3, one process, 7946.900s on a virtual clock in 54.529s of wall time, seed 0, network seed 1, loss 0.001, welcome loss 0.001
 whole: 51 of 103 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.08 at the start, 1.60 at the end
+load average 2.38 at the start, 1.58 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c     1682    1682     0     0       0
@@ -5686,10 +5678,10 @@ lines: 1526 read, 1526 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-0.1-groupv3/2/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 8296.800s on a virtual clock in 51.100s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
+<pre>200 members, GroupV3, one process, 8296.800s on a virtual clock in 54.860s of wall time, seed 1, network seed 2, loss 0.001, welcome loss 0.001
 whole: 51 of 107 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.60 at the start, 1.26 at the end
+load average 1.58 at the start, 1.45 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a     1687    1685     0     2       0
@@ -5972,10 +5964,10 @@ lines: 1528 read, 1528 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-0.1-groupv3/3/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 8239.000s on a virtual clock in 50.931s of wall time, seed 2, network seed 3, loss 0.001, welcome loss 0.001
+<pre>200 members, GroupV3, one process, 8239.000s on a virtual clock in 54.343s of wall time, seed 2, network seed 3, loss 0.001, welcome loss 0.001
 split at epoch 47: 51 of 108 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.26 at the start, 1.24 at the end
+load average 1.45 at the start, 1.25 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         c7c680ca     1701    1698     0     3       0
@@ -6277,10 +6269,10 @@ lines: 1529 read, 1529 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-0.5/1/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 1041.209s on a virtual clock in 1.382s of wall time, seed 0, network seed 1, loss 0.005, welcome loss 0.005
+<pre>200 members, default group timers, one process, 1041.209s on a virtual clock in 1.704s of wall time, seed 0, network seed 1, loss 0.005, welcome loss 0.005
 split at epoch 5: 19 of 20 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.25 at the start, 2.25 at the end
+load average 2.38 at the start, 2.38 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c      501     497     1     3      10
@@ -6543,10 +6535,10 @@ lines: 2469 read, 2469 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-0.5/2/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 1808.700s on a virtual clock in 4.214s of wall time, seed 1, network seed 2, loss 0.005, welcome loss 0.005
+<pre>200 members, default group timers, one process, 1808.700s on a virtual clock in 5.581s of wall time, seed 1, network seed 2, loss 0.005, welcome loss 0.005
 split at epoch 14: 36 of 37 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.25 at the start, 2.15 at the end
+load average 2.38 at the start, 2.27 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a      941     937     0     4       2
@@ -6835,10 +6827,10 @@ lines: 2746 read, 2746 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-0.5/3/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 2038.000s on a virtual clock in 10.939s of wall time, seed 2, network seed 3, loss 0.005, welcome loss 0.005
+<pre>200 members, default group timers, one process, 2038.000s on a virtual clock in 14.711s of wall time, seed 2, network seed 3, loss 0.005, welcome loss 0.005
 split at epoch 14: 48 of 50 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.15 at the start, 1.97 at the end
+load average 2.27 at the start, 2.06 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         c7c680ca     1646    1639     0     7      11
@@ -7150,10 +7142,10 @@ lines: 5581 read, 5581 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-0.5-groupv3/1/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 5597.650s on a virtual clock in 20.587s of wall time, seed 0, network seed 1, loss 0.005, welcome loss 0.005
+<pre>200 members, GroupV3, one process, 5597.650s on a virtual clock in 20.843s of wall time, seed 0, network seed 1, loss 0.005, welcome loss 0.005
 split at epoch 24: 38 of 74 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.10 at the start, 1.79 at the end
+load average 2.16 at the start, 1.83 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c      887     880     0     7       0
@@ -7438,10 +7430,10 @@ lines: 922 read, 922 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-0.5-groupv3/2/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 7840.259s on a virtual clock in 163.088s of wall time, seed 1, network seed 2, loss 0.005, welcome loss 0.005
+<pre>200 members, GroupV3, one process, 7840.259s on a virtual clock in 161.323s of wall time, seed 1, network seed 2, loss 0.005, welcome loss 0.005
 split at epoch 10: 86 of 112 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.79 at the start, 1.24 at the end
+load average 1.83 at the start, 1.08 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a     2022    2010     1    11       0
@@ -7779,10 +7771,10 @@ lines: 3360 read, 3360 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-0.5-groupv3/3/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 7635.700s on a virtual clock in 55.108s of wall time, seed 2, network seed 3, loss 0.005, welcome loss 0.005
+<pre>200 members, GroupV3, one process, 7635.700s on a virtual clock in 53.808s of wall time, seed 2, network seed 3, loss 0.005, welcome loss 0.005
 split at epoch 27: 48 of 98 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.24 at the start, 1.09 at the end
+load average 1.08 at the start, 1.13 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         c7c680ca     1454    1448     0     6       0
@@ -8093,10 +8085,10 @@ lines: 1348 read, 1348 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-1/1/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 1321.550s on a virtual clock in 4.909s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
+<pre>200 members, default group timers, one process, 1321.550s on a virtual clock in 4.713s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
 split at epoch 5: 24 of 26 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.32 at the start, 2.22 at the end
+load average 2.22 at the start, 2.22 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c      871     857     0    14       5
@@ -8367,10 +8359,10 @@ lines: 5261 read, 5261 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-1/2/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 1276.550s on a virtual clock in 2.172s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
+<pre>200 members, default group timers, one process, 1276.550s on a virtual clock in 2.160s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
 split at epoch 11: 23 of 25 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.22 at the start, 2.12 at the end
+load average 2.12 at the start, 2.12 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a      453     449     0     4       6
@@ -8641,7 +8633,7 @@ lines: 1247 read, 1247 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-1/3/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 1439.350s on a virtual clock in 5.634s of wall time, seed 2, network seed 3, loss 0.01, welcome loss 0.01
+<pre>200 members, default group timers, one process, 1439.350s on a virtual clock in 5.776s of wall time, seed 2, network seed 3, loss 0.01, welcome loss 0.01
 split at epoch 4: 27 of 27 members at the tip
 not checked: a `grow` step expects no outcome
 load average 2.12 at the start, 2.03 at the end
@@ -8929,10 +8921,10 @@ lines: 10889 read, 10889 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-1-groupv3/1/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 6375.650s on a virtual clock in 35.020s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
+<pre>200 members, GroupV3, one process, 6375.650s on a virtual clock in 29.726s of wall time, seed 0, network seed 1, loss 0.01, welcome loss 0.01
 split at epoch 28: 41 of 83 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.17 at the start, 1.80 at the end
+load average 2.03 at the start, 1.71 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c     1099    1085     0    14       0
@@ -9220,10 +9212,10 @@ lines: 1059 read, 1059 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-1-groupv3/2/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 5242.550s on a virtual clock in 25.109s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
+<pre>200 members, GroupV3, one process, 5242.550s on a virtual clock in 20.677s of wall time, seed 1, network seed 2, loss 0.01, welcome loss 0.01
 split at epoch 12: 49 of 71 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.80 at the start, 1.75 at the end
+load average 1.71 at the start, 1.71 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a      809     799     0    10       0
@@ -9521,10 +9513,10 @@ lines: 1336 read, 1336 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-1-groupv3/3/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 6074.800s on a virtual clock in 34.282s of wall time, seed 2, network seed 3, loss 0.01, welcome loss 0.01
+<pre>200 members, GroupV3, one process, 6074.800s on a virtual clock in 30.611s of wall time, seed 2, network seed 3, loss 0.01, welcome loss 0.01
 split at epoch 15: 46 of 79 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.75 at the start, 1.58 at the end
+load average 1.71 at the start, 1.43 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         c7c680ca     1010    1002     0     8       0
@@ -9830,10 +9822,10 @@ lines: 1109 read, 1109 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-5/1/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 2712.459s on a virtual clock in 16.667s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
+<pre>200 members, default group timers, one process, 2712.459s on a virtual clock in 14.881s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
 split at epoch 3: 34 of 43 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.34 at the start, 2.03 at the end
+load average 2.14 at the start, 1.89 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c     2857    2698     4   155     423
@@ -10138,10 +10130,10 @@ lines: 66820 read, 62833 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-5/2/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 1602.950s on a virtual clock in 1.903s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
+<pre>200 members, default group timers, one process, 1602.950s on a virtual clock in 1.553s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
 split at epoch 5: 18 of 22 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.03 at the start, 2.03 at the end
+load average 1.89 at the start, 1.89 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a      818     777     0    41      42
@@ -10416,10 +10408,10 @@ lines: 7447 read, 6030 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-5/3/run.txt">run.txt</a></p>
-<pre>200 members, default group timers, one process, 1626.559s on a virtual clock in 1.486s of wall time, seed 2, network seed 3, loss 0.05, welcome loss 0.05
+<pre>200 members, default group timers, one process, 1626.559s on a virtual clock in 1.213s of wall time, seed 2, network seed 3, loss 0.05, welcome loss 0.05
 split at epoch 5: 13 of 20 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.95 at the start, 1.95 at the end
+load average 1.89 at the start, 1.82 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         c7c680ca      658     616     3    39       9
@@ -10698,10 +10690,10 @@ lines: 5555 read, 5554 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-loss-5-groupv3/1/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 3724.750s on a virtual clock in 3.957s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
+<pre>200 members, GroupV3, one process, 3724.750s on a virtual clock in 2.492s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
 split at epoch 9: 27 of 51 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.07 at the start, 1.99 at the end
+load average 2.02 at the start, 1.94 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         f95e254c      409     388     0    21       0
@@ -10975,10 +10967,10 @@ lines: 641 read, 641 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-loss-5-groupv3/2/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 4152.300s on a virtual clock in 6.909s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
+<pre>200 members, GroupV3, one process, 4152.300s on a virtual clock in 4.506s of wall time, seed 1, network seed 2, loss 0.05, welcome loss 0.05
 split at epoch 18: 28 of 54 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.99 at the start, 1.91 at the end
+load average 1.94 at the start, 1.95 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         01469e2a      550     524     0    26       0
@@ -11255,10 +11247,10 @@ lines: 629 read, 629 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-loss-5-groupv3/3/run.txt">run.txt</a></p>
-<pre>200 members, GroupV3, one process, 4390.650s on a virtual clock in 11.464s of wall time, seed 2, network seed 3, loss 0.05, welcome loss 0.05
+<pre>200 members, GroupV3, one process, 4390.650s on a virtual clock in 7.680s of wall time, seed 2, network seed 3, loss 0.05, welcome loss 0.05
 split at epoch 5: 41 of 58 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.91 at the start, 1.71 at the end
+load average 1.95 at the start, 1.95 at the end
 
 member   installation  arrived  passed  held  lost  errors
 saro         c7c680ca      610     573     0    37       0
@@ -11569,10 +11561,10 @@ lines: 1140 read, 1140 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 1</summary>
 <p class="file"><a href="grow-waku-size-50/1/run.txt">run.txt</a></p>
-<pre>3001 members, default group timers, one process, 6604.650s on a virtual clock in 728.820s of wall time, seed 0, network seed 1, loss 0, welcome loss 0
+<pre>3001 members, default group timers, one process, 6604.650s on a virtual clock in 732.082s of wall time, seed 0, network seed 1, loss 0, welcome loss 0
 split at epoch 66: 50 of 50 members at the tip
 not checked: a `grow` step expects no outcome
-load average 2.09 at the start, 1.12 at the end
+load average 2.27 at the start, 1.51 at the end
 
 member    installation  arrived  passed  held  lost  errors
 saro          f95e254c     1873    1872     1     0       0
@@ -14783,10 +14775,10 @@ lines: 19524 read, 19524 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 2</summary>
 <p class="file"><a href="grow-waku-size-50/2/run.txt">run.txt</a></p>
-<pre>3001 members, default group timers, one process, 24396.600s on a virtual clock in 2470.347s of wall time, seed 1, network seed 2, loss 0, welcome loss 0
+<pre>3001 members, default group timers, one process, 24396.600s on a virtual clock in 2488.284s of wall time, seed 1, network seed 2, loss 0, welcome loss 0
 whole: 50 of 50 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.11 at the start, 1.31 at the end
+load average 1.51 at the start, 1.33 at the end
 
 member    installation  arrived  passed  held  lost  errors
 saro          01469e2a     1896    1896     0     0       0
@@ -18336,10 +18328,10 @@ lines: 18888 read, 18888 records, 0 without a stamp, 0 malformed, 0 unknown
 <details>
 <summary>Run 3</summary>
 <p class="file"><a href="grow-waku-size-50/3/run.txt">run.txt</a></p>
-<pre>3001 members, default group timers, one process, 34769.823s on a virtual clock in 4647.090s of wall time, seed 2, network seed 3, loss 0, welcome loss 0
+<pre>3001 members, default group timers, one process, 34769.823s on a virtual clock in 4681.435s of wall time, seed 2, network seed 3, loss 0, welcome loss 0
 split at epoch 408: 50 of 50 members at the tip
 not checked: a `grow` step expects no outcome
-load average 1.31 at the start, 1.12 at the end
+load average 1.30 at the start, 1.19 at the end
 
 member    installation  arrived  passed  held  lost  errors
 saro          c7c680ca     2088    2086     2     0       0
@@ -22223,10 +22215,10 @@ lines: 36802 read, 36802 records, 0 without a stamp, 0 malformed, 0 unknown
 <p>The runs of the job "Sim in one process", each held to what its scenario expects.</p>
 <h3 id="50-epochs">50-epochs</h3>
 <p class="file"><a href="50-epochs/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 3494.750s on a virtual clock in 30.685s of wall time, seed 0
+<pre>51 members, default group timers, one process, 3494.750s on a virtual clock in 37.078s of wall time, seed 0
 whole: 51 of 51 members at the tip
 the report is as expected
-load average 2.11 at the start, 1.67 at the end
+load average 1.95 at the start, 1.49 at the end
 
 member  installation  errors
 saro        f95e254c       0
@@ -22406,10 +22398,10 @@ lines: 1428 read, 1428 records, 0 without a stamp, 0 malformed, 0 unknown
 </pre>
 <h3 id="50-epochs-waku">50-epochs-waku</h3>
 <p class="file"><a href="50-epochs-waku/run.txt">run.txt</a></p>
-<pre>51 members, default group timers, one process, 3627.344s on a virtual clock in 31.014s of wall time, seed 0, network seed 1, loss 0, welcome loss 0
+<pre>51 members, default group timers, one process, 3627.344s on a virtual clock in 38.008s of wall time, seed 0, network seed 1, loss 0, welcome loss 0
 whole: 51 of 51 members at the tip
 the report is as expected
-load average 1.67 at the start, 1.41 at the end
+load average 1.49 at the start, 1.45 at the end
 
 member  installation  arrived  passed  held  lost  errors
 saro        f95e254c     2702    2701     1     0       0
