@@ -19,7 +19,6 @@ from sim.scenario import (
     Refused,
     Scenario,
     Seat,
-    Wire,
     Withhold,
 )
 
@@ -69,8 +68,6 @@ class Reading(unittest.TestCase):
                 steps=(Seat(to=3, batch=10), Post(sender=LAST)),
                 group="v2",
                 timers="fast",
-                max_message_kib=512,
-                preset=None,
                 budget=180.0,
                 seed=0,
                 network=None,
@@ -82,7 +79,6 @@ class Reading(unittest.TestCase):
         said = {
             "members": 7,
             "timers": {"consensus_timeout": 2000, "voting_delay": 0},
-            "max_message_kib": 64,
             "budget": 12.5,
             "seed": 2**64 - 1,
             "steps": [
@@ -106,23 +102,11 @@ class Reading(unittest.TestCase):
                 members=7,
                 steps=(Seat(4, 2), Post("mira"), Seat(7, 10), Post("peer7"), Post(ALL), Post(LAST)),
                 timers={"consensus_timeout": 2000, "voting_delay": 0},
-                max_message_kib=64,
                 budget=12.5,
                 seed=2**64 - 1,
                 expect=Expect("whole, members behind", {"peer7": "behind"}, {"raya": "unreadable"}),
             ),
         )
-
-    def test_a_preset_is_read_by_its_name_whatever_the_name(self):
-        for name in ("logos.test", "no preset of any library", "-x"):
-            with self.subTest(name=name):
-                self.assertEqual(scenario.scenario(three(preset=name)).preset, name)
-
-    def test_a_network_model_and_its_steps_are_read_on_a_preset(self):
-        held = scenario.scenario(withholding(preset="logos.test"))
-
-        self.assertEqual((held.preset, held.network.seed), ("logos.test", 7))
-        self.assertEqual(held.withheld_from, "pax")
 
     def test_a_hold_is_read_with_its_seconds_before_and_after_any_other_step(self):
         seat, post = {"step": "seat", "to": 3}, {"step": "post"}
@@ -181,15 +165,6 @@ class Reading(unittest.TestCase):
 
         self.assertEqual(network.delay_ms, {"raya": 40, "pax": 0})
         self.assertEqual([network.delay_of(name) for name in ("saro", "raya", "pax")], [0, 40, 0])
-
-    def test_the_wire_is_read_as_it_is_said_and_says_nothing_it_is_not_told(self):
-        said = {"seed": 2**64 - 1, "delay_ms": {"raya": 40}, "jitter_ms": 10, "loss": 0.01}
-        wire = scenario.scenario(three(wire=said)).wire
-
-        self.assertEqual(wire, Wire(2**64 - 1, {"raya": 40}, 10, 0.01))
-        self.assertEqual([wire.delay_of(name) for name in ("saro", "raya")], [0, 40])
-        self.assertEqual(scenario.scenario(three(wire={"seed": 0})).wire, Wire(0, 0, 0, 0))
-        self.assertIsNone(scenario.scenario(three()).wire)
 
     def test_the_steps_of_a_network_model_are_read_as_they_are_said(self):
         held = scenario.scenario(
@@ -256,13 +231,6 @@ class Reading(unittest.TestCase):
         unmodelled = scenario.scenario(three())
         self.assertEqual(unmodelled.of_run(3), dataclasses.replace(unmodelled, seed=2))
 
-        both = scenario.scenario(three(network={"seed": 7}, wire={"seed": 70, "loss": 0.5}))
-        self.assertEqual(
-            (both.of_run(3).network.seed, both.of_run(3).wire), (9, Wire(72, 0, 0, 0.5))
-        )
-        wired = scenario.scenario(three(wire={"seed": 70}))
-        self.assertEqual((wired.of_run(2).network, wired.of_run(2).wire.seed), (None, 71))
-
     def test_the_timers_are_a_set_or_durations_by_the_names_the_library_gives_them(self):
         for timers in ("fast", "default"):
             self.assertEqual(scenario.scenario(three(timers=timers)).timers, timers)
@@ -286,14 +254,13 @@ class Reading(unittest.TestCase):
         most = scenario.scenario(
             {
                 "members": 65534,
-                "max_message_kib": 2**32 - 1,
                 "budget": 1e300,
                 "steps": [{"step": "seat", "to": 65534, "batch": 65534}],
             }
         )
 
         self.assertEqual((most.members, most.seated, most.steps[0].batch), (65534, 65534, 65534))
-        self.assertEqual((most.max_message_kib, most.budget), (2**32 - 1, 1e300))
+        self.assertEqual(most.budget, 1e300)
         self.assertEqual(scenario.scenario(three(budget=7)).budget, 7.0)
 
     def test_every_verdict_a_report_gives_can_be_expected(self):
@@ -404,7 +371,6 @@ class Reading(unittest.TestCase):
                 "50-epochs-waku.json",
                 "50-epochs.json",
                 "fifty-sized.json",
-                "fleet-five.json",
                 "grow-by-saro-waku-loss-0.01.json",
                 "grow-by-saro-waku-loss-0.1.json",
                 "grow-by-saro-waku-loss-0.5.json",
@@ -426,7 +392,6 @@ class Reading(unittest.TestCase):
                 "grow-waku-loss-5-groupv3.json",
                 "grow-waku-loss-5.json",
                 "grow-waku-size-50.json",
-                "lossy-wire.json",
                 "lossy.json",
                 "lost-candidate.json",
                 "three.json",
@@ -444,7 +409,6 @@ class Reading(unittest.TestCase):
             self.assertEqual((held.members, held.seated), (members, members), name)
             self.assertEqual(held.expect, Expect(), name)
             self.assertIsNone(held.network, name)
-            self.assertIsNone(held.preset, name)
 
     def test_fifty_epochs_are_on_the_librarys_own_timers_and_on_waku_held_and_not_lost(self):
         lossless = scenario.read(TOOL / "scenarios" / "50-epochs.json")
@@ -558,21 +522,6 @@ class Reading(unittest.TestCase):
             lost.expect, Expect(applied=Expect("split at epoch 4", {}, {"pax": "unreadable"}))
         )
 
-    def test_the_scenario_of_a_lossy_wire_seats_five_two_at_a_time_and_has_each_post(self):
-        wired = scenario.read(TOOL / "scenarios" / "lossy-wire.json")
-
-        self.assertEqual((wired.members, wired.steps), (5, (Seat(to=5, batch=2), Post(ALL))))
-        self.assertTrue(0 < wired.wire.loss < 1)
-        self.assertTrue(wired.wire.delay_ms > 0 and wired.wire.jitter_ms > 0)
-        self.assertEqual((wired.network, wired.expect), (None, Expect()))
-
-    def test_the_scenario_of_a_fleet_seats_five_one_at_a_time_and_holds_five_minutes(self):
-        fleet = scenario.read(TOOL / "scenarios" / "fleet-five.json")
-
-        self.assertEqual((fleet.members, fleet.preset, fleet.timers), (5, "logos.test", "default"))
-        self.assertEqual(fleet.steps, (Seat(to=5, batch=1), Post(LAST), Hold(300.0)))
-        self.assertEqual((fleet.budget, fleet.network, fleet.expect), (400.0, None, Expect()))
-
 
 class Refusals(unittest.TestCase):
     def refusal(self, said: object) -> str:
@@ -588,6 +537,9 @@ class Refusals(unittest.TestCase):
             ("the scenario lacks `steps`", {"members": 3}),
             ("`peers` is not a field of the scenario", three(peers=3)),
             ("`batch` is not a field of the scenario", three(batch=10)),
+            ("`preset` is not a field of the scenario", three(preset="logos.test")),
+            ("`max_message_kib` is not a field of the scenario", three(max_message_kib=512)),
+            ("`wire` is not a field of the scenario", three(wire={"seed": 7})),
             ("`members` of the scenario is not a whole number", three(members="3")),
             ("`members` of the scenario is not a whole number", three(members=3.0)),
             ("`members` of the scenario is not a whole number", three(members=True)),
@@ -603,15 +555,6 @@ class Refusals(unittest.TestCase):
             ("`group` is not `v2` or `v3`", three(group=None)),
             ("`steps` is not a list of one step or more", three(steps=[])),
             ("`steps` is not a list of one step or more", three(steps=seat)),
-            ("`max_message_kib` of the scenario is not a whole number", three(max_message_kib="1")),
-            (
-                "`max_message_kib` of the scenario is 0, and 1 is the least",
-                three(max_message_kib=0),
-            ),
-            (
-                f"`max_message_kib` of the scenario is {2**32}, and {2**32 - 1} is the most",
-                three(max_message_kib=2**32),
-            ),
             ("`seed` of the scenario is not a whole number", three(seed="1")),
             ("`seed` of the scenario is not a whole number", three(seed=True)),
             ("`seed` of the scenario is -1, and 0 is the least", three(seed=-1)),
@@ -626,16 +569,6 @@ class Refusals(unittest.TestCase):
                 three(budget=float("inf")),
             ),
             ("`budget` is more seconds than a wait can be told to last", three(budget=10**400)),
-            ("`preset` is not the name of a preset", three(preset="")),
-            ("`preset` is not the name of a preset", three(preset=None)),
-            ("`preset` is not the name of a preset", three(preset=["logos.test"])),
-            ("`preset` holds a character that cannot be printed", three(preset="logos.test\n")),
-            ("`preset` holds a character that cannot be printed", three(preset="logos\0test")),
-            ("`preset` holds a character that cannot be printed", three(preset="\ud800")),
-            (
-                "`max_message_kib` is said with `preset`, and a preset fixes the largest message",
-                three(preset="logos.test", max_message_kib=512),
-            ),
             (
                 "`timers` names the set quick, and the sets are fast and default",
                 three(timers="quick"),
@@ -940,31 +873,6 @@ class Refusals(unittest.TestCase):
         for why, said in refusals:
             with self.subTest(why=why, said=said):
                 self.assertEqual(self.refusal(three(network=said)), why)
-
-    def test_each_thing_the_wire_cannot_be_is_refused_by_name(self):
-        refusals = [
-            ("`wire` is not an object", 7),
-            ("`wire` lacks `seed`", {"loss": 0.1}),
-            ("`welcome_loss` is not a field of `wire`", {"seed": 7, "welcome_loss": 0.1}),
-            ("`seed` of `wire` is not a whole number", {"seed": 7.0}),
-            ("`seed` of `wire` is -1, and 0 is the least", {"seed": -1}),
-            ("`loss` of `wire` is not a number from 0 to 1", {"seed": 7, "loss": 1.5}),
-            ("`loss` of `wire` is not a number from 0 to 1", {"seed": 7, "loss": True}),
-            ("`jitter_ms` of `wire` is not a whole number", {"seed": 7, "jitter_ms": 0.5}),
-            ("`jitter_ms` of `wire` is -1, and 0 is the least", {"seed": 7, "jitter_ms": -1}),
-            ("`delay_ms` of `wire` is not a whole number", {"seed": 7, "delay_ms": "5"}),
-            (
-                "`delay_ms` of `wire` names mira, who is not among the members",
-                {"seed": 7, "delay_ms": {"mira": 5}},
-            ),
-            (
-                "`raya` of `delay_ms` of `wire` is -1, and 0 is the least",
-                {"seed": 7, "delay_ms": {"raya": -1}},
-            ),
-        ]
-        for why, said in refusals:
-            with self.subTest(why=why, said=said):
-                self.assertEqual(self.refusal(three(wire=said)), why)
 
     def test_a_step_of_the_network_model_is_refused_in_a_scenario_without_one(self):
         seat = {"step": "seat", "to": 3}

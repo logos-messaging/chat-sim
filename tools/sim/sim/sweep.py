@@ -44,8 +44,8 @@ def sweep(
     """Runs a scenario `runs` times from run `first` of a sweep, each in a directory of its own
     under `settings.out`, named by the run's number as wide as the last run's.
 
-    A scenario with a network model or a wire gives each run the seed after that of the run
-    before, so that a run has the seeds it has in a sweep from run 1.
+    Each run has the seeds after those of the run before, so that a run has the seeds it has
+    in a sweep from run 1.
 
     Says the head of the rows, a row as each run ends, and how many went as expected, and of
     which runs when they do not start at 1. Returns the same, which it also writes under
@@ -74,7 +74,7 @@ def sweep(
         "load": {"start": list(os.getloadavg()), "end": None},
         "rows": [],
     }
-    tell(table.head(settings.one_process is not None))
+    tell(table.head())
     last = first + runs - 1
     for number in range(first, last + 1):
         # The watch is made before the look: a signal taken from here on is in one of the two.
@@ -106,11 +106,10 @@ def sweep(
                 "seconds": seconds,
                 "seed": one["seed"],
                 "network_seed": None if one["network"] is None else one["network"]["seed"],
-                "wire_seed": None if one["wire"] is None else one["wire"]["seed"],
                 "withheld": one["withheld"],
             }
         )
-        tell(table.row(number, seconds, one))
+        tell(table.row(number, one))
         write()
     report["load"]["end"] = list(os.getloadavg())
     counted = f"{report['as_expected']} of {report['done']} runs went as expected"

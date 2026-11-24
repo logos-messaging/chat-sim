@@ -2,6 +2,7 @@ import contextlib
 import dataclasses
 import io
 import json
+import os
 import re
 import shlex
 import signal
@@ -10,27 +11,26 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 from unittest import mock
 
-from sim import scenario
+from sim import scenario, table
 from sim.cli import main
 from sim.peers import Watch
 from sim.run import Settings
 from sim.sweep import Interrupts, sweep
 
-from tests import STANDIN, forks_whose
-from tests.test_run import APPLIED, Driven, Scratch, given, said, withholding
+from tests import APPLIED, STANDIN_RUNNER, Driven, Scratch, forks_whose, said, withholding
 from tests.test_table import report as whole_run
 
 ROW = re.compile(r" *(\d+) +(\d+\.\d) +(\S+ of \S+|-) +(.*?)  +(\S.*)")
 
 
 def stand_ins(directory: Path, faults: Dict[int, Sequence[str]]) -> Path:
-    """Writes a stand-in for chat-cli that has the faults given for a run in that run alone."""
-    program = directory / "chat-cli"
-    standin = [sys.executable, "-B", str(STANDIN)]
+    """Writes a stand-in for the runner that has the faults given for a run in that run alone."""
+    program = directory / "runner"
+    standin = [sys.executable, "-B", str(STANDIN_RUNNER)]
     lines = ["#!/bin/sh", 'case "$*" in']
     for number, named in faults.items():
         flags = [word for fault in named for word in ("--fault", fault)]
-        lines.append(f'*"/{number}/data"*) exec {shlex.join(standin + flags)} "$@" ;;')
+        lines.append(f'*"/{number}/plan.json"*) exec {shlex.join(standin + flags)} "$@" ;;')
     lines += ["esac", f'exec {shlex.join(standin)} "$@"']
     program.write_text("\n".join(lines) + "\n", encoding="utf-8")
     program.chmod(0o755)
@@ -44,7 +44,7 @@ def cells(row: str) -> Tuple[str, ...]:
 
 
 class Sweeping(Scratch):
-    """`sweep` against stand-ins for chat-cli."""
+    """`sweep` against stand-ins for the runner."""
 
     def sweep_of(
         self,
@@ -55,28 +55,28 @@ class Sweeping(Scratch):
     ) -> dict:
         self.said: List[str] = []
         settings = Settings(
-            chat_cli=stand_ins(self.scratch, faults),
             scenario=scenario.scenario(said(**changed)),
             out=self.out,
+            one_process=stand_ins(self.scratch, faults),
         )
         if forks is not None:
             settings = dataclasses.replace(settings, forks=forks)
         return sweep(settings, runs, Interrupts(), self.said.append)
 
     def test_each_run_has_a_directory_and_a_row_and_the_last_line_counts_them(self):
-        report = self.sweep_of(3, {2: ["deaf=raya"]}, budget=2)
+        report = self.sweep_of(3, {2: ["behind=raya"]})
 
-        unread = "the post was not read within the budget by: raya"
-        self.assertEqual(self.said[0], "run  seconds  at the tip  verdict                 check")
+        unheld = "the roster of 3 members was not held within the budget by: raya"
+        self.assertEqual(self.said[0], table.head())
         self.assertEqual(
             [cells(row)[:3] for row in self.said[1:4]],
-            [("1", "3 of 3", "whole"), ("2", "3 of 3", "whole"), ("3", "3 of 3", "whole")],
+            [("1", "3 of 3", "whole"), ("2", "2 of 3", "whole"), ("3", "3 of 3", "whole")],
         )
-        self.assertEqual(cells(self.said[1])[3], "as expected")
+        self.assertEqual(cells(self.said[1])[3], "as expected; seed 0")
         self.assertRegex(
             cells(self.said[2])[3],
-            r"^post 1 of pax \([0-9a-f]{8}\) on raya \([0-9a-f]{8}\): no record, expected read; "
-            f"stopped: {unread}$",
+            r"^raya \([0-9a-f]{8}\): never joined, expected tip, and 1 more; "
+            f"stopped: {unheld}; seed 1$",
         )
         self.assertEqual(self.said[4:], ["2 of 3 runs went as expected"])
 
@@ -99,14 +99,12 @@ class Sweeping(Scratch):
                 "verdict": "whole",
                 "at_tip": 3,
                 "seated": 3,
-                "seed": None,
+                "seed": 0,
                 "network_seed": None,
-                "wire_seed": None,
                 "withheld": None,
             },
         )
-        self.assertEqual((second["stopped"], len(second["differences"])), (unread, 1))
-        self.assertGreater(second["seconds"], 2)
+        self.assertEqual((second["stopped"], len(second["differences"])), (unheld, 2))
         for row in report["rows"]:
             kept = json.loads((self.out / row["directory"] / "run.json").read_text("utf-8"))
             self.assertEqual(kept["ok"], row["ok"])
@@ -127,7 +125,10 @@ class Sweeping(Scratch):
         why = "forks check ended with status 1: RuntimeError: the check broke"
         self.assertEqual(
             [cells(row) for row in self.said[1:3]],
-            [(number, "3 of 3", "whole", f"not checked: {why}") for number in ("1", "2")],
+            [
+                (number, "3 of 3", "whole", f"not checked: {why}; seed {seed}")
+                for number, seed in (("1", 0), ("2", 1))
+            ],
         )
         self.assertEqual(self.said[3:], ["0 of 2 runs went as expected"])
         self.assertEqual(
@@ -160,7 +161,7 @@ class Sweeping(Scratch):
 
     def test_a_sweep_from_a_run_does_the_runs_from_it_with_the_seeds_each_has_from_run_1(self):
         whole = whole_run()
-        settings = Settings(Path(), scenario.scenario(said(seed=4, network={"seed": 7})), self.out)
+        settings = Settings(scenario.scenario(said(seed=4, network={"seed": 7})), self.out, Path())
         lines: List[str] = []
         with mock.patch("sim.sweep.run", return_value=whole) as run:
             report = sweep(settings, 3, Interrupts(), lines.append, 9)
@@ -184,7 +185,7 @@ class Sweeping(Scratch):
 
     def test_a_sweep_of_one_run_from_a_run_names_it_and_one_from_run_1_names_none(self):
         whole = whole_run()
-        settings = Settings(Path(), scenario.scenario(said()), self.out)
+        settings = Settings(scenario.scenario(said()), self.out, Path())
         for first, counted in (
             (2, "1 of 1 runs went as expected, run 2"),
             (1, "1 of 1 runs went as expected"),
@@ -199,45 +200,21 @@ class Sweeping(Scratch):
                 self.assertEqual(run.call_args.args[0].out, out / str(first))
                 self.assertEqual((report["from"], lines[-1]), (first, counted))
 
-    def test_each_run_has_the_seed_after_that_of_the_run_before_and_its_row_names_it(self):
-        report = self.sweep_of(3, {}, network={"seed": 7})
-
-        for number, seed in ((1, 7), (2, 8), (3, 9)):
-            run = self.out / str(number)
-            started = json.loads((run / "data" / "pax.json").read_text("utf-8"))["arguments"]
-            self.assertEqual(given(started, "--network-seed"), [str(seed)])
-            kept = json.loads((run / "run.json").read_text("utf-8"))
-            self.assertEqual(kept["network"]["seed"], seed)
-        self.assertEqual([row["network_seed"] for row in report["rows"]], [7, 8, 9])
-        self.assertEqual([row["seed"] for row in report["rows"]], [None] * 3)
-        self.assertEqual([row["withheld"] for row in report["rows"]], [None] * 3)
-        self.assertEqual(
-            [cells(row)[3] for row in self.said[1:4]],
-            [f"as expected; network seed {seed}" for seed in (7, 8, 9)],
-        )
-
-    def test_a_scenario_on_a_preset_is_swept_as_any_other(self):
-        report = self.sweep_of(2, {}, preset="logos.test")
-
-        self.assertEqual((report["done"], report["as_expected"]), (2, 2))
-        for number in (1, 2):
-            run = self.out / str(number)
-            started = json.loads((run / "data" / "pax.json").read_text("utf-8"))["arguments"]
-            self.assertIn("--preset=logos.test", started)
-            kept = json.loads((run / "run.json").read_text("utf-8"))
-            self.assertEqual((kept["preset"], kept["cluster_id"]), ("logos.test", None))
-
     def test_the_row_of_a_run_that_withheld_a_candidate_says_whose_and_whether_applied(self):
-        applied = ["lone=pax", "says-applied=pax"]
-        report = self.sweep_of(2, {2: applied}, **withholding(expect={"applied": APPLIED}))
+        report = self.sweep_of(2, {2: ["applied"]}, **withholding(expect={"applied": APPLIED}))
 
         told = "withheld from pax: the candidate of saro"
         split = "split at epoch 2"
         self.assertEqual(
             [cells(row) for row in self.said[1:3]],
             [
-                ("1", "4 of 4", "whole", f"as expected; network seed 7; {told}, not applied"),
-                ("2", "4 of 4", split, f"as expected; network seed 8; {told}, applied"),
+                (
+                    "1",
+                    "4 of 4",
+                    "whole",
+                    f"as expected; seed 0; network seed 7; {told}, not applied",
+                ),
+                ("2", "4 of 4", split, f"as expected; seed 1; network seed 8; {told}, applied"),
             ],
         )
         self.assertEqual(self.said[3:], ["2 of 2 runs went as expected"])
@@ -259,7 +236,7 @@ class Sweeping(Scratch):
                 interrupts.take(signal.SIGTERM)
             return whole
 
-        settings = Settings(Path(), scenario.scenario(said()), self.out)
+        settings = Settings(scenario.scenario(said()), self.out, Path())
         lines: List[str] = []
         with mock.patch("sim.sweep.run", side_effect=run) as ran:
             report = sweep(settings, 3, interrupts, lines.append)
@@ -289,7 +266,7 @@ class Sweeping(Scratch):
             # A run whose watch holds a signal is interrupted at its first wait.
             return dict(whole, ok=False, stopped="interrupted by SIGTERM", check=None)
 
-        settings = Settings(Path(), scenario.scenario(said()), self.out)
+        settings = Settings(scenario.scenario(said()), self.out, Path())
         lines: List[str] = []
         with mock.patch("sim.sweep.run", side_effect=run) as ran:
             report = sweep(settings, 3, Late(), lines.append)
@@ -308,7 +285,7 @@ class Sweeping(Scratch):
             interrupts.take(signal.SIGINT)
             return dict(whole_run(), ok=False, stopped="interrupted by SIGTERM", check=None)
 
-        settings = Settings(Path(), scenario.scenario(said()), self.out)
+        settings = Settings(scenario.scenario(said()), self.out, Path())
         lines: List[str] = []
         with mock.patch("sim.sweep.run", side_effect=run):
             report = sweep(settings, 3, interrupts, lines.append)
@@ -327,7 +304,7 @@ class Sweeping(Scratch):
                 interrupts.take(signal.SIGTERM)
             return whole_run()
 
-        settings = Settings(Path(), scenario.scenario(said()), self.out)
+        settings = Settings(scenario.scenario(said()), self.out, Path())
         lines: List[str] = []
         with mock.patch("sim.sweep.run", side_effect=run):
             report = sweep(settings, 3, interrupts, lines.append, 11)
@@ -343,8 +320,8 @@ class CommandLine(Scratch):
     def sim(self, *arguments: str, faults: Dict[int, Sequence[str]]) -> Tuple[int, str]:
         printed = io.StringIO()
         with contextlib.redirect_stdout(printed):
-            chat_cli = stand_ins(self.scratch, faults)
-            given = ["--chat-cli", str(chat_cli), "--out", str(self.out)]
+            runner = stand_ins(self.scratch, faults)
+            given = ["--one-process", str(runner), "--out", str(self.out)]
             status = main(["sweep", *arguments, *given])
         return status, printed.getvalue()
 
@@ -385,32 +362,31 @@ class CommandLine(Scratch):
                 self.assertFalse(self.out.exists())
 
     def test_a_sweep_one_run_of_which_did_not_is_status_1(self):
-        faults = {2: ["deaf=raya"]}
-        status, printed = self.sim(str(self.scenario(budget=2)), "--runs", "2", faults=faults)
+        status, printed = self.sim(str(self.scenario()), "--runs", "2", faults={2: ["behind=raya"]})
 
         self.assertEqual(status, 1)
         self.assertTrue(printed.endswith("\n1 of 2 runs went as expected\n"))
 
 
 class Signals(Driven):
-    """A sweep sent a signal while a batch of its second run waits on a member."""
+    """A sweep sent a signal while the runner of its second run waits."""
 
     def test_an_interrupt_stops_the_run_in_hand_and_keeps_the_rows_of_the_runs_before(self):
         driver = self.start(
             "sweep",
-            str(self.scenario(budget=120)),
+            str(self.scenario()),
             "--runs",
             "3",
-            chat_cli=stand_ins(self.scratch, {2: ["mute=raya"]}),
+            runner=stand_ins(self.scratch, {2: ["waits"]}),
         )
-        self.wait_for(self.out / "2" / "saro.log", "Publish WelcomeMessage")
+        self.wait_for(self.out / "2" / "runner.out", "\n")
         driver.send_signal(signal.SIGINT)
         printed, errors = driver.communicate(timeout=60)
 
         self.assertEqual(driver.returncode, 128 + signal.SIGINT)
         self.assertEqual(errors, "")
         head, row, counted = printed.splitlines()
-        self.assertEqual(cells(row), ("1", "3 of 3", "whole", "as expected"))
+        self.assertEqual(cells(row), ("1", "3 of 3", "whole", "as expected; seed 0"))
         self.assertEqual(
             counted, "1 of 1 runs went as expected: interrupted by SIGINT after 1 of 3"
         )
@@ -421,8 +397,9 @@ class Signals(Driven):
         )
         self.assertEqual([row["run"] for row in report["rows"]], [1])
         self.assertEqual(printed, (self.out / "sweep.txt").read_text("utf-8"))
-        # The run in hand ended its processes and wrote what it had, and no run followed it.
-        self.assertEqual(self.left(self.out / "2"), [])
+        # The run in hand ended its runner and wrote what it had, and no run followed it.
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int((self.out / "2" / "runner.out").read_text(encoding="utf-8")), 0)
         in_hand = json.loads((self.out / "2" / "run.json").read_text("utf-8"))
         self.assertEqual(in_hand["stopped"], "interrupted by SIGINT")
         self.assertFalse((self.out / "3").exists())

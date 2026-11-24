@@ -7,8 +7,7 @@ from typing import Tuple
 from sim import compare
 from sim.cli import main
 
-from tests import FIXTURES, stand_in_runner
-from tests.test_run import Scratch
+from tests import FIXTURES, Scratch, stand_in_runner
 
 
 def outcome(**changed) -> dict:

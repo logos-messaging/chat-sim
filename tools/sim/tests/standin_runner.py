@@ -31,6 +31,7 @@ FAULTS = {
     "killed": "is ended by a signal once its log is begun",
     "no-result": "does the plan and leaves its result empty",
     "waits": "writes its process id once its log is begun, and does nothing more for WAIT",
+    "lingers": "ends LINGER after it is asked to, once it has written `lingering` to its directory",
     "behind": "MEMBER takes no roster",
     "applied": "the group applies the candidate withheld, and its member is alone in a state",
 }
@@ -46,6 +47,7 @@ PANIC = (
 )
 REFUSAL = "timers: freeze_duration must be non-zero"
 WAIT = 60
+LINGER = 1
 
 # The virtual seconds from an add to the roster of its batch.
 SEATED = 0.5
@@ -316,6 +318,14 @@ class Run:
         }
 
 
+def linger(out: Path) -> None:
+    """Ends by the signal that asked it to end, LINGER after it was asked."""
+    (out / "lingering").touch()
+    time.sleep(LINGER)
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
+    os.kill(os.getpid(), signal.SIGTERM)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--fault", action="append", default=[], metavar="NAME[=MEMBER]")
@@ -331,6 +341,8 @@ def main() -> None:
     plan = json.loads(args.plan.read_text(encoding="utf-8"))
     args.out.mkdir(parents=True, exist_ok=True)
     run = Run(plan, args.out, args.fault)
+    if "lingers" in args.fault:
+        signal.signal(signal.SIGTERM, lambda _signum, _frame: linger(args.out))
     # The result is opened with the log, and written once the steps are over.
     with open(args.out / "result.json", "w", encoding="utf-8") as result:
         if "panics" in args.fault:

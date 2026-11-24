@@ -12,9 +12,8 @@ from sim import compare, matrix
 from sim.cli import main
 from sim.matrix import Run, Side
 
-from tests import FIXTURES
+from tests import FIXTURES, Scratch
 from tests.test_compare import SPLIT, STALLED, WHOLE
-from tests.test_run import Scratch
 
 SCENARIO = "50-epochs-by-saro-waku-loss-1"
 GOAL = "50-epochs-by-saro-waku-loss-{}"

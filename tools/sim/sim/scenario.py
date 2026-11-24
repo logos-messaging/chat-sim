@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 from .peers import index_of, name_of
 
-# chat-cli's two sets of group timers, by the name `--group-commit` takes.
+# The runner's two sets of group timers, by the name a plan gives them.
 TIMER_SETS = ("fast", "default")
 
 # The kinds of group a creator creates: GroupV2, and GroupV3.
@@ -29,10 +29,9 @@ DURATIONS = (
     "recovery_auto_commit_delay",
 )
 
-# The most each number may be. Every node listens on a TCP port of its own, and the registry
-# on one more. The others are the most chat-cli's flags hold.
+# The most each number may be. A count of members is bounded so that a mistyped one is refused
+# before a run starts. A duration and a seed are the most a plan's whole number holds.
 MOST_MEMBERS = 65534
-MOST_KIB = 2**32 - 1
 MOST_MILLISECONDS = 2**64 - 1
 MOST_SEED = 2**64 - 1
 
@@ -56,7 +55,7 @@ class Refused(Exception):
 
 @dataclass(frozen=True)
 class Seat:
-    """The creator adds members until the group holds `to`, `batch` of them with one `/add`."""
+    """The creator adds members until the group holds `to`, `batch` of them at a time."""
 
     to: int
     batch: int = 10
@@ -71,7 +70,7 @@ class Post:
 
 @dataclass(frozen=True)
 class Hold:
-    """The run stands still for `seconds`, and every node is asked its state before and after."""
+    """Virtual time passes for `seconds`, and nothing is waited for."""
 
     seconds: float
 
@@ -118,9 +117,9 @@ STEPS = ("seat", "post", "hold", "cut", "heal", "withhold", "grow")
 
 @dataclass(frozen=True)
 class Network:
-    """The model of a lossy network that what every peer receives goes through.
+    """The model of a lossy network that what every member receives goes through.
 
-    `loss` is the share of the frames a peer loses, and `welcome_loss` that of the Welcomes.
+    `loss` is the share of the frames a member loses, and `welcome_loss` that of the Welcomes.
     `delay_ms` is how long each frame is held: one duration for every member, or one by the
     name of a member, where a member it does not name has none.
     """
@@ -132,28 +131,6 @@ class Network:
 
     def delay_of(self, name: str) -> int:
         """How many milliseconds the frames of the member `name` are held."""
-        if isinstance(self.delay_ms, dict):
-            return self.delay_ms.get(name, 0)
-        return self.delay_ms
-
-
-@dataclass(frozen=True)
-class Wire:
-    """The conditions on the wire of a network of containers, on what each member's node sends.
-
-    Each member's interface delays each packet it sends by `delay_ms`, give or take `jitter_ms`,
-    and loses `loss` of them, drawn from `seed` and the member's name. TCP sends a lost packet
-    again, so a frame arrives late and not lost while its link holds. `delay_ms` is one duration
-    for every member, or one by the name of a member, where a member it does not name has none.
-    """
-
-    seed: int
-    delay_ms: Union[int, Dict[str, int]] = 0
-    jitter_ms: int = 0
-    loss: Union[int, float] = 0
-
-    def delay_of(self, name: str) -> int:
-        """How many milliseconds the packets the member `name` sends are delayed."""
         if isinstance(self.delay_ms, dict):
             return self.delay_ms.get(name, 0)
         return self.delay_ms
@@ -180,24 +157,19 @@ class Scenario:
     """What a run is told to do.
 
     `group` is the kind of group the creator creates: `v2`, or `v3` for GroupV3, which removes
-    no member, has no commit candidate, cannot be cut and is run in one process alone. `timers`
-    names a set, or gives durations in milliseconds over the library's own, of a GroupV2 group.
-    `budget` is the seconds each wait may take: a peer's start, the wiring, a batch, a post.
-    `preset` names the fleet preset every node joins, in place of a network of the run's own with
-    `max_message_kib` for its largest message. `seed` is what a run in one process draws every
-    random number from; a peer that is a process draws from its OS.
+    no member, has no commit candidate and cannot be cut. `timers` names a set, or gives
+    durations in milliseconds over the library's own, of a GroupV2 group. `budget` is the
+    seconds of virtual time the waits of a batch, of a post or of a cut may take together.
+    `seed` is what the run draws every random number from.
     """
 
     members: int
     steps: Tuple[Step, ...]
     group: str = "v2"
     timers: Union[str, Dict[str, int]] = "fast"
-    max_message_kib: int = 512
-    preset: Optional[str] = None
     budget: float = 180.0
     seed: int = 0
     network: Optional[Network] = None
-    wire: Optional[Wire] = None
     expect: Expect = Expect()
 
     @property
@@ -217,12 +189,10 @@ class Scenario:
 
     def of_run(self, number: int) -> Scenario:
         """The scenario as run `number` of a sweep does it, from 1: each has the next seeds."""
-        network, wire = self.network, self.wire
+        network = self.network
         if network is not None:
             network = replace(network, seed=network.seed + number - 1)
-        if wire is not None:
-            wire = replace(wire, seed=wire.seed + number - 1)
-        return replace(self, seed=self.seed + number - 1, network=network, wire=wire)
+        return replace(self, seed=self.seed + number - 1, network=network)
 
     def posts(self) -> List[Tuple[int, int]]:
         """Each post of the steps in the order sent: who sends it, and how many are seated then."""
@@ -326,12 +296,9 @@ def scenario(said: object) -> Scenario:
             "members",
             "group",
             "timers",
-            "max_message_kib",
-            "preset",
             "budget",
             "seed",
             "network",
-            "wire",
             "steps",
             "expect",
         ),
@@ -343,7 +310,6 @@ def scenario(said: object) -> Scenario:
     if not isinstance(whole["steps"], list) or not whole["steps"]:
         raise Refused("`steps` is not a list of one step or more")
     network = _network(whole["network"], members) if "network" in whole else None
-    wire = _wire(whole["wire"], members) if "wire" in whole else None
     steps: List[Step] = []
     seated = 1
     for at, step in enumerate(whole["steps"]):
@@ -365,19 +331,9 @@ def scenario(said: object) -> Scenario:
         steps=tuple(steps),
         group=group,
         timers=_timers(whole.get("timers", Scenario.timers)),
-        max_message_kib=_whole(
-            whole,
-            "max_message_kib",
-            "the scenario",
-            least=1,
-            most=MOST_KIB,
-            unsaid=Scenario.max_message_kib,
-        ),
-        preset=_preset(whole),
         budget=_seconds(whole.get("budget", Scenario.budget), "`budget`"),
         seed=_whole(whole, "seed", "the scenario", least=0, most=MOST_SEED),
         network=network,
-        wire=wire,
         expect=expect,
     )
 
@@ -583,25 +539,6 @@ def _timers(said: object) -> Union[str, Dict[str, int]]:
     return {name: _whole(said, name, "`timers`", 0, MOST_MILLISECONDS) for name in said}
 
 
-def _preset(said: dict) -> Optional[str]:
-    """The fleet preset a scenario names, or `None` when it names none.
-
-    Which names there are is the delivery library's to say.
-    """
-    if "preset" not in said:
-        return None
-    if not isinstance(said["preset"], str) or not said["preset"]:
-        raise Refused("`preset` is not the name of a preset")
-    # The name is a word of every peer's command line and stands in the first line a run prints.
-    if not said["preset"].isprintable():
-        raise Refused("`preset` holds a character that cannot be printed")
-    if "max_message_kib" in said:
-        raise Refused(
-            "`max_message_kib` is said with `preset`, and a preset fixes the largest message"
-        )
-    return said["preset"]
-
-
 def _network(said: object, members: int) -> Network:
     network = _fields(said, "`network`", ("seed",), ("seed", "loss", "welcome_loss", "delay_ms"))
     return Network(
@@ -609,16 +546,6 @@ def _network(said: object, members: int) -> Network:
         loss=_rate(network, "loss", "`network`"),
         welcome_loss=_rate(network, "welcome_loss", "`network`"),
         delay_ms=_delay(network, "`network`", members),
-    )
-
-
-def _wire(said: object, members: int) -> Wire:
-    wire = _fields(said, "`wire`", ("seed",), ("seed", "delay_ms", "jitter_ms", "loss"))
-    return Wire(
-        seed=_whole(wire, "seed", "`wire`", least=0, most=MOST_SEED),
-        delay_ms=_delay(wire, "`wire`", members),
-        jitter_ms=_whole(wire, "jitter_ms", "`wire`", 0, MOST_MILLISECONDS),
-        loss=_rate(wire, "loss", "`wire`"),
     )
 
 

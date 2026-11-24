@@ -9,13 +9,12 @@ import argparse
 import contextlib
 import json
 import os
-import shutil
 import signal
 import sys
 from pathlib import Path
 from typing import Callable, Iterator, Optional, Sequence
 
-from . import compare, containers, matrix, scenario, table
+from . import compare, matrix, scenario, table
 from .peers import Watch
 from .run import NoDirectory, Settings, run
 from .sweep import Interrupts, sweep
@@ -33,11 +32,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     """
     parser = argparse.ArgumentParser(
         prog="sim",
-        description="Starts headless chat-cli peers on a delivery network of their own or on a "
-        "fleet preset, has them do the steps of a scenario, and holds the fork report of their "
-        "logs against what the scenario expects. With --image each peer and the registry run "
-        "in a container of their own, on a network of containers. With --one-process the "
-        "members are clients in one process on a virtual clock, and no peer is started.",
+        description="Has a runner do the steps of a scenario with its members as clients in one "
+        "process on a virtual clock, and holds the fork report of its log against what the "
+        "scenario expects.",
     )
     commands = parser.add_subparsers(metavar="COMMAND", required=True)
     one = commands.add_parser(
@@ -136,19 +133,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.run is _matrix:
         return _matrix(parser, args)
 
-    engine = args.engine or containers.ENGINES[0]
-    if args.image is None:
-        if args.engine is not None:
-            parser.error("--engine: it runs --image, and none is given")
-        flag, program = "--chat-cli", args.chat_cli
-        if args.one_process is not None:
-            flag, program = "--one-process", args.one_process
-        if not program.is_file():
-            parser.error(f"{flag}: no such file: {program}")
-        if not os.access(program, os.X_OK):
-            parser.error(f"{flag}: not a file that can be run: {program}")
-    elif shutil.which(engine) is None:
-        parser.error(f"--engine: {engine} is not on PATH")
+    if not args.one_process.is_file():
+        parser.error(f"--one-process: no such file: {args.one_process}")
+    if not os.access(args.one_process, os.X_OK):
+        parser.error(f"--one-process: not a file that can be run: {args.one_process}")
     if args.out.exists():
         parser.error(f"--out: {args.out} exists")
     if getattr(args, "runs", 1) < 1:
@@ -157,32 +145,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         parser.error("--from: a sweep's first run is run 1")
     try:
         settings = Settings(
-            chat_cli=None if args.chat_cli is None else args.chat_cli.resolve(),
             scenario=scenario.read(args.scenario),
             out=args.out,
-            one_process=None if args.one_process is None else args.one_process.resolve(),
-            image=args.image,
-            engine=engine,
+            one_process=args.one_process.resolve(),
         )
     except scenario.Refused as refused:
         parser.error(str(refused))
-    if settings.one_process is not None and settings.scenario.preset is not None:
-        parser.error("--one-process: the scenario has `preset`, and one process joins no fleet")
-    if settings.image is not None and settings.scenario.preset is not None:
-        parser.error(
-            "--image: the scenario has `preset`, and a network of containers reaches no fleet"
-        )
-    if settings.one_process is None and settings.scenario.grows:
-        parser.error("the scenario has a `grow` step, and only --one-process does one")
-    if settings.one_process is None and settings.scenario.group == "v3":
-        parser.error(
-            "the scenario's `group` is `v3`, and only --one-process seats a GroupV3 group"
-        )
-    if settings.image is None and settings.scenario.wire is not None:
-        parser.error("the scenario has `wire`, and only --image puts conditions on the wire")
     number = getattr(args, "first", 1) + getattr(args, "runs", 1) - 1
     last = settings.scenario.of_run(number)
-    seeds = ((last, "the seed"), (last.network, "the network seed"), (last.wire, "the wire seed"))
+    seeds = ((last, "the seed"), (last.network, "the network seed"))
     for seeded, said in seeds:
         if seeded is not None and seeded.seed > scenario.MOST_SEED:
             parser.error(
@@ -199,23 +170,12 @@ def _add_arguments(command: argparse.ArgumentParser) -> None:
     command.add_argument(
         "scenario", metavar="SCENARIO", type=Path, help="the file that says what a run does"
     )
-    rig = command.add_mutually_exclusive_group(required=True)
-    rig.add_argument("--chat-cli", metavar="PATH", type=Path, help="the chat-cli binary to run")
-    rig.add_argument(
+    command.add_argument(
         "--one-process",
         metavar="PATH",
         type=Path,
-        help="the runner that does the scenario in one process, in place of --chat-cli",
-    )
-    rig.add_argument(
-        "--image",
-        metavar="IMAGE",
-        help="the image whose chat-cli each peer runs in a container, in place of --chat-cli",
-    )
-    command.add_argument(
-        "--engine",
-        choices=containers.ENGINES,
-        help=f"the container engine that runs --image (default: {containers.ENGINES[0]})",
+        required=True,
+        help="the runner that does the scenario in one process",
     )
     command.add_argument(
         "--out", metavar="DIR", type=Path, required=True, help="the directory to make and write to"
@@ -287,7 +247,7 @@ def _matrix(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
 def _handling(take: Callable[[int], None]) -> Iterator[None]:
     """Hands each signal of `SIGNALS` to `take` for as long as it is entered.
 
-    The default action ends the tool where it stands, with its peers still running. A signal
+    The default action ends the tool where it stands, with its runner still running. A signal
     the tool was started ignoring stays ignored.
     """
     handled = [signum for signum in SIGNALS if signal.getsignal(signum) is not signal.SIG_IGN]

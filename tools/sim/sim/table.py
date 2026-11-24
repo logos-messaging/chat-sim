@@ -4,129 +4,15 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Sequence, Union
 
-from .scenario import Scenario
-
-# What `rig` of a report says of a run whose members were clients in one process, and of one
-# whose peers each ran in a container.
+# What `rig` of a report says of a run whose members were clients in one process.
 ONE_PROCESS = "one process"
-CONTAINERS = "containers"
 
 # A sweep's row up to what its check found, which is as long as it is.
 _ROW = "{:>3}  {:>7}  {:>10}  {:<22}  "
 
 
 def render(report: dict) -> str:
-    """The report as the tables a person reads."""
-    if _one_process(report):
-        return _virtual(report)
-    modelled = report["network"] is not None
-    preset = report["preset"] is not None
-    lines = [
-        f"{_members(report['members'])}, {_timers(report['timers'])}, "
-        f"{_delivery(report)}{_containers(report)}{_network(report['network'])}"
-        f"{_wire(report['wire'])}",
-        *_outcome(report),
-        *([f"not removed: {report['unremoved']}"] if report.get("unremoved") else []),
-        _load(report["load"]),
-        "",
-    ]
-    lines += _columns(
-        (
-            "node",
-            "ready",
-            "start",
-            "dials",
-            "wired",
-            "mesh",
-            "end",
-            "mesh",
-            "dialed",
-            "failed",
-            *(("unheld",) if preset else ()),
-            "refused",
-            "dropped",
-            *(("lost",) if modelled else ()),
-            "errors",
-            "exit",
-        ),
-        [_node(node, preset, modelled) for node in report["nodes"]],
-    )
-    errors = _errors(report["nodes"])
-    if errors:
-        lines.append("")
-        lines += _columns(("inbound_error", "lines", "peers"), errors)
-    if report["batches"]:
-        lines.append("")
-        lines += _columns(
-            ("batch", "joiners", "members", "joined", "seated", "Welcome bytes"),
-            [
-                (
-                    str(number),
-                    str(batch["joiners"]),
-                    str(batch["members"]),
-                    _seconds(batch["joined_s"]),
-                    _seconds(batch["seated_s"]),
-                    _welcomes(batch["welcome_bytes"]),
-                )
-                for number, batch in enumerate(report["batches"], 1)
-            ],
-        )
-    if report["posts"]:
-        lines.append("")
-        lines += _columns(
-            ("post", "from", "read by", "median", "worst", "delivered", "worst", "lookup"),
-            [_post(number, post) for number, post in enumerate(report["posts"], 1)],
-        )
-    if report["holds"]:
-        lines.append("")
-        lines += [_hold(number, hold) for number, hold in enumerate(report["holds"], 1)]
-    return "\n".join(lines) + "\n"
-
-
-def row(number: int, seconds: float, report: dict) -> str:
-    """A sweep's row for a run: how its check went, and what stopped its steps if anything did.
-
-    Then the seeds of the run in one process, of its network model and of its wire, and what was
-    withheld, for a run that has them.
-    The seconds of a run in one process are those of its virtual clock, whatever `seconds`. A run
-    of a `grow` step says how it ended in place of its check.
-    """
-    said = [came_to(report)]
-    if report["stopped"] is not None:
-        said.append(f"stopped: {report['stopped']}")
-    if report["seed"] is not None:
-        said.append(f"seed {report['seed']}")
-    if report["network"] is not None:
-        said.append(f"network seed {report['network']['seed']}")
-    if report["wire"] is not None:
-        said.append(f"wire seed {report['wire']['seed']}")
-    if report["withheld"] is not None:
-        said.append(_withheld(report["withheld"]))
-    at_tip = "-" if report["at_tip"] is None else f"{report['at_tip']} of {report['seated']}"
-    if _one_process(report):
-        seconds = report["virtual_s"]
-    took = "-" if seconds is None else f"{seconds:.1f}"
-    return _ROW.format(number, took, at_tip, report["verdict"] or "-") + "; ".join(said)
-
-
-def came_to(report: dict) -> str:
-    """How a run came out, in a few words: its check, or how its `grow` step ended."""
-    return _check(report) if report["grow"] is None else _grew(report["grow"])
-
-
-def head(one_process: bool = False) -> str:
-    """The line above a sweep's rows, which says so when its runs are in one process."""
-    columns = _ROW.format("run", "seconds", "at the tip", "verdict") + "check"
-    return f"{columns} (one process: seconds of its virtual clock)" if one_process else columns
-
-
-def _one_process(report: dict) -> bool:
-    """Whether a report is of a run in one process: a run of processes names no rig."""
-    return report.get("rig") == ONE_PROCESS
-
-
-def _virtual(report: dict) -> str:
-    """The report of a run in one process: every duration under its first line is virtual."""
+    """The report as the tables a person reads: every duration under its first line is virtual."""
     modelled = report["network"] is not None
     lines = [
         f"{_members(report['members'])}, {_group(report)}, "
@@ -174,6 +60,38 @@ def _virtual(report: dict) -> str:
     if report["grow"] is not None:
         lines += ["", *_grow(report["grow"])]
     return "\n".join(lines) + "\n"
+
+
+def row(number: int, report: dict) -> str:
+    """A sweep's row for a run: how its check went, and what stopped its steps if anything did.
+
+    Then the run's seed, that of its network model and what was withheld, for a run that has
+    them. Its seconds are those of its virtual clock. A run of a `grow` step says how it ended
+    in place of its check.
+    """
+    said = [came_to(report)]
+    if report["stopped"] is not None:
+        said.append(f"stopped: {report['stopped']}")
+    said.append(f"seed {report['seed']}")
+    if report["network"] is not None:
+        said.append(f"network seed {report['network']['seed']}")
+    if report["withheld"] is not None:
+        said.append(_withheld(report["withheld"]))
+    at_tip = "-" if report["at_tip"] is None else f"{report['at_tip']} of {report['seated']}"
+    seconds = report["virtual_s"]
+    took = "-" if seconds is None else f"{seconds:.1f}"
+    return _ROW.format(number, took, at_tip, report["verdict"] or "-") + "; ".join(said)
+
+
+def came_to(report: dict) -> str:
+    """How a run came out, in a few words: its check, or how its `grow` step ended."""
+    return _check(report) if report["grow"] is None else _grew(report["grow"])
+
+
+def head() -> str:
+    """The line above a sweep's rows, which says that its runs are in one process."""
+    columns = _ROW.format("run", "seconds", "at the tip", "verdict") + "check"
+    return f"{columns} (one process: seconds of its virtual clock)"
 
 
 def _grew(grow: dict) -> str:
@@ -234,9 +152,6 @@ def _clock(report: dict) -> str:
             f"in {_seconds(report['wall_s'])} of wall time"
         )
     said += f", seed {report['seed']}"
-    # One process has no node to take a largest message.
-    if report["max_message_kib"] != Scenario.max_message_kib:
-        said += f", largest message {report['max_message_kib']} KiB not applied"
     return said
 
 
@@ -255,7 +170,7 @@ def _member(node: dict, modelled: bool) -> Sequence[str]:
 
 
 def _read(number: int, post: dict) -> Sequence[str]:
-    """A post of a run in one process, where no registry is asked for its sender."""
+    """A post: who read it of those waited on, and when."""
     read = post["read"] or {}
     return (
         str(number),
@@ -282,15 +197,8 @@ def _members(members: int) -> str:
     return "1 member" if members == 1 else f"{members} members"
 
 
-def _delivery(report: dict) -> str:
-    """The network a run's nodes were on: a preset, or their own by its largest message."""
-    if report["preset"] is not None:
-        return f"preset {report['preset']}"
-    return f"largest message {report['max_message_kib']} KiB"
-
-
 def _group(report: dict) -> str:
-    """The group of a run in one process: GroupV3, or a GroupV2 group by its timers."""
+    """The group of a run: GroupV3, or a GroupV2 group by its timers."""
     return "GroupV3" if report["group"] == "v3" else _timers(report["timers"])
 
 
@@ -311,28 +219,9 @@ def _network(network: Optional[dict]) -> str:
     )
 
 
-def _containers(report: dict) -> str:
-    """The image and the engine of a run whose peers ran in containers."""
-    if report.get("rig") != CONTAINERS:
-        return ""
-    return f", containers of {report['image']} on {report['engine']}"
-
-
-def _wire(wire: Optional[dict]) -> str:
-    """The seed and the conditions on the wire of a run in containers."""
-    if wire is None:
-        return ""
-    delay = wire["delay_ms"]
-    delay = "by member" if isinstance(delay, dict) else f"{delay} ms"
-    return (
-        f", wire seed {wire['seed']}, delay {delay}, jitter {wire['jitter_ms']} ms, "
-        f"loss {wire['loss']}"
-    )
-
-
 def _withheld(withheld: dict) -> str:
     """Whose candidate was withheld from whom, and whether the group applied it."""
-    minter = withheld["minter"] or "no peer of the run"
+    minter = withheld["minter"] or "no member of the run"
     applied = "applied" if withheld["applied"] else "not applied"
     return f"withheld from {withheld['from']}: the candidate of {minter}, {applied}"
 
@@ -364,10 +253,8 @@ def _outcome(report: dict) -> List[str]:
 
 
 def _unchecked(report: dict) -> str:
-    if report["conversation"] is None and _one_process(report):
-        return "no result of the runner was read"
     if report["conversation"] is None:
-        return "the run made no conversation"
+        return "no result of the runner was read"
     return "the run was interrupted"
 
 
@@ -377,92 +264,28 @@ def _load(load: dict) -> str:
     return f"load average {start:.2f} at the start{at_the_end}"
 
 
-def _node(node: dict, preset: bool, modelled: bool) -> Sequence[str]:
-    wired = node.get("wired", {})
-    end = node.get("end", {})
-    return (
-        node["name"],
-        _seconds(node.get("ready_s")),
-        _seconds(node.get("start_s")),
-        str(len(node["dials"])),
-        _count(wired.get("peers")),
-        _count(wired.get("mesh_peers")),
-        _count(end.get("peers")),
-        _count(end.get("mesh_peers")),
-        _count(end.get("dials_ok")),
-        _count(end.get("dials_failed")),
-        *((_count(node.get("unheld")),) if preset else ()),
-        _count(end.get("publish_refused")),
-        _count(end.get("inbound_dropped")),
-        *((_count(_lost(node)),) if modelled else ()),
-        _count(sum(node["inbound_errors"].values()) if "inbound_errors" in node else None),
-        _exit(node),
-    )
-
-
-def _lost(node: dict) -> Optional[int]:
-    """How many frames a peer's network model dropped, once the peer has ended."""
-    if "network_dropped" not in node:
-        return None
+def _lost(node: dict) -> int:
+    """How many frames a member's network model dropped."""
     return sum(node["network_dropped"].values())
 
 
-def _exit(node: dict) -> str:
-    """How a peer ended, where that was not with status 0 once it was asked to."""
-    if "ended" not in node:
-        return "-"
-    if node["exit_signal"] is not None:
-        status = f"signal {node['exit_signal']}"
-    else:
-        status = str(node["exit_status"])
-    return status if node["ended"] == "asked" else f"{status} {node['ended']}"
-
-
 def _errors(nodes: Sequence[dict]) -> List[Sequence[str]]:
-    """Each message of an `inbound_error` line: how many lines held it, and of how many peers."""
-    lines: Dict[str, int] = {}
-    peers: Dict[str, int] = {}
+    """Each reason the members rejected frames for: how many frames, and of how many members."""
+    frames: Dict[str, int] = {}
+    members: Dict[str, int] = {}
     for node in nodes:
-        for message, count in node.get("inbound_errors", {}).items():
-            lines[message] = lines.get(message, 0) + count
-            peers[message] = peers.get(message, 0) + 1
+        for reason, count in node["inbound_errors"].items():
+            frames[reason] = frames.get(reason, 0) + count
+            members[reason] = members.get(reason, 0) + 1
     return [
-        (message, str(count), str(peers[message]))
-        for message, count in sorted(lines.items(), key=lambda held: (-held[1], held[0]))
+        (reason, str(count), str(members[reason]))
+        for reason, count in sorted(frames.items(), key=lambda held: (-held[1], held[0]))
     ]
 
 
-def _post(number: int, post: dict) -> Sequence[str]:
-    read = post["read"] or {}
-    delivered = post["delivered"] or {}
-    return (
-        str(number),
-        post["poster"],
-        f"{post['readers'] - len(post['unread'])} of {post['readers']}",
-        _seconds(read.get("median")),
-        _seconds(read.get("worst")),
-        _seconds(delivered.get("median")),
-        _seconds(delivered.get("worst")),
-        _seconds(post["lookup_mean"]),
-    )
-
-
 def _hold(number: int, hold: dict) -> str:
-    """The line of a hold: its seconds, and on a preset what `unheld` rose by, a node a minute."""
-    said = f"hold {number}: {_seconds(hold['seconds'])}"
-    if "rate" not in hold:
-        return said
-    # A rate that rounds to 0 from below is printed without its sign.
-    rate = "-" if hold["rate"] is None else f"{round(hold['rate'], 2) + 0.0:.2f}"
-    return f"{said}, unheld {rate} a node a minute"
-
-
-def _welcomes(welcome_bytes: List[int]) -> str:
-    """The Welcomes of a batch: how many, and the bytes of each."""
-    sizes = sorted(welcome_bytes)
-    if sizes[0] == sizes[-1]:
-        return f"{len(sizes)} x {sizes[0]}"
-    return f"{len(sizes)} x {sizes[0]}..{sizes[-1]}"
+    """The line of a hold: its seconds."""
+    return f"hold {number}: {_seconds(hold['seconds'])}"
 
 
 def _seconds(seconds: Optional[float]) -> str:

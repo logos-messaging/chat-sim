@@ -1,5 +1,6 @@
 import contextlib
 import copy
+import functools
 import io
 import json
 import os
@@ -13,20 +14,30 @@ import time
 import unittest
 from pathlib import Path
 from typing import List, Tuple
+from unittest import mock
 
 from sim import one_process, scenario, table
-from sim.cli import main
+from sim.cli import SIGNALS, main
 from sim.peers import Watch
-from sim.run import REPOSITORY, Settings, run
+from sim.run import Settings, run
 from sim.sweep import Interrupts, sweep
 
-from tests import FIXTURES, STANDIN_RUNNER, stand_in, stand_in_runner, standin_runner
-from tests.test_run import APPLIED, Driven, Scratch, said, withholding
+from tests import (
+    APPLIED,
+    FIXTURES,
+    STANDIN_RUNNER,
+    TOOL,
+    Driven,
+    Scratch,
+    forks_whose,
+    said,
+    stand_in_runner,
+    standin_runner,
+    withholding,
+)
 from tests.test_sweep import cells
 from tests.test_table import NETWORK
 from tests.test_table import report as whole_run
-
-TOOL = Path(__file__).resolve().parents[1]
 
 # The second a plan's clock starts at, where a test names one.
 START = 1791817445
@@ -100,43 +111,9 @@ def plan_of(**changed) -> dict:
     return one_process.plan(scenario.scenario(said(**changed)))
 
 
-def in_one_process(**changed) -> dict:
-    """What a run of three in one process reports: saro seats two, and pax posts."""
-    ids = (("saro", "a3f91c07", "7361726f"), ("raya", "7b1e44d9", "72617961"))
-    nodes = [
-        {
-            "name": name,
-            "installation": installation,
-            "account": account,
-            "seated": True,
-            "app_id": installation + "00",
-            "inbound_errors": {},
-        }
-        for name, installation, account in (*ids, ("pax", "e09a3f52", "706178"))
-    ]
-    post = {
-        "poster": "pax",
-        "readers": 2,
-        "unread": [],
-        "read": {"count": 2, "median": 0.0, "worst": 0.05},
-    }
-    whole = whole_run(
-        rig=table.ONE_PROCESS,
-        cluster_id=None,
-        seed=1,
-        virtual_s=1.35,
-        wall_s=0.0625,
-        nodes=nodes,
-        batches=[{"joiners": 2, "members": 3, "seated_s": 1.25, "wall_s": 0.046875}],
-        posts=[post],
-    )
-    whole.update(changed)
-    return whole
-
-
 def no_result(**changed) -> dict:
     """What a run reports whose runner left no result."""
-    return in_one_process(
+    return whole_run(
         ok=False,
         steps_done=0,
         virtual_s=None,
@@ -220,9 +197,6 @@ class Planning(unittest.TestCase):
 
         self.assertEqual(plan_of(timers=timers)["timers"], timers)
         self.assertEqual(plan_of()["timers"], "fast")
-
-    def test_the_largest_message_is_no_part_of_a_plan(self):
-        self.assertEqual(plan_of(max_message_kib=64), plan_of())
 
     def test_a_member_no_step_seats_is_a_member_of_the_plan(self):
         plan = plan_of(members=5, steps=[{"step": "seat", "to": 3}])
@@ -334,7 +308,6 @@ class Running(Scratch):
 
     def run_of(self, *faults: str, **changed) -> dict:
         settings = Settings(
-            chat_cli=None,
             scenario=scenario.scenario(said(**changed)),
             out=self.out,
             one_process=stand_in_runner(self.scratch, *faults),
@@ -408,7 +381,7 @@ class Running(Scratch):
             log.startswith("2026-01-01T00:00:00.000000Z TRACE libchat::mls_trace: run "), log
         )
 
-    def test_a_run_in_one_process_starts_no_registry_and_no_peer(self):
+    def test_a_run_writes_its_plan_what_the_runner_left_and_its_report(self):
         self.run_of()
 
         self.assertEqual(
@@ -469,7 +442,7 @@ class Running(Scratch):
             self.assertEqual(node, member)
         self.assertEqual([post["readers"] for post in report["posts"]], [1, 1, 2])
 
-    def test_a_node_holds_nothing_that_only_a_peer_has(self):
+    def test_a_node_holds_what_the_result_says_of_its_member(self):
         report = self.run_of()
 
         for node in report["nodes"]:
@@ -477,10 +450,8 @@ class Running(Scratch):
                 sorted(node),
                 ["account", "app_id", "inbound_errors", "installation", "name", "seated"],
             )
-        self.assertNotIn("wired_s", report)
-        self.assertEqual((report["preset"], report["cluster_id"]), (None, None))
 
-    def test_a_post_holds_who_read_it_and_when_and_nothing_of_a_registry(self):
+    def test_a_post_holds_who_read_it_and_when(self):
         report = self.run_of()
 
         self.assertEqual(
@@ -495,7 +466,7 @@ class Running(Scratch):
             ],
         )
 
-    def test_a_batch_is_told_as_the_runner_told_it_with_no_welcome(self):
+    def test_a_batch_is_told_as_the_runner_told_it(self):
         report = self.run_of(members=5, steps=[{"step": "seat", "to": 5, "batch": 2}])
 
         self.assertEqual(report["batches"], self.left("result.json")["batches"])
@@ -631,6 +602,66 @@ class Running(Scratch):
             report["check"]["differences"], ["verdict: split at epoch 2, expected whole"]
         )
 
+    def test_a_run_writes_the_load_average_at_its_start_and_at_its_end(self):
+        with mock.patch("os.getloadavg", side_effect=[(1.5, 1.25, 1.0), (2.5, 2.25, 2.0)]):
+            report = self.run_of()
+
+        self.assertEqual(report["load"], {"start": [1.5, 1.25, 1.0], "end": [2.5, 2.25, 2.0]})
+
+    def test_a_scenario_of_one_member_runs_its_creator_alone(self):
+        expect = {"verdict": "not enough data"}
+        report = self.run_of(members=1, steps=[{"step": "post"}], expect=expect)
+
+        self.assertTrue(report["ok"], (report["stopped"], report["check"]))
+        self.assertEqual([node["name"] for node in report["nodes"]], ["saro"])
+        (post,) = report["posts"]
+        self.assertEqual((post["poster"], post["readers"], post["unread"]), ("saro", 0, []))
+
+    def unchecked_of(self, forks: Path) -> str:
+        """What a run says of its check when `forks` is the tool that makes it."""
+        settings = Settings(
+            scenario=scenario.scenario(said()),
+            out=self.out,
+            one_process=stand_in_runner(self.scratch),
+            forks=forks,
+        )
+        report = self.report_of(settings)
+        self.assertEqual((report["ok"], report["stopped"], report["check"]), (False, None, None))
+        self.assertIn(f"\nnot checked: {report['unchecked']}\n", self.written())
+        return report["unchecked"]
+
+    def test_a_check_that_broke_is_a_run_not_checked_and_no_difference_of_its_report(self):
+        broke = forks_whose("check", "raise RuntimeError('the check broke')", self.scratch)
+
+        self.assertEqual(
+            self.unchecked_of(broke),
+            "forks check ended with status 1: RuntimeError: the check broke",
+        )
+
+    def test_a_check_that_could_not_read_what_it_was_given_is_a_run_not_checked(self):
+        refused = forks_whose(
+            "check", "print('forks: no log in the run', file=sys.stderr)\nsys.exit(2)", self.scratch
+        )
+
+        self.assertEqual(
+            self.unchecked_of(refused), "forks check ended with status 2: forks: no log in the run"
+        )
+
+    def test_a_check_a_signal_ended_is_a_run_not_checked(self):
+        killed = forks_whose("check", "os.kill(os.getpid(), signal.SIGKILL)", self.scratch)
+
+        self.assertEqual(self.unchecked_of(killed), "forks check ended with signal 9")
+
+    def test_a_check_that_said_nothing_is_a_run_not_checked(self):
+        silent = forks_whose("check", "sys.exit(1)", self.scratch)
+
+        self.assertEqual(self.unchecked_of(silent), "forks check ended with status 1")
+
+    def test_a_fork_tool_that_is_not_there_is_a_run_not_checked(self):
+        unchecked = self.unchecked_of(self.scratch / "nowhere")
+
+        self.assertRegex(unchecked, "^forks check ended with status 2: .*nowhere")
+
     def stop_of(self, *faults: str) -> str:
         """What stopped a run whose runner left no result, which is then not checked."""
         report = self.run_of(*faults)
@@ -672,8 +703,7 @@ class Running(Scratch):
         runner = self.scratch / "runner"
         runner.write_bytes(b"\x00 no program")
         runner.chmod(0o755)
-        settings = Settings(
-            chat_cli=None, scenario=scenario.scenario(said()), out=self.out, one_process=runner
+        settings = Settings( scenario=scenario.scenario(said()), out=self.out, one_process=runner
         )
         report = self.report_of(settings)
 
@@ -777,7 +807,6 @@ class TheResult(Scratch):
         """What a run of five with a network model reports whose runner leaves `result`."""
         scratch = Path(tempfile.mkdtemp(dir=self.scratch))
         settings = Settings(
-            chat_cli=None,
             scenario=scenario.scenario(said(members=5, network={"seed": 7}, **changed)),
             out=scratch / "run",
             one_process=runner_leaving(scratch, result, status),
@@ -919,12 +948,30 @@ class TheResult(Scratch):
                 )
 
 
+    def test_a_candidate_stamped_with_no_app_id_has_no_minter(self):
+        result = copy.deepcopy(self.result)
+        result["members"][2]["network"]["withheld"]["app_id"] = None
+        # Kes, whom the steps seat last, told no app id either.
+        result["members"][4]["app_id"] = None
+        steps = [
+            {"step": "seat", "to": 4},
+            {"step": "withhold", "from": "pax"},
+            {"step": "seat", "to": 5},
+        ]
+        report = self.report_leaving(result, steps=steps)
+
+        self.assertEqual(
+            report["withheld"],
+            {"from": "pax", "seat": 0, "app_id": None, "minter": None, "applied": True},
+        )
+
+
 class Render(unittest.TestCase):
     """The report of a run in one process as text."""
 
     def test_a_whole_run(self):
         self.assertEqual(
-            table.render(in_one_process()),
+            table.render(whole_run()),
             "3 members, fast group timers, one process, 1.350s on a virtual clock in 0.062s "
             "of wall time, seed 1\n"
             "whole: 3 of 3 members at the tip\n"
@@ -944,7 +991,7 @@ class Render(unittest.TestCase):
         )
 
     def test_a_run_with_a_network_model_names_it_and_what_became_of_each_members_frames(self):
-        modelled = in_one_process(network=NETWORK)
+        modelled = whole_run(network=NETWORK)
         counts = ((21, 21, 0, {}), (22, 9, 1, {"loss": 11, "cut": 1}), (4, 3, 0, {"withheld": 1}))
         for node, (arrived, passed, held, dropped) in zip(modelled["nodes"], counts):
             node["network"] = {"frames": {"arrived": arrived, "passed": passed, "held": held}}
@@ -966,27 +1013,15 @@ class Render(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            table.render(modelled).splitlines()[9:], table.render(in_one_process()).splitlines()[9:]
+            table.render(modelled).splitlines()[9:], table.render(whole_run()).splitlines()[9:]
         )
 
     def test_a_run_of_a_groupv3_group_names_it_in_place_of_the_timers(self):
         self.assertEqual(
-            table.render(in_one_process(group="v3")).splitlines()[0],
+            table.render(whole_run(group="v3")).splitlines()[0],
             "3 members, GroupV3, one process, 1.350s on a virtual clock in 0.062s of wall time, "
             "seed 1",
         )
-
-    def test_a_largest_message_that_is_not_the_default_is_said_not_to_apply(self):
-        self.assertEqual(
-            table.render(in_one_process(max_message_kib=64)).splitlines()[0],
-            "3 members, fast group timers, one process, 1.350s on a virtual clock in 0.062s "
-            "of wall time, seed 1, largest message 64 KiB not applied",
-        )
-        self.assertIn(
-            ", largest message 1024 KiB not applied\n",
-            table.render(in_one_process(max_message_kib=1024)),
-        )
-        self.assertNotIn("largest message", table.render(in_one_process()))
 
     def test_a_run_whose_runner_left_no_result_has_no_time_and_is_not_checked(self):
         stopped = no_result(stopped=KILLED)
@@ -1002,7 +1037,7 @@ class Render(unittest.TestCase):
         )
 
     def test_a_run_that_was_interrupted_once_its_runner_had_ended_says_so(self):
-        text = table.render(in_one_process(ok=False, stopped="interrupted by SIGINT", check=None))
+        text = table.render(whole_run(ok=False, stopped="interrupted by SIGINT", check=None))
 
         self.assertIn(
             "\nstopped after 2 of 2 steps: interrupted by SIGINT\n"
@@ -1011,7 +1046,7 @@ class Render(unittest.TestCase):
         )
 
     def test_the_frames_the_members_rejected_are_counted_by_their_reason(self):
-        whole = in_one_process()
+        whole = whole_run()
         whole["nodes"][0]["inbound_errors"] = {"AeadError": 4}
         whole["nodes"][1]["inbound_errors"] = {"AeadError": 1, "WrongEpoch": 12}
 
@@ -1030,12 +1065,12 @@ class Render(unittest.TestCase):
         )
 
     def test_a_post_some_did_not_read_names_how_many_did(self):
-        post = dict(in_one_process()["posts"][0], unread=["saro"])
+        post = dict(whole_run()["posts"][0], unread=["saro"])
         post["read"] = {"count": 1, "median": 0.05, "worst": 0.05}
         unread = dict(post, readers=1, read=None)
 
         self.assertEqual(
-            table.render(in_one_process(posts=[post, unread])).splitlines()[-3:],
+            table.render(whole_run(posts=[post, unread])).splitlines()[-3:],
             [
                 "post  from  read by  median   worst",
                 "1      pax   1 of 2  0.050s  0.050s",
@@ -1044,7 +1079,7 @@ class Render(unittest.TestCase):
         )
 
     def test_a_grow_says_how_it_ended_and_each_line_after_the_tables(self):
-        grown = in_one_process(grow=GROWN, check=None, unchecked="a `grow` step expects no outcome")
+        grown = whole_run(grow=GROWN, check=None, unchecked="a `grow` step expects no outcome")
 
         self.assertTrue(
             table.render(grown).endswith(
@@ -1066,7 +1101,7 @@ class Render(unittest.TestCase):
         )
 
     def test_a_grow_of_a_size_says_how_many_members_it_removed(self):
-        grown = in_one_process(grow=dict(GROWN, removed=["saro", "raya"]), check=None)
+        grown = whole_run(grow=dict(GROWN, removed=["saro", "raya"]), check=None)
 
         self.assertIn(", 1 never joined, 2 removed\n", table.render(grown))
 
@@ -1074,7 +1109,7 @@ class Render(unittest.TestCase):
         holds = [{"seconds": 60.0}, {"seconds": 0.5}]
 
         self.assertEqual(
-            table.render(in_one_process(holds=holds)).splitlines()[-3:],
+            table.render(whole_run(holds=holds)).splitlines()[-3:],
             ["", "hold 1: 60.000s", "hold 2: 0.500s"],
         )
 
@@ -1084,22 +1119,22 @@ class Row(unittest.TestCase):
 
     def test_the_head_says_that_the_runs_are_one_process_each_and_their_seconds_virtual(self):
         self.assertEqual(
-            table.head(one_process=True),
+            table.head(),
             "run  seconds  at the tip  verdict                 "
             "check (one process: seconds of its virtual clock)",
         )
 
     def test_a_row_gives_the_seconds_of_the_runs_virtual_clock(self):
         self.assertEqual(
-            table.row(7, 41.26, in_one_process(network=NETWORK)),
+            table.row(7, whole_run(network=NETWORK)),
             "  7      1.4      3 of 3  whole                   as expected; seed 1; network seed 7",
         )
 
     def test_the_row_of_a_grow_says_how_it_ended_in_place_of_a_check(self):
-        grown = in_one_process(grow=GROWN, check=None, verdict="split at epoch 3", at_tip=2)
+        grown = whole_run(grow=GROWN, check=None, verdict="split at epoch 3", at_tip=2)
 
         self.assertEqual(
-            table.row(2, 41.26, grown),
+            table.row(2, grown),
             "  2      1.4      2 of 3  split at epoch 3        2 main branches ran side by side: "
             "trunk at epoch 7, 2 main, 1 sub, 1 fell behind, 1 behind at the end, "
             "1 never joined; seed 1",
@@ -1109,7 +1144,7 @@ class Row(unittest.TestCase):
         stopped = no_result(stopped=KILLED)
 
         self.assertEqual(
-            table.row(1, 0.52, stopped),
+            table.row(1, stopped),
             "  1        -           -  -                       "
             f"not checked; stopped: {KILLED}; seed 1",
         )
@@ -1121,7 +1156,6 @@ class Sweeping(Scratch):
     def sweep_of(self, runs: int, *faults: str, **changed) -> dict:
         self.said: List[str] = []
         settings = Settings(
-            chat_cli=None,
             scenario=scenario.scenario(said(**changed)),
             out=self.out,
             one_process=stand_in_runner(self.scratch, *faults),
@@ -1143,7 +1177,7 @@ class Sweeping(Scratch):
             )
         self.assertEqual([row["seed"] for row in report["rows"]], [4, 5, 6])
         self.assertEqual([row["network_seed"] for row in report["rows"]], [7, 8, 9])
-        self.assertEqual(self.said[0], table.head(one_process=True))
+        self.assertEqual(self.said[0], table.head())
         self.assertEqual(
             [cells(row) for row in self.said[1:4]],
             [
@@ -1157,7 +1191,7 @@ class Sweeping(Scratch):
         steps = [{"step": "seat", "to": 3}, {"step": "hold", "seconds": 3600}]
         report = self.sweep_of(1, steps=steps)
 
-        self.assertEqual(self.said[0], table.head(one_process=True))
+        self.assertEqual(self.said[0], table.head())
         self.assertEqual(self.said[1].split()[:2], ["1", f"{3600 + standin_runner.SEATED:.1f}"])
         self.assertTrue(0 < report["rows"][0]["seconds"] < 600, report["rows"])
         self.assertEqual(json.loads((self.out / "sweep.json").read_text("utf-8")), report)
@@ -1224,23 +1258,15 @@ class CommandLine(Scratch):
         status, printed = self.sim("sweep", str(self.scenario()), "--runs", "2")
 
         self.assertEqual(status, 0)
-        self.assertEqual(printed.splitlines()[0], table.head(one_process=True))
+        self.assertEqual(printed.splitlines()[0], table.head())
         self.assertTrue(printed.endswith("\n2 of 2 runs went as expected\n"))
         self.assertEqual(printed, (self.out / "sweep.txt").read_text("utf-8"))
 
-    def test_a_chat_cli_and_a_runner_together_are_refused_and_so_is_neither(self):
-        chat_cli, runner = str(stand_in(self.scratch)), str(stand_in_runner(self.scratch))
+    def test_a_command_line_without_a_runner_is_refused(self):
         for command in (["run"], ["sweep", "--runs", "2"]):
-            given = [*command, str(self.scenario())]
             self.assertEqual(
-                self.refused(*given, "--chat-cli", chat_cli, "--one-process", runner),
-                f"sim {command[0]}: error: argument --one-process: "
-                "not allowed with argument --chat-cli",
-            )
-            self.assertEqual(
-                self.refused(*given),
-                f"sim {command[0]}: error: "
-                "one of the arguments --chat-cli --one-process --image is required",
+                self.refused(*command, str(self.scenario())),
+                f"sim {command[0]}: error: the following arguments are required: --one-process",
             )
 
     def test_a_runner_that_is_no_file_or_cannot_be_run_is_refused(self):
@@ -1270,68 +1296,188 @@ class CommandLine(Scratch):
         self.assertEqual(status, 0, printed.getvalue())
         self.assertIn("\nthe report is as expected\n", printed.getvalue())
 
-    def test_a_grow_is_refused_but_in_one_process(self):
-        chat_cli = str(stand_in(self.scratch))
-        self.assertEqual(
-            self.refused("run", str(self.scenario(steps=[GROW])), "--chat-cli", chat_cli),
-            "sim: error: the scenario has a `grow` step, and only --one-process does one",
-        )
+    def test_a_run_whose_report_is_not_as_expected_is_status_1(self):
+        expect = {"verdict": "whole, members behind"}
+        status, printed = self.sim("run", str(self.scenario(expect=expect)))
 
-    def test_a_groupv3_group_is_refused_but_in_one_process(self):
-        chat_cli = str(stand_in(self.scratch))
-        self.assertEqual(
-            self.refused("run", str(self.scenario(group="v3")), "--chat-cli", chat_cli),
-            "sim: error: the scenario's `group` is `v3`, and only --one-process seats a GroupV3 "
-            "group",
+        self.assertEqual(status, 1)
+        self.assertNotIn("stopped", printed)
+        self.assertIn(
+            "\nnot as expected: verdict: whole, expected whole, members behind\n", printed
         )
+        report = json.loads((self.out / "run.json").read_text(encoding="utf-8"))
+        self.assertEqual((report["stopped"], report["steps_done"]), (None, 2))
 
-    def test_a_scenario_on_a_preset_is_refused_in_one_process_and_nothing_is_started(self):
-        scenario_file = str(self.scenario(preset="logos.test"))
+    def test_a_scenario_it_refuses_is_status_2_and_named(self):
+        scenario_file = self.scenario(peers=3)
         runner = str(stand_in_runner(self.scratch))
         for command in (["run"], ["sweep", "--runs", "2"]):
             self.assertEqual(
-                self.refused(*command, scenario_file, "--one-process", runner),
-                "sim: error: --one-process: the scenario has `preset`, "
-                "and one process joins no fleet",
+                self.refused(*command, str(scenario_file), "--one-process", runner),
+                f"sim: error: {scenario_file}: `peers` is not a field of the scenario",
             )
+
+    def test_a_command_line_it_refuses_is_status_2_and_starts_nothing(self):
+        scenario_file = str(self.scenario())
+        runner = ("--one-process", str(stand_in_runner(self.scratch)))
+        self.assertEqual(
+            self.refused("sweep", scenario_file, "--runs", "0", *runner),
+            "sim: error: --runs: a sweep is 1 run or more",
+        )
+        self.assertIn("--runs", self.refused("sweep", scenario_file, *runner))
+        self.assertIn("--runs", self.refused("run", scenario_file, "--runs", "2", *runner))
+        self.assertIn("--peers", self.refused("run", scenario_file, "--peers", "3", *runner))
+        self.assertIn("COMMAND", self.refused())
+        nowhere = str(self.scratch / "nowhere.json")
+        self.assertIn("nowhere.json", self.refused("run", nowhere, *runner))
+
+        self.out.mkdir()
+        complained = io.StringIO()
+        with self.assertRaises(SystemExit) as refused, contextlib.redirect_stderr(complained):
+            main(["run", scenario_file, *runner, "--out", str(self.out)])
+        self.assertEqual(refused.exception.code, 2)
+        self.assertEqual(
+            complained.getvalue().splitlines()[-1], f"sim: error: --out: {self.out} exists"
+        )
+        self.assertEqual(list(self.out.iterdir()), [])
+
+    def test_a_sweep_whose_last_run_would_have_a_seed_above_the_most_is_refused(self):
+        runner = ("--one-process", str(stand_in_runner(self.scratch)))
+        seeded = str(self.scenario(seed=2**64 - 2))
+        self.assertEqual(
+            self.refused("sweep", seeded, "--runs", "3", *runner),
+            f"sim: error: --runs: run 3 would have the seed {2**64}, and {2**64 - 1} is the most",
+        )
+        scenario_file = str(self.scenario(network={"seed": 2**64 - 2}))
+
+        self.assertEqual(
+            self.refused("sweep", scenario_file, "--runs", "3", *runner),
+            f"sim: error: --runs: run 3 would have the network seed {2**64}, "
+            f"and {2**64 - 1} is the most",
+        )
+        status, printed = self.sim("sweep", scenario_file, "--runs", "2")
+        self.assertEqual(status, 0, printed)
+        self.assertIn(f"as expected; seed 1; network seed {2**64 - 1}\n", printed)
+
+    def test_an_out_that_cannot_be_made_is_refused_and_nothing_is_started(self):
+        in_the_way = self.scratch / "a-file"
+        in_the_way.write_text("", encoding="utf-8")
+        self.out = in_the_way / "run"
+        runner = ("--one-process", str(stand_in_runner(self.scratch)))
+
+        for command in (["run"], ["sweep", "--runs", "2"]):
+            refusal = self.refused(*command, str(self.scenario()), *runner)
+
+            self.assertRegex(refusal, "^sim: error: --out: .*Not a directory")
+            self.assertIn(str(self.out), refusal)
             # A process the command started and did not reap would be a child of this one.
             with self.assertRaises(ChildProcessError):
                 os.waitpid(-1, os.WNOHANG)
+
+    def test_a_run_whose_check_was_not_made_is_status_1_and_says_how_the_check_ended(self):
+        broke = forks_whose("check", "raise RuntimeError('the check broke')", self.scratch)
+        with mock.patch("sim.cli.Settings", functools.partial(Settings, forks=broke)):
+            status, printed = self.sim("run", str(self.scenario()))
+
+        self.assertEqual(status, 1)
+        self.assertIn(
+            "\nwhole: 3 of 3 members at the tip\n"
+            "not checked: forks check ended with status 1: RuntimeError: the check broke\n",
+            printed,
+        )
+
+    def test_the_signal_handlers_of_the_caller_are_put_back(self):
+        before = [signal.getsignal(signum) for signum in SIGNALS]
+        self.sim("run", str(self.scenario()))
+
+        self.assertEqual([signal.getsignal(signum) for signum in SIGNALS], before)
 
 
 class Signals(Driven):
     """A run in one process sent a signal while its runner runs."""
 
-    def test_a_signal_ends_the_runner_and_the_run_is_not_checked(self):
-        runner = stand_in_runner(self.scratch, "waits")
-        driver = subprocess.Popen(
-            [sys.executable, "-B", str(TOOL), "run", str(self.scenario())]
-            + ["--one-process", str(runner), "--out", str(self.out)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            # A session of its own, so that a test that fails can end whatever the tool left.
-            start_new_session=True,
-        )
-        self.addCleanup(self.end, driver)
+    def run_of(self, *faults: str, ignoring: Tuple[int, ...] = ()) -> subprocess.Popen:
+        """The command, once the runner it started has begun to wait."""
+        runner = stand_in_runner(self.scratch, "waits", *faults)
+        driver = self.start("run", str(self.scenario()), runner=runner, ignoring=ignoring)
         self.wait_for(self.out / "runner.out", "\n")
-        started = time.monotonic()
-        driver.send_signal(signal.SIGTERM)
+        return driver
+
+    def interrupted(self, driver: subprocess.Popen, signum: signal.Signals) -> None:
         printed, errors = driver.communicate(timeout=60)
 
-        self.assertEqual((driver.returncode, errors), (128 + signal.SIGTERM, ""))
-        self.assertLess(time.monotonic() - started, standin_runner.WAIT / 2)
+        self.assertEqual((driver.returncode, errors), (128 + signum, ""))
         with self.assertRaises(ProcessLookupError):
             os.kill(int((self.out / "runner.out").read_text(encoding="utf-8")), 0)
         report = json.loads((self.out / "run.json").read_text(encoding="utf-8"))
-        self.assertEqual(report["stopped"], "interrupted by SIGTERM")
+        self.assertEqual(report["stopped"], f"interrupted by {signum.name}")
         self.assertEqual((report["ok"], report["check"], report["nodes"]), (False, None, []))
         self.assertIn(
-            "\nstopped after 0 of 2 steps: interrupted by SIGTERM\n"
+            f"\nstopped after 0 of 2 steps: interrupted by {signum.name}\n"
             "not checked: no result of the runner was read\n",
             printed,
         )
         self.assertEqual(printed, (self.out / "run.txt").read_text(encoding="utf-8"))
+
+    def interrupt(self, signum: signal.Signals) -> None:
+        driver = self.run_of()
+        started = time.monotonic()
+        driver.send_signal(signum)
+
+        self.interrupted(driver, signum)
+        self.assertLess(time.monotonic() - started, standin_runner.WAIT / 2)
+
+    def test_an_interrupt_ends_the_runner_and_the_run_is_not_checked(self):
+        self.interrupt(signal.SIGINT)
+
+    def test_a_termination_ends_the_runner_and_the_run_is_not_checked(self):
+        self.interrupt(signal.SIGTERM)
+
+    def test_a_hangup_ends_the_runner_and_the_run_is_not_checked(self):
+        self.interrupt(signal.SIGHUP)
+
+    def test_a_second_signal_while_the_runner_is_ended_changes_nothing(self):
+        driver = self.run_of("lingers")
+        driver.send_signal(signal.SIGTERM)
+        self.wait_for(self.out / "lingering")
+        driver.send_signal(signal.SIGINT)
+
+        self.interrupted(driver, signal.SIGTERM)
+
+    def test_a_signal_the_command_was_started_ignoring_stays_ignored(self):
+        driver = self.run_of(ignoring=(signal.SIGINT,))
+        driver.send_signal(signal.SIGINT)
+        driver.send_signal(signal.SIGTERM)
+
+        self.interrupted(driver, signal.SIGTERM)
+
+    def test_an_interrupt_from_the_terminal_does_not_reach_the_check_of_a_run_past_its_stop(self):
+        checking = self.scratch / "checking"
+        waits = forks_whose(
+            "check", f"open({str(checking)!r}, 'w').close()\ntime.sleep(2)", self.scratch
+        )
+        # The command, with that `forks` for its own.
+        tool = self.scratch / "sim.py"
+        tool.write_text(
+            "import functools, sys\n"
+            "from pathlib import Path\n"
+            "from unittest import mock\n"
+            f"sys.path.insert(0, {str(TOOL)!r})\n"
+            "from sim import cli, run\n"
+            f"settings = functools.partial(run.Settings, forks=Path({str(waits)!r}))\n"
+            "with mock.patch('sim.cli.Settings', settings):\n"
+            "    sys.exit(cli.main())\n",
+            encoding="utf-8",
+        )
+        runner = stand_in_runner(self.scratch)
+        driver = self.start("run", str(self.scenario()), runner=runner, tool=tool)
+        self.wait_for(checking)
+        # A terminal sends its interrupt to every process of the group in its foreground.
+        os.killpg(driver.pid, signal.SIGINT)
+        printed, errors = driver.communicate(timeout=60)
+
+        self.assertEqual((driver.returncode, errors), (0, ""))
+        self.assertIn("\nthe report is as expected\n", printed)
 
 
 if __name__ == "__main__":

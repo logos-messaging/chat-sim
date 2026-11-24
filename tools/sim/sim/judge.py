@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 def judge(settings: Settings, installations: List[str], report: dict) -> None:
     """Writes the expectation, and has `forks` report on the logs and check them.
 
-    `installations` are the ids of the peers in the order they started. The report gains
+    `installations` are the ids of the members in the order of the members. The report gains
     `verdict` and `at_tip`, and `check` or why there is none as `unchecked`. Its `held_to` says
     which outcome is expected of a run that withheld a candidate. A run of a `grow` step is
     reported on and not checked, and each member the report knows is counted at the tip or not.
