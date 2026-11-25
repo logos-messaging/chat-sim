@@ -68,8 +68,8 @@ START = 1_767_225_600
 def plan(scenario: Scenario) -> dict:
     """What the runner is told: the scenario's steps one for one, with every name resolved.
 
-    As in a run of processes, a roster is waited on by the creator and by each other member the
-    scenario expects at the tip, and a post by the members it expects to read it.
+    A roster is waited on by the creator and by each other member the scenario expects at the
+    tip, and a post by the members it expects to read it.
     """
     names = [name_of(index) for index in range(scenario.members)]
     group = {} if scenario.group == "v2" else {"group": scenario.group}
@@ -130,7 +130,6 @@ def run(settings: Settings, report: dict, watch: Watch) -> None:
     out = settings.out
     report.update(
         rig=table.ONE_PROCESS,
-        cluster_id=None,
         seed=settings.scenario.seed,
         virtual_s=None,
         wall_s=None,
@@ -249,7 +248,7 @@ def _node(member: dict) -> dict:
 
 
 def _post(post: dict) -> dict:
-    """A post of the runner's result as a run tells of a post, less what a registry adds."""
+    """A post of the runner's result as a run tells of a post: when it was read, as a spread."""
     return {
         "poster": post["poster"],
         "readers": post["readers"],

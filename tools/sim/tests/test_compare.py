@@ -1,14 +1,15 @@
 import contextlib
+import importlib.util
 import io
 import json
 import unittest
+from pathlib import Path
 from typing import Tuple
 
 from sim import compare
 from sim.cli import main
 
-from tests import FIXTURES, stand_in_runner
-from tests.test_run import Scratch
+from tests import FIXTURES, Scratch, stand_in_runner
 
 
 def outcome(**changed) -> dict:
@@ -24,6 +25,7 @@ def outcome(**changed) -> dict:
         "seated": 9,
         "virtual_s": 120.5,
         "trunk_epoch": None,
+        "first_fork": None,
         "ended": None,
         "lines_off_trunk": None,
         "members_off_trunk": None,
@@ -41,14 +43,22 @@ def run(name: str) -> dict:
 
 
 # Three runs of saro alone growing a group of 51 toward epoch 50. At no loss and seed 0 the group
-# stayed whole; at 1% and seed 0, the same ids drawn, it split at epoch 18 and the trunk went on to
-# 50; at 5% and seed 16 it never forked, and the trunk stopped at epoch 4 when no member took part.
+# stayed whole; at 1% and seed 0, the same ids drawn, a line first forked at epoch 18 and the trunk
+# went on to 50; at 5% and seed 16 it never forked, and the trunk stopped at epoch 4 when no member
+# took part.
 WHOLE, SPLIT, STALLED = (compare.outcome(run(name)) for name in ("whole", "split", "stalled"))
 
 
-# What an outcome says of a `grow` step: the trunk's epoch, how it ended, the lines and the
-# members off the trunk, and how many of those never joined.
-GROWN = ("trunk_epoch", "ended", "lines_off_trunk", "members_off_trunk", "never_joined")
+# What an outcome says of a `grow` step: the trunk's epoch, the epoch of the first fork, how it
+# ended, the lines and the members off the trunk, and how many of those never joined.
+GROWN = (
+    "trunk_epoch",
+    "first_fork",
+    "ended",
+    "lines_off_trunk",
+    "members_off_trunk",
+    "never_joined",
+)
 
 
 def grown(one: dict) -> list:
@@ -58,44 +68,47 @@ def grown(one: dict) -> list:
 class Change(unittest.TestCase):
     def test_an_outcome_as_it_was_is_the_same(self):
         self.assertEqual(compare.change(outcome(), outcome()), "same")
+        self.assertEqual(compare.change(SPLIT, dict(SPLIT)), "same")
 
-    def test_a_split_later_is_better_and_one_sooner_worse(self):
-        self.assertEqual(compare.change(outcome(), outcome(verdict="split at epoch 12")), "better")
-        self.assertEqual(compare.change(outcome(), outcome(verdict="split at epoch 3")), "worse")
-
-    def test_no_split_is_better_than_any_and_whole_better_than_members_behind(self):
-        behind = outcome(verdict="whole, members behind")
-        self.assertEqual(compare.change(outcome(), behind), "better")
-        self.assertEqual(compare.change(behind, outcome(verdict="whole")), "better")
-        self.assertEqual(compare.change(outcome(), outcome(verdict=None)), "worse")
-
-    def test_at_one_verdict_more_members_at_the_tip_is_better(self):
-        self.assertEqual(compare.change(outcome(), outcome(at_tip=8)), "better")
-        self.assertEqual(compare.change(outcome(), outcome(at_tip=6)), "worse")
-
-    def test_an_outcome_that_stands_where_it_did_and_differs_is_changed(self):
-        self.assertEqual(compare.change(outcome(), outcome(virtual_s=121.0)), "changed")
-
-    def test_a_run_that_drew_other_ids_is_re_rolled_and_neither_better_nor_worse(self):
-        whole = outcome(verdict="whole", at_tip=9)
-        for drawn in ({"conversation": "9c1d04e7b2"}, {"members_digest": "d07a6e21f95b3c48"}):
-            self.assertEqual(compare.change(outcome(), dict(whole, **drawn)), "re-rolled")
-
-    def test_a_run_that_read_no_result_drew_no_ids_and_is_worse(self):
-        crashed = outcome(conversation=None, members_digest=None, verdict=None, at_tip=None)
-        self.assertEqual(compare.change(outcome(), crashed), "worse")
-        self.assertEqual(compare.change(crashed, outcome()), "better")
-        grow_crashed = dict(crashed, **dict.fromkeys(GROWN))
-        self.assertEqual(compare.change(WHOLE, grow_crashed), "worse")
+    def test_an_outcome_that_differs_in_any_field_moved(self):
+        for changed in (
+            {"verdict": "split at epoch 12"},
+            {"at_tip": 8},
+            {"virtual_s": 121.0},
+            {"conversation": "9c1d04e7b2"},
+            {"conversation": None, "members_digest": None, "verdict": None, "at_tip": None},
+        ):
+            with self.subTest(changed=changed):
+                self.assertEqual(compare.change(outcome(), outcome(**changed)), "moved")
+        self.assertEqual(compare.change(SPLIT, WHOLE), "moved")
+        self.assertEqual(compare.change(WHOLE, dict(WHOLE, **dict.fromkeys(GROWN))), "moved")
 
 
 class Outcome(unittest.TestCase):
     def test_a_run_that_stayed_whole_ended_whole_with_no_one_off_the_trunk(self):
-        self.assertEqual(grown(WHOLE), [50, "whole", 0, 0, 0])
+        self.assertEqual(grown(WHOLE), [50, None, "whole", 0, 0, 0])
 
     def test_a_run_that_split_counts_the_lines_and_members_off_its_trunk(self):
         # Seven main branches, nine members on them, eight behind on the trunk, tomo never joined.
-        self.assertEqual(grown(SPLIT), [50, "split", 7, 18, 1])
+        self.assertEqual(grown(SPLIT), [50, 18, "split", 7, 18, 1])
+
+    def test_the_first_fork_is_the_lowest_epoch_a_line_forked_at(self):
+        report = run("split")
+        report["grow"]["lines"][4]["forked_at"] = 12
+
+        self.assertEqual(compare.outcome(report)["first_fork"], 12)
+        self.assertEqual(compare.unforked(compare.outcome(report)), 12)
+        self.assertEqual([compare.unforked(one) for one in (WHOLE, STALLED)], [50, 4])
+
+    def test_a_run_of_a_grow_step_has_no_verdict_and_no_members_at_the_tip_whatever_forks_said(
+        self,
+    ):
+        reported = dict(run("split"), verdict="split at epoch 18", at_tip=42)
+
+        said = compare.outcome(reported)
+
+        self.assertEqual((said["verdict"], said["at_tip"]), (None, None))
+        self.assertEqual(said, SPLIT)
 
     def test_a_member_behind_on_a_branch_is_off_the_trunk_once(self):
         report = run("split")
@@ -104,7 +117,7 @@ class Outcome(unittest.TestCase):
         self.assertEqual(compare.outcome(report)["members_off_trunk"], 18)
 
     def test_a_run_that_never_forked_and_whose_trunk_stopped_short_stalled(self):
-        self.assertEqual(grown(STALLED), [4, "stalled", 0, 2, 1])
+        self.assertEqual(grown(STALLED), [4, None, "stalled", 0, 2, 1])
 
     def test_whether_the_trunk_got_where_the_step_grew_is_the_runners_ending(self):
         reached, short = run("stalled"), run("whole")
@@ -114,13 +127,33 @@ class Outcome(unittest.TestCase):
         self.assertEqual(compare.outcome(reached)["ended"], "behind")
         self.assertEqual(compare.outcome(short)["ended"], "stalled")
 
-    def test_a_run_without_a_grow_step_has_none_of_its_five(self):
-        report = dict(run("whole"), grow=None, check={"as_expected": True, "differences": []})
+    def test_a_run_that_reached_the_epoch_unforked_is_behind_while_members_are_behind(self):
+        report = run("whole")
+        report["grow"]["behind"] = ["raya"]
+
+        self.assertEqual(compare.outcome(report)["ended"], "behind")
+
+    def test_a_run_without_a_grow_step_has_none_of_its_six_and_the_verdict_forks_gave(self):
+        checked = {"as_expected": True, "differences": []}
+        report = dict(run("whole"), grow=None, check=checked, verdict="whole", at_tip=51)
 
         said = compare.outcome(report)
 
-        self.assertEqual(grown(said), [None] * 5)
+        self.assertEqual(grown(said), [None] * 6)
+        self.assertEqual((said["verdict"], said["at_tip"]), ("whole", 51))
         self.assertEqual(said["came_to"], "as expected")
+
+    def test_a_row_says_how_a_run_of_a_grow_step_ended_where_a_verdict_stands(self):
+        behind = dict(WHOLE, ended="behind", members_off_trunk=1)
+        runs = [SPLIT, WHOLE, behind, STALLED]
+
+        rows = compare.render(runs, runs)[0].splitlines()
+
+        at = rows[0].index("verdict")
+        self.assertEqual(
+            [row[at:].split("  ")[0] for row in rows[1:5]],
+            ["split at epoch 18", "whole", "whole, members behind", "stalled at epoch 4"],
+        )
 
     def test_the_members_ids_come_to_one_digest_in_member_order(self):
         report = run("whole")
@@ -130,75 +163,30 @@ class Outcome(unittest.TestCase):
         self.assertNotEqual(compare.outcome(report)["members_digest"], WHOLE["members_digest"])
 
 
-class GrowStanding(unittest.TestCase):
-    """Two outcomes of one run of a `grow` step, ordered by how far the trunk got without a fork."""
+class Words(unittest.TestCase):
+    def test_the_comment_words_how_a_grow_run_ended_as_compare_does(self):
+        path = Path(__file__).resolve().parents[3] / ".github" / "scripts" / "simulate.py"
+        spec = importlib.util.spec_from_file_location("simulate", path)
+        simulate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(simulate)
+        for ended in ("split", "stalled", "whole", "behind"):
+            outcome = {"verdict": None, "ended": ended, "first_fork": 7, "trunk_epoch": 23}
+            with self.subTest(ended=ended):
+                self.assertEqual(simulate.came_out(outcome), compare._verdict(outcome))
 
-    def test_more_epochs_without_a_fork_is_better_whatever_else_moved(self):
-        self.assertEqual(compare.change(SPLIT, WHOLE), "better")
-        self.assertEqual(compare.change(WHOLE, SPLIT), "worse")
-        later = dict(SPLIT, verdict="split at epoch 19", lines_off_trunk=20, members_off_trunk=40)
-        self.assertEqual(compare.change(SPLIT, later), "better")
 
-    def test_a_trunk_that_stalled_stands_by_its_epoch_as_a_split_does(self):
-        sooner = dict(STALLED, verdict="split at epoch 3", ended="split")
-        later = dict(STALLED, verdict="split at epoch 5", ended="split")
-        self.assertEqual(compare.change(sooner, STALLED), "better")
-        self.assertEqual(compare.change(later, STALLED), "worse")
-        self.assertEqual(compare.change(STALLED, dict(STALLED, trunk_epoch=9)), "better")
-
-    def test_at_the_same_epochs_whole_is_better_than_behind_with_fewer_off_the_trunk(self):
-        whole = dict(WHOLE, members_off_trunk=2)
-        behind = dict(WHOLE, verdict="whole, members behind", ended="behind", members_off_trunk=1)
-        self.assertEqual(compare.change(behind, whole), "better")
-        self.assertEqual(compare.change(whole, behind), "worse")
-
-    def test_then_fewer_lines_off_the_trunk_is_better_with_more_members_off_it(self):
-        fewer = dict(SPLIT, lines_off_trunk=6, members_off_trunk=30)
-        self.assertEqual(compare.change(SPLIT, fewer), "better")
-        self.assertEqual(compare.change(fewer, SPLIT), "worse")
-
-    def test_then_fewer_members_off_the_trunk_is_better(self):
-        self.assertEqual(compare.change(SPLIT, dict(SPLIT, members_off_trunk=17)), "better")
-        self.assertEqual(compare.change(SPLIT, dict(SPLIT, members_off_trunk=19)), "worse")
-
-    def test_members_at_the_tip_move_no_grow_run(self):
-        self.assertEqual(compare.change(SPLIT, dict(SPLIT, at_tip=50)), "changed")
-
-    def test_two_runs_stand_apart_in_the_first_part_of_the_standing_that_differs(self):
-        behind = dict(WHOLE, verdict="whole, members behind", ended="behind", members_off_trunk=1)
-        for was, now, part in (
-            (SPLIT, dict(SPLIT, verdict="split at epoch 12", lines_off_trunk=2), "epochs"),
-            (WHOLE, behind, "ended"),
-            (SPLIT, dict(SPLIT, lines_off_trunk=6, members_off_trunk=30), "lines_off_trunk"),
-            (SPLIT, dict(SPLIT, members_off_trunk=19), "members_off_trunk"),
-            (SPLIT, dict(SPLIT, at_tip=50), None),
-            (SPLIT, dict(SPLIT, verdict=None), None),
-        ):
-            with self.subTest(part=part, now=now):
-                self.assertEqual(compare.apart(was, now), part)
-
-    def test_a_run_with_no_verdict_is_worse_than_any(self):
-        self.assertEqual(compare.change(STALLED, dict(STALLED, verdict=None)), "worse")
-
-    def test_a_run_whose_group_or_members_drew_other_ids_is_re_rolled(self):
-        self.assertEqual(
-            compare.change(SPLIT, dict(WHOLE, conversation=STALLED["conversation"])), "re-rolled"
-        )
-        self.assertEqual(
-            compare.change(SPLIT, dict(WHOLE, members_digest=STALLED["members_digest"])),
-            "re-rolled",
-        )
-
-    def test_a_re_rolled_run_is_counted_and_its_row_keeps_the_columns(self):
+class Render(unittest.TestCase):
+    def test_a_run_that_moved_is_counted_and_its_row_keeps_the_columns(self):
         rerolled = dict(SPLIT, conversation=STALLED["conversation"])
 
         printed, held = compare.render([SPLIT, SPLIT], [rerolled, WHOLE])
 
         rows = printed.splitlines()
         self.assertFalse(held)
-        self.assertEqual(rows[1].split()[:3], ["1", "0", "re-rolled"])
+        self.assertEqual(rows[1].split()[:3], ["1", "0", "moved"])
         self.assertEqual(rows[1].index("split at epoch 18"), rows[0].index("verdict"))
-        self.assertEqual(rows[-1], "0 of 2 runs came out as expected: 1 better, 1 re-rolled")
+        self.assertEqual(rows[2].split()[0], "was")
+        self.assertEqual(rows[-1], "0 of 2 runs came out as expected")
 
 
 class CommandLine(Scratch):
@@ -252,9 +240,9 @@ class CommandLine(Scratch):
 
         self.assertEqual(status, 1)
         rows = printed.splitlines()
-        self.assertEqual(rows[2].split()[:3], ["2", "1", "better"])
+        self.assertEqual(rows[2].split()[:3], ["2", "1", "moved"])
         self.assertEqual(rows[3].split()[0], "was")
-        self.assertEqual(rows[4:], ["1 of 2 runs came out as expected: 1 better"])
+        self.assertEqual(rows[4:], ["1 of 2 runs came out as expected"])
 
     def test_a_sweep_short_of_the_runs_expected_is_status_1(self):
         self.sim("--write")

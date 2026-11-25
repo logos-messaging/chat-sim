@@ -13,39 +13,38 @@ from typing import List, Optional, Sequence
 
 import pages
 import simulate
+from test_pages import edited
 
 REVISION = "0123456789abcdef0123456789abcdef01234567"
 BASE = "89abcdef0123456789abcdef0123456789abcdef"
 CHAT_SIM = "fedcba9876543210fedcba9876543210fedcba98"
 RUN_URL = "https://github.com/logos-messaging/chat-sim/actions/runs/42"
 REPORT_URL = "https://logos-messaging.github.io/chat-sim/logos-chat/pr-316/"
+# What the comment on a pull request links where REPORT_URL is its report's page: the trees of its
+# runs there, the page, the graph over main above it, and the run.
+LINKS = (
+    f"[The trees]({REPORT_URL}#runs) · [the report]({REPORT_URL}), kept while the pull request is "
+    "open · [the graph over main](https://logos-messaging.github.io/chat-sim/logos-chat/) · "
+    f"[the run]({RUN_URL})"
+)
 ROOT = Path(__file__).resolve().parents[2]
 # What the GroupV2 jobs of HELD_SUITES' pr suite uploaded at a revision, seeds 0 and 1 of its three
 # rates, cut to what tools/sim matrix reads: 0.1% whole and split at epoch 46, 1% split at 18 and
 # 9, 5% split at 8 and 3.
 UPLOADED = ROOT / "tools" / "sim" / "tests" / "fixtures" / "matrix"
-# Main's point at logos-chat fa5282a3, the probe's twenty seeds of each rate, cut to what
-# tools/sim matrix reads: its seeds 0 and 1 of the lossy rates are UPLOADED's runs.
-POINT = ROOT / "tools" / "sim" / "tests" / "fixtures" / "point.json"
-# The goal UPLOADED and POINT hold runs of, a group of 51 that saro grows toward epoch 50, by the
-# group's name in a scenario, and the rates and seeds the suites ran of it.
+# The goal UPLOADED holds runs of, a group of 51 that saro grows toward epoch 50, by the group's
+# name in a scenario, and the rates and seeds the suites ran of it.
 HELD_GOALS = {
     "v2": "50-epochs-by-saro-waku-loss-{}",
     "v3": "50-epochs-by-saro-waku-loss-{}-groupv3",
 }
 # Two of UPLOADED's runs as a head that split sooner, by the run's rate and seed: 1% seed 1 at
-# epoch 5, not 9, and 5% seed 0 at 4, not 8, each within POINT's seeds of its rate.
-SOONER = {"1/1": {"verdict": "split at epoch 5"}, "5/0": {"verdict": "split at epoch 4"}}
+# epoch 5, not 9, and 5% seed 0 at 4, not 8.
+SOONER = {"1/1": {"first_fork": 5}, "5/0": {"first_fork": 4}}
 HELD_SUITES = {
     "GOALS": HELD_GOALS,
-    "RATES": {"pr": ("0.1", "1", "5"), "main": ("0", "0.1", "1", "5")},
-    "SEEDS": {"pr": 2, "main": 20},
+    "RATES": {"pr": {"0.1": 2, "1": 2, "5": 2}, "main": {"0": 20, "0.1": 20, "1": 20, "5": 20}},
 }
-FA5282A = "fa5282a34405b6975424174858d85e4f261d420a"
-POINT_RUN = "https://github.com/logos-messaging/chat-sim/actions/runs/42460360938"
-# The chat-sim commit a run measures, and another.
-MEASUREMENT = "76543210fedcba9876543210fedcba9876543210"
-EARLIER = "00112233445566778899aabbccddeeff00112233"
 
 
 def outcome(seed: int, verdict: Optional[str] = "whole") -> dict:
@@ -78,11 +77,6 @@ def run(*argv: str) -> "tuple[int, str, str]":
 
 def commit(sha: str) -> str:
     return f"[`{sha[:7]}`](https://github.com/logos-messaging/logos-chat/commit/{sha})"
-
-
-def point(sha: str, measurement: str = MEASUREMENT) -> str:
-    """Where on gh-pages main's point at `sha` and `measurement` is."""
-    return f"logos-chat/main/{sha}/{measurement}/point.json"
 
 
 def with_groupv3(runs: Path, into: Path) -> Path:
@@ -133,15 +127,17 @@ class Scenarios(Fixture):
             ],
         )
 
-    def test_main_is_twenty_seeds_of_the_goal_on_each_group_at_each_of_its_four_rates(self):
+    def test_main_is_three_seeds_of_the_goal_on_each_group_at_no_loss_and_twenty_at_each_loss(
+        self,
+    ):
         self.assertEqual(
             simulate.scenarios("main", self.expected),
             [
-                ("grow-waku-loss-0", 20),
+                ("grow-waku-loss-0", 3),
                 ("grow-waku-loss-0.5", 20),
                 ("grow-waku-loss-1", 20),
                 ("grow-waku-loss-5", 20),
-                ("grow-waku-loss-0-groupv3", 20),
+                ("grow-waku-loss-0-groupv3", 3),
                 ("grow-waku-loss-0.5-groupv3", 20),
                 ("grow-waku-loss-1-groupv3", 20),
                 ("grow-waku-loss-5-groupv3", 20),
@@ -209,23 +205,25 @@ class Jobs(unittest.TestCase):
         )
         self.assertEqual(jobs[33]["name"], "base 89abcde: GroupV3 5% seed 0")
 
-    def test_main_is_two_jobs_of_ten_runs_a_group_s_rate_and_no_base(self):
+    def test_main_is_a_job_of_a_group_s_three_runs_at_no_loss_and_two_of_ten_a_loss_and_no_base(
+        self,
+    ):
         jobs = simulate.jobs("main", REVISION, "", simulate.scenarios("main", Path()))
 
-        self.assertEqual(len(jobs), 16)
+        self.assertEqual(len(jobs), 14)
         self.assertEqual({job["side"] for job in jobs}, {"revision"})
         self.assertEqual(
             [(job["scenario"], job["from"], job["runs"]) for job in jobs],
             [
-                (goal.format(rate), first, 10)
+                (goal.format(rate), first, min(10, seeds - first + 1))
                 for goal in simulate.GOALS.values()
-                for rate in ("0", "0.5", "1", "5")
-                for first in (1, 11)
+                for rate, seeds in (("0", 3), ("0.5", 20), ("1", 20), ("5", 20))
+                for first in range(1, seeds + 1, 10)
             ],
         )
         self.assertEqual(
-            [job["name"] for job in jobs[7:9]],
-            ["head 0123456: GroupV2 5% seeds 10 to 19", "head 0123456: GroupV3 0% seeds 0 to 9"],
+            [job["name"] for job in jobs[6:8]],
+            ["head 0123456: GroupV2 5% seeds 10 to 19", "head 0123456: GroupV3 0% seeds 0 to 2"],
         )
 
     def test_long_is_a_job_a_scenario_a_side_that_does_its_runs_as_held(self):
@@ -245,60 +243,111 @@ class Jobs(unittest.TestCase):
         self.assertEqual(jobs[2]["name"], "base 89abcde: 50-epochs")
 
 
-class GhPages(Fixture):
-    """A checkout, `pages`, whose branch gh-pages holds main's points as pages.py point writes
-    them, of the suites as they ran the goal UPLOADED holds the runs of."""
+class Widen(unittest.TestCase):
+    """The run jobs of the rest of the seeds of each group of a pull request whose runs moved."""
 
+    @staticmethod
+    def matrix(*cells: "tuple[str, Optional[str]]") -> dict:
+        """A matrix of cells each of its group and its change, and what else a matrix holds."""
+        matrix = dict.fromkeys(simulate.MATRIX)
+        matrix["cells"] = [{"group": group, "change": change} for group, change in cells]
+        return matrix
+
+    def widen(self, matrix: object, asked: object, *extra: str) -> "tuple[int, str, str]":
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        given = []
+        for name, value in (("--matrix", matrix), ("--asked", asked)):
+            file = Path(directory.name) / f"{name[2:]}.json"
+            file.write_text(json.dumps(value), encoding="utf-8")
+            given += [name, str(file)]
+        return run("widen", *given, *extra)
+
+    def test_a_group_a_run_of_which_moved_runs_seeds_3_to_19_of_each_rate_six_a_job_at_both(self):
+        moved = self.matrix(("v2", "same"), ("v2", None), ("v3", "same"), ("v3", "moved"))
+        jobs = simulate.widen(moved, REVISION, BASE)
+
+        self.assertEqual(len(jobs), 18)
+        self.assertEqual(
+            {(job["side"], job["revision"]) for job in jobs[:9]}, {("revision", REVISION)}
+        )
+        self.assertEqual({(job["side"], job["revision"]) for job in jobs[9:]}, {("base", BASE)})
+        self.assertEqual(
+            [(job["scenario"], job["from"], job["runs"]) for job in jobs[:9]],
+            [
+                (simulate.GOALS["v3"].format(rate), first, runs)
+                for rate in ("0.5", "1", "5")
+                for first, runs in ((4, 6), (10, 6), (16, 5))
+            ],
+        )
+        self.assertEqual(
+            [job["name"] for job in jobs[:3]],
+            [
+                "head 0123456: GroupV3 0.5% seeds 3 to 8",
+                "head 0123456: GroupV3 0.5% seeds 9 to 14",
+                "head 0123456: GroupV3 0.5% seeds 15 to 19",
+            ],
+        )
+        self.assertEqual(jobs[17]["name"], "base 89abcde: GroupV3 5% seeds 15 to 19")
+
+    def test_both_groups_moving_widens_each_groupv2_first(self):
+        jobs = simulate.widen(self.matrix(("v3", "moved"), ("v2", "moved")), REVISION, BASE)
+
+        self.assertEqual(len(jobs), 36)
+        self.assertEqual(
+            [job["name"] for job in jobs[8:10]],
+            ["head 0123456: GroupV2 5% seeds 15 to 19", "head 0123456: GroupV3 0.5% seeds 3 to 8"],
+        )
+
+    def test_nothing_widens_where_no_cell_has_an_outcome_at_both_sides_that_differs(self):
+        for cells in ((), (("v2", "same"), ("v3", "same")), (("v2", None), ("v3", None))):
+            with self.subTest(cells=cells):
+                self.assertEqual(simulate.widen(self.matrix(*cells), REVISION, BASE), [])
+
+    def test_each_job_uploads_under_a_name_none_of_the_first_seeds_jobs_has(self):
+        first = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
+        more = simulate.widen(self.matrix(("v2", "moved"), ("v3", "moved")), REVISION, BASE)
+
+        def named(jobs: Sequence[dict]) -> set:
+            return {(job["side"], job["scenario"], job["from"]) for job in jobs}
+
+        self.assertEqual(len(named(first + more)), len(first + more))
+
+    def test_prints_the_jobs_that_follow_and_every_job_for_github_output(self):
+        asked = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
+        given = ("--revision", REVISION, "--base", BASE)
+        for cells in ((("v3", "moved"),), (("v3", "same"),)):
+            with self.subTest(cells=cells):
+                matrix = self.matrix(*cells)
+                status, out, err = self.widen(matrix, asked, *given)
+                self.assertEqual(status, 0, err)
+                more = simulate.widen(matrix, REVISION, BASE)
+                self.assertEqual(
+                    out.splitlines(),
+                    [f"more={json.dumps(more)}", f"asked={json.dumps(asked + more)}"],
+                )
+
+    def test_refuses_a_revision_not_a_commit_jobs_not_as_the_plan_prints_them_and_no_matrix(self):
+        asked = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
+        moved = self.matrix(("v3", "moved"))
+        for matrix, given, extra, said in (
+            (moved, asked, ("--revision", REVISION[:7], "--base", BASE), "--revision: '0123456'"),
+            (moved, asked, ("--revision", REVISION, "--base", "main"), "--base: 'main'"),
+            (moved, {"runs": 6}, ("--revision", REVISION, "--base", BASE), "not the run jobs"),
+            ({"cells": []}, asked, ("--revision", REVISION, "--base", BASE), "not a matrix"),
+        ):
+            with self.subTest(said=said):
+                status, out, err = self.widen(matrix, given, *extra)
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn(said, err)
+
+
+class Plan(Fixture):
     def setUp(self):
         super().setUp()
         held = mock.patch.multiple(simulate, **HELD_SUITES)
         held.start()
         self.addCleanup(held.stop)
-        self.pages = self.root / "pages"
-        # UPLOADED's runs on each group.
-        self.uploaded = with_groupv3(UPLOADED, self.root / "uploaded")
-
-    def published(self, runs: Optional[Path] = None, revision: str = BASE) -> List[str]:
-        """What gh-pages lists under logos-chat/main/ once it holds main's point at `revision`
-        and MEASUREMENT besides what it held, as pages.py point writes it of the runs under
-        `runs`, else UPLOADED's on each group, a cell for each run main does."""
-        runs = self.uploaded if runs is None else runs
-        asked, matrix = self.root / "asked.json", self.root / "matrix.json"
-        write(asked, simulate.jobs("main", revision, "", simulate.scenarios("main", self.expected)))
-        command = [sys.executable, str(ROOT / "tools" / "sim"), "matrix", str(runs)]
-        subprocess.run(command + ["--asked", str(asked), "--out", str(matrix)], check=True)
-        given = [str(matrix), str(runs), str(self.pages), "--revision", revision]
-        given += ["--measurement", MEASUREMENT, "--chat-sim", CHAT_SIM, "--run-url", RUN_URL]
-        given += ["--run-number", "1", "--time", "2026-11-09T00:17:00Z"]
-        with contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(pages.main(["point", *given]), 0)
-        if not (self.pages / ".git").is_dir():
-            self.git("init", "-q", "-b", "gh-pages")
-        self.committed()
-        listed = self.git("ls-tree", "-r", "--name-only", "gh-pages", "--", "logos-chat/main")
-        return listed.splitlines()
-
-    def git(self, *argv: str) -> str:
-        unsigned = ("-c", "commit.gpgsign=false", "-c", "user.name=Saro", "-c", "user.email=s@o")
-        return subprocess.run(
-            ["git", "-C", str(self.pages), *unsigned, *argv],
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout
-
-    def committed(self) -> None:
-        """Commits self.pages as it stands to gh-pages."""
-        self.git("add", "-A")
-        self.git("commit", "-qm", "Publish")
-
-
-class Plan(GhPages):
-    # What the plan warns with of main's point at the base that does not stand in, before why.
-    NOT_STANDING = (
-        "::warning::main's point at the base does not stand in for the base's runs, so its jobs "
-        "run them: "
-    )
 
     def plan(self, suite: str, *extra: str) -> "tuple[int, str, str]":
         return run("plan", "--suite", suite, "--expected", str(self.expected), *extra)
@@ -312,7 +361,7 @@ class Plan(GhPages):
             with self.subTest(suite=suite):
                 status, out, _ = self.plan(suite, "--revision", REVISION, *extra)
                 self.assertEqual(status, 0)
-                *handed, runs, scenarios, stood_in = out.splitlines()
+                *handed, runs, scenarios = out.splitlines()
                 base = BASE if "--base" in extra else ""
                 pr = "316" if "--pr" in extra else ""
                 self.assertEqual(
@@ -328,146 +377,6 @@ class Plan(GhPages):
                 self.assertEqual(len(json.loads(runs.removeprefix("runs="))), count)
                 names = [name for name, _ in simulate.scenarios(suite, self.expected)]
                 self.assertEqual(scenarios, f"scenarios={' '.join(names)}")
-                self.assertEqual(stood_in, "point=")
-
-    def listed(self, *paths: str) -> Path:
-        """What the plan job lists of gh-pages under logos-chat/main/, a path a line."""
-        file = self.root / "points"
-        file.write_text("".join(f"{path}\n" for path in paths), encoding="utf-8")
-        return file
-
-    def planned(self, suite: str, listed: Path, *extra: str) -> dict:
-        """What a plan of `suite` handed `listed` prints, by name, its run jobs read, and what
-        it warned with as `warned`."""
-        given = ["--revision", REVISION, "--measurement", MEASUREMENT, "--points", str(listed)]
-        given += ["--pages", "gh-pages", "--tree", str(self.pages)]
-        status, out, err = self.plan(suite, *given, *extra)
-        self.assertEqual(status, 0, err)
-        printed = dict(line.split("=", 1) for line in out.splitlines())
-        return dict(printed, runs=json.loads(printed["runs"]), warned=err)
-
-    def test_a_pr_whose_base_has_main_s_point_at_the_measurement_runs_nothing_at_the_base(self):
-        self.published()
-        text = f"logos-chat/main/{BASE}/{MEASUREMENT}/{HELD_GOALS['v2'].format(1)}/1/run.txt"
-        listed = self.listed(text, point(BASE), point(REVISION, EARLIER))
-
-        planned = self.planned("pr", listed, "--base", BASE, "--pr", "316")
-
-        self.assertEqual((planned["point"], planned["base"]), (point(BASE), BASE))
-        self.assertEqual(len(planned["runs"]), 12)
-        self.assertEqual(
-            {(job["side"], job["revision"]) for job in planned["runs"]}, {("revision", REVISION)}
-        )
-        self.assertEqual(planned["warned"], "")
-
-    def test_a_point_with_no_outcome_at_a_run_the_pr_asks_of_the_base_stands_in_for_nothing(self):
-        scenario = HELD_GOALS["v2"].format(5)
-        job = f"sim-revision-{scenario}-2"
-        # The job of GroupV2 at 5%, seed 1, uploaded nothing, or could not build chat-sim.
-        for unbuilt in (False, True):
-            with self.subTest(unbuilt=unbuilt):
-                runs = shutil.copytree(self.uploaded, self.root / f"runs-{unbuilt}")
-                shutil.rmtree(runs / job)
-                if unbuilt:
-                    (runs / job / scenario / "2").mkdir(parents=True)
-                    (runs / job / scenario / "2" / "unbuilt").write_text("", encoding="utf-8")
-                shutil.rmtree(self.pages, ignore_errors=True)
-                listed = self.listed(*self.published(runs))
-                held = json.loads((self.pages / point(BASE)).read_text(encoding="utf-8"))
-                cell = next(
-                    one for one in held["cells"] if (one["scenario"], one["run"]) == (scenario, 2)
-                )
-                self.assertEqual((cell["head"], cell["unbuilt"]["head"]), (None, unbuilt))
-
-                planned = self.planned("pr", listed, "--base", BASE, "--pr", "316")
-
-                self.assertEqual((planned["point"], len(planned["runs"])), ("", 24))
-                self.assertEqual({job["side"] for job in planned["runs"][12:]}, {"base"})
-                self.assertEqual(
-                    planned["warned"],
-                    f"{self.NOT_STANDING}{point(BASE)} has no outcome at GroupV2 5% seed 1\n",
-                )
-
-    def test_a_point_with_no_outcome_at_a_group_s_runs_stands_in_for_nothing(self):
-        listed = self.listed(*self.published(UPLOADED))
-
-        planned = self.planned("pr", listed, "--base", BASE, "--pr", "316")
-
-        self.assertEqual((planned["point"], len(planned["runs"])), ("", 24))
-        missing = [f"GroupV3 {rate}% seed {seed}" for rate in ("0.1", "1", "5") for seed in (0, 1)]
-        self.assertEqual(
-            planned["warned"],
-            f"{self.NOT_STANDING}{point(BASE)} has no outcome at {', '.join(missing)}\n",
-        )
-
-    def test_a_point_that_cannot_be_read_stands_in_for_nothing(self):
-        listed = self.listed(*self.published())
-        held = self.pages / point(BASE)
-        written = json.loads(held.read_text(encoding="utf-8"))
-        for text, said in (
-            (json.dumps(dict(written, run_number="1")), "run_number is not of its kind"),
-            ("not a point\n", "Expecting value: line 1 column 1 (char 0)"),
-        ):
-            with self.subTest(said=said):
-                held.write_text(text, encoding="utf-8")
-                self.committed()
-
-                planned = self.planned("pr", listed, "--base", BASE)
-
-                self.assertEqual((planned["point"], len(planned["runs"])), ("", 24))
-                self.assertEqual(
-                    planned["warned"], f"{self.NOT_STANDING}{point(BASE)} on gh-pages: {said}\n"
-                )
-        self.git("rm", "-q", point(BASE))
-        self.committed()
-
-        planned = self.planned("pr", listed, "--base", BASE)
-
-        self.assertEqual((planned["point"], len(planned["runs"])), ("", 24))
-        self.assertTrue(
-            planned["warned"].startswith(f"{self.NOT_STANDING}{point(BASE)} on gh-pages: fatal: ")
-        )
-
-    def test_a_pr_whose_base_has_no_point_at_the_measurement_runs_at_the_base(self):
-        for listed in (
-            (point(BASE, EARLIER),),
-            (point(REVISION),),
-            (f"logos-chat/main/{BASE}/{MEASUREMENT}/{HELD_GOALS['v2'].format(1)}/1/run.txt",),
-            (),
-        ):
-            with self.subTest(listed=listed):
-                planned = self.planned("pr", self.listed(*listed), "--base", BASE)
-                self.assertEqual((planned["point"], len(planned["runs"])), ("", 24))
-                self.assertEqual({job["side"] for job in planned["runs"][12:]}, {"base"})
-
-    def test_a_point_stands_in_for_the_base_of_pr_alone(self):
-        planned = self.planned("long", self.listed(point(BASE)), "--base", BASE)
-
-        self.assertEqual((planned["point"], len(planned["runs"])), ("", 12))
-        self.assertEqual(self.planned("pr", self.listed(point(BASE)))["point"], "")
-
-    def test_refuses_points_without_a_measurement_or_pages_and_a_measurement_not_a_commit(self):
-        listed = self.listed(point(BASE))
-        given = ("--measurement", MEASUREMENT, "--points", str(listed))
-        ref = ("--pages", "gh-pages")
-        for extra, said in (
-            (("--points", str(listed)), "--points: given with --measurement"),
-            (("--measurement", MEASUREMENT), "--points: given with --measurement"),
-            (given, "--points: given with --measurement and --pages"),
-            (ref, "--points: given with --measurement and --pages"),
-            (
-                ("--measurement", "7654321", "--points", str(listed), *ref),
-                "--measurement: '7654321'",
-            ),
-            (
-                ("--measurement", MEASUREMENT, "--points", str(self.root / "nowhere"), *ref),
-                "--points: ",
-            ),
-        ):
-            with self.subTest(extra=extra):
-                status, out, err = self.plan("pr", "--revision", REVISION, "--base", BASE, *extra)
-                self.assertEqual((status, out), (2, ""))
-                self.assertIn(said, err)
 
     def test_hands_on_the_check_run_of_a_pr_run_for_a_pull_request(self):
         status, out, _ = self.plan(
@@ -513,80 +422,7 @@ class Plan(GhPages):
                 self.assertIn(said, err)
 
 
-class Spread(GhPages):
-    """The point of main nearest before a base, from the base's history."""
-
-    def spread(self, history: object, *listed: str) -> "tuple[int, str, str]":
-        """What `spread` says of `history`, as logos-chat's commits API lists it, cut, and of the
-        points `listed` on gh-pages."""
-        (self.root / "history.json").write_text(json.dumps(history), encoding="utf-8")
-        (self.root / "points").write_text("".join(f"{one}\n" for one in listed), "utf-8")
-        return run(
-            "spread",
-            "--measurement",
-            MEASUREMENT,
-            "--points",
-            str(self.root / "points"),
-            "--history",
-            str(self.root / "history.json"),
-            "--pages",
-            "gh-pages",
-            "--tree",
-            str(self.pages),
-        )
-
-    def history(self, *shas: str) -> List[dict]:
-        return [{"sha": sha, "commit": {"message": f"commit {sha[:7]}"}} for sha in shas]
-
-    def test_is_the_newest_commit_of_the_base_s_history_with_a_point_at_the_measurement(self):
-        older, oldest = FA5282A, CHAT_SIM
-        history = self.history(BASE, REVISION, older, oldest)
-        self.published(revision=older)
-        self.published(revision=BASE)
-
-        status, out, _ = self.spread(
-            history, point(REVISION, EARLIER), point(oldest), point(older), point(BASE, EARLIER)
-        )
-
-        self.assertEqual((status, out), (0, f"spread={point(older)}\n"))
-        _, out, _ = self.spread(history, point(BASE), point(older))
-        self.assertEqual(out, f"spread={point(BASE)}\n")
-
-    def test_is_nothing_when_no_commit_of_the_history_has_a_point_at_the_measurement(self):
-        status, out, _ = self.spread(self.history(BASE, REVISION), point(BASE, EARLIER))
-
-        self.assertEqual((status, out), (0, "spread=\n"))
-
-    def test_passes_over_a_point_that_cannot_be_read_and_says_why(self):
-        self.published(revision=FA5282A)
-        listed = self.published(revision=BASE)
-        history = self.history(BASE, REVISION, FA5282A)
-        passed = "::warning::the head's runs are not placed among main's point: "
-        said = "on gh-pages: Expecting value: line 1 column 1 (char 0)"
-        (self.pages / point(BASE)).write_text("not a point\n", encoding="utf-8")
-        self.committed()
-
-        status, out, err = self.spread(history, *listed)
-
-        self.assertEqual((status, out), (0, f"spread={point(FA5282A)}\n"))
-        self.assertEqual(err, f"{passed}{point(BASE)} {said}\n")
-        (self.pages / point(FA5282A)).write_text("not a point\n", encoding="utf-8")
-        self.committed()
-
-        status, out, err = self.spread(history, *listed)
-
-        self.assertEqual((status, out), (0, "spread=\n"))
-        self.assertEqual(err, f"{passed}{point(BASE)} {said}\n{passed}{point(FA5282A)} {said}\n")
-
-    def test_refuses_a_history_that_is_not_a_list_of_commits(self):
-        for history in ({"message": "Not Found"}, [{"sha": "main"}], [{"commit": {}}]):
-            with self.subTest(history=history):
-                status, out, err = self.spread(history)
-                self.assertEqual((status, out), (2, ""))
-                self.assertIn("not a list of commits, each with its sha", err)
-
-
-class Measurement(unittest.TestCase):
+class History(unittest.TestCase):
     """A history of three commits: to crates/, then to the guide, then to tools/forks/forks/."""
 
     def setUp(self):
@@ -615,6 +451,8 @@ class Measurement(unittest.TestCase):
         self.git("commit", "-qm", path)
         return self.git("rev-parse", "HEAD")
 
+
+class Measurement(History):
     def test_is_the_newest_commit_to_what_a_run_measures(self):
         self.assertEqual(simulate.measurement(self.tree), self.shas[2])
         self.change("guide/d")
@@ -650,77 +488,181 @@ class Measurement(unittest.TestCase):
         self.assertIn("shallow clone", err)
 
 
+class Changed(History):
+    """Whether HEAD changes a path chat-sim's CI holds its runs to, since a commit."""
+
+    def test_a_commit_to_what_a_run_measures_since_the_base_changes_it(self):
+        self.assertTrue(simulate.changed(self.tree, self.shas[1]))
+        status, out, _ = run("changed", "--since", self.shas[1], "--tree", str(self.tree))
+        self.assertEqual((status, out), (0, "changed=true\n"))
+
+    def test_commits_to_the_guide_alone_change_nothing(self):
+        since = self.shas[2]
+        self.change("guide/d")
+        self.change("guide/e")
+
+        self.assertFalse(simulate.changed(self.tree, since))
+        status, out, _ = run("changed", "--since", since, "--tree", str(self.tree))
+        self.assertEqual((status, out), (0, "changed=false\n"))
+
+    def test_a_commit_to_what_is_expected_or_to_ci_yml_changes_it(self):
+        for path in ("tools/sim/expected/x.json", ".github/workflows/ci.yml"):
+            with self.subTest(path=path):
+                since = self.git("rev-parse", "HEAD")
+                self.change(path)
+                self.assertTrue(simulate.changed(self.tree, since))
+
+    def test_a_commit_to_another_workflow_changes_nothing(self):
+        since = self.shas[2]
+        self.change(".github/workflows/simulate.yml")
+        self.assertFalse(simulate.changed(self.tree, since))
+
+    def test_no_commit_to_compare_from_changes_it(self):
+        for since in ("", "0" * 40, REVISION):
+            with self.subTest(since=since):
+                self.assertTrue(simulate.changed(self.tree, since))
+                status, out, _ = run("changed", "--since", since, "--tree", str(self.tree))
+                self.assertEqual((status, out), (0, "changed=true\n"))
+
+    def test_the_base_moving_what_a_run_measures_after_the_branch_left_it_changes_nothing(self):
+        self.git("checkout", "-q", "-b", "base")
+        self.change("crates/harness/d")
+        base = self.git("rev-parse", "HEAD")
+        self.git("checkout", "-q", "-")
+        self.change("guide/e")
+
+        self.assertFalse(simulate.changed(self.tree, base))
+
+    def test_a_since_that_is_not_a_commit_s_digits_is_refused(self):
+        for since in ("master", self.shas[1][:7]):
+            with self.subTest(since=since):
+                status, out, err = run("changed", "--since", since, "--tree", str(self.tree))
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn("not a commit's 40 hex digits", err)
+
+
 class Title(unittest.TestCase):
-    """The verdict of a matrix in a few words, from the counts of each group's cells."""
+    """The verdict of a matrix in a few words, from the counts and the results of each group's
+    cells."""
 
     @staticmethod
-    def judged(verdict: str, group: str = "v2", **counted) -> dict:
-        counts = dict.fromkeys(("better", "worse", "re-rolled", "below", "no-outcome"), 0)
-        counts.update({"cells": 6, "compared": 6, **counted})
-        return {"group": group, "verdict": verdict, "counts": counts}
+    def judged(verdict: Optional[str], group: str = "v2", results=(), **counted) -> dict:
+        counts = {"cells": 6, "compared": 6, "same": 6, "moved": 0, "no-outcome": 0, **counted}
+        return {"group": group, "verdict": verdict, "counts": counts, "results": list(results)}
+
+    @staticmethod
+    def result(rate: str, said: str, later: int, earlier: int, p: float) -> dict:
+        return {"rate": rate, "result": said, "later": later, "earlier": earlier, "p": p}
 
     def title(
-        self, verdict: str, base: Optional[dict] = None, spread: Optional[dict] = None, **counted
+        self, verdict: str, base: Optional[dict] = None, cells=(), results=(), **counted
     ) -> str:
-        """The title of a matrix of GroupV2's cells alone, of `verdict` and the counts given."""
-        judged = self.judged(verdict, **counted)
-        base = {"unbuilt": False, "runs": 6} if base is None else base
-        matrix = {**judged, "groups": [judged], "base": base, "spread": spread}
+        """The title of a matrix of GroupV2's cells alone, of `verdict`, the results and the
+        counts given."""
+        judged = self.judged(verdict, results=results, **counted)
+        base = {"unbuilt": 0, "runs": 6} if base is None else base
+        matrix = {**judged, "groups": [judged], "base": base, "cells": list(cells)}
         return simulate.title(matrix)
 
     def test_each_verdict_has_the_title_of_its_check(self):
-        for verdict, counted, said in (
-            ("same", {}, "GroupV2 same as its base, 6 of 6 runs"),
-            ("same", {"compared": 5}, "GroupV2 same as its base, 5 of 6 runs"),
-            ("better", {"better": 1}, "GroupV2 better in 1 of 6 runs"),
-            ("worse", {"worse": 2}, "GroupV2 worse in 2 of 6 runs"),
-            ("hint", {"worse": 1}, "GroupV2 worse in 1 of 6 runs, a hint"),
-            ("mixed", {"better": 1, "worse": 1}, "GroupV2 mixed: 1 better, 1 worse of 6"),
-            ("re-rolled", {"re-rolled": 6}, "GroupV2 the draws changed, no comparison"),
-            ("unbuilt", {}, "does not build against this commit"),
-            ("no-outcome", {"no-outcome": 1}, "GroupV2 no outcome in 1 of 6 runs"),
+        earlier = [
+            self.result("0.5%", "within", 8, 5, 595 / 1024),
+            self.result("1%", "earlier", 2, 15, 308 / 2**17),
+            self.result("5%", "earlier", 1, 16, 36 / 2**17),
+        ]
+        later = [self.result("5%", "later", 17, 3, 2702 / 2**20)]
+        for verdict, results, counted, said in (
+            ("same", (), {}, "GroupV2 nothing moved in 6 runs"),
+            ("within", (), {"moved": 2}, "GroupV2 moved, within chance"),
+            ("earlier", earlier, {}, "GroupV2 forks earlier at 1%: 2 later, 15 earlier (p 0.0023)"),
+            ("later", later, {}, "GroupV2 forks later at 5%: 17 later, 3 earlier (p 0.0026)"),
+            ("unbuilt", (), {}, "does not build against this commit"),
+            ("no-outcome", (), {"no-outcome": 1}, "GroupV2 no outcome in 1 of 6 runs"),
         ):
-            with self.subTest(verdict=verdict, counted=counted):
-                self.assertEqual(self.title(verdict, **counted), said)
+            with self.subTest(verdict=verdict):
+                self.assertEqual(self.title(verdict, results=results, **counted), said)
+
+    def test_a_p_below_a_thousandth_is_said_as_that(self):
+        results = [self.result("1%", "earlier", 0, 20, 2 / 2**20)]
+
+        self.assertEqual(
+            self.title("earlier", results=results),
+            "GroupV2 forks earlier at 1%: 0 later, 20 earlier (p < 0.001)",
+        )
 
     def test_each_group_s_title_follows_its_name_in_the_order_of_the_groups(self):
-        groups = [self.judged("same"), self.judged("worse", "v3", worse=2, compared=6)]
-        union = self.judged("worse", worse=2, cells=12, compared=12)
-        base = {"unbuilt": False, "runs": 12}
-        matrix = {**union, "groups": groups, "base": base, "spread": None}
+        results = [self.result("1%", "earlier", 0, 8, 0.0078125)]
+        groups = [self.judged("same"), self.judged("earlier", "v3", results)]
+        union = self.judged("earlier", cells=12, compared=12)
+        base = {"unbuilt": 0, "runs": 12}
+        matrix = {**union, "groups": groups, "base": base, "cells": []}
 
         self.assertEqual(
             simulate.title(matrix),
-            "GroupV2 same as its base, 6 of 6 runs; GroupV3 worse in 2 of 6 runs",
-        )
-
-    def test_re_rolled_beside_main_s_spread_says_how_many_fell_below_its_worst_seed(self):
-        spread = {"logos_chat": BASE}
-        for counted, said in (
-            ({"re-rolled": 6, "below": 1}, "1 of 6 below main's worst seed"),
-            ({"re-rolled": 2, "below": 0}, "0 of 6 below main's worst seed"),
-        ):
-            with self.subTest(counted=counted):
-                self.assertEqual(
-                    self.title("re-rolled", spread=spread, **counted),
-                    f"GroupV2 the draws changed, no comparison; {said}",
-                )
-        self.assertEqual(
-            self.title("hint", spread=spread, worse=1, below=1),
-            "GroupV2 worse in 1 of 6 runs, a hint",
+            "GroupV2 nothing moved in 6 runs; GroupV3 forks earlier at 1%: 0 later, 8 earlier "
+            "(p 0.0078)",
         )
 
     def test_no_base_says_why_there_is_no_comparison(self):
-        no_base = {"unbuilt": False, "runs": 0}
+        def cells(group: str, unbuilt: bool) -> list:
+            return [{"group": group, "unbuilt": {"head": False, "base": unbuilt}}]
+
+        nothing = {"compared": 0, "same": 0}
         self.assertEqual(
-            self.title("no-base", {"unbuilt": True, "runs": 0}),
+            self.title("no-base", {"unbuilt": 6, "runs": 0}, cells("v2", True), **nothing),
             "does not build at the base, no comparison",
         )
-        self.assertEqual(self.title("no-base", no_base), "no outcome at the base, no comparison")
         self.assertEqual(
-            simulate.title({"verdict": "no-base", "counts": {}, "groups": [], "base": None}),
+            self.title("no-base", {"unbuilt": 0, "runs": 0}, cells("v2", False), **nothing),
+            "no outcome at the base, no comparison",
+        )
+        self.assertEqual(
+            simulate.title(
+                {"verdict": None, "counts": {"compared": 0}, "groups": [], "base": None}
+            ),
             "no base, no comparison",
         )
+        groups = [self.judged("same"), self.judged("no-base", "v3", compared=4, same=4)]
+        matrix = {
+            **self.judged("no-base", cells=12, compared=10, same=10),
+            "groups": groups,
+            "base": {"unbuilt": 2, "runs": 10},
+            "cells": cells("v2", False) + cells("v3", True),
+        }
+        self.assertEqual(
+            simulate.title(matrix),
+            "GroupV2 nothing moved in 6 runs; GroupV3 does not build at the base, no comparison",
+        )
+
+
+class Told(unittest.TestCase):
+    """What a group's line says of one of its scenarios, by its rate."""
+
+    def test_a_rate_that_did_not_move_says_its_seeds_and_one_that_did_its_sign_test(self):
+        nothing = {"scenario": "a", "rate": "0.5%", "result": "same", "seeds": [0, 1, 2]}
+        tested = {"later": 8, "earlier": 5, "zero": 7, "p": 595 / 1024}
+        moved = {"scenario": "b", "rate": "1%", "result": "within", "seeds": [0], **tested}
+        none = {"cells": []}
+
+        self.assertEqual(simulate.told(none, nothing), "0.5%: nothing moved in seeds 0 to 2")
+        self.assertEqual(simulate.told(none, moved), "1%: 8 later, 5 earlier, 7 tied (p 0.58)")
+
+    def test_a_rate_says_how_many_runs_the_base_gave_no_outcome_in(self):
+        nothing = {"scenario": "a", "rate": "0.5%", "result": "same", "seeds": [0, 1, 2]}
+        cell = {"scenario": "a", "base": {}, "unbuilt": {"head": False, "base": False}}
+        lost = dict(cell, base=None)
+        for cells, said in (
+            ([cell, lost, cell], "no outcome at the base in 1 of 3 runs"),
+            (
+                [cell, lost, dict(lost, unbuilt={"head": False, "base": True})],
+                "does not build at the base in 2 of 3 runs",
+            ),
+        ):
+            with self.subTest(said=said):
+                self.assertEqual(
+                    simulate.told({"cells": cells}, nothing),
+                    f"0.5%: nothing moved in seeds 0 to 2, {said}",
+                )
 
 
 class Conclusion(unittest.TestCase):
@@ -728,15 +670,14 @@ class Conclusion(unittest.TestCase):
 
     def test_each_verdict_has_the_conclusion_of_its_check_and_its_own_once_required(self):
         table = (
+            ("earlier", "failure", "failure"),
+            ("later", "success", "success"),
+            ("within", "neutral", "neutral"),
             ("same", "neutral", "neutral"),
-            ("better", "success", "success"),
-            ("worse", "failure", "failure"),
-            ("hint", "neutral", "neutral"),
-            ("mixed", "neutral", "neutral"),
-            ("re-rolled", "neutral", "neutral"),
+            ("no-base", "neutral", "neutral"),
             ("unbuilt", "neutral", "failure"),
             ("no-outcome", "neutral", "failure"),
-            ("no-base", "neutral", "neutral"),
+            (None, "neutral", "neutral"),
         )
         self.assertEqual({verdict for verdict, *_ in table}, set(simulate.CONCLUSIONS))
         for verdict, concluded, once_required in table:
@@ -746,13 +687,13 @@ class Conclusion(unittest.TestCase):
 
     def test_a_group_that_fails_fails_the_check_and_else_one_that_succeeds_succeeds_it(self):
         for verdicts, required, concluded in (
-            (("better", "worse"), False, "failure"),
-            (("worse", "better"), False, "failure"),
-            (("better", "hint"), False, "success"),
-            (("same", "better"), False, "success"),
-            (("same", "mixed"), False, "neutral"),
-            (("better", "no-outcome"), False, "success"),
-            (("better", "no-outcome"), True, "failure"),
+            (("later", "earlier"), False, "failure"),
+            (("earlier", "later"), False, "failure"),
+            (("later", "within"), False, "success"),
+            (("same", "later"), False, "success"),
+            (("same", "within"), False, "neutral"),
+            (("later", "no-outcome"), False, "success"),
+            (("later", "no-outcome"), True, "failure"),
         ):
             with self.subTest(verdicts=verdicts, required=required):
                 groups = [{"group": g, "verdict": v} for g, v in zip(("v2", "v3"), verdicts)]
@@ -770,26 +711,22 @@ class Running(unittest.TestCase):
         return run("running", "--asked", str(file), "--run-url", RUN_URL, *extra)
 
     def test_is_in_progress_with_the_run_as_its_details_and_the_head_s_runs_in_its_title(self):
-        swept = simulate.scenarios("pr", Path())
-        # The base's jobs, and none where main's point stands in for the base's runs.
-        for run_at in (BASE, ""):
-            with self.subTest(run_at=run_at):
-                asked = simulate.jobs("pr", REVISION, run_at, swept)
-                status, out, err = self.running(asked, "--revision", REVISION, "--base", BASE)
+        asked = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
+        status, out, err = self.running(asked, "--revision", REVISION, "--base", BASE)
 
-                self.assertEqual(status, 0, err)
-                self.assertEqual(
-                    json.loads(out),
-                    {
-                        "status": "in_progress",
-                        "details_url": RUN_URL,
-                        "output": {
-                            "title": "18 runs in progress",
-                            "summary": f"**18 runs in progress** at {commit(REVISION)} against "
-                            f"its merge base {commit(BASE)} · [the run]({RUN_URL})",
-                        },
-                    },
-                )
+        self.assertEqual(status, 0, err)
+        self.assertEqual(
+            json.loads(out),
+            {
+                "status": "in_progress",
+                "details_url": RUN_URL,
+                "output": {
+                    "title": "18 runs in progress",
+                    "summary": f"**18 runs in progress** at {commit(REVISION)} against its merge "
+                    f"base {commit(BASE)} · [the run]({RUN_URL})",
+                },
+            },
+        )
 
     def test_refuses_a_revision_not_a_commit_and_jobs_not_as_the_plan_prints_them(self):
         asked = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
@@ -817,7 +754,8 @@ class Drawn(unittest.TestCase):
 
     def uploaded(self, name: str, both: bool = False, **edits: dict) -> Path:
         """A copy of UPLOADED, with `both` its runs on each group, with the fields `edits` gives a
-        run changed, by its rate and seed, and `/v3` after them for GroupV3's run."""
+        run changed as `edited` changes them, by its rate and seed, and `/v3` after them for
+        GroupV3's run."""
         copy = self.root / name
         with_groupv3(UPLOADED, copy) if both else shutil.copytree(UPLOADED, copy)
         for cell, changed in edits.items():
@@ -826,9 +764,25 @@ class Drawn(unittest.TestCase):
             number = int(seed) + 1
             file = copy / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
             report = json.loads(file.read_text(encoding="utf-8"))
-            report.update(changed)
+            edited(report, changed)
             file.write_text(json.dumps(report), encoding="utf-8")
         return copy
+
+    def widened(
+        self, side: Path, rate: str, group: str = "v2", seeds: Sequence[int] = range(2, 8)
+    ) -> Path:
+        """`side` with runs of `group` at `rate` at `seeds` too, each a copy of seed 0's at its own
+        seed: by default seeds 2 to 7, eight seeds, as many as can fork earlier or later beyond
+        chance."""
+        scenario = HELD_GOALS[group].format(rate)
+        first = side / f"sim-revision-{scenario}-1" / scenario / "1" / "run.json"
+        report = json.loads(first.read_text(encoding="utf-8"))
+        for seed in seeds:
+            number = seed + 1
+            copy = side / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
+            copy.parent.mkdir(parents=True)
+            copy.write_text(json.dumps(dict(report, seed=seed)), encoding="utf-8")
+        return side
 
     def unbuilt(self, side: Path, rate: str, seed: int) -> None:
         """The artifact of the job of a run at `rate` and `seed` as one that could not build."""
@@ -838,24 +792,12 @@ class Drawn(unittest.TestCase):
         (job / scenario / str(number)).mkdir(parents=True)
         (job / scenario / str(number) / "unbuilt").write_text("", encoding="utf-8")
 
-    def matrix(
-        self,
-        head: Path,
-        base: Optional[Path] = None,
-        asked: Sequence[dict] = (),
-        base_point: Optional[Path] = None,
-        spread: Optional[Path] = None,
-    ) -> Path:
-        """The file tools/sim matrix writes of the runs under `head`, beside those under `base`
-        or main's point in `base_point`, with a cell for each run of the jobs `asked`, and the
-        head's runs placed among those of the point in `spread`."""
+    def matrix(self, head: Path, base: Optional[Path] = None, asked: Sequence[dict] = ()) -> Path:
+        """The file tools/sim matrix writes of the runs under `head`, beside those under `base`,
+        with a cell for each run of the jobs `asked`."""
         out = self.root / "matrix.json"
         command = [sys.executable, str(ROOT / "tools" / "sim"), "matrix", str(head)]
         command += ["--out", str(out)] + ([] if base is None else ["--base", str(base)])
-        if base_point is not None:
-            command += ["--base-point", str(base_point)]
-        if spread is not None:
-            command += ["--spread", str(spread)]
         if asked:
             write(self.root / "asked.json", list(asked))
             command += ["--asked", str(self.root / "asked.json")]
@@ -921,8 +863,7 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             out,
             f"⚪ **Nothing moved.** All 12 runs of GroupV2 and GroupV3 at {commit(REVISION)} "
-            f"replayed its merge base {commit(BASE)} exactly. [The report]({REPORT_URL}) · "
-            f"[the run]({RUN_URL})\n",
+            f"replayed its merge base {commit(BASE)} exactly. {LINKS}\n",
         )
         checked = self.check(both, out)
         self.assertEqual(
@@ -930,8 +871,7 @@ class Drawn(unittest.TestCase):
             (
                 "neutral",
                 {
-                    "title": "GroupV2 same as its base, 6 of 6 runs; GroupV3 same as its base, 6 "
-                    "of 6 runs",
+                    "title": "GroupV2 nothing moved in 6 runs; GroupV3 nothing moved in 6 runs",
                     "summary": out,
                 },
             ),
@@ -943,147 +883,116 @@ class Drawn(unittest.TestCase):
             f"merge base {commit(BASE)} exactly. [The run]({RUN_URL})\n",
         )
 
-    def test_against_main_s_point_at_the_base_the_comment_names_main_s_run_of_it(self):
-        matrix = self.matrix(UPLOADED, base_point=POINT, spread=POINT)
-        _, out, _ = self.comment("pr", matrix, "--base", FA5282A)
+    def test_a_pr_whose_runs_moved_says_so_by_group_and_rate_and_links_their_trees(self):
+        matrix = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
+        _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
 
         self.assertEqual(
             out,
-            f"⚪ **Nothing moved.** All 6 runs of GroupV2 at {commit(REVISION)} replayed "
-            f"[main's run]({POINT_RUN}) of its merge base {commit(FA5282A)} exactly. "
-            f"[The run]({RUN_URL})\n",
-        )
-
-    def test_a_pr_whose_runs_moved_shows_them_with_the_links_and_how_to_read_the_trees(self):
-        matrix = self.matrix(self.uploaded("head", **SOONER), base_point=POINT, spread=POINT)
-        _, out, _ = self.comment("pr", matrix, "--base", FA5282A, "--report-url", REPORT_URL)
-
-        picture, scenario = f"{REPORT_URL}moved-{REVISION}", HELD_GOALS["v2"]
-        self.assertEqual(
-            out,
-            "🔴 **GroupV2: worse in 2 runs**, all within main's 20 seeds · 4 same\n"
+            "🟡 **GroupV2: moved, within chance** · 0.1%: nothing moved in seeds 0 to 1 · 1%: 0 "
+            "later, 1 earlier, 1 tied (p 1) · 5%: 0 later, 1 earlier, 1 tied (p 1)\n"
             "\n"
-            f'<picture><source media="(prefers-color-scheme: dark)" srcset="{picture}-dark.svg">'
-            f'<img alt="GroupV2 1% seed 1: worse; GroupV2 5% seed 0: worse" src="{picture}.svg">'
-            "</picture>\n"
-            "\n"
-            f"Open a run: [GroupV2 1% seed 1]({REPORT_URL}head/{scenario.format('1')}/2/) · "
-            f"[GroupV2 5% seed 0]({REPORT_URL}head/{scenario.format('5')}/1/)\n"
-            "\n"
-            f"[The report]({REPORT_URL}) · [the run]({RUN_URL}) · {commit(REVISION)} against "
-            f"[main's run]({POINT_RUN}) of its merge base {commit(FA5282A)}\n"
-            "\n"
-            "<details><summary>How to read the trees</summary>\n"
-            "\n"
-            "- A tree is one run, left to right by epoch from 0 to the goal of 50. The head's tree "
-            "sits over the base's.\n"
-            "- The top line is the trunk. Each line below left the line it drops from at that "
-            "epoch and stops at its dot. The thicker a line, the more members it ended with.\n"
-            "- The ring and its number count the members that never joined.\n"
-            f"- The grey band is where main's 20 seeds at {commit(FA5282A)} first forked. A run "
-            "inside it may be the loss pattern moving under your change, not the change itself.\n"
-            "- Main's seeds after the merge are the measurement. This check blocks nothing yet.\n"
-            "\n"
-            "</details>\n",
-        )
-
-    def test_a_moved_group_says_how_many_first_forked_beyond_main_s_seeds(self):
-        # 1% seed 1 splits at 2, below main's 3 to 23, and 0.1% seed 1 later than the base's 46.
-        later = {"1/1": {"verdict": "split at epoch 2"}, "0.1/1": {"verdict": "split at epoch 49"}}
-        head = self.uploaded("head", **{**SOONER, **later})
-        matrix = self.matrix(head, base_point=POINT, spread=POINT)
-        _, out, _ = self.comment("pr", matrix, "--base", FA5282A)
-
-        self.assertEqual(
-            self.said(out),
-            ["🔴 **GroupV2: worse in 2 runs, better in 1**, 1 beyond main's 20 seeds · 3 same"],
+            f"{LINKS} · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
 
     def test_a_pr_on_both_groups_says_each_on_a_line_of_its_own_and_fails_on_either(self):
-        head = self.uploaded(
-            "head",
-            both=True,
-            **{
-                "1/1/v3": {"verdict": "split at epoch 5"},
-                "5/0/v3": {"verdict": "split at epoch 4"},
-            },
-        )
-        matrix = self.matrix(head, self.uploaded("base", both=True), self.pr_jobs())
+        sooner = {"1/0/v3": {"first_fork": 10}, "1/1/v3": {"first_fork": 5}}
+        head = self.uploaded("head", both=True, **sooner)
+        base = self.widened(self.uploaded("base", both=True), "1", "v3")
+        matrix = self.matrix(self.widened(head, "1", "v3"), base, self.pr_jobs())
         _, out, _ = self.comment("pr", matrix, "--base", BASE)
 
-        self.assertTrue(
-            out.startswith(
-                "⚪ **GroupV2: same in 6 of 6 runs**\\\n🔴 **GroupV3: worse in 2 runs** · 4 same\n\n"
-            )
+        self.assertEqual(
+            self.said(out),
+            [
+                "⚪ **GroupV2: nothing moved** · 0.1%: nothing moved in seeds 0 to 1 · 1%: nothing "
+                "moved in seeds 0 to 1 · 5%: nothing moved in seeds 0 to 1",
+                "🔴 **GroupV3: forks earlier** · 0.1%: nothing moved in seeds 0 to 1 · 1%: 0 "
+                "later, 8 earlier, 0 tied (p 0.0078) · 5%: nothing moved in seeds 0 to 1",
+            ],
         )
         checked = self.check(matrix, out)
         self.assertEqual(
             (checked["conclusion"], checked["output"]["title"]),
-            ("failure", "GroupV2 same as its base, 6 of 6 runs; GroupV3 worse in 2 of 6 runs"),
+            (
+                "failure",
+                "GroupV2 nothing moved in 6 runs; GroupV3 forks earlier at 1%: 0 later, 8 "
+                "earlier (p 0.0078)",
+            ),
         )
 
-    def test_without_main_s_seeds_a_moved_group_says_nothing_of_them_and_there_is_no_band(self):
-        matrix = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
-        _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
-
-        self.assertEqual(self.said(out), ["🔴 **GroupV2: worse in 2 runs** · 4 same"])
-        self.assertNotIn("band", out)
-        self.assertIn(
-            "\n- The ring and its number count the members that never joined.\n- Main's seeds "
-            "after the merge are the measurement. This check blocks nothing yet.\n",
-            out,
-        )
-
-    def test_the_band_is_of_main_s_point_the_head_s_runs_are_placed_among(self):
-        before = json.loads(POINT.read_text(encoding="utf-8"))
-        before["logos_chat"] = CHAT_SIM
-        spread = self.root / "spread.json"
-        spread.write_text(json.dumps(before), encoding="utf-8")
-        matrix = self.matrix(self.uploaded("head", **SOONER), UPLOADED, spread=spread)
-        _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
-
+    def test_a_pr_whose_runs_moved_is_judged_on_the_seeds_of_both_stages_of_its_moved_group(self):
+        head = self.uploaded("head", both=True, **{"1/1/v3": {"first_fork": 5}})
+        base = self.uploaded("base", both=True)
+        first = self.pr_jobs()
+        asked = self.root / "asked.json"
+        write(asked, first)
+        given = ("--asked", str(asked), "--revision", REVISION, "--base", BASE)
+        with mock.patch.multiple(simulate, **HELD_SUITES):
+            status, out, err = run("widen", "--matrix", str(self.matrix(head, base, first)), *given)
+        self.assertEqual(status, 0, err)
+        more, every = (json.loads(line.split("=", 1)[1]) for line in out.splitlines())
+        self.assertEqual(every, first + more)
         self.assertEqual(
-            self.said(out), ["🔴 **GroupV2: worse in 2 runs**, all within main's 20 seeds · 4 same"]
-        )
-        self.assertIn(f"· {commit(REVISION)} against its merge base {commit(BASE)}\n", out)
-        self.assertIn(
-            f"\n- The grey band is where main's 20 seeds at {commit(CHAT_SIM)} first forked. ", out
-        )
-
-    def test_a_pr_whose_runs_only_drew_other_ids_says_so_and_shows_no_trees(self):
-        ids = {"0": "7c3e9a01b2", "1": "b19d47e0c5"}
-        head = self.uploaded(
-            "head",
-            **{
-                f"{rate}/{seed}": {"conversation": drawn}
+            {(job["side"], job["scenario"], job["from"]) for job in more},
+            {
+                (side, HELD_GOALS["v3"].format(rate), start)
+                for side in ("revision", "base")
                 for rate in ("0.1", "1", "5")
-                for seed, drawn in ids.items()
+                for start in (3, 9, 15)
             },
         )
-        matrix = self.matrix(head, base_point=POINT, spread=POINT)
-        _, out, _ = self.comment("pr", matrix, "--base", FA5282A, "--report-url", REPORT_URL)
+        for side in (head, base):
+            for rate in ("0.1", "1", "5"):
+                self.widened(side, rate, "v3", range(2, 20))
+        for seed in range(2, 10):
+            scenario, number = HELD_GOALS["v3"].format("1"), seed + 1
+            file = head / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
+            report = json.loads(file.read_text(encoding="utf-8"))
+            edited(report, {"first_fork": 10})
+            file.write_text(json.dumps(report), encoding="utf-8")
+        matrix = self.matrix(head, base, every)
+        _, out, _ = self.comment("pr", matrix, "--base", BASE)
 
+        same = "nothing moved in seeds 0 to 1"
         self.assertEqual(
-            out,
-            "🔁 **GroupV2: re-rolled in 6 runs**\n"
-            "\n"
-            f"[The report]({REPORT_URL}) · [the run]({RUN_URL}) · {commit(REVISION)} against "
-            f"[main's run]({POINT_RUN}) of its merge base {commit(FA5282A)}\n",
+            self.said(out),
+            [
+                f"⚪ **GroupV2: nothing moved** · 0.1%: {same} · 1%: {same} · 5%: {same}",
+                "🔴 **GroupV3: forks earlier** · 0.1%: nothing moved in seeds 0 to 19 · 1%: 0 "
+                "later, 9 earlier, 11 tied (p 0.0039) · 5%: nothing moved in seeds 0 to 19",
+            ],
+        )
+        checked = self.check(matrix, out)
+        self.assertEqual(
+            (checked["conclusion"], checked["output"]["title"]),
+            (
+                "failure",
+                "GroupV2 nothing moved in 6 runs; GroupV3 forks earlier at 1%: 0 later, 9 "
+                "earlier (p 0.0039)",
+            ),
         )
 
-    def test_a_changed_run_moved_and_its_mark_leads_a_re_rolled_one_s(self):
-        head = self.uploaded(
-            "head", **{"5/1": {"conversation": "7c3e9a01b2"}, "1/0": {"virtual_s": 6077.0}}
-        )
+    def test_runs_that_drew_other_ids_or_moved_at_the_same_first_fork_are_ties(self):
+        ids = {"0": "7c3e9a01b2", "1": "b19d47e0c5"}
+        drew = {
+            f"{rate}/{seed}": {"conversation": drawn}
+            for rate in ("1", "5")
+            for seed, drawn in ids.items()
+        }
+        head = self.uploaded("head", **drew, **{"0.1/0": {"virtual_s": 6077.0}})
         matrix = self.matrix(head, UPLOADED)
         _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
 
         self.assertEqual(
-            self.said(out), ["🟡 **GroupV2: changed in 1 run** · 1 re-rolled, 4 same"]
+            out,
+            "🟡 **GroupV2: moved, within chance** · 0.1%: 0 later, 0 earlier, 2 tied (p 1) · "
+            "1%: 0 later, 0 earlier, 2 tied (p 1) · 5%: 0 later, 0 earlier, 2 tied (p 1)\n"
+            "\n"
+            f"{LINKS} · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
-        self.assertIn('<img alt="GroupV2 1% seed 0: changed" ', out)
 
-    def test_a_run_with_no_outcome_at_the_head_leads_and_one_not_compared_follows(self):
+    def test_a_rate_with_no_outcome_at_the_head_or_at_the_base_says_so(self):
         base = self.uploaded("base", both=True)
         unbuilt_base = self.uploaded("unbuilt-base", both=True)
         self.unbuilt(unbuilt_base, "1", 1)
@@ -1091,29 +1000,45 @@ class Drawn(unittest.TestCase):
         shutil.rmtree(no_outcome / "sim-revision-50-epochs-by-saro-waku-loss-5-2")
         unbuilt = self.uploaded("unbuilt-head", both=True)
         self.unbuilt(unbuilt, "1", 1)
-        sooner = self.uploaded("sooner", both=True, **{"5/0": {"verdict": "split at epoch 4"}})
-        later = {"1/0": {"verdict": "split at epoch 4"}, "5/0": {"verdict": "split at epoch 49"}}
+        sooner = self.uploaded("sooner", both=True, **{"5/0": {"first_fork": 4}})
+        later = {"1/0": {"first_fork": 4}, "5/0": {"first_fork": 49}}
         mixed = self.uploaded("mixed", both=True, **later)
         shutil.rmtree(mixed / "sim-revision-50-epochs-by-saro-waku-loss-5-2")
-        for head, against, said in (
-            (no_outcome, base, "⚫ **GroupV2: no outcome in 1 run** · 5 same"),
-            (unbuilt, base, "⚫ **GroupV2: no outcome in 1 run** · 5 same"),
-            (mixed, base, "⚫ **GroupV2: no outcome in 1 run, worse in 1, better in 1** · 3 same"),
-            (sooner, unbuilt_base, "🔴 **GroupV2: worse in 1 run** · 1 not compared, 4 same"),
-            (base, unbuilt_base, "⚪ **GroupV2: same in 5 of 6 runs** · 1 not compared"),
+        same = "nothing moved in seeds 0 to 1"
+        moved = "0 later, 1 earlier, 1 tied (p 1)"
+        missing = "no outcome in 1 of 2 runs"
+        unbuilt_at_base = "does not build at the base"
+        for head, against, verdict, rates in (
+            (no_outcome, base, "⚫ **GroupV2: no outcome**", (same, same, missing)),
+            (unbuilt, base, "⚫ **GroupV2: no outcome**", (same, missing, same)),
+            (mixed, base, "⚫ **GroupV2: no outcome**", (same, moved, missing)),
+            (
+                sooner,
+                unbuilt_base,
+                "🟡 **GroupV2: moved, within chance**",
+                (same, f"{same}, {unbuilt_at_base} in 1 of 2 runs", moved),
+            ),
+            (
+                base,
+                unbuilt_base,
+                "⚪ **GroupV2: nothing moved**",
+                (same, f"{same}, {unbuilt_at_base} in 1 of 2 runs", same),
+            ),
         ):
             with self.subTest(head=head.name, base=against.name):
                 matrix = self.matrix(head, against, self.pr_jobs())
                 _, out, _ = self.comment("pr", matrix, "--base", BASE)
-                self.assertEqual(self.said(out), [said, "⚪ **GroupV3: same in 6 of 6 runs**"])
+                said = verdict + "".join(
+                    f" · {rate}: {one}" for rate, one in zip(("0.1%", "1%", "5%"), rates)
+                )
+                groupv3 = f"⚪ **GroupV3: nothing moved** · 0.1%: {same} · 1%: {same} · 5%: {same}"
+                self.assertEqual(self.said(out), [said, groupv3])
 
-    def test_a_pr_with_nothing_to_compare_has_the_verdict_line_alone(self):
+    def test_a_pr_with_nothing_to_compare_has_the_verdict_line_and_the_links(self):
         _, out, _ = self.comment("pr", self.matrix(UPLOADED), "--report-url", REPORT_URL)
 
         self.assertEqual(
-            out,
-            f"**chat-sim: no base, no comparison** at {commit(REVISION)} · "
-            f"[the report]({REPORT_URL}) · [the run]({RUN_URL})\n",
+            out, f"**chat-sim: no base, no comparison** at {commit(REVISION)}\n\n{LINKS}\n"
         )
         base = self.root / "base"
         for rate in ("0.1", "1", "5"):
@@ -1123,55 +1048,29 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             out,
             f"**chat-sim: does not build at the base, no comparison** at {commit(REVISION)} "
-            f"against its merge base {commit(BASE)} · [the run]({RUN_URL})\n",
+            f"against its merge base {commit(BASE)}\n\n[The run]({RUN_URL})\n",
         )
 
-    def test_the_picture_its_links_and_how_to_read_it_are_there_only_with_the_report_page(self):
+    def test_without_the_report_s_page_the_comment_links_the_run_alone(self):
         matrix = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
         _, out, _ = self.comment("pr", matrix, "--base", BASE)
 
         self.assertEqual(
-            out,
-            "🔴 **GroupV2: worse in 2 runs** · 4 same\n"
-            "\n"
+            out.split("\n\n", 1)[1],
             f"[The run]({RUN_URL}) · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
-        _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
-        paragraphs = out.split("\n\n")
-        self.assertTrue(paragraphs[1].startswith('<picture><source media="'))
-        self.assertTrue(paragraphs[2].startswith(f"Open a run: [GroupV2 1% seed 1]({REPORT_URL}"))
-        self.assertTrue(paragraphs[3].startswith(f"[The report]({REPORT_URL}) · [the run]("))
-        self.assertEqual(paragraphs[4], "<details><summary>How to read the trees</summary>")
 
-    def test_comment_says_where_the_picture_is_once_it_writes_the_comment_to_a_file(self):
-        moved = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
-        given = ("--base", BASE, "--report-url", REPORT_URL)
-        for extra, picture in ((given, f"{REPORT_URL}moved-{REVISION}.svg"), (given[:2], "")):
-            with self.subTest(extra=extra):
-                _, shown, _ = self.comment("pr", moved, *extra)
-                self.assertEqual(self.written("pr", moved, *extra), (f"picture={picture}\n", shown))
-        same = self.matrix(UPLOADED, UPLOADED)
-        _, shown, _ = self.comment("pr", same, *given)
-        self.assertEqual(self.written("pr", same, *given), ("picture=\n", shown))
-        main = self.matrix(UPLOADED)
-        _, shown, _ = self.comment("main", main)
-        self.assertEqual(self.written("main", main), ("picture=\n", shown))
-
-    def test_the_words_of_the_picture_are_escaped(self):
-        matrix = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
-        written = json.loads(matrix.read_text(encoding="utf-8"))
-        cell = next(cell for cell in written["cells"] if cell["change"] == "worse")
-        cell["rate"] = '1%" onerror="alert(1)'
-        matrix.write_text(json.dumps(written), encoding="utf-8")
-        _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
-
-        shown = next(line for line in out.splitlines() if line.startswith("<picture>"))
-        self.assertIn(
-            '<img alt="GroupV2 1%&quot; onerror=&quot;alert(1) seed 1: worse; GroupV2 5% seed 0: '
-            'worse" src="',
-            shown,
-        )
-        self.assertNotIn('" onerror="', shown)
+    def test_a_comment_written_to_a_file_is_what_it_prints_without_one(self):
+        for suite, head, base, extra in (
+            ("pr", self.uploaded("head", **SOONER), UPLOADED, ("--base", BASE)),
+            ("main", UPLOADED, None, ()),
+        ):
+            with self.subTest(suite=suite):
+                matrix = self.matrix(head, base)
+                _, shown, _ = self.comment(suite, matrix, *extra, "--report-url", REPORT_URL)
+                self.assertEqual(
+                    self.written(suite, matrix, *extra, "--report-url", REPORT_URL), ("", shown)
+                )
 
     def test_a_head_chat_sim_does_not_build_at_ran_nothing(self):
         head = self.root / "head"
@@ -1281,25 +1180,28 @@ class Drawn(unittest.TestCase):
             "| 18 of 51 | 1 |",
         )
 
-    def test_a_pr_worse_in_2_of_6_fails_its_check_with_the_comment_and_the_report(self):
-        head = self.uploaded(
-            "head",
-            **{"1/1": {"verdict": "split at epoch 5"}, "5/0": {"verdict": "split at epoch 4"}},
-        )
-        matrix = self.matrix(head, UPLOADED)
+    def test_a_pr_that_forks_earlier_fails_its_check_and_one_that_forks_later_succeeds(self):
+        base = self.widened(self.uploaded("base"), "1")
         given = ("--base", BASE, "--report-url", REPORT_URL)
-        _, comment, _ = self.comment("pr", matrix, *given)
-
-        self.assertEqual(
-            self.check(matrix, comment, "--report-url", REPORT_URL),
-            {
-                "status": "completed",
-                "conclusion": "failure",
-                "details_url": REPORT_URL,
-                "output": {"title": "GroupV2 worse in 2 of 6 runs", "summary": comment},
-            },
-        )
-        self.assertEqual(self.check(matrix, comment)["details_url"], RUN_URL)
+        for at, concluded, title in (
+            ((10, 5), "failure", "GroupV2 forks earlier at 1%: 0 later, 8 earlier (p 0.0078)"),
+            ((30, 30), "success", "GroupV2 forks later at 1%: 8 later, 0 earlier (p 0.0078)"),
+        ):
+            with self.subTest(concluded=concluded):
+                moved = {f"1/{seed}": {"first_fork": one} for seed, one in enumerate(at)}
+                head = self.uploaded(f"head-{concluded}", **moved)
+                matrix = self.matrix(self.widened(head, "1"), base)
+                _, comment, _ = self.comment("pr", matrix, *given)
+                self.assertEqual(
+                    self.check(matrix, comment, "--report-url", REPORT_URL),
+                    {
+                        "status": "completed",
+                        "conclusion": concluded,
+                        "details_url": REPORT_URL,
+                        "output": {"title": title, "summary": comment},
+                    },
+                )
+                self.assertEqual(self.check(matrix, comment)["details_url"], RUN_URL)
 
     def test_a_head_chat_sim_does_not_build_at_is_neutral_until_the_check_is_required(self):
         head = self.root / "head"
@@ -1362,10 +1264,6 @@ class Drawn(unittest.TestCase):
         status, _, err = self.comment("pr", unread)
         self.assertEqual(status, 2)
         self.assertIn(f"--matrix: {unread} is not a matrix tools/sim matrix writes", err)
-        against_point = self.matrix(UPLOADED, base_point=POINT)
-        status, out, err = self.comment("pr", against_point, "--base", BASE)
-        self.assertEqual((status, out), (2, ""))
-        self.assertIn("--matrix: main's point that stood in for the base is not at --base", err)
 
 
 class Comment(Fixture):
@@ -1435,7 +1333,7 @@ class Comment(Fixture):
             self.swept(self.runs, "grow-waku-loss-0.1") / "outcomes.json",
             [outcome(0), outcome(1, "split at epoch 9"), outcome(2, "split at epoch 4")],
         )
-        self.compared("grow-waku-loss-0.1", "1 of 3 runs came out as expected: 2 worse")
+        self.compared("grow-waku-loss-0.1", "1 of 3 runs came out as expected")
         status, out, _ = self.comment(*self.with_base, "--pr", "316")
         self.assertEqual(status, 0)
         self.assertIn(
@@ -1450,8 +1348,8 @@ class Comment(Fixture):
             rows["grow-waku-loss-0.1"],
             [
                 "3",
-                "whole, split at epoch 9, split at epoch 4",
-                "1 of 3 runs came out as expected: 2 worse",
+                "whole · split at epoch 9 · split at epoch 4",
+                "1 of 3 runs came out as expected",
             ],
         )
         self.assertEqual(rows["50-epochs"], ["1", "whole", "no outcome at the base"])
@@ -1467,7 +1365,7 @@ class Comment(Fixture):
         self.assertEqual(rows["50-epochs"], ["1", "whole", "nothing held"])
         self.assertEqual(
             rows["grow-waku-size-50"],
-            ["3", "whole, whole, whole", "3 of 3 runs came out as expected"],
+            ["3", "whole · whole · whole", "3 of 3 runs came out as expected"],
         )
 
     def test_a_scenario_with_no_outcome_says_so(self):
@@ -1479,7 +1377,27 @@ class Comment(Fixture):
         _, out, _ = self.comment(*self.with_base)
         rows = self.rows(out)
         self.assertEqual(rows["50-epochs"], ["1", "no outcome", "-"])
-        self.assertEqual(rows["grow-waku-loss-0.1"][1], "whole, no verdict")
+        self.assertEqual(rows["grow-waku-loss-0.1"][1], "whole · no verdict")
+
+    def test_a_run_of_a_grow_step_with_no_verdict_says_how_its_lineage_ended(self):
+        endings = (
+            (50, 9, "split"),
+            (4, None, "stalled"),
+            (50, None, "whole"),
+            (50, None, "behind"),
+        )
+        grown = [
+            dict(outcome(seed, None), trunk_epoch=trunk, first_fork=fork, ended=ended)
+            for seed, (trunk, fork, ended) in enumerate(endings)
+        ]
+        write(self.swept(self.runs, "grow-waku-loss-0.1") / "outcomes.json", grown)
+
+        _, out, _ = self.comment(*self.with_base)
+
+        self.assertEqual(
+            self.rows(out)["grow-waku-loss-0.1"][1],
+            "split at epoch 9 · stalled at epoch 4 · whole · whole, members behind",
+        )
 
     def test_a_revision_chat_sim_does_not_build_at_ran_nothing(self):
         self.unbuilt(self.runs)
@@ -1531,12 +1449,12 @@ class Comment(Fixture):
         )
         self.assertEqual(out.count("<details>"), 1)
 
-    def test_written_to_a_file_says_it_shows_no_picture(self):
+    def test_written_to_a_file_prints_nothing(self):
         _, shown, _ = self.comment(*self.with_base)
         out = self.root / "comment.md"
         status, printed, err = self.comment(*self.with_base, "--out", str(out))
 
-        self.assertEqual((status, printed), (0, "picture=\n"), err)
+        self.assertEqual((status, printed), (0, ""), err)
         self.assertEqual(out.read_text(encoding="utf-8"), shown)
 
 
@@ -1618,65 +1536,6 @@ class Post(unittest.TestCase):
                 self.assertIn("not pages of comments, each with its id", err)
 
 
-class Built(unittest.TestCase):
-    """Whether the Pages site has built a push to gh-pages, from its builds as the API lists
-    them, newest first."""
-
-    PUSHED = "a2bb8438ac65a2a7e1f2b7d3b1a7d0c5e4f3a2b1"
-    LATER = "2569837127fd0e3a8c1b4d5e6f7a8b9c0d1e2f3a"
-
-    def setUp(self):
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        self.builds = Path(directory.name) / "builds.json"
-
-    def built(self, *builds: "tuple[str, str, str]") -> "tuple[int, str, str]":
-        """What `built` says of PUSHED among `builds`, each a commit, a status and a time."""
-        listed = [{"commit": sha, "status": status, "created_at": at} for sha, status, at in builds]
-        self.builds.write_text(json.dumps(listed), encoding="utf-8")
-        return run("built", "--builds", str(self.builds), "--commit", self.PUSHED)
-
-    def test_the_site_serves_a_push_once_its_build_or_a_later_one_is_done(self):
-        before = ("9" * 40, "built", "2026-11-23T19:50:00Z")
-        for builds, said in (
-            ((), "false"),
-            ((before,), "false"),
-            (((self.PUSHED, "building", "2026-11-23T19:52:24Z"), before), "false"),
-            (((self.PUSHED, "built", "2026-11-23T19:52:24Z"), before), "true"),
-            (
-                (
-                    (self.LATER, "built", "2026-11-23T19:52:25Z"),
-                    (self.PUSHED, "errored", "2026-11-23T19:52:24Z"),
-                ),
-                "true",
-            ),
-            (
-                (
-                    (self.LATER, "building", "2026-11-23T19:52:25Z"),
-                    (self.PUSHED, "errored", "2026-11-23T19:52:24Z"),
-                    before,
-                ),
-                "false",
-            ),
-        ):
-            with self.subTest(builds=builds):
-                self.assertEqual(self.built(*builds), (0, f"{said}\n", ""))
-
-    def test_refuses_what_is_not_builds_or_not_a_commit(self):
-        self.builds.write_text("[]", encoding="utf-8")
-        status, out, err = run("built", "--builds", str(self.builds), "--commit", "gh-pages")
-        self.assertEqual((status, out), (2, ""))
-        self.assertIn("'gh-pages' is not a commit's 40 hex digits", err)
-        for builds in ({"message": "Not Found"}, [{"commit": self.PUSHED, "status": "built"}]):
-            with self.subTest(builds=builds):
-                self.builds.write_text(json.dumps(builds), encoding="utf-8")
-                status, out, err = run(
-                    "built", "--builds", str(self.builds), "--commit", self.PUSHED
-                )
-                self.assertEqual((status, out), (2, ""))
-                self.assertIn("not builds, each with its commit, status and time", err)
-
-
 class Workflow(unittest.TestCase):
     """simulate.yml as it is written, a job by its name."""
 
@@ -1685,8 +1544,14 @@ class Workflow(unittest.TestCase):
         parts = re.split(r"(?m)^  (\w+):\n", workflow.split("\njobs:\n", 1)[1])
         self.jobs = dict(zip(parts[1::2], parts[2::2]))
 
+    def condition(self, name: str) -> str:
+        """The if of the job `name`, folded over the lines under `if: >-`."""
+        return re.search(r"\n    if: >-\n((?:      .*\n)+)", self.jobs[name])[1]
+
     def test_only_the_plan_and_post_jobs_mint_a_token_and_each_keeps_it_to_its_steps(self):
-        self.assertEqual(list(self.jobs), ["plan", "run", "comment", "publish", "post"])
+        self.assertEqual(
+            list(self.jobs), ["plan", "run", "pair", "more", "comment", "publish", "post"]
+        )
         minting = [name for name, job in self.jobs.items() if "create-github-app-token@" in job]
         keyed = [name for name, job in self.jobs.items() if "secrets." in job]
         self.assertEqual((minting, keyed), (["plan", "post"], ["plan", "post"]))
@@ -1699,24 +1564,55 @@ class Workflow(unittest.TestCase):
                 }
                 self.assertEqual(used, {"GH_TOKEN: ${{ steps.token.outputs.token }}"})
 
+    def test_a_pr_run_s_seeds_run_in_two_stages_each_a_call_of_sweep_yml(self):
+        for name, runs in (("run", "needs.plan.outputs.runs"), ("more", "needs.pair.outputs.more")):
+            with self.subTest(job=name):
+                self.assertIn(
+                    "\n    uses: ./.github/workflows/sweep.yml\n    with:\n"
+                    f"      runs: ${{{{ {runs} }}}}\n",
+                    self.jobs[name],
+                )
+        self.assertIn("\n    needs: plan\n", self.jobs["run"])
+
+    def test_pair_plans_the_second_stage_from_the_first_s_runs_whatever_they_came_to(self):
+        pair, condition = self.jobs["pair"], self.condition("pair")
+
+        self.assertIn("\n    needs: [plan, run]\n", pair)
+        for held in (
+            "!cancelled() && needs.plan.result == 'success'",
+            "needs.plan.outputs.suite == 'pr' && needs.plan.outputs.base != ''",
+        ):
+            self.assertIn(held, condition)
+        self.assertIn(
+            "\n      more: ${{ steps.widen.outputs.more }}\n"
+            "      asked: ${{ steps.widen.outputs.asked }}\n",
+            pair,
+        )
+        self.assertIn('--asked "$RUNNER_TEMP/asked.json" --out "$RUNNER_TEMP/matrix.json"', pair)
+        self.assertIn("python3 .github/scripts/simulate.py widen ", pair)
+        self.assertIn('\n            >> "$GITHUB_OUTPUT"\n', pair)
+
+    def test_more_is_skipped_where_no_group_s_runs_moved_and_runs_after_a_failed_run_job(self):
+        condition = self.condition("more")
+
+        self.assertIn("\n    needs: pair\n", self.jobs["more"])
+        self.assertIn("!cancelled() && needs.pair.result == 'success'", condition)
+        self.assertIn("needs.pair.outputs.more != '[]'", condition)
+
+    def test_the_comment_pairs_the_runs_of_both_stages_or_of_the_first_without_pair(self):
+        comment = self.jobs["comment"]
+
+        self.assertIn("\n    needs: [plan, run, pair, more]\n", comment)
+        self.assertIn("\n    if: ${{ !cancelled() && needs.plan.result == 'success' }}\n", comment)
+        self.assertIn("ASKED: ${{ needs.pair.outputs.asked || needs.plan.outputs.runs }}", comment)
+        self.assertIn('printf \'%s\\n\' "$ASKED" > "$RUNNER_TEMP/asked.json"', comment)
+
     def test_the_comment_is_posted_after_publish_and_the_check_completed_whatever_it_came_to(self):
-        post = self.jobs["post"]
-        condition = post.split("\n    if: >-\n", 1)[1].split("\n    runs-on: ", 1)[0]
+        post, condition = self.jobs["post"], self.condition("post")
 
         self.assertIn("\n    needs: [plan, comment, publish]\n", post)
         self.assertIn("!cancelled() && needs.comment.result == 'success'", condition)
         self.assertNotIn("needs.publish", condition)
-        self.assertIn("PUBLISHED: ${{ needs.publish.result }}", post)
-
-    def test_the_comment_waits_for_the_build_of_publish_s_push_and_never_asks_for_the_picture(self):
-        publish, post = self.jobs["publish"], self.jobs["post"]
-
-        self.assertIn("\n      pushed: ${{ steps.push.outputs.pushed }}\n", publish)
-        self.assertIn('echo "pushed=$(git -C site rev-parse HEAD)" >> "$GITHUB_OUTPUT"', publish)
-        self.assertIn("PUSHED: ${{ needs.publish.outputs.pushed }}", post)
-        self.assertIn("\n      pages: read ", post)
-        self.assertIn("simulate.py built --builds", post)
-        self.assertNotIn("curl", post)
 
     def test_publish_keeps_the_scenario_files_of_the_tree_that_ran(self):
         publish = self.jobs["publish"]
@@ -1725,6 +1621,84 @@ class Workflow(unittest.TestCase):
 
         self.assertIn("\n      - uses: actions/checkout@v4\n\n", before)
         self.assertIn("\n            --scenarios tools/sim/scenarios \\\n", step)
+
+
+class SweepWorkflow(unittest.TestCase):
+    """sweep.yml as it is written: the run jobs simulate.yml calls it for."""
+
+    def setUp(self):
+        self.sweep = (ROOT / ".github" / "workflows" / "sweep.yml").read_text(encoding="utf-8")
+
+    def test_is_called_with_the_run_jobs_and_runs_a_job_each_of_its_own_env(self):
+        self.assertIn(
+            "\non:\n  workflow_call:\n    inputs:\n      runs:\n", self.sweep.split("\njobs:\n")[0]
+        )
+        self.assertIn("\n        run: ${{ fromJSON(inputs.runs) }}\n", self.sweep)
+        self.assertIn("\nenv:\n  CARGO_TERM_COLOR: always\n", self.sweep)
+        self.assertNotIn("secrets.", self.sweep)
+
+    def test_each_job_uploads_under_its_side_scenario_and_first_run(self):
+        self.assertIn(
+            "\n          name: sim-${{ matrix.run.side }}-${{ matrix.run.scenario }}-"
+            "${{ matrix.run.from }}\n",
+            self.sweep,
+        )
+
+    def test_a_run_made_again_pins_logos_chat_in_each_job_s_own_lines(self):
+        step = re.search(
+            r"\n      - name: Pin logos-chat at the revision\n"
+            r"        run: \|\n((?:          .+\n)+)",
+            self.sweep,
+        )[1]
+        pin = [line.strip().replace("$REVISION", REVISION) for line in step.splitlines()]
+        cell = {"scenario": "grow-waku-loss-0.1", "run": 2, "seed": 1}
+
+        again = simulate.again(cell, REVISION, CHAT_SIM)
+
+        self.assertEqual(again[1 : 1 + len(pin)], pin)
+        self.assertEqual(len(pin), 3)
+
+
+class CiWorkflow(unittest.TestCase):
+    """ci.yml as it is written, a job by its name."""
+
+    def setUp(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        parts = re.split(r"(?m)^  ([\w-]+):\n", workflow.split("\njobs:\n", 1)[1])
+        self.jobs = dict(zip(parts[1::2], parts[2::2]))
+
+    def test_the_sims_run_only_when_a_path_they_depend_on_changed(self):
+        measured = self.jobs["measured"]
+
+        self.assertIn("\n          fetch-depth: 0\n", measured)
+        self.assertIn('simulate.py changed --since "$SINCE" >> "$GITHUB_OUTPUT"', measured)
+        self.assertIn(
+            "SINCE: ${{ github.event.pull_request.base.sha || "
+            "!github.event.forced && github.event.before || '' }}",
+            measured,
+        )
+        for name in ("sim-one-process", "list-expected"):
+            with self.subTest(job=name):
+                self.assertIn(
+                    "\n    needs: measured\n"
+                    "    if: ${{ needs.measured.outputs.changed == 'true' }}\n",
+                    self.jobs[name],
+                )
+        self.assertIn("\n    needs: list-expected\n", self.jobs["sim-expected"])
+        self.assertNotIn("\n    if: ", self.jobs["sim-expected"])
+
+    def test_publish_is_skipped_with_the_sims(self):
+        publish = self.jobs["publish"]
+        condition = publish.split("\n    if: >-\n", 1)[1].split("\n    runs-on: ", 1)[0]
+
+        self.assertIn("\n    needs: [measured, sim-one-process, sim-expected]\n", publish)
+        self.assertIn("!cancelled() && needs.measured.outputs.changed == 'true' &&", condition)
+
+    def test_lint_test_and_tools_run_whatever_changed(self):
+        for name in ("lint", "test", "tools"):
+            with self.subTest(job=name):
+                self.assertNotIn("\n    needs: ", self.jobs[name])
+                self.assertNotIn("\n    if: ", self.jobs[name])
 
 
 if __name__ == "__main__":

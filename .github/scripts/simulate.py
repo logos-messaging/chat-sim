@@ -4,38 +4,33 @@
 simulate.yml runs chat-sim at a logos-chat revision it is handed, and at a base revision too when
 it is handed one, in one of three suites. `pr` and `main` run the goal, a group grown toward epoch
 50 by up to three members of any branch a round, on GroupV2 and on GroupV3 at rates of loss: `pr`
-seeds 0 to 2 of the three lossy rates, a job a run, at the revision and at the base; `main` seeds 0
-to 19 of the four rates, two jobs of ten a rate, and no base. `long` runs the two scenarios of
-fifty epochs and every other one `tools/sim/expected` holds but the goal's, a job a scenario a
-side. `plan` checks what it was handed and prints the run jobs: for `pr` none at the base when
-main's point at the base at the current measurement is on gh-pages with an outcome at each run the
-base's jobs would do, whose runs stand in for the base's. `spread` names main's point at the base,
-or else the nearest before it, that can be read, whose runs the head's are placed among. `comment`
-writes the comment in Markdown: for `pr` and `main` from the matrix `tools/sim matrix` wrote of the
-runs, each group's apart, for `pr` with a picture of the runs that moved, and for `long` a row for
-each scenario with what `tools/sim compare` said of its runs against the base's, or against what
-`tools/sim/expected` holds when there is no base. It says where the picture is, so that the
-workflow posts the comment once the Pages site serves it. `measurement` prints the chat-sim commit
-a run measures. `running` writes the update that moves a check run on logos-chat to in progress
-while the runs go, and `check` the one that completes it with the groups' verdicts; `post` says
-where the comment goes on a logos-chat pull request, an edit of the App's comment there or a new
-one, and writes it for GitHub's API; `built` says whether the Pages site has built a push to
-gh-pages, which the comment's picture waits for.
+seeds 0 to 2 of the three lossy rates, a job a run, at the revision and at the base, and of a group
+a run of which came out otherwise at the two, seeds 3 to 19 of each of its rates as well, six a
+job; `main` seeds 0 to 2 at 0% and 0 to 19 at the rest, ten a job, and no base. `long` runs the
+two scenarios of fifty epochs and every other one `tools/sim/expected` holds but the goal's, a job
+a scenario a side. `plan` checks what it was handed and prints the run jobs, and `widen` the run
+jobs of seeds 3 to 19 from the matrix of seeds 0 to 2. `comment` writes the comment in Markdown:
+for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, each group's apart, for
+`pr` with links to the trees of the runs on the pull request's page and to the graph over main, and
+for `long` a row for each scenario with what `tools/sim compare` said of its runs against the
+base's, or against what `tools/sim/expected` holds when there is no base. `measurement` prints the
+chat-sim commit a run measures, and `changed` whether a commit changes a path chat-sim's own CI
+holds its runs to against its merge base with another. `running` writes the update that moves a
+check run on logos-chat to in progress while the runs go, and `check` the one that completes it
+with the groups' verdicts; and `post` says where the comment goes on a logos-chat pull request, an
+edit of the App's comment there or a new one, and writes it for GitHub's API.
 """
 
 from __future__ import annotations
 
 import argparse
-import html
 import json
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
-from typing import Callable, Collection, List, Optional, Sequence, Tuple
-
-import measure
+from typing import Callable, List, Optional, Sequence, Tuple
+from urllib.parse import urljoin
 
 # The goal's scenario of each group at a rate of loss in percent, by the group's name in a
 # scenario: two or more adders a round can commit for one epoch, which a GroupV3 group needs to
@@ -43,18 +38,20 @@ import measure
 GOALS = {"v2": "grow-waku-loss-{}", "v3": "grow-waku-loss-{}-groupv3"}
 # What the comment calls each group.
 GROUPS = {"v2": "GroupV2", "v3": "GroupV3"}
-# GroupV3 forks at each of `pr`'s rates on seeds 0 to 2, where at 0.1% two of them stay whole.
-RATES = {"pr": ("0.5", "1", "5"), "main": ("0", "0.5", "1", "5")}
-# How many seeds of each rate a suite runs, from seed 0, and how many of them a job does.
-SEEDS = {"pr": 3, "main": 20}
-A_JOB = {"pr": 1, "main": 10}
+# How many seeds of each rate a suite runs, from seed 0. GroupV3 forks at each of `pr`'s rates on
+# seeds 0 to 2, where at 0.1% two of them stay whole. `main` runs three of 0%, by far its slowest
+# rate, at which no run of main's has split.
+RATES = {"pr": {"0.5": 3, "1": 3, "5": 3}, "main": {"0": 3, "0.5": 20, "1": 20, "5": 20}}
+# How many runs a job does. `widen` is the rest of main's seeds of each rate of a `pr` group whose
+# runs moved, at both sides.
+A_JOB = {"pr": 1, "main": 10, "widen": 6}
 FIFTY_EPOCHS = ("50-epochs", "50-epochs-waku")
 SUITES = ("pr", "main", "long")
 LOGOS_CHAT = "https://github.com/logos-messaging/logos-chat"
 CHAT_SIM = "https://github.com/logos-messaging/chat-sim"
 # What a run measures: a commit under these paths can move how a run comes out, where one to the
 # guide or to the pages cannot. The build reads the files at the root besides crates/, and
-# tools/sim judges each run's logs with tools/forks.
+# tools/sim judges a run without a `grow` step by its logs with tools/forks.
 MEASURED = (
     "crates/",
     "Cargo.toml",
@@ -63,27 +60,27 @@ MEASURED = (
     "rust-toolchain.toml",
     "flake.nix",
     "flake.lock",
+    "tools/forks/__main__.py",
     "tools/forks/forks/",
+    "tools/sim/__main__.py",
     "tools/sim/sim/",
     "tools/sim/scenarios/",
 )
+# What chat-sim's own CI holds its runs to besides what a run measures: the outcomes it expects,
+# and the workflow that runs them.
+HELD = (*MEASURED, "tools/sim/expected/", ".github/workflows/ci.yml")
 # What a matrix of `tools/sim matrix` holds.
-MATRIX = {"head", "base", "base_point", "cells", "counts", "verdict", "groups", "summary", "spread"}
-# What a cell's run at the head can be against the base's at the same seed, and those of them
-# where it moved.
-CHANGES = ("same", "changed", "better", "worse", "re-rolled")
-MOVED = ("better", "worse", "changed")
-# What a group's runs at the head can come to against the base's, each as a group's line words it,
-# in the order the line says them: what went wrong at the head before what moved, as the verdict
-# has it, and the runs the base has no outcome for last.
-STANDINGS = {
+MATRIX = {"head", "base", "cells", "counts", "verdict", "groups", "summary"}
+# What a group's runs at the head came to against the base's, each result of `tools/sim matrix` as
+# a group's line words it.
+RESULTS = {
+    "same": "nothing moved",
+    "within": "moved, within chance",
+    "earlier": "forks earlier",
+    "later": "forks later",
+    "unbuilt": "does not build",
     "no-outcome": "no outcome",
-    "worse": "worse",
-    "better": "better",
-    "changed": "changed",
-    "re-rolled": "re-rolled",
-    "same": "same",
-    "uncompared": "not compared",
+    "no-base": "nothing to compare at the base",
 }
 
 _SHA = re.compile(r"[0-9a-f]{40}")
@@ -91,18 +88,18 @@ _PR = re.compile(r"[1-9][0-9]*")
 _CHECK_RUN = re.compile(r"[1-9][0-9]*")
 # logos-chat in GitHub's API, where the comment and the check are.
 ON_LOGOS_CHAT = "repos/logos-messaging/logos-chat"
-# The check's conclusion of each verdict: success where the head's runs stand higher and none
-# lower, failure where two or more stand lower and none higher, and neutral where they say neither.
+# The check's conclusion of each verdict: failure where the head's runs fork earlier beyond
+# chance, success where they fork later, and neutral otherwise, as for a matrix without a base,
+# which has no verdict.
 CONCLUSIONS = {
-    "better": "success",
-    "worse": "failure",
+    "earlier": "failure",
+    "later": "success",
+    "within": "neutral",
     "same": "neutral",
-    "hint": "neutral",
-    "mixed": "neutral",
-    "re-rolled": "neutral",
     "no-base": "neutral",
     "unbuilt": "neutral",
     "no-outcome": "neutral",
+    None: "neutral",
 }
 # The verdicts that fail the check once it is required: what went wrong at the head.
 _REQUIRED = ("unbuilt", "no-outcome")
@@ -111,51 +108,30 @@ _URL = re.compile(r"https?://[^\s()<>]+")
 # What the verdict line says of a revision chat-sim does not build at.
 _UNBUILT = "chat-sim does not build against this commit"
 
-# The title of each verdict but `no-base`, from the counts of the matrix's cells.
+# The title of each verdict that says no more than the counts of the matrix's cells.
 _TITLES = {
-    "same": "same as its base, {c[compared]} of {c[cells]} runs",
-    "better": "better in {c[better]} of {c[cells]} runs",
-    "worse": "worse in {c[worse]} of {c[cells]} runs",
-    "hint": "worse in 1 of {c[cells]} runs, a hint",
-    "mixed": "mixed: {c[better]} better, {c[worse]} worse of {c[cells]}",
-    "re-rolled": "the draws changed, no comparison",
+    "same": "nothing moved in {c[cells]} runs",
+    "within": "moved, within chance",
     "unbuilt": "does not build against this commit",
     "no-outcome": "no outcome in {c[no-outcome]} of {c[cells]} runs",
 }
-# What the title of `re-rolled` adds where the matrix places the head's runs among main's.
-_BELOW = "; {c[below]} of {c[cells]} below main's worst seed"
 _ENDED = (
     "whole: one group, every member that joined at its tip; behind: one group, some members "
     "behind; stalled: one group that stopped growing short of 50; split: it forked"
 )
 # Of the members a run seated, those `compare` counts off the trunk at the end.
 _OFF_TRUNK = "behind, on another line, or never joined"
-# The mark of each of `STANDINGS` that leads a group's line of the comment on a pull request: a
+# The mark of each of `RESULTS` that leads a group's line of the comment on a pull request: a
 # missing run, at the head or at the base, is black.
 _MARKS = {
-    "no-outcome": "⚫",
-    "worse": "🔴",
-    "better": "🟢",
-    "changed": "🟡",
-    "re-rolled": "🔁",
     "same": "⚪",
-    "uncompared": "⚫",
+    "within": "🟡",
+    "earlier": "🔴",
+    "later": "🟢",
+    "unbuilt": "⚫",
+    "no-outcome": "⚫",
+    "no-base": "⚫",
 }
-# How to read the trees the runs are drawn as: what they draw, what main's spread draws over them,
-# and what the comment cannot tell.
-_TREES = (
-    "A tree is one run, left to right by epoch from 0 to the goal of 50. The head's tree sits over "
-    "the base's.",
-    "The top line is the trunk. Each line below left the line it drops from at that epoch and "
-    "stops at its dot. The thicker a line, the more members it ended with.",
-    "The ring and its number count the members that never joined.",
-)
-_BAND = (
-    "The grey band is where main's {seeds} seeds at {commit} first forked. A run inside it may be "
-    "the loss pattern moving under your change, not the change itself."
-)
-_MEASURED_AFTER = "Main's seeds after the merge are the measurement. This check blocks nothing yet."
-_OFF = {"lines_off_trunk": "line", "members_off_trunk": "member"}
 _MAIN_FOOT = (
     f"A row: the runs of a group at a rate of loss, a seed each, by how each ended ({_ENDED}); "
     "how many epochs the group stayed one group, from the lowest seed to the highest (50 is the "
@@ -177,12 +153,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "plan",
         help="check what simulate.yml was handed and print its run jobs",
         description="Checks what simulate.yml was handed and prints, as lines for "
-        "$GITHUB_OUTPUT, what it was handed, the run jobs as a JSON array, the suite's "
-        "scenarios, and where on gh-pages the point of main is whose runs stand in for the "
-        "base's: for pr, main's point at the base at --measurement when --points lists it and "
-        "its point.json on --pages has an outcome at each run the base's jobs would do, and "
-        "then no run job is at the base. A point that has none at one of them, or that cannot be "
-        "read, stands in for nothing, and a warning on standard error says why.",
+        "$GITHUB_OUTPUT, what it was handed, the run jobs as a JSON array and the suite's "
+        "scenarios.",
     )
     _add_handed(plan)
     plan.add_argument(
@@ -191,76 +163,43 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="the id of the check run on logos-chat the run completes, or nothing: for pr, "
         "given with --pr, and only then",
     )
-    plan.add_argument(
-        "--measurement",
-        metavar="SHA",
-        help="the chat-sim commit a run measures, given with --points and --pages, and only "
-        "with them",
-    )
-    plan.add_argument(
-        "--points",
-        metavar="FILE",
-        type=Path,
-        help="the paths of the files under logos-chat/main/ on gh-pages, one a line",
-    )
-    plan.add_argument(
-        "--pages",
-        metavar="REF",
-        help="gh-pages, as --tree names it, whose files --points lists: main's point at the base "
-        "is read from it",
-    )
-    plan.add_argument(
-        "--tree", metavar="DIR", type=Path, default=Path(), help="the checkout (default: .)"
-    )
     plan.set_defaults(command=_plan)
-    spread = commands.add_parser(
-        "spread",
-        help="name the point of main nearest before a base",
-        description="Prints, as a line for $GITHUB_OUTPUT, where on gh-pages the point at "
-        "--measurement of the newest commit of --history with one is, or nothing when none "
-        "has one. A point on --pages that cannot be read is passed over, and a warning on "
-        "standard error says why.",
+    widened = commands.add_parser(
+        "widen",
+        help="print the run jobs of the rest of the seeds of each group of pr whose runs moved",
+        description="Prints, as lines for $GITHUB_OUTPUT, the run jobs that follow those of "
+        "--asked as a JSON array, none where no run moved: of each group a run of which in "
+        "--matrix came out otherwise at the revision than at the base, seeds 3 to 19 of each of "
+        "pr's rates, at both, six a job; then the jobs of --asked and those together.",
     )
-    spread.add_argument(
-        "--measurement", metavar="SHA", required=True, help="the chat-sim commit a run measures"
-    )
-    spread.add_argument(
-        "--points",
+    widened.add_argument(
+        "--matrix",
         metavar="FILE",
         type=Path,
         required=True,
-        help="the paths of the files under logos-chat/main/ on gh-pages, one a line",
+        help="the matrix tools/sim matrix wrote of the runs of --asked",
     )
-    spread.add_argument(
-        "--history",
+    widened.add_argument(
+        "--asked",
         metavar="FILE",
         type=Path,
         required=True,
-        help="the base's history, newest first, as logos-chat's commits API lists it from the "
-        "base",
+        help="the run jobs as a JSON array, as plan prints them",
     )
-    spread.add_argument(
-        "--pages",
-        metavar="REF",
-        required=True,
-        help="gh-pages, as --tree names it, whose files --points lists: the point named is read "
-        "from it",
-    )
-    spread.add_argument(
-        "--tree", metavar="DIR", type=Path, default=Path(), help="the checkout (default: .)"
-    )
-    spread.set_defaults(command=_spread)
+    widened.add_argument("--revision", required=True, help="the logos-chat commit the runs are at")
+    widened.add_argument("--base", required=True, help="the logos-chat commit to compare with")
+    widened.set_defaults(command=_widen)
     comment = commands.add_parser(
         "comment",
         help="write the comment on what the run jobs came to",
         description="Writes the comment in Markdown. For pr and main it is drawn from --matrix: "
-        "for pr a line that says nothing moved, or else a line for each group by how its runs "
-        "compare, the picture of the runs that moved on the report's page with a link to each "
-        "one's page, and how to read the trees; for main a row a group's rate with how its runs "
-        "ended and forked. For long it is a row for each scenario from the "
-        "outcomes.json the run jobs uploaded under RUNS and the compare.txt written beside it, "
-        "and the output of each compare. With --out it is written there, and standard output "
-        "says, as a line for $GITHUB_OUTPUT, where the picture is that it shows, or nothing.",
+        "for pr a line that says nothing moved, or else a line for each group with its verdict "
+        "and what its runs at each rate came to, then links to the trees of the runs on the "
+        "report's page, to the report, kept while the pull request is open, to the graph over "
+        "main and to the run; for main a row a group's rate with how its runs ended and forked. "
+        "For long it is a row for each scenario from the outcomes.json the run jobs uploaded "
+        "under RUNS and the compare.txt written beside it, and the output of each compare. With "
+        "--out it is written there.",
     )
     comment.add_argument(
         "runs",
@@ -304,6 +243,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--tree", metavar="DIR", type=Path, default=Path(), help="the checkout (default: .)"
     )
     measured.set_defaults(command=_measurement)
+    held = commands.add_parser(
+        "changed",
+        help="say whether a commit changes a path chat-sim's CI holds its runs to",
+        description="Prints, as a line for $GITHUB_OUTPUT, true when the tree's HEAD changes "
+        "what a run measures, tools/sim/expected or ci.yml against its merge base with --since, "
+        "or when --since is empty or no commit of the tree; else false.",
+    )
+    held.add_argument(
+        "--since",
+        metavar="SHA",
+        required=True,
+        help="the commit to compare from, a pull request's base or the commit before a push: "
+        "nothing or forty zeros for none",
+    )
+    held.add_argument(
+        "--tree", metavar="DIR", type=Path, default=Path(), help="the checkout (default: .)"
+    )
+    held.set_defaults(command=_changed)
     running = commands.add_parser(
         "running",
         help="print the update that moves a check run to in progress",
@@ -328,7 +285,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Prints, as JSON for GitHub's API, the update of a check run on logos-chat "
         "once the run jobs came to --matrix: completed, with the conclusion of its verdict and "
         "its title, --comment as its summary, and --report-url as its details, or --run-url "
-        "without it. better is a success, worse a failure, and every other verdict neutral; "
+        "without it. earlier is a failure, later a success, and every other verdict neutral; "
         "with --required true, unbuilt and no-outcome are failures too.",
     )
     check.add_argument(
@@ -375,21 +332,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--out", metavar="FILE", type=Path, required=True, help="where to write what is sent"
     )
     post.set_defaults(command=_post)
-    built = commands.add_parser(
-        "built",
-        help="say whether the Pages site has built a push to gh-pages",
-        description="Prints true where, among --builds, the Pages site built the push of "
-        "--commit or a push after it, and so serves what --commit holds; else false.",
-    )
-    built.add_argument(
-        "--builds",
-        metavar="FILE",
-        type=Path,
-        required=True,
-        help="the site's newest builds, a JSON array as gh api lists repos/<repo>/pages/builds",
-    )
-    built.add_argument("--commit", metavar="SHA", required=True, help="the commit pushed")
-    built.set_defaults(command=_built)
     args = parser.parse_args(argv)
     return args.command(parser, args)
 
@@ -403,7 +345,9 @@ def scenarios(suite: str, expected: Path) -> List[Tuple[str, int]]:
     """
     if suite in RATES:
         return [
-            (goal.format(rate), SEEDS[suite]) for goal in GOALS.values() for rate in RATES[suite]
+            (goal.format(rate), seeds)
+            for goal in GOALS.values()
+            for rate, seeds in RATES[suite].items()
         ]
     goal = {goal.format(rate) for goal in GOALS.values() for rate in RATES["main"]}
     held = sorted(path.stem for path in expected.glob("*.json") if path.stem not in goal)
@@ -420,77 +364,96 @@ def measurement(tree: Path) -> Optional[str]:
     return _git(tree, "log", "-1", "--format=%H", "--", *MEASURED) or None
 
 
-def jobs(suite: str, revision: str, base: str, swept: Sequence[Tuple[str, int]]) -> List[dict]:
-    """The run jobs, each runs `from` to `from` + `runs` - 1 of a side's sweep of a scenario: a
-    run a job for `pr`, ten for `main`, and the whole sweep for `long`."""
+def changed(tree: Path, since: str) -> bool:
+    """Whether HEAD of `tree` changes a path of `HELD` against its merge base with `since`, or
+    `since` is empty or no commit of `tree`."""
+    if not since:
+        return True
+    found = subprocess.run(
+        ["git", "-C", str(tree), "merge-base", since, "HEAD"], capture_output=True, text=True
+    )
+    if found.returncode != 0:
+        return True
+    base = found.stdout.strip()
+    # diff-tree reads trees alone, so a clone without blobs serves it.
+    diff = subprocess.run(
+        ["git", "-C", str(tree), "diff-tree", "-r", "--quiet", base, "HEAD", "--", *HELD],
+        capture_output=True,
+        text=True,
+    )
+    if diff.returncode not in (0, 1):
+        diff.check_returncode()
+    return diff.returncode == 1
+
+
+def jobs(
+    suite: str, revision: str, base: str, swept: Sequence[Tuple[str, int]], first: int = 1
+) -> List[dict]:
+    """The run jobs, each runs `from` to `from` + `runs` - 1 of a side's sweep of a scenario, of
+    runs `first` to the last `swept` gives it: a run a job for `pr`, ten for `main`, six for
+    `widen`, and the whole sweep for `long`."""
     sides = [("revision", "head", revision)] + ([("base", "base", base)] if base else [])
     found = []
     for side, said, sha in sides:
-        for name, runs in swept:
-            size = A_JOB.get(suite, runs)
-            for first in range(1, runs + 1, size):
-                count = min(size, runs - first + 1)
+        for name, last in swept:
+            size = A_JOB.get(suite, last - first + 1)
+            for start in range(first, last + 1, size):
+                count = min(size, last - start + 1)
                 found.append(
                     {
                         "side": side,
                         "revision": sha,
                         "scenario": name,
-                        "from": first,
+                        "from": start,
                         "runs": count,
-                        "name": f"{said} {sha[:7]}: {_part(suite, name, first, count)}",
+                        "name": f"{said} {sha[:7]}: {_part(suite, name, start, count)}",
                     }
                 )
     return found
 
 
-def stands_in(suite: str, base: str, measurement: str, points: Collection[str]) -> Optional[str]:
-    """Where on gh-pages main's point at `base` and `measurement` is, when `points` lists it and
-    it can stand in for the base's runs of `suite`, or `None`. Only a point at the current
-    measurement can, and only for `pr`, whose seeds are main's first three."""
-    if suite != "pr" or not base or measure.point(base, measurement) not in points:
-        return None
-    return measure.point(base, measurement)
-
-
-def without_outcome(point: dict, asked: Sequence[dict]) -> List[Tuple[str, int]]:
-    """The runs of the jobs `asked` that `point`, a point.json, has no outcome for, each its
-    scenario and its number in a sweep, in the order of the jobs."""
-    had = {(cell["scenario"], cell["run"]) for cell in point["cells"] if cell["head"] is not None}
-    return [
-        (job["scenario"], number)
-        for job in asked
-        for number in range(job["from"], job["from"] + job["runs"])
-        if (job["scenario"], number) not in had
-    ]
-
-
-def nearest(history: Sequence[str], measurement: str, points: Collection[str]) -> Optional[str]:
-    """Where on gh-pages the point at `measurement` of the newest commit of `history` with one
-    is, `history` newest first, or `None` when none has one."""
-    at = (measure.point(sha, measurement) for sha in history)
-    return next((path for path in at if path in points), None)
+def widen(matrix: dict, revision: str, base: str) -> List[dict]:
+    """The run jobs that follow those of a pull request's first seeds, which came to `matrix`: of
+    each group a cell of which has an outcome at both sides and the two differ, the rest of main's
+    seeds of each of `pr`'s rates, at `revision` and at `base`; none where no cell does. Any field
+    counts, as nothing moved only where every outcome is the same."""
+    moved = {cell["group"] for cell in matrix["cells"] if cell["change"] == "moved"}
+    found = []
+    for group, goal in GOALS.items():
+        if group not in moved:
+            continue
+        for rate, seeds in RATES["pr"].items():
+            swept = [(goal.format(rate), RATES["main"][rate])]
+            found += jobs("widen", revision, base, swept, seeds + 1)
+    # Every job at the revision first, as plan prints them.
+    return sorted(found, key=lambda job: job["side"] == "base")
 
 
 def title(matrix: dict) -> str:
-    """The verdict of each group of `matrix` in a few words, after the group's name: how many of
-    its runs moved, and which way; and where they drew other ids beside main's spread, how many
-    fell below main's worst seed. A verdict every group has, of a head chat-sim does not build at
-    or of no base to compare with, is said once."""
-    if matrix["verdict"] in ("unbuilt", "no-base"):
+    """The verdict of each group of `matrix` in a few words, after the group's name: whether its
+    runs moved, and which way. A verdict of a head chat-sim does not build at, or of runs with
+    nothing to compare, is said once."""
+    if matrix["verdict"] == "unbuilt" or not compares(matrix):
         return _title(matrix, matrix)
     return "; ".join(f"{GROUPS[one['group']]} {_title(matrix, one)}" for one in matrix["groups"])
 
 
 def _title(matrix: dict, judged: dict) -> str:
-    """The verdict of `judged`, the matrix or one of its groups, in a few words."""
+    """The verdict of `judged`, the matrix or one of its groups, in a few words: of a group that
+    forks earlier or later, at its first rate that does."""
     counts, verdict = judged["counts"], judged["verdict"]
-    if verdict == "re-rolled" and matrix["spread"] is not None:
-        return (_TITLES[verdict] + _BELOW).format(c=counts)
-    if verdict != "no-base":
+    if verdict in _TITLES:
         return _TITLES[verdict].format(c=counts)
+    if verdict in ("earlier", "later"):
+        one = next(one for one in judged["results"] if one["result"] == verdict)
+        tested = f"{one['later']} later, {one['earlier']} earlier (p {_p(one['p'])})"
+        return f"forks {verdict} at {_rate(one['rate'])}: {tested}"
     if matrix["base"] is None:
         return "no base, no comparison"
-    if matrix["base"]["unbuilt"]:
+    cells = matrix["cells"]
+    if judged is not matrix:
+        cells = [cell for cell in cells if cell["group"] == judged["group"]]
+    if any(cell["unbuilt"]["base"] for cell in cells):
         return "does not build at the base, no comparison"
     return "no outcome at the base, no comparison"
 
@@ -509,66 +472,44 @@ def compares(matrix: dict) -> bool:
     return matrix["base"] is not None and matrix["counts"]["compared"] > 0
 
 
-def moved(cell: dict) -> bool:
-    """Whether the head's run of `cell` came out otherwise than the base's at the same seed, from
-    the same draws: better, worse, or changed."""
-    return cell["change"] in MOVED
+def told(matrix: dict, result: dict) -> str:
+    """What a group's line says of one of its scenarios, by its rate and its `result` in
+    `matrix`: of one whose runs all came out as at the base, the seeds they ran; of one whose runs
+    moved, how many first forked later, earlier and at the same epoch, and the sign test's p; after
+    either, how many runs the base gave no outcome in; of any other, why there is nothing to
+    compare."""
+    return f"{_rate(result['rate'])}: {result_words(matrix, result)}"
 
 
-def seeds_of(matrix: dict, scenario: str) -> List[int]:
-    """The epochs of the first fork, or else of the trunk, of main's seeds of `scenario` in
-    `matrix`'s spread, lowest first; none without a spread."""
-    spread = matrix["spread"]
-    if spread is None:
-        return []
-    return sorted(
-        seed["epochs"]
-        for seed in spread["seeds"]
-        if seed["scenario"] == scenario and seed["epochs"] is not None
-    )
+def result_words(matrix: dict, result: dict) -> str:
+    """What `told` says of a scenario after its rate."""
+    said = result["result"]
+    cells = [cell for cell in matrix["cells"] if cell["scenario"] == result["scenario"]]
+    if said == "same":
+        return f"nothing moved in {_seeds(result['seeds'])}{_base_gap(cells)}"
+    if said in ("within", "earlier", "later"):
+        later, earlier, zero = result["later"], result["earlier"], result["zero"]
+        tested = f"{later} later, {earlier} earlier, {zero} tied (p {_p(result['p'])})"
+        return tested + _base_gap(cells)
+    if said == "no-outcome":
+        missing = sum(cell["head"] is None for cell in cells)
+        return f"no outcome in {missing} of {len(cells)} runs"
+    if said == "no-base":
+        if any(cell["unbuilt"]["base"] for cell in cells):
+            return "does not build at the base"
+        return "no outcome at the base"
+    return RESULTS[said] if said is not None else "not compared"
 
 
-def within(matrix: dict, cell: dict) -> Optional[bool]:
-    """Whether the head's run of `cell` first forked, or else ended its trunk, within the epochs
-    of main's seeds of its scenario, from the lowest to the highest; `None` without those seeds or
-    an epoch of the head's."""
-    seeds, epochs = seeds_of(matrix, cell["scenario"]), cell["epochs"]["head"]
-    if not seeds or epochs is None:
-        return None
-    return seeds[0] <= epochs <= seeds[-1]
-
-
-def seeded(matrix: dict, cells: Sequence[dict]) -> int:
-    """How many of main's seeds in `matrix`'s spread the scenario of `cells` with the fewest has,
-    as `seeds_of` counts them; 0 without a spread."""
-    scenarios = {cell["scenario"] for cell in cells}
-    return min((len(seeds_of(matrix, scenario)) for scenario in scenarios), default=0)
-
-
-def tally(matrix: dict, group: str) -> dict:
-    """The runs of `group` in `matrix` by how they compare: how many there are, how many of each
-    of `STANDINGS`, how many moved and how many of those first forked beyond main's seeds, and how
-    many seeds of main's their scenarios have, as `seeded` counts them."""
-    cells = [cell for cell in matrix["cells"] if cell["group"] == group]
-    shifted = [cell for cell in cells if moved(cell)]
-    return {
-        "cells": len(cells),
-        **{change: sum(cell["change"] == change for cell in cells) for change in CHANGES},
-        "no-outcome": sum(cell["head"] is None for cell in cells),
-        "uncompared": sum(cell["head"] is not None and cell["change"] is None for cell in cells),
-        "moved": len(shifted),
-        "beyond": sum(within(matrix, cell) is False for cell in shifted),
-        "seeds": seeded(matrix, cells),
-    }
-
-
-def told(counts: dict) -> Tuple[List[str], List[str]]:
-    """What a group's line says of its runs from their `tally`, as two lists of `STANDINGS`: the
-    ones it leads with, what went wrong at the head and what moved, or else the first the runs
-    have; and the rest the runs have, said after them, the same last."""
-    had = [one for one in STANDINGS if counts[one]]
-    led = [one for one in had if one == "no-outcome" or one in MOVED] or had[:1]
-    return led, sorted((one for one in had if one not in led), key=lambda one: one == "same")
+def _base_gap(cells: Sequence[dict]) -> str:
+    """How many of `cells` the base gave no outcome in, which the sign test leaves out, after a
+    comma; nothing where it gave every one."""
+    missing = [cell for cell in cells if cell["base"] is None]
+    if not missing:
+        return ""
+    if any(cell["unbuilt"]["base"] for cell in missing):
+        return f", does not build at the base in {len(missing)} of {len(cells)} runs"
+    return f", no outcome at the base in {len(missing)} of {len(cells)} runs"
 
 
 def run_page(cell: dict) -> str:
@@ -576,26 +517,10 @@ def run_page(cell: dict) -> str:
     return f"head/{cell['scenario']}/{cell['run']}/"
 
 
-def moved_image(revision: str, dark: bool = False) -> str:
-    """The name of the picture of the runs that moved at `revision`, under its pull request's
-    report, in the light theme or the dark. It names the revision, since GitHub's image proxy
-    keeps a picture it fetched once."""
-    return f"moved-{revision}{'-dark' if dark else ''}.svg"
-
-
-def picture(matrix: dict, facts: dict) -> Optional[str]:
-    """Where the picture of the runs that moved is that the comment on a pull request shows, in
-    the light theme: under the report's page, where it has one and a run of `matrix` moved; else
-    `None`."""
-    if not facts["report_url"] or not any(moved(cell) for cell in matrix["cells"]):
-        return None
-    return facts["report_url"] + moved_image(facts["revision"])
-
-
 def concluded(matrix: dict, required: bool) -> str:
     """The check's conclusion of `matrix`: a failure where the verdict of a group's runs fails it,
-    else a success where one's succeeds, else neutral, so that one group's runs standing higher
-    cannot hide the other's standing lower."""
+    else a success where one's succeeds, else neutral, so that one group's runs forking later
+    cannot hide the other's forking earlier."""
     said = {conclusion(one["verdict"], required) for one in matrix["groups"]}
     return next((one for one in ("failure", "success") if one in said), "neutral")
 
@@ -646,61 +571,27 @@ def post_to(pages: Sequence[Sequence[dict]], login: str, pr: str) -> Tuple[str, 
     return "PATCH", f"{ON_LOGOS_CHAT}/issues/comments/{found['id']}"
 
 
-def built_since(builds: Sequence[dict], commit: str) -> bool:
-    """Whether the Pages site serves `commit` of gh-pages, from its `builds` as the API lists
-    them: it built the push of `commit`, or a push after it, which holds `commit` too and can have
-    cut the build of `commit` short."""
-    ours = next((one for one in builds if one["commit"] == commit), None)
-    return ours is not None and any(
-        one["status"] == "built" and one["created_at"] >= ours["created_at"] for one in builds
-    )
-
-
 def render_pr(matrix: dict, facts: dict) -> str:
-    """The comment on a pull request. Where every run came out the same as the base's, one line
-    that says so. Else a line for each group by how its runs compare; where a run moved and the
-    report has a page, the picture of the runs that moved and a link to each one's page; the
-    links; and with the picture, how to read its trees. A head chat-sim does not build at, or runs
-    with nothing to compare, have the verdict line alone."""
+    """The comment on a pull request. Where every run was compared and came out the same as the
+    base's, one line that says so and the links. Else a line for each group, its verdict and what
+    each of its scenarios came to, and the links. A head chat-sim does not build at has the
+    verdict line alone, and runs with nothing to compare have it and the links."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
-    point = matrix["base_point"]
     if not compares(matrix):
-        return _verdict_line(headline(matrix), facts, point) + "\n"
-    cells, head, base = matrix["cells"], _commit(facts["revision"]), _merge_base(facts, point)
-    if all(cell["change"] == "same" for cell in cells):
+        return f"**{headline(matrix)}** {ran_at(facts, _commit)}\n\n{_links(facts)}\n"
+    cells, head, base = matrix["cells"], _commit(facts["revision"]), _merge_base(facts)
+    if matrix["verdict"] == "same" and matrix["counts"]["compared"] == len(cells):
         groups = " and ".join(GROUPS[one["group"]] for one in matrix["groups"])
         return (
             f"{_MARKS['same']} **Nothing moved.** All {len(cells)} runs of {groups} at {head} "
             f"replayed {base} exactly. {_links(facts)}\n"
         )
-    said = [_group_line(matrix, one["group"]) for one in matrix["groups"]]
+    said = [_group_line(matrix, one) for one in matrix["groups"]]
     # A backslash breaks the line wherever the comment is rendered, the check's summary and the
     # run's summary too, where the end of a line alone does not.
     lines = [f"{line}\\" for line in said[:-1]] + said[-1:]
-    shown, shifted = picture(matrix, facts), [cell for cell in cells if moved(cell)]
-    if shown is not None:
-        report = facts["report_url"]
-        dark = report + moved_image(facts["revision"], dark=True)
-        alt = "; ".join(f"{_run_name(cell)}: {cell['change']}" for cell in shifted)
-        opened = " · ".join(f"[{_run_name(cell)}]({report}{run_page(cell)})" for cell in shifted)
-        lines += [
-            "",
-            f'<picture><source media="(prefers-color-scheme: dark)" srcset="{html.escape(dark)}">'
-            f'<img alt="{html.escape(alt)}" src="{html.escape(shown)}"></picture>',
-            "",
-            f"Open a run: {opened}",
-        ]
     lines += ["", f"{_links(facts)} · {head} against {base}"]
-    if shown is not None:
-        lines += [
-            "",
-            "<details><summary>How to read the trees</summary>",
-            "",
-            *_trees(matrix, shifted),
-            "",
-            "</details>",
-        ]
     return "".join(f"{line}\n" for line in lines)
 
 
@@ -826,93 +717,25 @@ def _plan(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         parser.error(f"--check-run: {args.check_run!r} is not the id of a check run")
     if args.check_run and (args.suite != "pr" or not args.pr):
         parser.error("--check-run: given for pr with --pr, and only then")
-    if not ((args.points is None) == (args.measurement is None) == (args.pages is None)):
-        parser.error("--points: given with --measurement and --pages, and only with them")
-    point = None
-    if args.points is not None:
-        _check_measurement(parser, args.measurement)
-        listed = set(_lines(parser, "--points", args.points))
-        point = stands_in(args.suite, args.base, args.measurement, listed)
     swept = scenarios(args.suite, args.expected)
-    if point is not None:
-        planned = jobs(args.suite, args.revision, args.base, swept)
-        at_base = [job for job in planned if job["side"] == "base"]
-        why = _not_standing(args.tree, args.pages, point, args.suite, at_base)
-        if why is not None:
-            print(f"::warning::{why}", file=sys.stderr)
-            point = None
     for name in ("suite", "revision", "base", "pr", "check_run"):
         print(f"{name}={getattr(args, name)}")
-    run_at = "" if point else args.base
-    print(f"runs={json.dumps(jobs(args.suite, args.revision, run_at, swept))}")
+    print(f"runs={json.dumps(jobs(args.suite, args.revision, args.base, swept))}")
     print(f"scenarios={' '.join(name for name, _ in swept)}")
-    print(f"point={point or ''}")
     return 0
 
 
-def _not_standing(
-    tree: Path, ref: str, where: str, suite: str, asked: Sequence[dict]
-) -> Optional[str]:
-    """Why main's point at `where` on `ref` of `tree` does not stand in for the runs the jobs
-    `asked` of `suite` do at the base: it cannot be read as pages.py reads a point, or it has no
-    outcome at one of them. `None` when it stands in."""
-    said = "main's point at the base does not stand in for the base's runs, so its jobs run them"
-    point, why = _read_point(tree, ref, where)
-    if point is None:
-        return f"{said}: {why}"
-    missing = [_part(suite, name, number, 1) for name, number in without_outcome(point, asked)]
-    if missing:
-        return f"{said}: {where} has no outcome at {', '.join(missing)}"
-    return None
-
-
-def _read_point(tree: Path, ref: str, where: str) -> Tuple[Optional[dict], str]:
-    """Main's point at `where` on `ref` of `tree` as pages.py reads a point, and `""`; or `None`,
-    and where the point is and why it cannot be read."""
-    # pages.py imports this module.
-    import pages
-
-    read = subprocess.run(
-        ["git", "-C", str(tree), "cat-file", "blob", f"{ref}:{where}"], capture_output=True
-    )
-    if read.returncode != 0:
-        # git's lines as one: a warning is a line.
-        failed = " ".join(read.stderr.decode(errors="replace").split())
-        return None, f"{where} on {ref}: {failed}"
-    with tempfile.TemporaryDirectory() as scratch:
-        # pages.py reads a point in the directory of its logos-chat commit and its measurement.
-        file = Path(scratch, where)
-        file.parent.mkdir(parents=True)
-        file.write_bytes(read.stdout)
-        try:
-            return pages.read_point(file), ""
-        except pages.Unreadable as refused:
-            return None, f"{where} on {ref}: {str(refused).removeprefix(f'{file}: ')}"
-
-
-def _spread(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
-    _check_measurement(parser, args.measurement)
-    listed = set(_lines(parser, "--points", args.points))
-    try:
-        history = json.loads(args.history.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, ValueError) as error:
-        parser.error(f"--history: {args.history}: {error}")
-    if not isinstance(history, list) or not all(
-        isinstance(one, dict) and _SHA.fullmatch(str(one.get("sha"))) for one in history
-    ):
-        parser.error(f"--history: {args.history}: not a list of commits, each with its sha")
-    shas = [one["sha"] for one in history]
-    found = nearest(shas, args.measurement, listed)
-    while found is not None:
-        point, why = _read_point(args.tree, args.pages, found)
-        if point is not None:
-            break
-        print(
-            f"::warning::the head's runs are not placed among main's point: {why}", file=sys.stderr
-        )
-        listed.discard(found)
-        found = nearest(shas, args.measurement, listed)
-    print(f"spread={found or ''}")
+def _widen(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    for flag, sha in (("--revision", args.revision), ("--base", args.base)):
+        if _SHA.fullmatch(sha) is None:
+            parser.error(f"{flag}: {sha!r} is not a commit's 40 hex digits")
+    asked = _asked(parser, args.asked)
+    matrix = _matrix(args.matrix)
+    if matrix is None:
+        parser.error(f"--matrix: {args.matrix} is not a matrix tools/sim matrix writes")
+    more = widen(matrix, args.revision, args.base)
+    print(f"more={json.dumps(more)}")
+    print(f"asked={json.dumps(asked + more)}")
     return 0
 
 
@@ -935,7 +758,7 @@ def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         if (args.base_runs is None) != (not args.base):
             parser.error("--base-runs: given with --base, and only with it")
         swept = scenarios(args.suite, args.expected)
-        return _written(render(swept, args.runs, args.base_runs, facts), None, args.out)
+        return _written(render(swept, args.runs, args.base_runs, facts), args.out)
     if args.matrix is None or args.runs is not None or args.base_runs is not None:
         parser.error(f"--matrix: the {args.suite} suite is written from its matrix alone")
     matrix = _matrix(args.matrix)
@@ -943,21 +766,17 @@ def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         parser.error(f"--matrix: {args.matrix} is not a matrix tools/sim matrix writes")
     if (matrix["base"] is None) != (not args.base):
         parser.error("--matrix: a matrix with a base is given with --base, and only with it")
-    if matrix["base_point"] is not None and matrix["base_point"]["logos_chat"] != args.base:
-        parser.error("--matrix: main's point that stood in for the base is not at --base")
     if args.suite == "main":
-        return _written(render_main(matrix, facts), None, args.out)
-    return _written(render_pr(matrix, facts), picture(matrix, facts), args.out)
+        return _written(render_main(matrix, facts), args.out)
+    return _written(render_pr(matrix, facts), args.out)
 
 
-def _written(comment: str, shown: Optional[str], out: Optional[Path]) -> int:
-    """Writes `comment` to `out`, and then says where the picture it shows is, `shown`, or
-    nothing; without `out`, writes it to standard output."""
+def _written(comment: str, out: Optional[Path]) -> int:
+    """Writes `comment` to `out`, or without `out` to standard output."""
     if out is None:
         sys.stdout.write(comment)
-        return 0
-    out.write_text(comment, encoding="utf-8")
-    print(f"picture={shown or ''}")
+    else:
+        out.write_text(comment, encoding="utf-8")
     return 0
 
 
@@ -969,22 +788,19 @@ def _measurement(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     return 0
 
 
+def _changed(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    if args.since and _SHA.fullmatch(args.since) is None:
+        parser.error(f"--since: {args.since!r} is not a commit's 40 hex digits")
+    print(f"changed={str(changed(args.tree, args.since)).lower()}")
+    return 0
+
+
 def _running(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     if _SHA.fullmatch(args.revision) is None:
         parser.error(f"--revision: {args.revision!r} is not a commit's 40 hex digits")
     if args.base and _SHA.fullmatch(args.base) is None:
         parser.error(f"--base: {args.base!r} is not a commit's 40 hex digits")
-    try:
-        asked = json.loads(_read(parser, "--asked", args.asked))
-    except ValueError as error:
-        parser.error(f"--asked: {args.asked}: {error}")
-    if not isinstance(asked, list) or not all(
-        isinstance(job, dict)
-        and job.get("side") in ("revision", "base")
-        and _count(job.get("runs"))
-        for job in asked
-    ):
-        parser.error(f"--asked: {args.asked}: not the run jobs plan prints")
+    asked = _asked(parser, args.asked)
     facts = {
         "revision": args.revision,
         "base": args.base,
@@ -1035,35 +851,25 @@ def _post(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     return 0
 
 
-def _built(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
-    if _SHA.fullmatch(args.commit) is None:
-        parser.error(f"--commit: {args.commit!r} is not a commit's 40 hex digits")
+def _asked(parser: argparse.ArgumentParser, file: Path) -> List[dict]:
+    """The run jobs `file` holds as plan prints them, each with its side and how many runs."""
     try:
-        builds = json.loads(_read(parser, "--builds", args.builds))
+        asked = json.loads(_read(parser, "--asked", file))
     except ValueError as error:
-        parser.error(f"--builds: {args.builds}: {error}")
-    if not isinstance(builds, list) or not all(
-        isinstance(one, dict)
-        and all(isinstance(one.get(key), str) for key in ("commit", "status", "created_at"))
-        for one in builds
+        parser.error(f"--asked: {file}: {error}")
+    if not isinstance(asked, list) or not all(
+        isinstance(job, dict)
+        and job.get("side") in ("revision", "base")
+        and _count(job.get("runs"))
+        for job in asked
     ):
-        parser.error(f"--builds: {args.builds}: not builds, each with its commit, status and time")
-    print("true" if built_since(builds, args.commit) else "false")
-    return 0
+        parser.error(f"--asked: {file}: not the run jobs plan prints")
+    return asked
 
 
 def _count(value: object) -> bool:
     """Whether `value` is a whole number above zero, as JSON gives one."""
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
-
-
-def _check_measurement(parser: argparse.ArgumentParser, sha: str) -> None:
-    if _SHA.fullmatch(sha) is None:
-        parser.error(f"--measurement: {sha!r} is not a commit's 40 hex digits")
-
-
-def _lines(parser: argparse.ArgumentParser, flag: str, file: Path) -> List[str]:
-    return _read(parser, flag, file).splitlines()
 
 
 def _read(parser: argparse.ArgumentParser, flag: str, file: Path) -> str:
@@ -1120,29 +926,18 @@ def _part(suite: str, name: str, first: int, count: int) -> str:
     return f"{rate} seeds {first - 1} to {first + count - 2}"
 
 
-def ran_at(
-    facts: dict,
-    point: Optional[dict],
-    commit: Callable[[str], str],
-    link: Callable[[str, dict], str],
-) -> str:
+def ran_at(facts: dict, commit: Callable[[str], str]) -> str:
     """What the verdict line says after its verdict: the commit that ran and the merge base it
-    was held to, and the point of main whose runs stood in for the base's where one did, each
-    commit as `commit` draws it and the words that name the point as `link` draws them."""
+    was held to, each as `commit` draws it."""
     said = f"at {commit(facts['revision'])}"
     if facts["base"]:
         said += f" against its merge base {commit(facts['base'])}"
-    if point is not None:
-        named = link("main's run of it", point)
-        said += f", from {named}"
     return said
 
 
-def _verdict_line(said: str, facts: dict, point: Optional[dict] = None) -> str:
-    """The verdict line: what was said, of which commit against which, the point of main whose
-    runs stood in for the base's where one did, and the links."""
-    run = ran_at(facts, point, _commit, lambda words, at: f"[{words}]({at['run_url']})")
-    line = f"**{said}** {run}"
+def _verdict_line(said: str, facts: dict) -> str:
+    """The verdict line: what was said, of which commit against which, and the links."""
+    line = f"**{said}** {ran_at(facts, _commit)}"
     if facts["report_url"]:
         line += f" · [the report]({facts['report_url']})"
     return line + f" · [the run]({facts['run_url']})"
@@ -1158,78 +953,42 @@ def _unbuilt_comment(facts: dict) -> str:
     return "".join(f"{line}\n" for line in lines)
 
 
-def _group_line(matrix: dict, group: str) -> str:
-    """The line of the comment on a pull request on the runs of `group`, as `told` orders it: the
-    mark of what it leads with, and how many runs each of those has, or of a group whose runs led
-    with the same, how many of all; where any moved and the matrix has main's seeds, how many of
-    those first forked beyond them; and how many runs each of the rest has."""
-    counts = tally(matrix, group)
-    led, rest = told(counts)
-    if led == ["same"]:
-        said = f"same in {counts['same']} of {counts['cells']} runs"
-    else:
-        shown = [f"{STANDINGS[one]} in {counts[one]}" for one in led]
-        shown[0] += " run" if counts[led[0]] == 1 else " runs"
-        said = ", ".join(shown)
-    line = f"{_MARKS[led[0]]} **{GROUPS[group]}: {said}**"
-    if counts["moved"] and counts["seeds"]:
-        beyond = f"{counts['beyond']} beyond" if counts["beyond"] else "all within"
-        line += f", {beyond} main's {counts['seeds']} seeds"
-    if rest:
-        line += " · " + ", ".join(f"{counts[one]} {STANDINGS[one]}" for one in rest)
-    return line
+def _group_line(matrix: dict, group: dict) -> str:
+    """The line of the comment on a pull request on the runs of `group`, one of `matrix`'s: the
+    mark of its verdict and the verdict in words, then what each of its scenarios came to, by its
+    rate."""
+    verdict = group["verdict"]
+    line = f"{_MARKS[verdict]} **{GROUPS[group['group']]}: {RESULTS[verdict]}**"
+    return line + "".join(f" · {told(matrix, one)}" for one in group["results"])
 
 
-def _merge_base(facts: dict, point: Optional[dict]) -> str:
-    """The merge base the head's runs were held to, as the comment on a pull request names it:
-    main's run of it, linked, where main's point stood in for the base's runs."""
-    said = f"its merge base {_commit(facts['base'])}"
-    return said if point is None else f"[main's run]({point['run_url']}) of {said}"
+def _merge_base(facts: dict) -> str:
+    """The merge base the head's runs were held to, as the comment on a pull request names it."""
+    return f"its merge base {_commit(facts['base'])}"
 
 
 def _links(facts: dict) -> str:
-    """The links of the comment on a pull request: the report's page where it has one, and the
-    run."""
-    if not facts["report_url"]:
+    """The links of the comment on a pull request: where the report has a page, the trees of its
+    runs there, the page, which the site keeps while the pull request is open, and the graph over
+    main, the page above it; and the run."""
+    report = facts["report_url"]
+    if not report:
         return f"[The run]({facts['run_url']})"
-    return f"[The report]({facts['report_url']}) · [the run]({facts['run_url']})"
+    return (
+        f"[The trees]({report}#runs) · [the report]({report}), kept while the pull request is "
+        f"open · [the graph over main]({urljoin(report, '../')}) · [the run]({facts['run_url']})"
+    )
 
 
-def _run_name(cell: dict) -> str:
-    """A cell's run as the comment on a pull request names it: its group, rate and seed."""
-    return f"{GROUPS[cell['group']]} {_rate(cell['rate'])} seed {cell['seed']}"
-
-
-def _trees(matrix: dict, shown: Sequence[dict]) -> List[str]:
-    """How to read the trees of the cells `shown`, a bullet each, with what the band of main's
-    seeds is where `matrix` has seeds of their scenarios."""
-    seeds, band = seeded(matrix, shown), []
-    if seeds:
-        band = [_BAND.format(seeds=seeds, commit=_commit(matrix["spread"]["logos_chat"]))]
-    return [f"- {said}" for said in (*_TREES, *band, _MEASURED_AFTER)]
-
-
-def words(cell: dict, against: bool) -> str:
+def words(cell: dict) -> str:
     """A cell in a few words: how the head's run ended, at the epoch of its first fork or else of
     the trunk, and the lines and the members off the trunk where there are any and how many of
-    those never joined where any did, then its change, with what the base's run had of what moved
-    where it is better or worse, and where it is re-rolled beside main's spread whether the head's
-    epochs are within it or below it; and with `against`, why a cell that has an outcome at the
-    head has no change."""
+    those never joined where any did; or why it has no outcome at the head."""
     if cell["head"] is None:
         return _missing(cell, "head")
     said = _ended_at(cell["epochs"]["head"], cell["ended"]["head"])
     off = _off_trunk(cell["head"])
-    if off:
-        said += f", {off}"
-    change, moved = cell["change"], cell["moved"]
-    if moved is not None:
-        return f"{said}, was {_moved(cell)}: {change}"
-    if change == "re-rolled" and cell["below"] is not None:
-        return f"{said}, {change}, {'below' if cell['below'] else 'within'} main's spread"
-    if change is not None:
-        return f"{said}, {change}"
-    return f"{said}, {_missing(cell, 'base')} at the base" if against else said
+    return f"{said}, {off}" if off else said
 
 
 def _extent(spread: dict) -> str:
@@ -1285,29 +1044,21 @@ def _off_trunk(outcome: dict) -> str:
     return f"{off}, {never} of them never joined" if never else off
 
 
-def _moved(cell: dict) -> str:
-    """What the base's run of a cell had of the part that moved: how it ended and where, or its
-    lines or members off the trunk."""
-    part, was = cell["moved"]["part"], cell["moved"]["base"]
-    if part in ("epochs", "ended"):
-        return _ended_at(cell["epochs"]["base"], cell["ended"]["base"])
-    return f"{was} {_OFF[part]}{'' if was == 1 else 's'} off"
-
-
 def _missing(cell: dict, side: str) -> str:
     """Why a side of a cell has no outcome."""
     return "does not build" if cell["unbuilt"][side] else "no outcome"
 
 
-def again(cell: dict, facts: dict) -> List[str]:
-    """The commands that run a cell again, at the head or at the base."""
-    pins = f"# move both pins to {facts['revision']}"
-    if facts["base"]:
-        pins += f", or to {facts['base']} for the base"
+def again(cell: dict, revision: str, chat_sim: str) -> List[str]:
+    """The commands that run a cell again at `revision` of logos-chat, from chat-sim at
+    `chat_sim`: its checkout, the lines of sweep.yml's step that pin logos-chat, the build, and
+    the cell's run of its sweep."""
     scenario = cell["scenario"]
     return [
-        f"git clone {CHAT_SIM} && cd chat-sim && git checkout {facts['chat_sim']}",
-        f"{pins}, then",
+        f"git clone {CHAT_SIM} && cd chat-sim && git checkout {chat_sim}",
+        "pinned=$(jq -r '.nodes.\"logos-chat\".locked.rev' flake.lock)",
+        f'sed -i "s/$pinned/{revision}/g" flake.nix Cargo.toml',
+        "nix flake lock",
         "nix develop -c cargo build --release -p harness --bin harness-run",
         f"python3 tools/sim sweep tools/sim/scenarios/{scenario}.json --from {cell['run']} "
         f"--runs 1 --one-process target/release/harness-run --out tmp/{scenario}-seed-"
@@ -1319,12 +1070,36 @@ def _rate(rate: Optional[str]) -> str:
     return "-" if rate is None else rate
 
 
+def _seeds(seeds: Sequence[int]) -> str:
+    """Seeds by the lowest and the highest of them."""
+    return f"seeds {min(seeds)} to {max(seeds)}"
+
+
+def _p(p: float) -> str:
+    """A sign test's p to two figures, and below a thousandth as that."""
+    return "< 0.001" if p < 0.001 else f"{p:.2g}"
+
+
 def came_to(now: Optional[List[dict]]) -> str:
-    """What the runs of a sweep came to, `now` their outcomes: each run's verdict, or `no outcome`
-    without them."""
+    """What the runs of a sweep came to, `now` their outcomes: how each came out, apart by ` · `
+    since a run can come out in words that hold a comma, or `no outcome` without them."""
     if now is None:
         return "no outcome"
-    return ", ".join(one.get("verdict") or "no verdict" for one in now)
+    return " · ".join(came_out(one) for one in now)
+
+
+def came_out(outcome: dict) -> str:
+    """How a run came out, in the words of a verdict: its verdict, or how its lineage says a run
+    of a `grow` step with none ended, split at its first fork, stalled at the trunk's epoch,
+    whole, or whole with members behind."""
+    verdict, ended = outcome.get("verdict"), outcome.get("ended")
+    if verdict is not None or ended is None:
+        return verdict or "no verdict"
+    if ended == "split":
+        return f"split at epoch {outcome['first_fork']}"
+    if ended == "stalled":
+        return f"stalled at epoch {outcome['trunk_epoch']}"
+    return "whole" if ended == "whole" else "whole, members behind"
 
 
 def compare_count(now: Optional[List[dict]], compared: Optional[str], missing: str) -> str:

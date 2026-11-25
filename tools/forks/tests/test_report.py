@@ -702,6 +702,19 @@ class CommandLine(unittest.TestCase):
         self.assertTrue(done.stdout.startswith(b"conversation a5bb59cd29\n  whole\n"))
         self.assertIn(b"\n  57d94add      7361726f  stdin  4      tip       A\n", done.stdout)
 
+    def test_a_pipe_nobody_reads_ends_the_command_with_2_and_no_word_of_the_interpreters(self):
+        unread, written = os.pipe()
+        os.close(unread)
+        try:
+            done = subprocess.run(
+                [sys.executable, str(TOOL), "report", str(REAL / "run-whole.log")],
+                stdout=written,
+                stderr=subprocess.PIPE,
+            )
+        finally:
+            os.close(written)
+        self.assertEqual((done.returncode, done.stderr), (2, b"forks: [Errno 32] Broken pipe\n"))
+
     def test_a_run_named_after_a_file_whose_name_is_not_utf8_is_printed(self):
         with tempfile.TemporaryDirectory() as scratch:
             log = os.path.join(os.fsencode(scratch), b"kes\xff.log")

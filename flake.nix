@@ -62,10 +62,10 @@
       apps = forAllSystems ({ pkgs, system, ... }:
         let
           packages = self.packages.${system};
-          # tools/sim finds the registry and tools/forks by their place in the repository.
+          # tools/sim finds tools/forks by its place in the repository.
           sim = pkgs.lib.fileset.toSource {
             root = ./.;
-            fileset = pkgs.lib.fileset.unions [ ./tools ./.github/scripts/mock-registry.py ];
+            fileset = ./tools;
           };
           app = name: description: text: {
             type = "app";

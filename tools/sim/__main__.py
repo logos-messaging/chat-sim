@@ -1,4 +1,4 @@
-"""Runs the tool from a checkout: `python3 tools/sim run SCENARIO --chat-cli PATH --out DIR`."""
+"""Runs the tool from a checkout: `python3 tools/sim run SCENARIO --one-process PATH --out DIR`."""
 
 import sys
 

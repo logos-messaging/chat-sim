@@ -161,8 +161,8 @@
       "installation": "90557d44"
     }
   ],
-  "verdict": "split at epoch 8",
-  "at_tip": 8,
+  "verdict": null,
+  "at_tip": null,
   "seated": 15,
   "virtual_s": 1961.2,
   "stopped": null,
@@ -173,6 +173,7 @@
     "lines": [
       {
         "kind": "trunk",
+        "forked_at": null,
         "members": [
           "saro",
           "raya",
@@ -189,12 +190,14 @@
       },
       {
         "kind": "main",
+        "forked_at": 8,
         "members": [
           "peer8"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 11,
         "members": [
           "peer10"
         ]

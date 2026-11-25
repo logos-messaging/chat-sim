@@ -28,10 +28,6 @@ ROOT = Path(__file__).resolve().parents[2]
 # 0.1, 1 and 5% loss, each job's artifact in a directory of its own, cut to what tools/sim matrix
 # reads.
 UPLOADED = ROOT / "tools" / "sim" / "tests" / "fixtures" / "matrix"
-# Main's point at logos-chat fa5282a3, the probe's twenty seeds of each rate, cut to what
-# tools/sim matrix reads.
-POINT = ROOT / "tools" / "sim" / "tests" / "fixtures" / "point.json"
-FA5282A = "fa5282a34405b6975424174858d85e4f261d420a"
 GOAL = "50-epochs-by-saro-waku-loss-{}"
 # The goal of each group, by the group's name in a scenario: UPLOADED holds GroupV2's runs of it,
 # and the tests copy them as GroupV3's.
@@ -48,20 +44,52 @@ def write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def summaries(held: dict) -> List[dict]:
-    """The summaries of a point, or of a pull request's matrix and of its spread."""
-    spread = held.get("spread")
-    return [*(held["summary"] or []), *([] if spread is None else spread["summary"])]
+def edited(report: dict, changed: dict) -> None:
+    """Gives `report`, a run.json, the fields `changed` gives it. Two are its grow's: `behind`,
+    and `first_fork`, which has no line off the trunk fork before that epoch and the first one
+    fork at it, or with `None` has every line off the trunk gone and its members on the trunk."""
+    grown = {field: changed[field] for field in ("behind", "first_fork") if field in changed}
+    report.update((field, held) for field, held in changed.items() if field not in grown)
+    grow = report["grow"]
+    if "behind" in grown:
+        grow["behind"] = grown["behind"]
+    if "first_fork" in grown:
+        at, (trunk, *off) = grown["first_fork"], grow["lines"]
+        if at is None:
+            trunk["members"] += [member for line in off for member in line["members"]]
+            grow.update(lines=[trunk], main=1)
+        else:
+            first = min(off, key=lambda line: line["forked_at"])
+            for line in off:
+                if line is first or line["forked_at"] < at:
+                    line["forked_at"] = at
+
+
+def reported(outcome: dict) -> dict:
+    """`outcome` as one of an earlier measurement holds it, which holds no first fork and says
+    how its run came out by the verdict `forks` gave it."""
+    outcome["verdict"] = simulate.came_out(outcome)
+    del outcome["first_fork"]
+    return outcome
+
+
+def unpaired(held: dict) -> dict:
+    """`held`, a point, as one from before the cells held `d` holds it, whose cells hold `moved`,
+    `null` in a point, in its place."""
+    for cell in held["cells"]:
+        del cell["d"]
+        cell["moved"] = None
+    return held
 
 
 def unjoined(held: dict) -> dict:
-    """`held`, a point or a pull request's matrix, as one of an earlier measurement holds it,
-    whose outcomes and summaries do not count the members that never joined."""
-    for cell in held["cells"]:
+    """`held`, a point, as one of an earlier measurement holds it, `unpaired`, whose outcomes are
+    `reported` and whose outcomes and summaries do not count the members that never joined."""
+    for cell in unpaired(held)["cells"]:
         for side in ("head", "base"):
             if cell.get(side) is not None:
-                del cell[side]["never_joined"]
-    for one in summaries(held):
+                del reported(cell[side])["never_joined"]
+    for one in held["summary"]:
         del one["never_joined"]
     return held
 
@@ -69,7 +97,7 @@ def unjoined(held: dict) -> dict:
 def unforked(held: dict) -> dict:
     """`held` as one of a measurement earlier still holds it, whose summaries say nothing of how
     the runs forked either."""
-    for one in summaries(unjoined(held)):
+    for one in unjoined(held)["summary"]:
         for field in ("split_at", "lines_off_trunk", "seated"):
             del one[field]
     return held
@@ -139,7 +167,8 @@ class Site(unittest.TestCase):
             write(self.expected / f"{name}.json", "[]\n")
 
     def sweep(self, name: str, status: Optional[str], runs: int = 2, text: str = "") -> None:
-        """Uploads a sweep of `runs` runs, whose compare exited `status`, or left none."""
+        """Uploads a sweep of `runs` runs of a `grow` step, which `forks` does not report on, whose
+        compare exited `status`, or left none."""
         out = self.artifacts / name
         write(out / "sweep.txt", f"{runs} of {runs} runs went as expected\n")
         write(out / "compare.txt", f"compare of {name}\n")
@@ -147,7 +176,6 @@ class Site(unittest.TestCase):
             write(out / "compare.status", f"{status}\n")
         for run in range(1, runs + 1):
             write(out / str(run) / "run.txt", f"run {run} of {name}\n{text}")
-            write(out / str(run) / "report.txt", "conversation 2a30d6a2c1\n")
 
     def ran(self, name: str) -> None:
         """Uploads a run of the job in one process."""
@@ -296,13 +324,14 @@ class Report(Site):
         out = self.site / "reports" / "master"
         parsed = Parsed(self.page("reports", "master", "index.html"))
         files = [link for link in parsed.links if link.endswith(".txt")]
-        self.assertEqual(len(files), 2 + 3 * 2 + 2 + 1)
+        self.assertEqual(len(files), 2 + 3 + 2 + 1)
         for link in files:
             self.assertEqual((out / link).read_bytes(), (self.artifacts / link).read_bytes())
         anchors = {link[1:] for link in parsed.links if link.startswith("#")}
         self.assertEqual(anchors, {"held", "fifty-epochs", "grow-a", "grow-b"})
         self.assertLessEqual(anchors, parsed.ids)
         self.assertIn(f"{second}\nrun.txt was not uploaded", parsed.text)
+        self.assertEqual(parsed.text.count("was not uploaded"), 1)
 
     def test_a_report_replaces_the_one_before_it_whole(self):
         self.swept("grow-a")
@@ -474,8 +503,8 @@ class LogosChat(unittest.TestCase):
     def uploaded(self, groupv3: bool = False, **edits: dict) -> Path:
         """A copy of UPLOADED, with `groupv3` each of its runs again as GroupV3's, under the name
         of the GroupV3 goal at its rate; each run with its run.txt, report.txt and report.json
-        beside its run.json, and the fields `edits` gives a run changed, by its rate and seed, or
-        by its group, rate and seed."""
+        beside its run.json, and the fields `edits` gives a run changed as `edited` changes them,
+        by its rate and seed, or by its group, rate and seed."""
         self.made += 1
         copy = self.scratch / f"uploaded-{self.made}"
         shutil.copytree(UPLOADED, copy)
@@ -489,7 +518,7 @@ class LogosChat(unittest.TestCase):
                 write(report.parent / name, f"{name} of {report.parent.relative_to(copy)}\n")
         for cell, changed in edits.items():
             report = json.loads(self.run_json(copy, cell).read_text(encoding="utf-8"))
-            report.update(changed)
+            edited(report, changed)
             self.run_json(copy, cell).write_text(json.dumps(report), encoding="utf-8")
         return copy
 
@@ -506,16 +535,13 @@ class LogosChat(unittest.TestCase):
         head: Path,
         base: Optional[Path] = None,
         asked: Sequence[dict] = (),
-        *points: str,
     ) -> Path:
         """The file tools/sim matrix writes of the runs under `head`, beside those under `base`,
-        with each run of the sweeps `asked` of each side a cell, and `points` its flags of
-        main's points."""
+        with each run of the sweeps `asked` of each side a cell."""
         self.made += 1
         out = self.scratch / f"matrix-{self.made}.json"
         command = [sys.executable, str(ROOT / "tools" / "sim"), "matrix", str(head)]
         command += ["--out", str(out)] + ([] if base is None else ["--base", str(base)])
-        command += points
         if asked:
             write(out.with_suffix(".asked"), json.dumps(list(asked)))
             command += ["--asked", str(out.with_suffix(".asked"))]
@@ -603,7 +629,6 @@ class Point(LogosChat):
             [REVISION, MEASUREMENT, SHA, "2026-11-09T01:30:00Z"],
         )
         self.assertEqual((written["run_url"], written["run_number"]), (RUN_URL, 7))
-        self.assertEqual({cell.pop("below") for cell in matrix["cells"]}, {None})
         self.assertEqual(written["cells"], matrix["cells"])
         self.assertEqual(written["summary"], matrix["summary"])
         self.assertEqual(len(written["cells"]), 6)
@@ -616,7 +641,6 @@ class Point(LogosChat):
         matrix = self.matrix(runs)
         self.point(runs=runs, matrix=matrix)
         written, matrix = self.read(), json.loads(matrix.read_text(encoding="utf-8"))
-        self.assertEqual({cell.pop("below") for cell in matrix["cells"]}, {None})
         self.assertEqual(written["cells"], matrix["cells"])
         self.assertEqual(written["summary"], matrix["summary"])
         self.assertEqual(
@@ -702,7 +726,6 @@ class Point(LogosChat):
             ),
             ("summary[0] is not an object", dict(written, summary=[5])),
             ("cells[0] has a base", cell(base=head)),
-            ("cells[0].below is not a field of cells[0]", cell(below=None)),
             (
                 "cells[0].ended.head is not how a run ended",
                 cell(ended={"head": "forked", "base": None}),
@@ -777,7 +800,7 @@ class Point(LogosChat):
 
     def test_a_point_whose_runs_drew_other_ids_than_the_point_it_follows_is_re_rolled(self):
         self.point(sha(1), minute=1, run_number=1)
-        moved = self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}})
+        moved = self.uploaded(**{"1/1": {"first_fork": 5}})
         self.point(sha(2), minute=2, run_number=2, runs=moved, commits=self.commits())
         self.assertFalse(self.read(sha(2))["previous"]["rerolled"])
         drawn = self.uploaded(**{"1/1": {"conversation": "7c3e9a01b2"}})
@@ -875,7 +898,7 @@ class Point(LogosChat):
     def test_the_point_of_a_newer_run_is_kept_against_an_older_one(self):
         self.point(run_number=8)
         written = self.read()
-        moved = self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}})
+        moved = self.uploaded(**{"1/1": {"first_fork": 5}})
         printed = self.point(run_number=7, minute=5, runs=moved)
         self.assertEqual(
             printed,
@@ -888,7 +911,7 @@ class Point(LogosChat):
         self.point(run_number=8)
         stale = self.at() / GOAL.format(1) / "9" / "run.txt"
         write(stale, "an earlier run\n")
-        moved = self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}})
+        moved = self.uploaded(**{"1/1": {"first_fork": 5}})
         self.assertEqual(self.point(run_number=8, minute=5, runs=moved), "")
         self.assertFalse(stale.exists())
         self.assertEqual(self.read()["cells"][3]["epochs"]["head"], 5)
@@ -993,7 +1016,7 @@ class PullRequest(LogosChat):
         return json.loads((self.site / "logos-chat" / "pr-316" / "meta.json").read_text("utf-8"))
 
     def test_a_pull_request_s_run_holds_its_matrix_both_sides_text_and_its_meta(self):
-        head = self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}})
+        head = self.uploaded(**{"1/1": {"first_fork": 5}})
         self.pr(head=head, base=self.uploaded(), run_number=12, minute=581)
         out = self.site / "logos-chat" / "pr-316"
         texts = [
@@ -1008,9 +1031,8 @@ class PullRequest(LogosChat):
             for rate in ("0.1", "1", "5")
             for run in (1, 2)
         ]
-        pictures = [simulate.moved_image(REVISION, dark) for dark in (False, True)]
         scenarios = [f"scenarios/{GOAL.format(rate)}.json" for rate in ("0.1", "1", "5")]
-        kept = ["index.html", "matrix.json", "meta.json", *texts, *drawn, *pictures, *scenarios]
+        kept = ["index.html", "matrix.json", "meta.json", *texts, *drawn, *scenarios]
         self.assertEqual(self.files(out), sorted(kept))
         self.assertEqual(
             (out / "head" / GOAL.format(1) / "2" / "run.json").read_bytes(),
@@ -1020,7 +1042,7 @@ class PullRequest(LogosChat):
             (out / scenarios[1]).read_bytes(), (SCENARIOS / f"{GOAL.format(1)}.json").read_bytes()
         )
         matrix = pages.read_matrix(out / "matrix.json")
-        self.assertEqual(matrix["verdict"], "hint")
+        self.assertEqual(matrix["verdict"], "within")
         self.assertEqual(
             self.meta(),
             {
@@ -1042,87 +1064,36 @@ class PullRequest(LogosChat):
         self.pr(base=None)
         out = self.site / "logos-chat" / "pr-316"
         self.assertFalse((out / "base").exists())
-        self.assertEqual(list(out.glob("*.svg")), [])
         self.assertIsNone(self.meta()["base"])
-        self.assertEqual(pages.read_matrix(out / "matrix.json")["verdict"], "no-base")
+        self.assertIsNone(pages.read_matrix(out / "matrix.json")["verdict"])
 
-    def test_a_run_against_main_s_point_at_its_base_keeps_the_head_s_text_and_names_the_point(self):
-        head = self.uploaded()
-        matrix = self.matrix(head, None, (), "--base-point", str(POINT), "--spread", str(POINT))
-        nothing = self.scratch / "base"
-        nothing.mkdir()
-        given = [str(matrix), str(head), str(self.site), "--pr", "316", "--revision", REVISION]
-        given += ["--measurement", MEASUREMENT, "--base", BASE, "--base-runs", str(nothing)]
-        given += ["--scenarios", str(SCENARIOS)]
-        status, _, err = self.run_pages("pr", *given, *self.ran(1, 0))
-
-        self.assertEqual(status, 0, err)
-        out = self.site / "logos-chat" / "pr-316"
-        self.assertEqual(
-            {path.split("/")[0] for path in self.files(out)},
-            {"head", "index.html", "matrix.json", "meta.json", "scenarios"},
-        )
-        kept = pages.read_matrix(out / "matrix.json")
-        self.assertEqual((kept["verdict"], kept["base_point"]["logos_chat"]), ("same", FA5282A))
-        self.assertEqual(kept["spread"]["logos_chat"], FA5282A)
-        self.assertEqual(len(kept["spread"]["seeds"]), 60)
-
-    def test_main_s_point_as_point_writes_it_stands_in_for_the_base_s_runs_cell_for_cell(self):
-        runs = self.uploaded()
-        self.point(revision=BASE, runs=runs)
-        written = self.at(BASE) / "point.json"
-        head = self.uploaded(
-            **{"1/1": {"verdict": "split at epoch 5"}, "5/1": {"conversation": "7c3e9a01b2"}}
-        )
-        points = ("--base-point", str(written), "--spread", str(written))
-
-        against_point = pages.read_matrix(self.matrix(head, None, (), *points))
-        against_runs = pages.read_matrix(self.matrix(head, runs))
-
-        self.assertEqual(
-            [cell.pop("below") for cell in against_point["cells"]],
-            [False, False, False, True, False, False],
-        )
-        self.assertEqual({cell.pop("below") for cell in against_runs["cells"]}, {None})
-        self.assertEqual(against_point["cells"], against_runs["cells"])
-        self.assertEqual(
-            (against_point["verdict"], against_point["counts"]), ("hint", against_runs["counts"])
-        )
-        self.assertEqual(
-            against_point["base_point"],
-            {"logos_chat": BASE, "measurement": MEASUREMENT, "run_url": RUN_URL},
-        )
-        self.assertEqual(against_point["spread"]["summary"], pages.read_point(written)["summary"])
-
-    def test_a_matrix_whose_points_are_not_as_tools_sim_writes_them_is_refused(self):
-        points = ("--base-point", str(POINT), "--spread", str(POINT))
-        path = self.matrix(self.uploaded(), None, (), *points)
+    def test_a_matrix_not_as_tools_sim_writes_one_is_refused(self):
+        path = self.matrix(self.uploaded(), self.uploaded())
         matrix = json.loads(path.read_text(encoding="utf-8"))
+        (group,) = matrix["groups"]
 
-        def named(**changed) -> dict:
-            return dict(matrix, base_point=dict(matrix["base_point"], **changed))
+        def results(**changed) -> dict:
+            result = dict(group["results"][0], **changed)
+            return dict(matrix, groups=[dict(group, results=[result])])
 
-        def spread(**changed) -> dict:
-            return dict(matrix, spread=dict(matrix["spread"], **changed))
-
-        seed = matrix["spread"]["seeds"][0]
         for said, written in (
-            ("base_point is there without a base", dict(matrix, base=None, summary=[])),
-            ("base_point.run_url is not an http(s) address", named(run_url="javascript:x")),
-            ("base_point.measurement is not a commit", named(measurement="f9ae59c")),
-            ("base_point.time is not a field of base_point", named(time="today")),
-            ("spread.seeds[0].ended is not how a run ended", spread(seeds=[dict(seed, ended="x")])),
-            ("spread.seeds[0].epochs is not of its kind", spread(seeds=[dict(seed, epochs="9")])),
+            ("base_point is not a field of it", dict(matrix, base_point=None)),
+            ("spread is not a field of it", dict(matrix, spread=None)),
             (
-                "spread.summary[0].loss is missing",
-                spread(summary=[{"scenario": GOAL.format(1), "group": "v2"}]),
+                "cells[0].below is not a field of cells[0]",
+                dict(matrix, cells=[dict(matrix["cells"][0], below=None)]),
             ),
-            ("spread.summary[0] is not an object", spread(summary=[None])),
-            ("spread.logos_chat is not a commit", spread(logos_chat="fa5282a")),
             (
-                "cells[0].below is not of its kind",
-                dict(matrix, cells=[dict(matrix["cells"][0], below=1)]),
+                "cells[0].moved is not a field of cells[0]",
+                dict(matrix, cells=[dict(matrix["cells"][0], moved=None)]),
             ),
+            ("verdict 'hint' is none of a matrix", dict(matrix, verdict="hint")),
+            (
+                "groups[0].results[0].result 'worse' is none of a matrix",
+                results(result="worse"),
+            ),
+            ("groups[0].results[0].seeds is not a list of seeds", results(seeds=[0, "1"])),
+            ("groups[0].results[0].p is not of its kind", results(p="0.58")),
             (
                 "cells[0].group 'v1' is none of a scenario's",
                 dict(matrix, cells=[dict(matrix["cells"][0], group="v1")]),
@@ -1235,14 +1206,14 @@ class Trend(LogosChat):
             dict(revision=sha(1)),
             dict(
                 revision=sha(2),
-                runs=self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}}),
+                runs=self.uploaded(**{"1/1": {"first_fork": 5}}),
                 commits=self.commits(f"{TITLE} (#321)", "chore: bump the toolchain (#318)"),
             ),
             dict(revision=sha(3), runs=self.uploaded(**{"1/1": drawn}), commits=self.commits()),
             dict(
                 revision=sha(3),
                 measurement=MOVED,
-                runs=self.uploaded(**{"1/1": drawn, "0.1/1": {"verdict": "whole"}}),
+                runs=self.uploaded(**{"1/1": drawn, "0.1/1": {"first_fork": None, "behind": []}}),
                 commits=self.commits(status="identical"),
             ),
         ]
@@ -1278,7 +1249,8 @@ class Trend(LogosChat):
         """What a height of a chart stands for, read from its grid and the labels of its ticks."""
         lines, texts = svg.iter(f"{SVG}line"), svg.iter(f"{SVG}text")
         grid = [float(line.get("y1")) for line in lines if line.get("class") == "grid"]
-        ticks = [float(text.text) for text in texts if (text.text or "").isdigit()]
+        labels = [(text.text or "").removesuffix("%") for text in texts]
+        ticks = [float(label) for label in labels if label.isdigit()]
         (low, zero), (high, top) = (grid[0], ticks[0]), (grid[-1], ticks[-1])
         return lambda y: zero + (y - low) * (top - zero) / (high - low)
 
@@ -1362,7 +1334,7 @@ class Trend(LogosChat):
             for text in self.chart("whole").iter(f"{SVG}text")
             if text.get("class") == "label"
         )
-        self.assertEqual(ends, ["0.1% 2", "1% 0", "5% 0"])
+        self.assertEqual(ends, ["0.1% 100%", "1% 0%", "5% 0%"])
         panel = [title.split(" · ")[-1] for title, _ in self.markers(self.chart("epochs"))]
         self.assertEqual(
             panel,
@@ -1385,7 +1357,7 @@ class Trend(LogosChat):
             for line in whole.iter(f"{SVG}line")
             if line.get("class") == "measure" and line.get("y1") == line.get("y2")
         ]
-        self.assertEqual([round(self.scale(whole)(at), 1) for at in goal], [2])
+        self.assertEqual([round(self.scale(whole)(at), 1) for at in goal], [100])
         self.assertIn("the goal", [text.text for text in whole.iter(f"{SVG}text")])
         merged = sorted(
             (float(text.get("x")), text.text or "")
@@ -1393,6 +1365,26 @@ class Trend(LogosChat):
             if text.get("class") == "axis small"
         )
         self.assertEqual([said for _, said in merged], ["", "#321, #318", "", ""])
+
+    def test_a_rate_s_runs_whole_are_drawn_as_a_share_of_its_runs_whatever_their_number(self):
+        self.point(sha(1), minute=1, run_number=1)
+        fewer = self.uploaded()
+        shutil.rmtree(fewer / f"sim-revision-{GOAL.format('0.1')}-2")
+        self.point(sha(2), minute=2, run_number=2, runs=fewer, commits=self.commits())
+        self.trend()
+        whole = self.chart("whole")
+        said = [title.split(" · ")[-1] for title, _ in self.markers(whole)]
+        self.assertEqual(said[:2], ["0.1%: 1 of 2 whole", "0.1%: 1 of 1 whole"])
+        drawn = [
+            round(self.scale(whole)(float(circle.get("cy"))))
+            for circle in whole.iter(f"{SVG}circle")
+            if circle.get("class", "").startswith("marker")
+        ]
+        self.assertEqual(drawn[:2], [50, 100])
+        parsed = Parsed(self.page())
+        self.assertEqual(parsed.rows[0][3], "GroupV2 runs whole")
+        self.assertEqual(parsed.rows[2][6], "GroupV2 0.1% whole 1 of 2 to 1 of 1, median 48 to 50")
+        self.assertEqual(parsed.rows[3][6], "the first point")
 
     def test_a_dashed_line_marks_the_point_at_another_measurement(self):
         self.history()
@@ -1486,7 +1478,7 @@ class Trend(LogosChat):
         self.assertEqual(said[-1], "5%: 0 of 2 whole, 1 with no outcome")
 
     def test_a_run_that_ended_one_group_with_members_behind_is_a_ringed_cell(self):
-        self.point(runs=self.uploaded(**{"0.1/1": {"verdict": "whole, members behind"}}))
+        self.point(runs=self.uploaded(**{"0.1/1": {"first_fork": None}}))
         self.trend()
         cells = [group for group in self.chart("newest").iter(f"{SVG}g") if group.get("class")]
         ringed = [
@@ -1699,8 +1691,8 @@ class Trend(LogosChat):
                 del one["group"]
             write(self.at(sha(number)) / "point.json", json.dumps(written))
         # GroupV3's 0.1% has every run whole, and at the fifth point its 1% seed 1 splits sooner.
-        whole = {"v3/0.1/1": {"verdict": "whole"}}
-        split = dict(whole, **{"v3/1/1": {"verdict": "split at epoch 5"}})
+        whole = {"v3/0.1/1": {"first_fork": None, "behind": []}}
+        split = dict(whole, **{"v3/1/1": {"first_fork": 5}})
         for number, edits in ((4, whole), (5, split)):
             given = dict(runs=self.uploaded(groupv3=True, **edits), commits=self.commits())
             self.point(sha(number), minute=number, run_number=number, **given)
@@ -1867,6 +1859,20 @@ EMPTY = dict(
     behind=[],
     never_joined=[],
 )
+# Rounds of a grow of drawn adders, as a run.json has them: two adders in the second, and one of
+# them refused the whole third.
+ROUNDS = [
+    {"adders": ["saro"], "joiners": ["raya"], "refused": [], "settled_s": 0.55},
+    {"adders": ["saro", "raya"], "joiners": ["pax", "mira"], "refused": [], "settled_s": 12.5},
+    {"adders": ["raya", "pax"], "joiners": ["kes"], "refused": ["pax"], "settled_s": 180},
+]
+# The rows of the table of ROUNDS, its head first.
+ROUNDED = [
+    ["round", "adders", "joiners", "refused", "settled s"],
+    ["1", "saro", "raya", "-", "0.550"],
+    ["2", "saro, raya", "pax, mira", "-", "12.500"],
+    ["3", "raya, pax", "kes", "pax", "180.000"],
+]
 # The title of each line of GROW's tree, its top row first.
 GROWN = [
     "trunk: 11 members, epochs 0 to 14",
@@ -2015,15 +2021,68 @@ class Describe(unittest.TestCase):
                 pages.describe(scenario)
 
 
+DOCS = ROOT / "guide" / "src" / "content" / "docs"
+# What a link into the guide is in pages.py's source: the page's slug and the heading's id.
+GUIDE_LINK = re.compile(r"guide/([a-z0-9/-]+)/#([a-z0-9-]+)")
+# The links into the guide that the pages already on gh-pages were drawn with. A page that is not
+# drawn again, such as a point's past the window, keeps them.
+PUBLISHED = (
+    ("reports", "logos-chats-runs"),
+    ("reports", "the-pages-of-logos-chats-runs"),
+    ("simulations", "a-group-that-grows"),
+)
+# What github-slugger drops from a heading's text, of ASCII, to make the id Starlight gives it.
+_DROPPED = re.compile(r"[\x00-\x1f!-,./:-@\[-\^`{-~]")
+
+
+def heading_ids(slug: str) -> List[str]:
+    """The id of each heading of the guide's page `slug`, as Starlight gives them: its text
+    lowercased, the punctuation dropped and each space a hyphen, a repeat numbered from 1;
+    nothing where the page is not there."""
+    found = [DOCS / f"{slug}{suffix}" for suffix in (".md", ".mdx")]
+    page = next((path for path in found if path.is_file()), None)
+    if page is None:
+        return []
+    ids: List[str] = []
+    seen: Dict[str, int] = {}
+    fenced = False
+    for line in page.read_text(encoding="utf-8").splitlines():
+        if line.startswith("```"):
+            fenced = not fenced
+        heading = None if fenced else re.match(r"#{1,6} (.+)", line)
+        if heading is not None:
+            said = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", heading.group(1)).strip()
+            anchor = _DROPPED.sub("", said.lower()).replace(" ", "-")
+            ids.append(anchor if anchor not in seen else f"{anchor}-{seen[anchor]}")
+            seen[anchor] = seen.get(anchor, 0) + 1
+    return ids
+
+
+class Guide(unittest.TestCase):
+    """The headings of the guide that the site's pages link to."""
+
+    def test_each_link_pages_writes_into_the_guide_lands_on_a_heading_of_its_page(self):
+        source = (ROOT / ".github" / "scripts" / "pages.py").read_text(encoding="utf-8")
+        written = GUIDE_LINK.findall(source)
+        self.assertEqual(len(written), 5)
+        for slug, anchor in written:
+            with self.subTest(link=f"guide/{slug}/#{anchor}"):
+                self.assertIn(anchor, heading_ids(slug))
+
+    def test_each_link_into_the_guide_a_published_page_holds_lands_on_a_heading(self):
+        for slug, anchor in PUBLISHED:
+            with self.subTest(link=f"guide/{slug}/#{anchor}"):
+                self.assertIn(anchor, heading_ids(slug))
+
+
 class Pages(LogosChat):
-    """The report page of a pull request's run, the page of each of its runs and the picture of
-    those that moved, and the page of main's point, as pr and point draw them from what they
-    keep."""
+    """The report page of a pull request's run and the page of each of its runs, and the page of
+    main's point, as pr and point draw them from what they keep."""
 
     def moved(self, **edits: dict) -> Path:
         """The runs at a head whose 1% seed 1 split at epoch 5 and 5% seed 0 at epoch 4, sooner
         than the fixture's 9 and 8, and the fields `edits` gives a run changed."""
-        sooner = {"1/1": {"verdict": "split at epoch 5"}, "5/0": {"verdict": "split at epoch 4"}}
+        sooner = {"1/1": {"first_fork": 5}, "5/0": {"first_fork": 4}}
         for cell, changed in edits.items():
             sooner[cell] = dict(sooner.get(cell, {}), **changed)
         return self.uploaded(**sooner)
@@ -2039,8 +2098,20 @@ class Pages(LogosChat):
         self.assertEqual(status, 0, err)
         return self.site / "logos-chat" / "pr-316"
 
+    def seeded(self, side: Path, rate: str, seeds: Sequence[int], **edits: dict) -> Path:
+        """`side` with runs of GroupV2 at `rate` at `seeds` too, each a copy of seed 0's at its own
+        seed with its text, and the fields `edits` gives a run changed, by its rate and seed."""
+        first = self.run_json(side, f"{rate}/0")
+        for seed in seeds:
+            copy = self.run_json(side, f"{rate}/{seed}")
+            shutil.copytree(first.parent, copy.parent)
+            report = dict(json.loads(first.read_text(encoding="utf-8")), seed=seed)
+            edited(report, edits.get(f"{rate}/{seed}", {}))
+            copy.write_text(json.dumps(report), encoding="utf-8")
+        return side
+
     def nothing(self) -> Path:
-        """What the base's side uploads where main's point stands in for it: nothing."""
+        """An empty directory of its own, as a side whose jobs uploaded nothing."""
         self.made += 1
         empty = self.scratch / f"nothing-{self.made}"
         empty.mkdir()
@@ -2154,7 +2225,15 @@ class Pages(LogosChat):
         parsed = self.stands_alone(out)
         self.assertEqual(parsed.h1, ["logos-chat #316"])
         self.assertIn(f"Ran at {REVISION[:7]} against its merge base {BASE[:7]}.", parsed.text)
-        self.assertEqual(self.verdicts(out), ["GroupV2 ▼ worse in 2 · 4 same"])
+        self.assertEqual(
+            self.verdicts(out),
+            [
+                "GroupV2 moved, within chance · 0.1%: nothing moved in seeds 0 to 1 · 1%: 0 "
+                "later, 1 earlier, 1 tied (p 1) · 5%: 0 later, 1 earlier, 1 tied (p 1)"
+            ],
+        )
+        # The comment links the trees by it.
+        self.assertIn("runs", parsed.ids)
         for link in (
             f"{pages.LOGOS_CHAT_URL}/commit/{REVISION}",
             f"{pages.LOGOS_CHAT_URL}/commit/{BASE}",
@@ -2185,8 +2264,8 @@ class Pages(LogosChat):
                 ("fork", "whole at 50"),
                 ("fork", "first fork 46"),
                 ("fork", "first fork 18"),
-                ("fork worse", "▼ worse first fork 5, base 9"),
-                ("fork worse", "▼ worse first fork 4, base 8"),
+                ("fork moved", "moved first fork 5, base 9"),
+                ("fork moved", "moved first fork 4, base 8"),
                 ("fork", "first fork 3"),
             ],
         )
@@ -2196,7 +2275,63 @@ class Pages(LogosChat):
                     self.assertIsNotNone(svg.find(f".//{SVG}g[@class='tree {side} sketch']"))
                 self.stands_alone(out / simulate.run_page(cell))
 
-    def test_a_group_s_verdict_leads_with_a_run_with_no_outcome_at_the_head_then_what_moved(
+    def test_a_rate_that_ran_more_seeds_has_trees_of_seeds_0_to_2_and_a_strip_of_every_seed(self):
+        moved = {"1/3": {"first_fork": 10}, "1/4": {"first_fork": 30}}
+        moved["1/5"] = {"conversation": "7c3e9a01b2"}
+        head = self.seeded(self.uploaded(), "1", range(2, 8), **moved)
+        base = self.seeded(self.uploaded(), "1", range(2, 8))
+        self.unbuilt(base, "1/6")
+        out = self.pr(head, self.matrix(head, base), base)
+
+        self.stands_alone(out)
+        page = self.drawn(out)
+        self.assertEqual(
+            re.findall(r'<div class="seed"><b>(.*?)</b>', page), ["seed 0", "seed 1", "seed 2"]
+        )
+        self.assertEqual(
+            [href for _, href, _, _ in self.forks(out)],
+            [
+                f"head/{GOAL.format(rate)}/{run}/"
+                for rate, runs in (("0.1", (1, 2)), ("1", (1, 2, 3)), ("5", (1, 2)))
+                for run in runs
+            ],
+        )
+        strip = (
+            r'<div class="strip"><div class="rate"><div class="said">(.*?)</div></div>'
+            r'<div><div class="ds">(.*?)</div><div class="said">(.*?)</div></div></div>'
+        )
+        ((seeds, ds, said),) = re.findall(strip, page)
+        self.assertEqual(seeds, "seeds 0 to 7")
+        tested = "1 later, 1 earlier, 5 tied (p 1), does not build at the base in 1 of 8 runs"
+        self.assertEqual(said, tested)
+        self.assertEqual(self.verdicts(out)[0].split(" · ")[2], f"1%: {tested}")
+        d = r'<a class="([^"]*)" href="([^"]*)" title="([^"]*)"><span>([0-9]+)</span>([^<]*)</a>'
+        self.assertEqual(
+            [(kind, href, seed, shown) for kind, href, _, seed, shown in re.findall(d, ds)],
+            [
+                ("d", f"head/{GOAL.format(1)}/1/", "0", "0"),
+                ("d", f"head/{GOAL.format(1)}/2/", "1", "0"),
+                ("d", f"head/{GOAL.format(1)}/3/", "2", "0"),
+                ("d moved earlier", f"head/{GOAL.format(1)}/4/", "3", "-8"),
+                ("d moved later", f"head/{GOAL.format(1)}/5/", "4", "+12"),
+                ("d moved", f"head/{GOAL.format(1)}/6/", "5", "0"),
+                ("d none", f"head/{GOAL.format(1)}/7/", "6", "-"),
+                ("d", f"head/{GOAL.format(1)}/8/", "7", "0"),
+            ],
+        )
+        self.assertEqual(
+            [html.unescape(title) for _, _, title, _, _ in re.findall(d, ds)][3::3],
+            [
+                "The head first forked at epoch 10, 8 epochs earlier than the base's 18.",
+                "The head first forked at epoch 18. chat-sim does not build at the base, so the "
+                "two are not compared.",
+            ],
+        )
+        self.assertIn("A strip under a row holds every seed of the rate", page)
+        for run in range(4, 9):
+            self.stands_alone(out / f"head/{GOAL.format(1)}/{run}")
+
+    def test_a_group_s_verdict_is_its_worst_rate_s_and_each_run_says_how_it_moved_or_why_not(
         self,
     ):
         base = self.uploaded()
@@ -2204,33 +2339,33 @@ class Pages(LogosChat):
         head = self.uploaded(
             **{
                 "0.1/1": {"virtual_s": 1.5},
-                "1/1": {"verdict": "split at epoch 30"},
-                "5/0": {"verdict": "split at epoch 4"},
+                "1/1": {"first_fork": 30},
+                "5/0": {"first_fork": 4},
                 "5/1": {"conversation": "7c3e9a01b2"},
             }
         )
         self.unbuilt(head, "1/0")
-        counted = "GroupV2 no outcome in 1 ▼ worse in 1 ▲ better in 1 changed in 1"
-        rest = "· 1 re-rolled, 1 not compared"
-        for spread, said in (
-            ((), f"{counted} {rest}"),
-            (("--spread", str(POINT)), f"{counted} 1 beyond main's 20 seeds {rest}"),
-        ):
-            with self.subTest(spread=spread):
-                out = self.pr(head, self.matrix(head, base, (), *spread), base)
-                self.stands_alone(out)
-                self.assertEqual(self.verdicts(out), [said])
+        out = self.pr(head, self.matrix(head, base), base)
+        self.stands_alone(out)
+        self.assertEqual(
+            self.verdicts(out),
+            [
+                "GroupV2 no outcome · 0.1%: 0 later, 0 earlier, 1 tied (p 1), does not build "
+                "at the base in 1 of 2 runs · 1%: no outcome in 1 of 2 runs · 5%: 0 later, 1 "
+                "earlier, 1 tied (p 1)"
+            ],
+        )
 
         forks = self.forks(out)
         self.assertEqual(
             [(kind, said) for kind, _, said, _ in forks],
             [
                 ("fork unbuilt", "unbuilt whole at 50 · does not build at the base"),
-                ("fork changed", "changed first fork 46, base 46"),
+                ("fork moved", "moved first fork 46, base 46"),
                 ("fork unbuilt", "unbuilt does not build at the head"),
-                ("fork better", "▲ better first fork 30, base 9"),
-                ("fork worse", "▼ worse first fork 4, base 8"),
-                ("fork rerolled", "re-rolled other ids, not compared"),
+                ("fork moved", "moved first fork 30, base 9"),
+                ("fork moved", "moved first fork 4, base 8"),
+                ("fork moved", "moved first fork 3, base 3"),
             ],
         )
         notes = [
@@ -2239,11 +2374,11 @@ class Pages(LogosChat):
         ]
         self.assertEqual(notes[0], ["does not build at the base"])
         self.assertEqual(notes[2], ["does not build at the head"])
-        self.assertEqual(notes[5], ["the base drew other ids: not drawn side by side"])
+        self.assertEqual(notes[5], [])
         both = ["tree head sketch", "tree base sketch"]
         self.assertEqual(
             [self.trees(svg) for *_, svg in forks],
-            [["tree head sketch"], both, ["tree base sketch"], both, both, ["tree head sketch"]],
+            [["tree head sketch"], both, ["tree base sketch"], both, both, both],
         )
         matrix = pages.read_matrix(out / "matrix.json")
         ran = [
@@ -2255,16 +2390,15 @@ class Pages(LogosChat):
             [
                 "not compared The head ended whole at epoch 50. chat-sim does not build at the "
                 "base, so the two are not compared.",
-                "changed The head first forked at epoch 46, and the base first forked at epoch "
-                "46. The runs differ, but neither is better or worse. Main's 20 seeds first fork "
-                "at 18 to 50: within their spread.",
+                "moved The head first forked at epoch 46, and the base first forked at epoch 46. "
+                "The runs differ, but not in the epoch of the first fork, so the run counts "
+                "neither earlier nor later.",
                 "unbuilt chat-sim does not build at the head, so nothing ran.",
-                "▲ better The head first forked at epoch 30, 21 epochs later than the base's 9. "
-                "Main's 20 seeds first fork at 3 to 23: beyond their spread.",
-                "▼ worse The head first forked at epoch 4, 4 epochs earlier than the base's 8. "
-                "Main's 20 seeds first fork at 3 to 18: within their spread.",
-                "re-rolled The head's run drew other ids than the base's, so the two are not "
-                "compared. Main's 20 seeds first fork at 3 to 18: within their spread.",
+                "moved The head first forked at epoch 30, 21 epochs later than the base's 9.",
+                "moved The head first forked at epoch 4, 4 epochs earlier than the base's 8.",
+                "moved The head first forked at epoch 3, and the base first forked at epoch 3. "
+                "The runs differ, but not in the epoch of the first fork, so the run counts "
+                "neither earlier nor later.",
             ],
         )
         unbuilt = self.stands_alone(out / f"head/{GOAL.format(1)}/1")
@@ -2301,9 +2435,9 @@ class Pages(LogosChat):
         sketch = looped.find(f".//{SVG}g[@class='tree head sketch']")
         self.assertEqual(
             sketch.find(f"{SVG}title").text,
-            "split at epoch 9, 2 lines off the trunk: no lineage kept",
+            "split at epoch 8, 2 lines off the trunk: no lineage kept",
         )
-        self.assertEqual(sketch.findall(f"{SVG}path")[1].get("d"), "M50.8 7.0V14.0")
+        self.assertEqual(sketch.findall(f"{SVG}path")[1].get("d"), "M45.6 7.0V14.0")
         self.assertEqual(self.rings(looped), [("2 never joined", "2")] * 2)
         large = self.charts(out / f"head/{GOAL.format(5)}/1")
         tree = large["GroupV2 5%, seed 0: the head's tree over the base's"]
@@ -2311,32 +2445,15 @@ class Pages(LogosChat):
             [title for title, _, _ in self.lines(tree, "head")], [title for title, _, _ in drawn]
         )
 
-    def test_the_base_of_a_run_that_drew_other_ids_is_neither_drawn_nor_counted_in_the_widths(
-        self,
-    ):
+    def test_the_base_of_a_run_that_drew_other_ids_is_drawn_and_counted_in_the_widths(self):
         trunk = dict(GROW["lines"][0], members=[f"peer{n}" for n in range(30)])
         base = self.uploaded(**{"5/1": {"grow": dict(GROW, lines=[trunk, *GROW["lines"][1:]])}})
         head = self.uploaded(**{"5/1": {"grow": GROW, "conversation": "7c3e9a01b2"}})
         out = self.pr(head, self.matrix(head, base), base)
 
         self.stands_alone(out)
-        self.assertEqual(self.key(out)[2], "1, 10, 11 members")
-        self.assertEqual(self.trees(self.forks(out)[5][3]), ["tree head"])
-
-    def test_a_run_that_moved_with_no_part_to_say_leaves_which_way_to_its_chip(self):
-        base = self.uploaded()
-        matrix = self.matrix(self.moved(), base)
-        written = json.loads(matrix.read_text(encoding="utf-8"))
-        worse = next(cell for cell in written["cells"] if cell["change"] == "worse")
-        worse["moved"] = None
-        matrix.write_text(json.dumps(written), encoding="utf-8")
-        out = self.pr(self.moved(), matrix, base)
-
-        page = self.drawn(out / simulate.run_page(worse))
-        self.assertEqual(
-            Parsed(page.split('<p class="ran">', 1)[1].split("</p>", 1)[0]).text,
-            "▼ worse The head first forked at epoch 5, and the base first forked at epoch 9.",
-        )
+        self.assertEqual(self.key(out)[2], "1, 10, 30 members")
+        self.assertEqual(self.trees(self.forks(out)[5][3]), ["tree head", "tree base"])
 
     def test_a_page_whose_trees_have_no_member_on_any_line_draws_each_line_thin(self):
         grown = {"5/0": {"grow": EMPTY}}
@@ -2359,7 +2476,6 @@ class Pages(LogosChat):
         out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
 
         matrix = pages.read_matrix(out / "matrix.json")
-        facts = {"revision": REVISION, "base": BASE, "chat_sim": SHA}
         for cell in matrix["cells"]:
             run = simulate.run_page(cell)
             with self.subTest(run=run):
@@ -2368,7 +2484,8 @@ class Pages(LogosChat):
                     parsed.h1, [f"GroupV2 · {cell['rate']} loss · seed {cell['seed']}"]
                 )
                 self.assertIn("../../../", parsed.links)
-                self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+                for side in (REVISION, BASE):
+                    self.assertIn("\n".join(simulate.again(cell, side, SHA)), parsed.text)
                 self.assertEqual(
                     [link for link in parsed.links if link.endswith((".txt", ".json"))],
                     [
@@ -2381,7 +2498,7 @@ class Pages(LogosChat):
         page = self.drawn(run)
         ran = Parsed(page.split('<p class="ran">', 1)[1].split("</p>", 1)[0]).text
         self.assertEqual(
-            ran, "▼ worse The head first forked at epoch 4, 4 epochs earlier than the base's 8."
+            ran, "moved The head first forked at epoch 4, 4 epochs earlier than the base's 8."
         )
         tree = self.charts(run)["GroupV2 5%, seed 0: the head's tree over the base's"]
         self.assertEqual([title for title, _, _ in self.lines(tree, "base")], GROWN)
@@ -2403,69 +2520,56 @@ class Pages(LogosChat):
             self.assertIn(said, parsed.text)
         self.assertEqual(self.rings(tree), [("2 never joined", "2")] * 2)
 
-    def test_where_main_s_point_stood_in_the_base_its_runs_are_drawn_on_its_seeds_band(self):
-        self.point(revision=BASE, runs=self.uploaded(**{"5/0": {"grow": GROW}}))
-        stood = self.at(BASE)
-        points = ("--base-point", str(stood / "point.json"), "--spread", str(POINT))
-        out = self.pr(self.moved(), self.matrix(self.moved(), None, (), *points), self.nothing())
+    def test_a_run_s_page_says_what_seated_counts_and_running_it_takes_and_tables_its_rounds(self):
+        base = self.uploaded(**{"5/0": {"grow": dict(GROW, rounds=ROUNDS)}})
+        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
 
-        parsed = self.stands_alone(out)
-        page = f"../main/{BASE}/{MEASUREMENT}/"
-        self.assertIn(page, parsed.links)
-        said = f"Ran at {REVISION[:7]} against its merge base {BASE[:7]}, from main's run of it."
-        self.assertIn(said, parsed.text)
-        self.assertEqual(
-            self.verdicts(out), ["GroupV2 ▼ worse in 2 all within main's 20 seeds · 4 same"]
+        run = out / f"head/{GOAL.format(5)}/1"
+        parsed = self.stands_alone(run)
+        self.assertIn(
+            "seated counts every member added, the creator included, and not removed: those on a "
+            "line and those that never joined.",
+            parsed.text,
         )
-        self.assertIn(f"The grey band is where main's seeds at {FA5282A[:7]}", parsed.text)
-        self.assertFalse((out / "base").exists())
-        drawn = self.drawn(out)
-        titles = [html.unescape(one) for one in re.findall(r"<title>([^<]*)</title>", drawn)]
-        self.assertEqual(
-            [title for title in titles if title.startswith("main's")],
-            [
-                f"main's 20 seeds at {FA5282A[:7]}: first fork {seeds}"
-                for seeds in ("18 to 50, median 38.5", "3 to 23, median 12.5", "3 to 18, median 6")
-            ],
+        self.assertIn(
+            "It needs Linux on x86-64, Nix with flakes, jq and python3. Run each block from a "
+            "directory of its own, since each clones chat-sim.",
+            parsed.text,
         )
-        self.assertEqual(
-            re.findall(r">(main \d+ to \d+)</text>", drawn),
-            ["main 18 to 50", "main 3 to 23", "main 3 to 18"],
-        )
-        forks = self.forks(out)
-        bands = [svg.find(f"{SVG}rect[@class='spread']") for *_, svg in forks]
-        self.assertEqual(
-            [(band.get("x"), band.get("width")) for band in bands],
-            [("97.6", "166.4")] * 2 + [("19.6", "104.0")] * 2 + [("19.6", "78.0")] * 2,
-        )
-        self.assertEqual([title for title, _, _ in self.lines(forks[4][3], "base")], GROWN)
-        run = self.stands_alone(out / f"head/{GOAL.format(5)}/1")
-        self.assertIn(f"main's point at {BASE[:7]}", run.text)
-        self.assertIn(f"../../../{page}", run.links)
-        self.assertIn(f"../../../{page}{GOAL.format(5)}/1/run.txt", run.links)
-        self.assertFalse([link for link in run.links if "base/" in link])
+        rounds = Parsed(self.drawn(run).split("<h2>The rounds</h2>", 1)[1].split("<h2>", 1)[0])
+        self.assertEqual(rounds.rows, ROUNDED)
+        self.assertIn(f"the base {BASE[:7]}", rounds.text)
+        self.assertNotIn("the head", rounds.text)
+        self.assertIn("The run does not say which adder added which member.", rounds.text)
+        self.assertNotIn("<h2>The rounds</h2>", self.drawn(out / f"head/{GOAL.format(5)}/2"))
 
     def test_a_run_of_both_groups_lists_each_group_s_verdict_and_draws_its_runs_apart(self):
         base = self.uploaded(groupv3=True)
         head = self.uploaded(
             groupv3=True,
             **{
-                "v3/1/1": {"verdict": "split at epoch 5"},
-                "v3/5/0": {"verdict": "split at epoch 4"},
+                "v3/1/1": {"first_fork": 5},
+                "v3/5/0": {"first_fork": 4},
             },
         )
         out = self.pr(head, self.matrix(head, base), base)
 
         self.stands_alone(out)
         self.assertEqual(
-            self.verdicts(out), ["GroupV2 same in 6 of 6 runs", "GroupV3 ▼ worse in 2 · 4 same"]
+            self.verdicts(out),
+            [
+                "GroupV2 nothing moved · 0.1%: nothing moved in seeds 0 to 1 · 1%: nothing moved "
+                "in seeds 0 to 1 · 5%: nothing moved in seeds 0 to 1",
+                "GroupV3 moved, within chance · 0.1%: nothing moved in seeds 0 to 1 · 1%: 0 "
+                "later, 1 earlier, 1 tied (p 1) · 5%: 0 later, 1 earlier, 1 tied (p 1)",
+            ],
         )
         self.assertEqual(re.findall(r"<h2>(.*?)</h2>", self.drawn(out)), ["GroupV2", "GroupV3"])
         self.assertEqual({kind for kind, *_ in self.forks(out, "GroupV2")}, {"fork"})
         v3 = HELD_GOALS["v3"]
         self.assertEqual(
             [(kind, href) for kind, href, *_ in self.forks(out, "GroupV3") if kind != "fork"],
-            [("fork worse", f"head/{v3.format(1)}/2/"), ("fork worse", f"head/{v3.format(5)}/1/")],
+            [("fork moved", f"head/{v3.format(1)}/2/"), ("fork moved", f"head/{v3.format(5)}/1/")],
         )
         self.assertEqual(
             self.stands_alone(out / f"head/{v3.format(1)}/2").h1, ["GroupV3 · 1% loss · seed 1"]
@@ -2504,10 +2608,11 @@ class Pages(LogosChat):
                 WELCOMED,
                 "A column is a seed, the same at the head and at the base. At one revision a seed "
                 "runs the same every time, so where a column's two trees differ, the pull request "
-                "changed the run.",
+                "changed the run. The change may be only a re-deal of the losses: one frame "
+                "more, anywhere, shifts which frames each member loses after it.",
             ],
         )
-        self.assertIn("../../guide/simulations/#a-group-that-grows", Parsed(section).links)
+        self.assertIn("../../guide/understand/scenarios/#a-group-that-grows", Parsed(section).links)
         for group, timers in (
             ("v2", "A GroupV2 group, on GroupV2's default timers."),
             ("v3", "A GroupV3 group, on timers of its own, whatever the file's timers say."),
@@ -2575,42 +2680,12 @@ class Pages(LogosChat):
                 self.assertEqual(self.about(page, "v2").links, kept)
                 self.stands_alone(out)
 
-    def test_against_main_s_spread_of_group_v2_alone_group_v3_s_trees_have_no_band(self):
-        base, head = self.uploaded(groupv3=True), self.uploaded(groupv3=True)
-        out = self.pr(head, self.matrix(head, base, (), "--spread", str(POINT)), base)
-
-        self.stands_alone(out)
-        self.assertEqual(
-            self.verdicts(out), ["GroupV2 same in 6 of 6 runs", "GroupV3 same in 6 of 6 runs"]
-        )
-        drawn = self.drawn(out).split("<h2>GroupV3</h2>", 1)
-        self.assertEqual(len(re.findall(r">main \d+ to \d+</text>", drawn[0])), 3)
-        self.assertNotIn("main", Parsed(drawn[1].split('<p class="reading">')[0]).text)
-        for group, banded in (("GroupV2", 6), ("GroupV3", 0)):
-            forks = self.forks(out, group)
-            found = [svg.find(f"{SVG}rect[@class='spread']") for *_, svg in forks]
-            self.assertEqual(sum(band is not None for band in found), banded)
-        for goal, banded in ((GOAL, True), (HELD_GOALS["v3"], False)):
-            run = self.stands_alone(out / f"head/{goal.format(1)}/1")
-            self.assertEqual("main's 20 seeds first fork in here" in run.text, banded)
-
-    def test_without_a_spread_the_trees_have_no_band_and_without_a_base_the_head_s_stand_alone(
-        self,
-    ):
-        base = self.uploaded()
-        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
-
-        parsed = self.stands_alone(out)
-        self.assertNotIn('class="spread"', self.drawn(out))
-        self.assertNotIn("grey band", parsed.text)
-        self.assertNotIn("within", parsed.text)
-        run = self.stands_alone(out / f"head/{GOAL.format(1)}/2")
-        self.assertNotIn("Main's", run.text)
-        self.assertNotIn('class="spread"', self.drawn(out / f"head/{GOAL.format(1)}/2"))
-
+    def test_without_a_base_the_head_s_trees_stand_alone(self):
         alone = self.pr(self.moved(), self.matrix(self.moved()), None)
         self.stands_alone(alone)
-        self.assertEqual(self.verdicts(alone), ["GroupV2 not compared in 6"])
+        self.assertEqual(
+            self.verdicts(alone), ["GroupV2 not compared · 6 runs, no base to compare with"]
+        )
         self.assertEqual(self.key(alone), ["the head on top", "never joined"])
         self.assertEqual(
             re.findall(r'<text class="note"[^>]*>(head|base)</text>', self.drawn(alone)),
@@ -2627,92 +2702,10 @@ class Pages(LogosChat):
         )
         self.assertIn("no base", run.text)
         self.assertEqual([link for link in run.links if "base/" in link], [])
-
-    def test_a_point_that_stood_in_before_it_had_a_page_is_linked_by_its_point_json_until_then(
-        self,
-    ):
-        self.point(revision=BASE, runs=self.uploaded())
-        (self.at(BASE) / "index.html").unlink()
-        points = ("--base-point", str(self.at(BASE) / "point.json"))
-        out = self.pr(self.moved(), self.matrix(self.moved(), None, (), *points), self.nothing())
-
-        at = f"../main/{BASE}/{MEASUREMENT}/"
-        cells = pages.read_matrix(out / "matrix.json")["cells"]
-        drawn = [(out, ""), *((out / simulate.run_page(cell), "../../../") for cell in cells)]
-
-        def counted(directory: Path, up: str) -> Tuple[int, int]:
-            links = self.stands_alone(directory).links
-            return links.count(up + at), links.count(up + at + "point.json")
-
-        self.assertEqual([counted(*one) for one in drawn], [(0, 1)] * 7)
-        self.point(sha(2), minute=2, run_number=2, commits=self.commits())
-        self.assertTrue((self.at(BASE) / "index.html").is_file())
-        self.assertEqual([counted(*one) for one in drawn], [(1, 0)] * 7)
-
-    def test_the_picture_of_the_runs_that_moved_stands_alone_light_and_dark_named_by_revision(
-        self,
-    ):
-        base = self.uploaded(**{"5/0": {"grow": GROW}})
-        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
-
-        named = [simulate.moved_image(REVISION, dark) for dark in (False, True)]
-        self.assertEqual(named, [f"moved-{REVISION}.svg", f"moved-{REVISION}-dark.svg"])
-        self.assertEqual(sorted(path.name for path in out.glob("*.svg")), sorted(named))
-        drawn = []
-        for name, theme in zip(named, (0, 1)):
-            with self.subTest(name=name):
-                text = (out / name).read_text(encoding="utf-8")
-                drawn.append(text)
-                svg = ElementTree.fromstring(text)
-                self.assertEqual((svg.tag, svg.get("role")), (f"{SVG}svg", "img"))
-                wide, high = svg.get("width"), svg.get("height")
-                self.assertEqual(svg.get("viewBox"), f"0 0 {wide} {high}")
-                self.assertEqual(svg[0].tag, f"{SVG}title")
-                self.assertEqual(
-                    svg[0].text,
-                    "GroupV2 1%, seed 1 worse: first fork 5, base 9; "
-                    "GroupV2 5%, seed 0 worse: first fork 4, base 8",
-                )
-                self.assertIsNone(
-                    re.search(r"href|url\(|@import|<script|<image|<foreignObject| on[a-z]+=", text)
-                )
-                style = svg.find(f"{SVG}style").text
-                self.assertNotIn("var(", style)
-                colours = set(re.findall(r"#[0-9a-f]{3,6}\b|rgba\([^)]*\)", style))
-                self.assertTrue(colours)
-                self.assertLessEqual(colours, {both[theme] for both in pages._COLOURS.values()})
-                panels = svg.findall(f"{SVG}g")
-                self.assertEqual(
-                    [panel.find(f"{SVG}text").text for panel in panels],
-                    ["GroupV2 · 1% loss · seed 1", "GroupV2 · 5% loss · seed 0"],
-                )
-                self.assertEqual([title for title, _, _ in self.lines(panels[1], "base")], GROWN)
-                self.assertIsNotNone(panels[1].find(f".//{SVG}g[@class='tree head sketch']"))
-        self.assertNotEqual(*drawn)
-
-        head = self.moved(**{"0.1/1": {"virtual_s": 1.5}, "1/0": {"verdict": "split at epoch 30"}})
-        out = self.pr(head, self.matrix(head, base), base)
-        svg = ElementTree.fromstring((out / named[0]).read_text(encoding="utf-8"))
-        placed = [panel.get("transform") for panel in svg.findall(f"{SVG}g")]
-        below = (int(svg.get("height")) + 14) // 2
-        self.assertEqual(
-            placed,
-            [f"translate({x},0)" for x in (0, 300, 600)] + [f"translate(0,{below})"],
-        )
-
-    def test_no_picture_is_written_where_no_run_moved_or_none_was_compared(self):
-        base = self.uploaded()
-        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
-        self.assertEqual(len(list(out.glob("moved-*.svg"))), 2)
-
-        for said, head, against in (
-            ("the same", self.uploaded(), base),
-            ("re-rolled alone", self.uploaded(**{"5/1": {"conversation": "7c3e9a01b2"}}), base),
-            ("no base", self.moved(), None),
-        ):
-            with self.subTest(said=said):
-                out = self.pr(head, self.matrix(head, against), against)
-                self.assertEqual(list(out.glob("moved-*.svg")), [])
+        cell = {"scenario": GOAL.format(1), "run": 2, "seed": 1}
+        self.assertIn("\n".join(simulate.again(cell, REVISION, SHA)), run.text)
+        self.assertNotIn("Run each block", run.text)
+        self.assertEqual(run.text.count("git clone "), 1)
 
     def test_where_chat_sim_did_not_build_the_build_s_log_takes_the_place_of_the_cells(self):
         head = self.scratch / "unbuilt"
@@ -2746,28 +2739,26 @@ class Pages(LogosChat):
                 for number in (1, 2)
             ),
         )
-        self.assertEqual(list(out.glob("moved-*.svg")), [])
 
     def test_every_text_of_a_run_is_escaped(self):
-        head = self.moved(**{"1/1": {"verdict": f"split at epoch 5 {MARKUP}"}})
+        fell = [dict(GROW["fell_behind"][0], name=MARKUP)]
+        head = self.moved(**{"1/1": {"grow": dict(GROW, fell_behind=fell)}})
         for name in ("run.txt", "report.txt"):
             write(self.run_json(head, "1/1").with_name(name), f"{MARKUP}\n")
         base = self.uploaded()
         out = self.pr(head, self.matrix(head, base), base)
 
-        for drawn in (
-            out / "index.html",
-            out / f"head/{GOAL.format(1)}/2/index.html",
-            *(out / simulate.moved_image(REVISION, dark) for dark in (False, True)),
-        ):
+        run = out / f"head/{GOAL.format(1)}/2/index.html"
+        for drawn in (out / "index.html", run):
             with self.subTest(drawn=drawn.relative_to(out)):
-                text = drawn.read_text(encoding="utf-8")
-                self.assertNotIn("<script", text)
-                self.assertEqual(Parsed(text).text.count(MARKUP), 1)
+                self.assertNotIn("<script", drawn.read_text(encoding="utf-8"))
+        # The run's page names who fell behind.
+        self.assertIn(MARKUP, Parsed(run.read_text(encoding="utf-8")).text)
 
     def test_a_point_s_page_draws_its_cells_its_rates_and_each_run_with_its_text_and_lines(self):
         self.point(sha(1), minute=1, run_number=1)
-        timed = {"5/0": {"grow": GROW, "wall_s": 0.916510242}, "1/1": {"wall_s": 189.4}}
+        grow = dict(GROW, rounds=ROUNDS)
+        timed = {"5/0": {"grow": grow, "wall_s": 0.916510242}, "1/1": {"wall_s": 189.4}}
         runs = self.uploaded(**timed)
         write(self.run_json(runs, "1/0").with_name("run.txt"), f"{MARKUP}\n")
         merged = self.commits(f"{TITLE} (#321)", "chore: bump the toolchain (#318)")
@@ -2802,13 +2793,17 @@ class Pages(LogosChat):
         runs_of_5 = [row for row in parsed.rows if len(row) == 5 and row[-1] == "0.9 s"]
         self.assertEqual([row[:2] for row in runs_of_5], [["0", "8"]])
         self.assertIn("never joined: tomo, peer14", parsed.text)
+        for row in ROUNDED:
+            self.assertEqual(parsed.rows.count(row), 1)
         self.assertIn(f"{GOAL.format(5)}/1/run.json", parsed.links)
-        facts = {"revision": sha(2), "base": "", "chat_sim": SHA}
+        self.assertIn(
+            "Run it again (Linux on x86-64, Nix with flakes, jq and python3):", parsed.text
+        )
         for cell in point["cells"]:
-            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+            self.assertIn("\n".join(simulate.again(cell, sha(2), SHA)), parsed.text)
 
     def test_a_point_of_both_groups_draws_a_heatmap_a_group_and_names_the_group_of_each_rate(self):
-        self.point(runs=self.uploaded(groupv3=True, **{"v3/1/1": {"verdict": "split at epoch 5"}}))
+        self.point(runs=self.uploaded(groupv3=True, **{"v3/1/1": {"first_fork": 5}}))
 
         parsed = self.stands_alone(self.at())
         page = self.drawn(self.at())
@@ -2829,9 +2824,8 @@ class Pages(LogosChat):
         rates = [row[:2] for row in parsed.rows if len(row) == 13 and row[1].endswith("%")]
         self.assertEqual([" ".join(row) for row in rates], named)
         self.assertEqual(len(self.folds(self.at())), 12)
-        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
         for cell in self.read()["cells"]:
-            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+            self.assertIn("\n".join(simulate.again(cell, REVISION, SHA)), parsed.text)
 
     def test_a_point_json_of_groups_that_says_nothing_of_how_its_runs_forked_is_read_as_written(
         self,
@@ -2848,6 +2842,25 @@ class Pages(LogosChat):
             re.findall(r"<h3>(.*?)</h3>", self.drawn(self.at())), ["GroupV2", "GroupV3"]
         )
         self.stands_alone(self.at())
+        status, _, err = self.run_pages("trend", str(self.site))
+        self.assertEqual((status, err), (0, ""))
+
+    def test_a_point_json_whose_outcomes_hold_no_first_fork_is_read_and_drawn_as_its_verdicts(
+        self,
+    ):
+        self.point()
+        path, written = self.at() / "point.json", unpaired(self.read())
+        drawn = self.stands_alone(self.at()).text
+        for cell in written["cells"]:
+            reported(cell["head"])
+        write(path, json.dumps(written))
+
+        point = pages.read_point(path)
+        pages.draw_point(self.at(), point)
+
+        self.assertEqual(point, written)
+        self.assertEqual(self.stands_alone(self.at()).text, drawn)
+        self.assertIn(f"split at epoch 18 · {written['cells'][2]['head']['came_to']}", drawn)
         status, _, err = self.run_pages("trend", str(self.site))
         self.assertEqual((status, err), (0, ""))
 
@@ -2924,22 +2937,11 @@ class Pages(LogosChat):
         self.assertEqual(parsed.text.count("The site no longer keeps its log."), 1)
         self.assertEqual([link for link in parsed.links if link.endswith("build.log")], [])
 
-    def test_past_the_window_a_point_s_page_and_a_page_it_stood_in_for_are_drawn_again(self):
-        runs = self.uploaded(**{"5/0": {"grow": GROW}})
+    def test_past_the_window_a_point_s_page_is_drawn_again_without_its_runs_text(self):
+        runs = self.uploaded()
         matrix = self.matrix(runs)
         self.point(sha(1), minute=1, run_number=1, runs=runs, matrix=matrix)
         first = self.at(sha(1))
-        head = self.moved()
-        stood = self.matrix(head, None, (), "--base-point", str(first / "point.json"))
-        out = self.pr(head, stood, self.nothing(), revision=sha(1))
-        run = out / f"head/{GOAL.format(5)}/1"
-        point = f"../../../../main/{sha(1)}/{MEASUREMENT}/"
-        text = f"{point}{GOAL.format(5)}/1/run.txt"
-        self.assertIn(text, Parsed(self.drawn(run)).links)
-        drawn = self.lines(self.forks(out)[4][3], "base")
-        self.assertEqual([title for title, _, _ in drawn], GROWN)
-        pictures = {path.name: path.read_bytes() for path in out.glob("moved-*.svg")}
-        self.assertEqual(len(pictures), 2)
         self.assertIn(f"{GOAL.format(1)}/1/run.txt", Parsed(self.drawn(first)).links)
 
         for number in range(2, 13):
@@ -2951,56 +2953,7 @@ class Pages(LogosChat):
         self.assertFalse([link for link in parsed.links if link.endswith((".txt", ".json"))])
         self.assertIn("The site keeps the runs' text of the newest 11 points", parsed.text)
         self.assertEqual(len(self.cells(self.charts(first)["The point's GroupV2 runs"])), 6)
-        self.assertIn(f"../main/{sha(1)}/{MEASUREMENT}/", self.stands_alone(out).links)
-        fork = self.forks(out)[4][3]
-        self.assertIsNone(fork.find(f".//{SVG}g[@class='tree base']"))
-        self.assertIsNotNone(fork.find(f".//{SVG}g[@class='tree base sketch']"))
-        page = self.stands_alone(run)
-        self.assertNotIn(text, page.links)
-        self.assertIn(point, page.links)
-        self.assertIn("The site keeps the runs' text of the newest 11 points", page.text)
-        self.assertEqual(
-            {path.name: path.read_bytes() for path in out.glob("moved-*.svg")}, pictures
-        )
-        self.assertIn(GROWN[1], pictures[simulate.moved_image(REVISION)].decode("utf-8"))
         self.assertIn(f"{GOAL.format(1)}/1/run.txt", Parsed(self.drawn(self.at(sha(2)))).links)
-
-    def test_a_pull_request_s_matrix_whose_spread_predates_the_fork_fields_is_drawn_again(self):
-        # As a pull request's run kept it before main's points held how their runs forked.
-        self.drawn_again_once_its_point_loses_its_text(unforked)
-
-    def test_a_pull_request_s_matrix_counting_no_member_that_never_joined_is_drawn_again(self):
-        # As a pull request's run kept it before the outcomes counted the members that never
-        # joined.
-        self.drawn_again_once_its_point_loses_its_text(unjoined)
-
-    def drawn_again_once_its_point_loses_its_text(self, earlier: Callable[[dict], dict]) -> None:
-        """Draws a pull request's matrix against main's point, made by `earlier` one an earlier
-        measurement held: its runs' pages link the point's runs, and once the point loses their
-        text, the point's page."""
-        runs = self.uploaded()
-        matrix = self.matrix(runs)
-        self.point(sha(1), minute=1, run_number=1, runs=runs, matrix=matrix)
-        first = self.at(sha(1)) / "point.json"
-        flags = ("--base-point", str(first), "--spread", str(first))
-        stood = self.matrix(self.uploaded(), None, (), *flags)
-        written = earlier(json.loads(stood.read_text("utf-8")))
-        write(stood, json.dumps(written))
-        out = self.pr(self.uploaded(), stood, self.nothing(), revision=sha(1))
-        run = out / f"head/{GOAL.format(1)}/1"
-        point = f"../../../../main/{sha(1)}/{MEASUREMENT}/"
-        text = f"{point}{GOAL.format(1)}/1/run.txt"
-        self.assertIn(text, self.stands_alone(run).links)
-
-        for number in range(2, 13):
-            given = dict(runs=runs, matrix=matrix, commits=self.commits())
-            self.point(sha(number), minute=number, run_number=number, **given)
-
-        self.assertIn(f"../main/{sha(1)}/{MEASUREMENT}/", self.stands_alone(out).links)
-        page = self.stands_alone(run)
-        self.assertNotIn(text, page.links)
-        self.assertIn(point, page.links)
-
 
 EXPECTED = ROOT / "tools" / "sim" / "expected"
 SCENARIOS = ROOT / "tools" / "sim" / "scenarios"
@@ -3015,6 +2968,7 @@ FIFTY = {
     "seated": 51,
     "virtual_s": 3494.75,
     "trunk_epoch": None,
+    "first_fork": None,
     "ended": None,
     "lines_off_trunk": None,
     "members_off_trunk": None,
@@ -3035,7 +2989,7 @@ COMPARED = (
 LOSS_5 = [
     "50-epochs-by-saro-waku-loss-5",
     "2",
-    "split at epoch 8, split at epoch 3",
+    "split at epoch 8 · split at epoch 3",
     "2 of 2 runs came out as expected",
 ]
 
@@ -3166,7 +3120,8 @@ class Long(LogosChat):
     ):
         runs, compared = self.long_uploaded()
         loss = runs / f"sim-revision-{LOSS_5[0]}-1" / LOSS_5[0]
-        write(loss / "1" / "run.json", json.dumps({"grow": GROW, "wall_s": 189.4}))
+        grow = dict(GROW, rounds=ROUNDS)
+        write(loss / "1" / "run.json", json.dumps({"grow": grow, "wall_s": 189.4}))
         self.long(uploaded=(runs, compared))
 
         out = self.held()
@@ -3189,14 +3144,20 @@ class Long(LogosChat):
         self.assertIn(["0", "split at epoch 8", held[0]["came_to"], "3 min 9 s"], parsed.rows)
         self.assertIn(["1", "split at epoch 3", held[1]["came_to"], "2 min 1 s"], parsed.rows)
         self.assertIn("never joined: tomo, peer14", parsed.text)
+        for row in ROUNDED:
+            self.assertEqual(parsed.rows.count(row), 1)
+        self.assertIn(
+            '"As expected" means the runs came out as tools/sim/expected holds them, not that '
+            "they came out well.",
+            parsed.text,
+        )
         self.assertIn("run.txt of 50-epochs-by-saro-waku-loss-5/1\n", parsed.text)
         self.assertIn("50-epochs-by-saro-waku-loss-5/1/run.json", parsed.links)
         self.assertNotIn("50-epochs-by-saro-waku-loss-5/1/report.json", parsed.links)
-        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
         for name, count in self.suite():
             for number in range(1, count + 1):
                 cell = {"scenario": name, "run": number, "seed": number - 1}
-                self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+                self.assertIn("\n".join(simulate.again(cell, REVISION, SHA)), parsed.text)
         self.assertEqual(len(self.folds(out)), sum(count for _, count in self.suite()))
         self.assertNotIn("build", parsed.ids)
 
@@ -3221,12 +3182,12 @@ class Long(LogosChat):
 
         out = self.held()
         parsed = self.stands_alone(out)
-        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
         for name, count in self.suite():
             for number in range(1, count + 1):
                 cell = {"scenario": name, "run": number, "seed": number - 1}
                 with self.subTest(scenario=name, run=number):
-                    self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+                    again = simulate.again(cell, REVISION, SHA)
+                    self.assertIn("\n".join(again), parsed.text)
         self.assertEqual(len(self.folds(out)), sum(count for _, count in self.suite()))
         self.assertIn((False, "seed 0 does not build"), self.folds(out))
         for row in (
@@ -3259,8 +3220,8 @@ class Long(LogosChat):
         long = pages.read_long(self.held() / "long.json")
         self.assertEqual(long["scenarios"][0]["runs"][0]["seed"], 7)
         cell = {"scenario": "50-epochs", "run": 1, "seed": 7}
-        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
-        self.assertIn("\n".join(simulate.again(cell, facts)), Parsed(self.drawn(self.held())).text)
+        again = simulate.again(cell, REVISION, SHA)
+        self.assertIn("\n".join(again), Parsed(self.drawn(self.held())).text)
         write(sweep / "outcomes.json", json.dumps([FIFTY]))
         status, _, err = self.run_pages("long", *given)
         self.assertEqual(status, 2)
@@ -3385,7 +3346,7 @@ class Long(LogosChat):
         outcomes = [run["outcome"] for one in written["scenarios"] for run in one["runs"]]
         for outcome in outcomes:
             if outcome is not None:
-                del outcome["never_joined"]
+                del reported(outcome)["never_joined"]
         write(path, json.dumps(written))
 
         long = pages.read_long(path)
@@ -3421,8 +3382,7 @@ class Long(LogosChat):
             self.assertNotIn(COMPARED, parsed.text)
             self.assertIn(LOSS_5, parsed.rows)
             cell = {"scenario": "50-epochs-by-saro-waku-loss-5", "run": 2, "seed": 1}
-            facts = {"revision": sha(100 - number), "base": "", "chat_sim": SHA}
-            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+            self.assertIn("\n".join(simulate.again(cell, sha(100 - number), SHA)), parsed.text)
         self.assertIn("50-epochs-by-saro-waku-loss-5/compare.txt", self.files(self.held(sha(97))))
 
     def test_the_graph_over_main_links_the_newest_long_run_and_draws_nothing_of_it(self):

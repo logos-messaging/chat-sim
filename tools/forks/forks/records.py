@@ -71,19 +71,18 @@ class Counts:
 
 @dataclass(frozen=True)
 class Reading:
-    """The records in some log bytes, a count of their lines, and how many bytes were read."""
+    """The records in some log bytes, and a count of their lines."""
 
     records: List[Record]
     counts: Counts
-    consumed: int
 
 
-# The largest number a browser reads from JSON exactly, 2^53 - 1: the page shows an epoch as the
-# JSON holds it.
+# The largest number a browser reads from JSON exactly, 2^53 - 1: a page that draws the report
+# shows an epoch as the JSON holds it.
 MAX_NUMBER = 9007199254740991
-# The most bytes a conversation id holds. The page asks for a conversation by its id in an
-# address, where a byte written `%xx` takes five: `/conversations/` and this many of those are
-# the 8000 bytes of address every server is asked to take (RFC 9110, 4.1).
+# The most bytes a conversation id holds, so that an address that asks for a conversation by its
+# id, where a byte written `%xx` takes five, is within the 8000 bytes every server is asked to
+# take (RFC 9110, 4.1): `/conversations/` and this many of those.
 MAX_CONVO = (8000 - len("/conversations/")) // 5
 
 
@@ -192,19 +191,11 @@ def read_lines(data: bytes, run: str) -> Reading:
 
     A last line without one is still being written, or the copy was cut there: it is not read.
     """
-    return read_complete_lines(data, run)
-
-
-def read_complete_lines(data: bytes, run: str, first_line: int = 1) -> Reading:
-    """Reads the lines of a chunk that end in a line break; what follows them waits for more bytes.
-
-    `first_line` is the number the chunk's first line has in its run.
-    """
     lines = data.split(b"\n")
     # What follows the last line break is no line.
-    consumed = len(data) - len(lines.pop())
+    lines.pop()
     counts, records = Counts(lines=len(lines)), []
-    for number, raw in enumerate(lines, first_line):
+    for number, raw in enumerate(lines, 1):
         text = line_text(raw)
         stamp = _stamp(text)
         if stamp is None:
@@ -224,7 +215,7 @@ def read_complete_lines(data: bytes, run: str, first_line: int = 1) -> Reading:
             counts.records += 1
             has_offset = stamp["offset"] is not None
             records.append(Record(run, number, stamp.group(), has_offset, kind, **fields))
-    return Reading(records, counts, consumed)
+    return Reading(records, counts)
 
 
 def line_text(raw: bytes) -> str:

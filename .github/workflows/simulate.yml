@@ -8,30 +8,29 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # members of any branch a round (tools/sim/scenarios/grow-waku-loss-*.json), on
 # GroupV2 and, in the -groupv3 files, on GroupV3, at rates of loss. pr, for a
 # logos-chat pull request, runs seeds 0 to 2 of each group at 0.5, 1 and 5%, a
-# job a run, at the revision and at the base it is handed; when gh-pages holds
-# main's point at the base at the current measurement, with an outcome at each
-# of those runs, its runs, main's first three seeds, stand in for the base's and
-# no job runs at the base. main runs seeds 0 to 19 of each group at no loss and
-# at those three, two jobs of ten a group's rate, and no base. tools/sim matrix
-# pairs each run with the base's of its scenario and seed and says the verdict
-# of each group, and for pr places the head's runs among main's twenty seeds of
-# the point at the base, or of the nearest before it; the comment is drawn from
-# what it wrote, kept as the artifact matrix, and for pr says of each group how
-# many of its runs moved and whether those stand within that point's runs, with
-# a picture of the runs that moved. long runs the two scenarios of fifty epochs
-# and every other one tools/sim/expected holds but the goal's on either group,
-# as many runs as it holds, a job a scenario a side, and holds them to the
-# base's runs, or without a base to what is held.
+# job a run, at the revision and at the base it is handed; the pair job then
+# finds each group a run of which came out otherwise at the two, and the more
+# job runs seeds 3 to 19 of each of its rates as well, at both, six a job. The
+# run jobs of both are sweep.yml's. main runs seeds 0 to 2 of each group at no
+# loss and seeds 0 to 19 at those three, ten a job, and no base.
+# tools/sim matrix pairs each run with the base's of its scenario and seed,
+# judges each rate of each group by a sign test on how far the first fork moved
+# in its seeds, and says the verdict of each group; the comment is drawn from
+# what it wrote, kept as the artifact matrix, and for pr says of each group what
+# its runs at each rate came to. long runs the two scenarios of fifty epochs and
+# every other one tools/sim/expected holds but the goal's on either group, as
+# many runs as it holds, a job a scenario a side, and holds them to the base's
+# runs, or without a base to what is held.
 # The publish job keeps a main run on the Pages site as a point of main,
 # logos-chat/main/<sha>/<measurement>/, with the point's page, and draws the
 # graph over main, logos-chat/index.html, from every point again; it keeps a pr
-# run for a pull request in logos-chat/pr-<N>/, with its report page, a page for
-# each run and the picture of the runs that moved; and it keeps a long run
-# handed no base and no pr, held to what is expected, in
-# logos-chat/long/<sha>/<measurement>/, with each scenario's compare and its
-# page, and draws the graph over main again, which links the newest. Each keeps
-# its runs' text, and the build's log of a job that could not build chat-sim.
-# The comment links the page.
+# run for a pull request in logos-chat/pr-<N>/, with its report page and a page
+# for each run; and it keeps a long run handed no base and no pr, held to what
+# is expected, in logos-chat/long/<sha>/<measurement>/, with each scenario's
+# compare and its page, and draws the graph over main again, which links the
+# newest. Each keeps its runs' text, and the build's log of a job that could not
+# build chat-sim. The comment links the page, and for a pr run the trees of its
+# runs there and the graph over main.
 # Main's points and the long runs are series the site shares, so only a run of
 # the default branch keeps one; a pr run keeps its pull request's run from any
 # branch.
@@ -39,25 +38,26 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # main: it keeps no point, and measure-main.yml does not wait on it.
 # A pr run handed a pr posts the comment on that pull request of logos-chat as
 # the App chat-sim, editing the App's oldest comment there or writing one. The
-# post job does so after the publish job and, where the comment shows a picture,
-# once the Pages site has built it, waiting ten minutes at most. A pr run handed
-# check_run, the id of a check run the App made on logos-chat, moves it to in
-# progress once the runs are planned, with this run as its details, and
-# completes it with the groups' verdicts once the comment is posted, with the
-# report page as its details, or this run without one: a failure when either
-# group's runs are worse in two or more and better in none, else a success when
-# either group's are better, and neutral otherwise; the repository variable
-# CHAT_SIM_CHECK_REQUIRED set to true also fails it where chat-sim does not
-# build at the revision or a run there has no outcome. The plan job and the post
-# job each mint a token of their own, for logos-chat alone, from the variable
-# CHAT_SIM_APP_CLIENT_ID and the secret CHAT_SIM_APP_PRIVATE_KEY; without them,
-# each says so and posts nothing, and the comment is in the run's summary alone.
-# Started by hand. Every hour, measure-main.yml starts main at logos-chat main's
-# tip if the tip has no point at the current measurement, no run of main at it
-# is going, and no run of main at it ended at that measurement without its
-# point; and on Sundays, at the first tick that finds no run of long created
-# that day, it starts long at the tip, unless the tip has its long run at the
-# current measurement or a run of long is going.
+# post job does so after the publish job. A pr run handed check_run, the id of a
+# check run the App made on logos-chat, moves it to in progress once the runs
+# are planned, with this run as its details, and completes it with the groups'
+# verdicts once the comment is posted, with the report page as its details, or
+# this run without one: a failure when either group forks earlier, else a
+# success when either forks later, and neutral otherwise; the repository
+# variable CHAT_SIM_CHECK_REQUIRED set to true also fails it where chat-sim does
+# not build at the revision or a run there has no outcome. The plan job and the
+# post job each mint a token of their own, for logos-chat alone, from the
+# variable CHAT_SIM_APP_CLIENT_ID and the secret CHAT_SIM_APP_PRIVATE_KEY;
+# without them, each says so and posts nothing, and the comment is in the run's
+# summary alone.
+# logos-chat's chat-sim.yml starts pr when a pull request there is opened or
+# pushed to, and main for each push to main; it can be started by hand too.
+# Every hour, measure-main.yml starts main at logos-chat main's tip if the tip
+# has no point at the current measurement, no run of main at it is going, and no
+# run of main at it ended at that measurement without its point; and on Sundays,
+# at the first tick that finds no run of long created that day, it starts long
+# at the tip, unless the tip has its long run at the current measurement or a
+# run of long is going.
 # Only a dispatch starts it, never a pull_request event, so no fork's code
 # reaches the publish job, which can push to gh-pages.
 on:
@@ -92,9 +92,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ inputs.suite }}-${{ inputs.pr || inputs.revision }}
   cancel-in-progress: true
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   plan:
     name: Plan the runs
@@ -107,11 +104,6 @@ jobs:
       check_run: ${{ steps.plan.outputs.check_run }}
       runs: ${{ steps.plan.outputs.runs }}
       scenarios: ${{ steps.plan.outputs.scenarios }}
-      # Where on gh-pages main's point is that stands in for the base's runs,
-      # and the one the head's runs are placed among: the same, or else the one
-      # at the base or the nearest before it that can be read.
-      point: ${{ steps.plan.outputs.point }}
-      spread: ${{ steps.plan.outputs.point || steps.spread.outputs.spread }}
       measurement: ${{ steps.measured.outputs.measurement }}
     # Read by the script from the environment, never written into it: what the
     # workflow is handed is text whoever started it chose. The jobs after this
@@ -123,10 +115,9 @@ jobs:
       PR: ${{ inputs.pr }}
       CHECK_RUN: ${{ inputs.check_run }}
     steps:
-      # The whole history, for the commit the runs measure, and gh-pages's tree,
-      # for the points of main. It is every branch's, gh-pages and the text it
-      # publishes among them, so the clone leaves out what the files hold but
-      # the checkout's. git fetches a point.json when the job reads it.
+      # The whole history, for the commit the runs measure. It is every
+      # branch's, gh-pages and the text it publishes among them, so the clone
+      # leaves out what the files hold but the checkout's.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -134,35 +125,12 @@ jobs:
       - name: Name the chat-sim commit the runs measure
         id: measured
         run: python3 .github/scripts/simulate.py measurement >> "$GITHUB_OUTPUT"
-      - name: List the points of main on gh-pages
-        run: git ls-tree -r --name-only origin/gh-pages -- logos-chat/main > "$RUNNER_TEMP/points"
       - name: Check what the workflow was handed, and plan its runs
         id: plan
-        env:
-          MEASUREMENT: ${{ steps.measured.outputs.measurement }}
         run: |
           python3 .github/scripts/simulate.py plan --suite "$SUITE" --revision "$REVISION" \
             --base "$BASE" --pr "$PR" --check-run "$CHECK_RUN" --expected tools/sim/expected \
-            --measurement "$MEASUREMENT" --points "$RUNNER_TEMP/points" --pages origin/gh-pages \
             >> "$GITHUB_OUTPUT"
-      # The base's hundred newest commits, itself first, from logos-chat's public
-      # API, which the job's own token reads. The plan has checked the base.
-      - name: Ask logos-chat for the base's history
-        if: ${{ steps.plan.outputs.suite == 'pr' && steps.plan.outputs.base != '' && steps.plan.outputs.point == '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api "repos/logos-messaging/logos-chat/commits?sha=$BASE&per_page=100" \
-            > "$RUNNER_TEMP/history.json"
-      - name: Find main's point nearest before the base
-        id: spread
-        if: ${{ steps.plan.outputs.suite == 'pr' && steps.plan.outputs.base != '' && steps.plan.outputs.point == '' }}
-        env:
-          MEASUREMENT: ${{ steps.measured.outputs.measurement }}
-        run: |
-          python3 .github/scripts/simulate.py spread --measurement "$MEASUREMENT" \
-            --points "$RUNNER_TEMP/points" --history "$RUNNER_TEMP/history.json" \
-            --pages origin/gh-pages >> "$GITHUB_OUTPUT"
       # The check run moves to in progress last: a step after it that failed
       # would leave it in progress with no post job to complete it. A step's
       # if cannot read a secret, so this step reads whether it is set.
@@ -203,102 +171,72 @@ jobs:
           gh api --silent -X PATCH "repos/logos-messaging/logos-chat/check-runs/$CHECK_RUN" \
             --input "$RUNNER_TEMP/check.json"
 
+  # The run jobs, in sweep.yml, which more calls as well.
   run:
-    name: Run at ${{ matrix.run.name }}
+    name: Run
     needs: plan
+    uses: ./.github/workflows/sweep.yml
+    with:
+      runs: ${{ needs.plan.outputs.runs }}
+
+  # Runs when a run job fails as well, as the comment does: a run with no
+  # outcome is a cell with none.
+  pair:
+    name: Pair seeds 0 to 2, and plan seeds 3 to 19 of each group whose runs moved
+    needs: [plan, run]
+    if: >-
+      ${{ !cancelled() && needs.plan.result == 'success' &&
+      needs.plan.outputs.suite == 'pr' && needs.plan.outputs.base != '' }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        run: ${{ fromJSON(needs.plan.outputs.runs) }}
+    outputs:
+      more: ${{ steps.widen.outputs.more }}
+      asked: ${{ steps.widen.outputs.asked }}
     env:
-      REVISION: ${{ matrix.run.revision }}
-      SCENARIO: ${{ matrix.run.scenario }}
-      FROM: ${{ matrix.run.from }}
-      RUNS: ${{ matrix.run.runs }}
+      REVISION: ${{ needs.plan.outputs.revision }}
+      BASE: ${{ needs.plan.outputs.base }}
+      RUNS: ${{ needs.plan.outputs.runs }}
     steps:
       - uses: actions/checkout@v4
-      - uses: logos-co/setup-nix-cache-action@v1
-      # Both pins, which ci.yml's Lint holds to one revision: the flake's input,
-      # whose lock gives the toolchain, and Cargo.toml's git dependencies, which
-      # cargo locks again on the build.
-      - name: Pin logos-chat at the revision
-        run: |
-          pinned=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
-          sed -i "s/$pinned/$REVISION/g" flake.nix Cargo.toml
-          nix flake lock
-      # The dev shell's toolchain on PATH, for rust-cache's key as well.
-      - uses: nicknovitski/nix-develop@v1
-      # The build of every dependency from an earlier run, at any revision of
-      # logos-chat, so that only its crates and chat-sim's build again.
-      - uses: Swatinem/rust-cache@v2
+      - name: Download the runs at the revision
+        uses: actions/download-artifact@v8
         with:
-          shared-key: harness-run
-      # Its output is kept as build.log, for the report of a revision chat-sim
-      # does not build at.
-      - name: Build harness-run
-        id: build
-        shell: bash
-        run: |
-          cargo build --release -p harness --bin harness-run 2>&1 | tee "$RUNNER_TEMP/build.log"
-          flake=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
-          cargo=$(grep -o 'logos-chat?rev=[0-9a-f]*' Cargo.lock | sort -u)
-          echo "flake.lock pins logos-chat at $flake, Cargo.lock at: $cargo" \
-            | tee -a "$RUNNER_TEMP/build.log"
-          [ "$flake" = "$REVISION" ] && [ "$cargo" = "logos-chat?rev=$REVISION" ]
-      # A revision chat-sim does not build at runs nothing: each run the job was
-      # to do says so in the directory the sweep would have given it, for the
-      # comment, beside the build's log, for the report.
-      - name: Mark the runs unbuilt
-        if: ${{ failure() && steps.build.outcome == 'failure' }}
-        run: |
-          last=$((FROM + RUNS - 1))
-          for ((number = FROM; number <= last; number++)); do
-            out="$RUNNER_TEMP/sim/$SCENARIO/$(printf '%0*d' "${#last}" "$number")"
-            mkdir -p "$out"
-            echo "chat-sim does not build at $REVISION" > "$out/unbuilt"
-            # CARGO_TERM_COLOR puts colour codes in the log; the page shows it as text.
-            sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' "$RUNNER_TEMP/build.log" > "$out/build.log"
-          done
-      # Runs FROM to FROM + RUNS - 1 of the scenario's sweep, each with the
-      # seeds it has in a sweep from run 1, and writes their outcomes for
-      # compare. A sweep that does not go as its scenario expects fails the job
-      # once the outcomes are written.
-      - name: Run the scenario
-        run: |
-          status=0
-          out="$RUNNER_TEMP/sim/$SCENARIO"
-          python3 tools/sim sweep "tools/sim/scenarios/$SCENARIO.json" --from "$FROM" \
-            --runs "$RUNS" --one-process target/release/harness-run --out "$out" || status=1
-          python3 tools/sim compare --write "$out/outcomes.json" "$out" || status=1
-          exit "$status"
-      # The sweep's files and its runs', without each run's group.log,
-      # plan.json, result.json, runner.out and runner.stderr, in the directory
-      # named for the scenario, or the build's log beside each unbuilt marker.
-      # Each job's under a name of its own: two jobs of one scenario each wrote
-      # a sweep.json.
-      - name: Upload the runs' text
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
+          pattern: sim-revision-*
+          path: ${{ runner.temp }}/revision
+      - name: Download the runs at the base
+        uses: actions/download-artifact@v8
         with:
-          name: sim-${{ matrix.run.side }}-${{ matrix.run.scenario }}-${{ matrix.run.from }}
-          path: |
-            ${{ runner.temp }}/sim/*/sweep.txt
-            ${{ runner.temp }}/sim/*/sweep.json
-            ${{ runner.temp }}/sim/*/outcomes.json
-            ${{ runner.temp }}/sim/*/*/unbuilt
-            ${{ runner.temp }}/sim/*/*/build.log
-            ${{ runner.temp }}/sim/*/*/run.txt
-            ${{ runner.temp }}/sim/*/*/run.json
-            ${{ runner.temp }}/sim/*/*/report.txt
-            ${{ runner.temp }}/sim/*/*/report.json
-            ${{ runner.temp }}/sim/*/*/expect.json
+          pattern: sim-base-*
+          path: ${{ runner.temp }}/base
+      - name: Pair the runs, and plan the rest of the seeds of each group whose runs moved
+        id: widen
+        run: |
+          mkdir -p "$RUNNER_TEMP/revision" "$RUNNER_TEMP/base"
+          printf '%s\n' "$RUNS" > "$RUNNER_TEMP/asked.json"
+          python3 tools/sim matrix "$RUNNER_TEMP/revision" --base "$RUNNER_TEMP/base" \
+            --asked "$RUNNER_TEMP/asked.json" --out "$RUNNER_TEMP/matrix.json"
+          python3 .github/scripts/simulate.py widen --matrix "$RUNNER_TEMP/matrix.json" \
+            --asked "$RUNNER_TEMP/asked.json" --revision "$REVISION" --base "$BASE" \
+            >> "$GITHUB_OUTPUT"
+
+  # Skipped where no group's runs moved: a matrix of no job fails, and a
+  # job's if is read before its matrix. It runs after a failed run job as
+  # well, as pair does.
+  more:
+    name: Run more
+    needs: pair
+    if: >-
+      ${{ !cancelled() && needs.pair.result == 'success' &&
+      needs.pair.outputs.more != '[]' }}
+    uses: ./.github/workflows/sweep.yml
+    with:
+      runs: ${{ needs.pair.outputs.more }}
 
   comment:
     name: Write the comment
-    needs: [plan, run]
+    needs: [plan, run, pair, more]
     # Runs when a run job fails as well: the comment says which runs have no
-    # outcome.
+    # outcome. It runs when pair and more are skipped too, for main and long,
+    # and where no group's runs moved.
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
 
@@ -306,21 +244,18 @@ jobs:
       contents: read
       pages: read              # read the Pages site's address
 
-    # For the post job: the report page's address, and the picture's that the
-    # comment shows, or nothing, which it waits for on the Pages site.
+    # For the post job: the report page's address.
     outputs:
       report: ${{ steps.report.outputs.url }}
-      picture: ${{ steps.comment.outputs.picture }}
 
     env:
       SUITE: ${{ needs.plan.outputs.suite }}
       REVISION: ${{ needs.plan.outputs.revision }}
       BASE: ${{ needs.plan.outputs.base }}
       PR: ${{ needs.plan.outputs.pr }}
-      RUNS: ${{ needs.plan.outputs.runs }}
+      # The run jobs of both stages, or without pair those the plan printed.
+      ASKED: ${{ needs.pair.outputs.asked || needs.plan.outputs.runs }}
       SCENARIOS: ${{ needs.plan.outputs.scenarios }}
-      POINT: ${{ needs.plan.outputs.point }}
-      SPREAD: ${{ needs.plan.outputs.spread }}
       MEASUREMENT: ${{ needs.plan.outputs.measurement }}
     steps:
       - uses: actions/checkout@v4
@@ -333,44 +268,24 @@ jobs:
           pattern: sim-revision-*
           path: ${{ runner.temp }}/revision
       - name: Download the runs at the base
-        if: ${{ needs.plan.outputs.base != '' && needs.plan.outputs.point == '' }}
+        if: ${{ needs.plan.outputs.base != '' }}
         uses: actions/download-artifact@v8
         with:
           pattern: sim-base-*
           path: ${{ runner.temp }}/base
-      # The points of main the plan chose, from the gh-pages branch, which the
-      # job's own token reads: Pages serves the branch minutes late.
-      - name: Read main's points the plan chose
-        if: ${{ needs.plan.outputs.spread != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          raw=(-H "Accept: application/vnd.github.raw+json")
-          gh api "${raw[@]}" "repos/$GITHUB_REPOSITORY/contents/$SPREAD?ref=gh-pages" \
-            > "$RUNNER_TEMP/spread.json"
-          if [ -n "$POINT" ]; then
-            gh api "${raw[@]}" "repos/$GITHUB_REPOSITORY/contents/$POINT?ref=gh-pages" \
-              > "$RUNNER_TEMP/point.json"
-          fi
-      # Every run the plan asked for is a cell, so that one whose job uploaded
-      # nothing has no outcome; a side whose jobs uploaded nothing has no runs.
-      # Main's point at the base, where the plan found one, is the base's side.
+      # Every run a run job was asked for, of both stages, is a cell, so that
+      # one whose job uploaded nothing has no outcome; a side whose jobs
+      # uploaded nothing has no runs.
       - name: Pair the runs, and say what moved
         if: ${{ needs.plan.outputs.suite != 'long' }}
         run: |
           mkdir -p "$RUNNER_TEMP/revision" "$RUNNER_TEMP/base"
-          printf '%s\n' "$RUNS" > "$RUNNER_TEMP/asked.json"
+          printf '%s\n' "$ASKED" > "$RUNNER_TEMP/asked.json"
           base=()
-          if [ -n "$POINT" ]; then
-            base=(--base-point "$RUNNER_TEMP/point.json")
-          elif [ -n "$BASE" ]; then
+          if [ -n "$BASE" ]; then
             base=(--base "$RUNNER_TEMP/base")
           fi
-          spread=()
-          if [ -n "$SPREAD" ]; then
-            spread=(--spread "$RUNNER_TEMP/spread.json")
-          fi
-          python3 tools/sim matrix "$RUNNER_TEMP/revision" "${base[@]}" "${spread[@]}" \
+          python3 tools/sim matrix "$RUNNER_TEMP/revision" "${base[@]}" \
             --asked "$RUNNER_TEMP/asked.json" --out "$RUNNER_TEMP/matrix.json"
       - name: Upload the matrix
         if: ${{ needs.plan.outputs.suite != 'long' }}
@@ -440,10 +355,8 @@ jobs:
             page="logos-chat/pr-$PR/"
           fi
           echo "url=${url%/}/$page" >> "$GITHUB_OUTPUT"
-      # The comment goes to comment.md, and where the picture is that it shows
-      # to the step's outputs.
+      # The comment goes to comment.md, for the post job.
       - name: Write the comment
-        id: comment
         env:
           REPORT_URL: ${{ steps.report.outputs.url }}
         run: |
@@ -464,7 +377,7 @@ jobs:
             --suite "$SUITE" --revision "$REVISION" --pr "$PR" \
             --expected tools/sim/expected --chat-sim "$GITHUB_SHA" \
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            --out "$RUNNER_TEMP/comment.md" >> "$GITHUB_OUTPUT"
+            --out "$RUNNER_TEMP/comment.md"
           cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload the comment
         uses: actions/upload-artifact@v7
@@ -492,10 +405,6 @@ jobs:
 
     permissions:
       contents: write          # push to the gh-pages branch
-
-    # For the post job: the commit pushed to gh-pages, or nothing where gh-pages held the run.
-    outputs:
-      pushed: ${{ steps.push.outputs.pushed }}
 
     # Serialize with the other jobs that publish to gh-pages, queued as they are.
     concurrency:
@@ -546,7 +455,7 @@ jobs:
           pattern: sim-revision-*
           path: ${{ runner.temp }}/revision
       - name: Download the runs at the base
-        if: ${{ needs.plan.outputs.base != '' && needs.plan.outputs.point == '' }}
+        if: ${{ needs.plan.outputs.base != '' }}
         uses: actions/download-artifact@v8
         with:
           pattern: sim-base-*
@@ -596,8 +505,6 @@ jobs:
       - name: Draw the graph over main from every point
         if: ${{ needs.plan.outputs.suite != 'pr' }}
         run: python3 .github/scripts/pages.py trend site
-      # Where main's point stood in for the base, no run at the base was
-      # downloaded: the point's own directory holds its runs' text.
       - name: Write the pull request's run
         if: ${{ needs.plan.outputs.suite == 'pr' }}
         run: |
@@ -614,7 +521,6 @@ jobs:
             --run-number "$GITHUB_RUN_NUMBER" --time "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
       - name: Push to gh-pages
-        id: push
         run: |
           said="the point of logos-chat main $REVISION at $MEASUREMENT"
           if [ "$SUITE" = pr ]; then
@@ -631,14 +537,13 @@ jobs:
           git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git -C site commit -qm "Publish $said"
           git -C site push origin gh-pages
-          echo "pushed=$(git -C site rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   post:
     name: Post the comment and complete the check
     needs: [plan, comment, publish]
-    # After publish, so that the picture the comment shows is on the Pages site
-    # when the comment lands. It runs whether publish succeeded, failed or was
-    # skipped, so that the check run is completed all the same.
+    # After publish, so that the report the comment links is pushed when the
+    # comment lands. It runs whether publish succeeded, failed or was skipped,
+    # so that the check run is completed all the same.
     if: >-
       ${{ !cancelled() && needs.comment.result == 'success' &&
       needs.plan.outputs.suite == 'pr' && needs.plan.outputs.pr != '' }}
@@ -646,7 +551,6 @@ jobs:
 
     permissions:
       contents: read
-      pages: read              # ask whether the Pages site has built publish's push
 
     env:
       PR: ${{ needs.plan.outputs.pr }}
@@ -691,36 +595,6 @@ jobs:
           repositories: logos-chat
           permission-checks: write
           permission-pull-requests: write
-      # The site serves publish's push once it has built it, or a push after
-      # it, about a minute after. The picture itself is not asked for: the
-      # site's cache keeps a 404 it answered, for the comment's readers too.
-      # Where publish pushed nothing, the site holds the picture already.
-      # Without publish, or a build in ten minutes, the comment goes out all
-      # the same, and its picture may not show.
-      - name: Wait for the Pages site to build the comment's picture
-        if: ${{ steps.token.outcome == 'success' && needs.comment.outputs.picture != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PUBLISHED: ${{ needs.publish.result }}
-          PUSHED: ${{ needs.publish.outputs.pushed }}
-        run: |
-          if [ "$PUBLISHED" != success ]; then
-            echo "::warning::The publish job's result is $PUBLISHED, so the comment's picture may not show: the comment is posted all the same."
-            exit 0
-          fi
-          while [ -n "$PUSHED" ]; do
-            if gh api "repos/$GITHUB_REPOSITORY/pages/builds?per_page=10" > "$RUNNER_TEMP/builds.json"; then
-              built=$(python3 .github/scripts/simulate.py built --builds "$RUNNER_TEMP/builds.json" --commit "$PUSHED")
-              if [ "$built" = true ]; then
-                exit 0
-              fi
-            fi
-            if [ "$SECONDS" -ge 600 ]; then
-              echo "::warning::The Pages site did not build $PUSHED in ten minutes, so the comment's picture may not show: the comment is posted all the same."
-              exit 0
-            fi
-            sleep 10
-          done
       - name: Find the App's comment on the pull request
         id: posting
         if: ${{ steps.token.outcome == 'success' }}
