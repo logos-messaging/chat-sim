@@ -2337,10 +2337,9 @@ def _epochs_chart(
 
 def _whole_chart(groups: Sequence[Tuple[str, List[dict], List[Tuple[object, str]]]]) -> str:
     """The second chart: of each group of `groups`, as `write_trend` has them, a line a rate of
-    how many runs ended whole."""
+    the share of its runs that ended whole."""
     drawn = ""
     for called, held, rates in groups:
-        runs = max((one["runs"] for point in held for one in point["summary"]), default=0)
         drawn += (
             f"<h3>{_e(called)} runs whole{_of_runs(held)}</h3>\n"
             + _legend(
@@ -2351,22 +2350,24 @@ def _whole_chart(groups: Sequence[Tuple[str, List[dict], List[Tuple[object, str]
             + _over(
                 held,
                 rates,
-                _whole,
+                _whole_share,
                 _whole_said,
-                top=runs,
+                top=100,
                 plot=240,
                 label=f"{called} runs whole at {_TOP} epochs",
-                goal=runs,
+                goal=100,
                 merged=True,
                 noted=True,
+                shown=_percent,
             )
         )
     return (
         '<section class="chart" id="whole">\n'
         f"<h2>Runs whole at {_TOP} epochs</h2>\n"
         + drawn
-        + '<p class="caption">How many runs of each rate ended whole: one group, every member '
-        f"that joined at its tip, at epoch {_TOP}. The goal is every line at the top. A line "
+        + '<p class="caption">The share of each rate\'s runs that ended whole: one group, every '
+        f"member that joined at its tip, at epoch {_TOP}. A share puts a rate of 3 runs and one "
+        "of 20 on one scale. The goal is every line at the top. A line "
         "breaks at a point where none of the rate's runs had an outcome, as when chat-sim did not "
         "build. Under the dates the axis shows, the pull requests of logos-chat the point merged, "
         "which a marker's hover text names too.</p>\n"
@@ -2504,12 +2505,15 @@ def _over(
     goal: Optional[int] = None,
     merged: bool = False,
     noted: bool = False,
+    shown: Optional[Callable[[float], str]] = None,
 ) -> str:
     """A chart over the points: a line a rate of what `value` reads of the rate's summary at each
     point, a marker on each with `hover` in its title, and the rate and its newest value at the
-    end of its line, on a scale from 0 to `top`. With `goal`, a dashed line at it; with `merged`,
-    the pull requests each point merged under its date; with `noted`, the commit chat-sim moved
-    to over each dashed line of a point at another measurement."""
+    end of its line, on a scale from 0 to `top`, its ticks and values as `shown` writes them. With
+    `goal`, a dashed line at it; with `merged`, the pull requests each point merged under its
+    date; with `noted`, the commit chat-sim moved to over each dashed line of a point at another
+    measurement. Without `shown` they are written as `_number` writes them."""
+    shown = shown or _number
     left, right, above, below = 36, 96, 28 if noted else 14, 44 if merged else 28
     xs = _xs(len(found), left, _WIDTH - left - right)
     reach = _reach(xs)
@@ -2528,7 +2532,7 @@ def _over(
         )
         drawn.append(
             f'<text class="axis" x="{left - 8}" y="{y(tick) + 4:.1f}" text-anchor="end">'
-            f"{tick}</text>"
+            f"{shown(tick)}</text>"
         )
     every = _every(xs)
     for number in range(len(found))[::-1][::every]:
@@ -2571,7 +2575,7 @@ def _over(
         last = next((v for v in reversed(values) if v is not None), None)
         if last is not None:
             ends.append({"hue": hue, "name": name, "value": last, "y": y(last), "at": y(last)})
-    drawn += _ends(ends, xs[-1], bottom + 4)
+    drawn += _ends(ends, xs[-1], bottom + 4, shown)
     drawn.append("</svg>")
     return "\n".join(drawn) + "\n"
 
@@ -2817,8 +2821,8 @@ def _forks(
 
 def _treed(cell: dict) -> bool:
     """Whether a pull request's report page draws `cell`'s runs as trees: seeds 0 to 2, those
-    every pull request runs."""
-    return cell["seed"] < simulate.SEEDS["pr"]
+    every pull request runs of each rate."""
+    return cell["seed"] < min(simulate.RATES["pr"].values())
 
 
 def _strip(matrix: dict, cells: Sequence[dict]) -> str:
@@ -3678,8 +3682,9 @@ def _commit(repository: str, sha: str) -> str:
     return _link(f"{repository}/commit/{sha}", sha[:7], code=True)
 
 
-def _ends(ends: List[dict], x: float, lowest: float) -> List[str]:
-    """The rate and its newest value at the end of each line, pushed apart where two meet."""
+def _ends(ends: List[dict], x: float, lowest: float, shown: Callable[[float], str]) -> List[str]:
+    """The rate and its newest value at the end of each line, the value as `shown` writes it,
+    pushed apart where two meet."""
     gap = 14
     ends.sort(key=lambda one: one["y"])
     for before, one in zip(ends, ends[1:]):
@@ -3702,7 +3707,7 @@ def _ends(ends: List[dict], x: float, lowest: float) -> List[str]:
         )
         drawn.append(
             f'<text class="label" x="{x + 32:.1f}" y="{one["at"] + 4:.1f}">'
-            f"{_e(one['name'])} {_number(one['value'])}</text>"
+            f"{_e(one['name'])} {shown(one['value'])}</text>"
         )
         drawn.append("</g>")
     return drawn
@@ -3725,8 +3730,11 @@ def _what_moved(found: Sequence[dict], number: int, rates: Sequence[Tuple[object
                 said.append(f"{name} {_why(point, rate)}")
             continue
         moved = []
-        if _whole(now) != _whole(was):
-            moved.append(f"whole {_number(_whole(was))} to {_number(_whole(now))}")
+        if _whole_share(now) != _whole_share(was):
+            counts = [_number(_whole(one)) for one in (was, now)]
+            if now["runs"] != was["runs"]:
+                counts = [f"{count} of {one['runs']}" for count, one in zip(counts, (was, now))]
+            moved.append(f"whole {counts[0]} to {counts[1]}")
         if now["epochs"]["median"] != was["epochs"]["median"]:
             moved.append(
                 f"median {_number(was['epochs']['median'])} to {_number(now['epochs']['median'])}"
@@ -3760,6 +3768,17 @@ def _rate_at(point: dict, rate: object) -> Optional[dict]:
 def _whole(one: dict) -> Optional[int]:
     """The runs of a rate's summary that ended whole, or `None` where none had an outcome."""
     return None if one["no-outcome"] == one["runs"] else one["whole"]
+
+
+def _whole_share(one: dict) -> Optional[float]:
+    """The share of a rate's runs that ended whole in percent, or `None` where none had an
+    outcome."""
+    whole = _whole(one)
+    return None if whole is None else 100 * whole / one["runs"]
+
+
+def _percent(value: float) -> str:
+    return f"{value:.0f}%"
 
 
 def _whole_said(one: dict) -> str:

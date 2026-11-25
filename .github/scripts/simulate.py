@@ -6,7 +6,7 @@ it is handed one, in one of three suites. `pr` and `main` run the goal, a group 
 50 by up to three members of any branch a round, on GroupV2 and on GroupV3 at rates of loss: `pr`
 seeds 0 to 2 of the three lossy rates, a job a run, at the revision and at the base, and of a group
 a run of which came out otherwise at the two, seeds 3 to 19 of each of its rates as well, six a
-job; `main` seeds 0 to 19 of the four rates, two jobs of ten a rate, and no base. `long` runs the
+job; `main` seeds 0 to 2 at 0% and 0 to 19 at the rest, ten a job, and no base. `long` runs the
 two scenarios of fifty epochs and every other one `tools/sim/expected` holds but the goal's, a job
 a scenario a side. `plan` checks what it was handed and prints the run jobs, and `widen` the run
 jobs of seeds 3 to 19 from the matrix of seeds 0 to 2. `comment` writes the comment in Markdown:
@@ -38,11 +38,12 @@ from urllib.parse import urljoin
 GOALS = {"v2": "grow-waku-loss-{}", "v3": "grow-waku-loss-{}-groupv3"}
 # What the comment calls each group.
 GROUPS = {"v2": "GroupV2", "v3": "GroupV3"}
-# GroupV3 forks at each of `pr`'s rates on seeds 0 to 2, where at 0.1% two of them stay whole.
-RATES = {"pr": ("0.5", "1", "5"), "main": ("0", "0.5", "1", "5")}
-# How many seeds of each rate a suite runs, from seed 0, and how many of them a job does. `widen`
-# is the rest of main's seeds of each rate of a `pr` group whose runs moved, at both sides.
-SEEDS = {"pr": 3, "main": 20}
+# How many seeds of each rate a suite runs, from seed 0. GroupV3 forks at each of `pr`'s rates on
+# seeds 0 to 2, where at 0.1% two of them stay whole. `main` runs three of 0%, by far its slowest
+# rate, at which no run of main's has split.
+RATES = {"pr": {"0.5": 3, "1": 3, "5": 3}, "main": {"0": 3, "0.5": 20, "1": 20, "5": 20}}
+# How many runs a job does. `widen` is the rest of main's seeds of each rate of a `pr` group whose
+# runs moved, at both sides.
 A_JOB = {"pr": 1, "main": 10, "widen": 6}
 FIFTY_EPOCHS = ("50-epochs", "50-epochs-waku")
 SUITES = ("pr", "main", "long")
@@ -344,7 +345,9 @@ def scenarios(suite: str, expected: Path) -> List[Tuple[str, int]]:
     """
     if suite in RATES:
         return [
-            (goal.format(rate), SEEDS[suite]) for goal in GOALS.values() for rate in RATES[suite]
+            (goal.format(rate), seeds)
+            for goal in GOALS.values()
+            for rate, seeds in RATES[suite].items()
         ]
     goal = {goal.format(rate) for goal in GOALS.values() for rate in RATES["main"]}
     held = sorted(path.stem for path in expected.glob("*.json") if path.stem not in goal)
@@ -415,13 +418,15 @@ def widen(matrix: dict, revision: str, base: str) -> List[dict]:
     seeds of each of `pr`'s rates, at `revision` and at `base`; none where no cell does. Any field
     counts, as nothing moved only where every outcome is the same."""
     moved = {cell["group"] for cell in matrix["cells"] if cell["change"] == "moved"}
-    swept = [
-        (goal.format(rate), SEEDS["main"])
-        for group, goal in GOALS.items()
-        if group in moved
-        for rate in RATES["pr"]
-    ]
-    return jobs("widen", revision, base, swept, SEEDS["pr"] + 1)
+    found = []
+    for group, goal in GOALS.items():
+        if group not in moved:
+            continue
+        for rate, seeds in RATES["pr"].items():
+            swept = [(goal.format(rate), RATES["main"][rate])]
+            found += jobs("widen", revision, base, swept, seeds + 1)
+    # Every job at the revision first, as plan prints them.
+    return sorted(found, key=lambda job: job["side"] == "base")
 
 
 def title(matrix: dict) -> str:

@@ -11,8 +11,8 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # job a run, at the revision and at the base it is handed; the pair job then
 # finds each group a run of which came out otherwise at the two, and the more
 # job runs seeds 3 to 19 of each of its rates as well, at both, six a job. The
-# run jobs of both are sweep.yml's. main runs seeds 0 to 19 of each group at
-# no loss and at those three, two jobs of ten a group's rate, and no base.
+# run jobs of both are sweep.yml's. main runs seeds 0 to 2 of each group at no
+# loss and seeds 0 to 19 at those three, ten a job, and no base.
 # tools/sim matrix pairs each run with the base's of its scenario and seed,
 # judges each rate of each group by a sign test on how far the first fork moved
 # in its seeds, and says the verdict of each group; the comment is drawn from

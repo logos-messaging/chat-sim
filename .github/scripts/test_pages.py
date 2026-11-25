@@ -1249,7 +1249,8 @@ class Trend(LogosChat):
         """What a height of a chart stands for, read from its grid and the labels of its ticks."""
         lines, texts = svg.iter(f"{SVG}line"), svg.iter(f"{SVG}text")
         grid = [float(line.get("y1")) for line in lines if line.get("class") == "grid"]
-        ticks = [float(text.text) for text in texts if (text.text or "").isdigit()]
+        labels = [(text.text or "").removesuffix("%") for text in texts]
+        ticks = [float(label) for label in labels if label.isdigit()]
         (low, zero), (high, top) = (grid[0], ticks[0]), (grid[-1], ticks[-1])
         return lambda y: zero + (y - low) * (top - zero) / (high - low)
 
@@ -1333,7 +1334,7 @@ class Trend(LogosChat):
             for text in self.chart("whole").iter(f"{SVG}text")
             if text.get("class") == "label"
         )
-        self.assertEqual(ends, ["0.1% 2", "1% 0", "5% 0"])
+        self.assertEqual(ends, ["0.1% 100%", "1% 0%", "5% 0%"])
         panel = [title.split(" · ")[-1] for title, _ in self.markers(self.chart("epochs"))]
         self.assertEqual(
             panel,
@@ -1356,7 +1357,7 @@ class Trend(LogosChat):
             for line in whole.iter(f"{SVG}line")
             if line.get("class") == "measure" and line.get("y1") == line.get("y2")
         ]
-        self.assertEqual([round(self.scale(whole)(at), 1) for at in goal], [2])
+        self.assertEqual([round(self.scale(whole)(at), 1) for at in goal], [100])
         self.assertIn("the goal", [text.text for text in whole.iter(f"{SVG}text")])
         merged = sorted(
             (float(text.get("x")), text.text or "")
@@ -1364,6 +1365,26 @@ class Trend(LogosChat):
             if text.get("class") == "axis small"
         )
         self.assertEqual([said for _, said in merged], ["", "#321, #318", "", ""])
+
+    def test_a_rate_s_runs_whole_are_drawn_as_a_share_of_its_runs_whatever_their_number(self):
+        self.point(sha(1), minute=1, run_number=1)
+        fewer = self.uploaded()
+        shutil.rmtree(fewer / f"sim-revision-{GOAL.format('0.1')}-2")
+        self.point(sha(2), minute=2, run_number=2, runs=fewer, commits=self.commits())
+        self.trend()
+        whole = self.chart("whole")
+        said = [title.split(" · ")[-1] for title, _ in self.markers(whole)]
+        self.assertEqual(said[:2], ["0.1%: 1 of 2 whole", "0.1%: 1 of 1 whole"])
+        drawn = [
+            round(self.scale(whole)(float(circle.get("cy"))))
+            for circle in whole.iter(f"{SVG}circle")
+            if circle.get("class", "").startswith("marker")
+        ]
+        self.assertEqual(drawn[:2], [50, 100])
+        parsed = Parsed(self.page())
+        self.assertEqual(parsed.rows[0][3], "GroupV2 runs whole")
+        self.assertEqual(parsed.rows[2][6], "GroupV2 0.1% whole 1 of 2 to 1 of 1, median 48 to 50")
+        self.assertEqual(parsed.rows[3][6], "the first point")
 
     def test_a_dashed_line_marks_the_point_at_another_measurement(self):
         self.history()

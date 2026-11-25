@@ -43,8 +43,7 @@ HELD_GOALS = {
 SOONER = {"1/1": {"first_fork": 5}, "5/0": {"first_fork": 4}}
 HELD_SUITES = {
     "GOALS": HELD_GOALS,
-    "RATES": {"pr": ("0.1", "1", "5"), "main": ("0", "0.1", "1", "5")},
-    "SEEDS": {"pr": 2, "main": 20},
+    "RATES": {"pr": {"0.1": 2, "1": 2, "5": 2}, "main": {"0": 20, "0.1": 20, "1": 20, "5": 20}},
 }
 
 
@@ -128,15 +127,17 @@ class Scenarios(Fixture):
             ],
         )
 
-    def test_main_is_twenty_seeds_of_the_goal_on_each_group_at_each_of_its_four_rates(self):
+    def test_main_is_three_seeds_of_the_goal_on_each_group_at_no_loss_and_twenty_at_each_loss(
+        self,
+    ):
         self.assertEqual(
             simulate.scenarios("main", self.expected),
             [
-                ("grow-waku-loss-0", 20),
+                ("grow-waku-loss-0", 3),
                 ("grow-waku-loss-0.5", 20),
                 ("grow-waku-loss-1", 20),
                 ("grow-waku-loss-5", 20),
-                ("grow-waku-loss-0-groupv3", 20),
+                ("grow-waku-loss-0-groupv3", 3),
                 ("grow-waku-loss-0.5-groupv3", 20),
                 ("grow-waku-loss-1-groupv3", 20),
                 ("grow-waku-loss-5-groupv3", 20),
@@ -204,23 +205,25 @@ class Jobs(unittest.TestCase):
         )
         self.assertEqual(jobs[33]["name"], "base 89abcde: GroupV3 5% seed 0")
 
-    def test_main_is_two_jobs_of_ten_runs_a_group_s_rate_and_no_base(self):
+    def test_main_is_a_job_of_a_group_s_three_runs_at_no_loss_and_two_of_ten_a_loss_and_no_base(
+        self,
+    ):
         jobs = simulate.jobs("main", REVISION, "", simulate.scenarios("main", Path()))
 
-        self.assertEqual(len(jobs), 16)
+        self.assertEqual(len(jobs), 14)
         self.assertEqual({job["side"] for job in jobs}, {"revision"})
         self.assertEqual(
             [(job["scenario"], job["from"], job["runs"]) for job in jobs],
             [
-                (goal.format(rate), first, 10)
+                (goal.format(rate), first, min(10, seeds - first + 1))
                 for goal in simulate.GOALS.values()
-                for rate in ("0", "0.5", "1", "5")
-                for first in (1, 11)
+                for rate, seeds in (("0", 3), ("0.5", 20), ("1", 20), ("5", 20))
+                for first in range(1, seeds + 1, 10)
             ],
         )
         self.assertEqual(
-            [job["name"] for job in jobs[7:9]],
-            ["head 0123456: GroupV2 5% seeds 10 to 19", "head 0123456: GroupV3 0% seeds 0 to 9"],
+            [job["name"] for job in jobs[6:8]],
+            ["head 0123456: GroupV2 5% seeds 10 to 19", "head 0123456: GroupV3 0% seeds 0 to 2"],
         )
 
     def test_long_is_a_job_a_scenario_a_side_that_does_its_runs_as_held(self):
