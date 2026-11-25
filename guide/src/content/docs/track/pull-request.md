@@ -1,85 +1,21 @@
 ---
 title: Your pull request's result
-description: What chat-sim runs for a logos-chat pull request, how it judges the head against the merge base, and how to read the comment, the check and the report page.
+description: How to read chat-sim's comment, check and report on a logos-chat pull request, and how the verdict is reached.
 ---
 
-When a pull request to logos-chat opens or gets a push, logos-chat's workflow `chat-sim.yml`
-starts chat-sim's `simulate.yml` at the pull request's head, against its merge base with `main`.
-It queues a check named `chat-sim` on the head and writes a running line at the top of chat-sim's
-comment. A pull request whose every changed file is under `docs/` or ends in `.md` gets its check
-completed as skipped. A pull request from a fork gets nothing: its workflow is handed no secrets.
+Every push to a logos-chat pull request runs chat-sim at two commits: the pull request's head,
+and its merge base with `main`. chat-sim compares the two and tells you in three places:
 
-## What runs
-
-```mermaid
-flowchart LR
-    plan["plan"] --> run["run<br/>seeds 0 to 2<br/>head and base"]
-    run --> pair["pair<br/>which groups moved"]
-    pair -->|"a group moved"| more["more<br/>seeds 3 to 19<br/>head and base"]
-    pair --> comment["comment"]
-    more --> comment
-    comment --> publish["publish<br/>the report page"]
-    publish --> post["post<br/>the comment, the check"]
-```
-
-The first stage runs seeds 0 to 2 of the goal, `grow-waku-loss-`, at 0.5, 1 and 5% loss, on GroupV2
-and GroupV3: 18 runs at the head and the same 18 at the base, a job a run. Each job builds
-`harness-run` with logos-chat pinned at its side's commit
-([The scenarios](/chat-sim/guide/understand/scenarios/#the-goal)).
-
-A group **moved** when one of its seeds has an outcome at both sides and the two differ in any
-field. For each group that moved, the second stage runs seeds 3 to 19 of each of its rates at both
-sides, six runs a job. A group where nothing moved stops at seed 2.
-
-## The verdict
-
-Each seed of a rate is a pair: the head's run and the base's. Its `d` is the head's epochs without a
-fork less the base's ([How a run
-works](/chat-sim/guide/understand/how-a-run-works/#what-a-run-comes-to)). A pair is **later** where
-`d` is above 0, **earlier** where it is below, and **tied** where it is 0. A pair whose runs differ
-at the same first fork counts on neither side.
-
-Of a rate's `k` pairs later and `j` earlier, an exact two-sided sign test gives `p`: the chance of
-a split at least that uneven if each pair were a coin toss. A rate's result is the first that holds:
-
-| Result | When | Mark | The check |
-|---|---|---|---|
-| `unbuilt` | chat-sim does not build at the head | ⚫ | neutral, or a failure once required |
-| `no-outcome` | a run at the head has no outcome | ⚫ | neutral, or a failure once required |
-| `no-base` | no run at the base has an outcome | ⚫ | neutral |
-| `same` | every pair with both outcomes came out the same | ⚪ | neutral |
-| `earlier` | `p` is 1% or less, and more pairs are earlier | 🔴 | failure |
-| `later` | `p` is 1% or less, and more pairs are later | 🟢 | success |
-| `within` | the pairs moved, within chance | 🟡 | neutral |
-
-A run at the base with no outcome leaves its pair out of the test. A group's result is the worst of
-its rates, in the order unbuilt, no-outcome, earlier, later, within, no-base, same. The check fails
-where a group's result fails it, else succeeds where one succeeds, so a group that forks later
-cannot hide one that forks earlier. With chat-sim's repository variable `CHAT_SIM_CHECK_REQUIRED`
-set to `true`, `unbuilt` and `no-outcome` fail the check.
-
-Three seeds cannot reach 1%: three pairs of three earlier give `p` 0.25. That is why a group that
-moved runs 17 seeds more. Of the pairs that moved, later or earlier, the test is beyond chance when
-the fewer side holds at most:
-
-| Pairs that moved | The fewer side |
-|---|---|
-| 0 to 7 | never beyond chance |
-| 8 to 11 | 0 |
-| 12 to 14 | 1 |
-| 15 to 17 | 2 |
-| 18 to 20 | 3 |
+- its one **comment** on the pull request, which it edits after each push
+- a **check** named `chat-sim`, on the head commit
+- a **report** page with every run, linked from the comment
 
 ## The comment
 
-The comment is chat-sim's one comment on the pull request, edited on every run. Where nothing
-moved:
-
-```text
-⚪ Nothing moved. All 18 runs of GroupV2 and GroupV3 at 89abcde replayed its merge base fedcba9 exactly. The trees · the report, kept while the pull request is open · the graph over main · the run
-```
-
-Otherwise it has a line a group, then the links:
+chat-sim simulates a group that grows, many times over, and compares when the group first
+[forks](/chat-sim/guide/understand/how-a-run-works/#a-fork) at the head and at the base. Each
+simulation is a **run**. The comment has one line for each kind of group, GroupV2 and GroupV3
+([The two groups](/chat-sim/guide/understand/how-a-run-works/#the-two-groups)), then the links:
 
 ```text
 ⚪ GroupV2: nothing moved · 0.5%: nothing moved in seeds 0 to 2 · 1%: nothing moved in seeds 0 to 2 · 5%: nothing moved in seeds 0 to 2
@@ -88,33 +24,170 @@ Otherwise it has a line a group, then the links:
 The trees · the report, kept while the pull request is open · the graph over main · the run · 89abcde against its merge base fedcba9
 ```
 
-`0 later, 9 earlier, 11 tied` counts the pairs of that rate. Where the base gave no outcome in
-some of them, the rate adds `, no outcome at the base in 2 of 20 runs`. Where chat-sim does not
-build at the head, the comment says so and that the build's errors are on the report page.
+The GroupV3 line reads:
 
-The check's title says each group's verdict in a few words:
+- `🔴 GroupV3: forks earlier` is the group's **verdict** ([The verdict](#the-verdict)).
+- `0.5%`, `1%` and `5%` are **rates of loss**: a member never receives that share of the frames
+  sent to it. A **frame** is one message on the network, such as a commit or a vote.
+- `seeds 0 to 19` name the runs of a rate, one run for each seed. A **seed** fixes every random
+  choice of a run, so the head and the base run each seed under the same conditions. The two
+  runs of a seed are a **pair**.
+- `nothing moved in seeds 0 to 19`: all 20 pairs gave the same **outcome** at both sides. An
+  outcome is what a run reports at its end
+  ([A run's outcome](/chat-sim/guide/understand/how-a-run-works/#a-runs-outcome)). A run **moved**
+  when its two sides gave different outcomes. GroupV3 ran 20 seeds, not 3, because one of its
+  runs of seeds 0 to 2 moved ([What runs](#what-runs)).
+- `0 later, 9 earlier, 11 tied`: in 9 pairs the head forked earlier than the base, in none later,
+  and in 11 at the same epoch.
+- `(p 0.0039)`: the chance that coin tosses would split the 9 pairs that are not tied so
+  unevenly. It is under the threshold of 0.01, so at 1% loss the head forks earlier.
+- `5%: 2 later, 3 earlier, 15 tied (p 1)`: in five pairs the two runs first forked at different
+  epochs, and they lean neither way. A `p` of 1 is the highest there is. At 5% loss the runs
+  moved within chance.
+
+The rate of 1% loss gives the group its verdict, and [the check](#the-check) fails. The last
+line links the trees, which draw the runs of seeds 0 to 2
+([The report page](#the-report-page)), the report, the graph over main and, as `the run`, the
+workflow run that made the runs.
+
+When nothing moved in either group and every run was compared, the comment is one line:
+
+```text
+⚪ Nothing moved. All 18 runs of GroupV2 and GroupV3 at 89abcde replayed its merge base fedcba9 exactly. The trees · the report, kept while the pull request is open · the graph over main · the run
+```
+
+When the base gave no outcome in some runs, the rate adds `, no outcome at the base in 2 of 20
+runs`. When chat-sim does not build at the head, the comment says so, and the report page has the
+build's errors.
+
+While a push's runs are going, a line at the top of the comment says so, above the last result.
+
+## The verdict
+
+Each kind of group gets one verdict. **Beyond chance** means that coin tosses would give so
+uneven a result at most 1 time in 100 ([How it is reached](#how-it-is-reached)).
+
+| Mark | Verdict | Meaning |
+|---|---|---|
+| ⚪ | nothing moved | every run with an outcome at both sides gave the same one at both |
+| 🟡 | moved, within chance | some runs differ, and they lean neither earlier nor later beyond chance |
+| 🔴 | forks earlier | the head forks earlier than the base, beyond chance |
+| 🟢 | forks later | the head forks later than the base, beyond chance |
+| ⚫ | does not build | chat-sim does not build against the head commit |
+| ⚫ | no outcome | a run at the head gave no outcome |
+| ⚫ | nothing to compare at the base | no run gave an outcome at the base |
+
+A run gives no outcome when CI never made it, or when it ended without a result.
+
+### How it is reached
+
+A run is measured by its **epochs without a fork**: the epoch of its first fork, or the epoch
+the group reached when it never forked. A pair is:
+
+- **later** when the head went more epochs without a fork than the base
+- **earlier** when it went fewer
+- **tied** when it went as many
+
+Each rate gets a verdict from its pairs, by an exact two-sided sign test. The test leaves the
+tied pairs out. It asks how likely so uneven a split of later and earlier pairs is, if each pair
+were a coin toss. That chance is `p`. A rate is beyond chance when `p` is 0.01 or less, and the
+larger of its two counts then says which way: forks earlier, or forks later.
+
+The test is there because a change can move a run by a side effect. One frame more, sent
+anywhere, shifts which frames every member loses after it
+([The same run, and when it is not](/chat-sim/guide/understand/how-a-run-works/#the-same-run-and-when-it-is-not)).
+So the test asks whether the runs that moved lean one way.
+
+Three seeds cannot reach 0.01: three earlier of three give a `p` of 0.25. So a group with a run
+that moved runs 17 seeds more ([What runs](#what-runs)). Add up a rate's later and earlier pairs.
+With 7 or fewer, the rate is never beyond chance. With more, it is beyond chance when the smaller
+of the two counts is at most:
+
+| Later and earlier pairs together | The smaller count is at most |
+|---|---|
+| 8 to 11 | 0 |
+| 12 to 14 | 1 |
+| 15 to 17 | 2 |
+| 18 to 20 | 3 |
+
+So 9 earlier and 0 later is beyond chance, and 9 earlier and 1 later is not.
+
+Two more rules:
+
+- Two runs can differ and still first fork at the same epoch. That pair is tied.
+- A pair whose run at the base gave no outcome is left out of the test.
+
+A group takes its verdict from its rates. It is the first of these that any of its rates has:
+
+1. does not build
+2. no outcome
+3. forks earlier
+4. forks later
+5. moved, within chance
+6. nothing to compare at the base
+7. nothing moved
+
+## The check
+
+One check covers both groups:
+
+- It fails when a group forks earlier.
+- Otherwise it succeeds when a group forks later.
+- Otherwise it is neutral, also when chat-sim does not build or a run gave no outcome.
+
+So a group that forks later cannot hide one that forks earlier.
+
+The check's title says each group's verdict in a few words, such as
 `GroupV2 nothing moved in 9 runs; GroupV3 forks earlier at 1%: 0 later, 9 earlier (p 0.0039)`.
-While the runs go it reads `18 runs in progress`. Its summary is the comment, and its details open
-the report page.
+While the runs are going, it reads `18 runs in progress`, which counts the head's runs. Its
+summary is the comment, and its details open the report page.
+
+## What runs
+
+```mermaid
+flowchart LR
+    first["seeds 0 to 2<br/>head and base"] --> moved{"did a group<br/>move?"}
+    moved -->|"yes"| more["that group's<br/>seeds 3 to 19"]
+    moved -->|"no"| out["comment<br/>check<br/>report"]
+    more --> out
+```
+
+A pull request runs [the goal](/chat-sim/guide/understand/scenarios/#the-goal). One member creates
+a group, and its members add new ones from a supply of 200, toward epoch 50. The goal runs at
+0.5, 1 and 5% loss, on GroupV2 and on GroupV3. Both sides run the same chat-sim, each
+built with logos-chat at its own commit.
+
+1. Seeds 0 to 2 run first: 18 runs at the head, and the same 18 at the base.
+2. A run **moved** when it has an outcome at both sides, and the two outcomes differ in any
+   field. A group moved when one of its runs did.
+3. For each group that moved, seeds 3 to 19 run as well, at each of its rates and at both sides:
+   51 more runs at each side. A group where nothing moved stops at seed 2.
+
+Two kinds of pull request get no runs. One that changes only files under `docs/` or files ending
+in `.md` has its check completed as skipped. One from a forked repository gets nothing, since its
+workflow is handed no secrets.
 
 ## The report page
 
-The comment links the pull request's report, `logos-chat/pr-N/` of the site.
+The comment links the pull request's report, `logos-chat/pr-N/` of chat-sim's site. Under the
+verdicts, the page says what the scenarios test. Then come the runs:
 
-| Part | Shows |
-|---|---|
-| The head | the head, its merge base and chat-sim's commit, and links to the pull request and the workflow run |
-| The verdicts | a line a group, in the comment's words, with a chip in its result's colour |
-| The scenarios | what the runs test, and how each scenario's grow runs, from the copies of the files the run kept |
-| The trees | of each group, a row a rate and a column a seed of seeds 0 to 2: the head's tree over the base's, each linked to the run's page |
-| The strips | under a rate that ran seeds 3 to 19, the `d` of each of its seeds from 0, linked to its run, and under them what the seeds came to |
+- **The trees.** For each group, one row per rate and one column per seed, for seeds 0 to 2. Each
+  cell holds the head's tree over the base's, and links the run's page.
+- **The strips.** A rate that ran seeds 3 to 19 has a strip under its row. For each seed of the
+  rate, it says how many epochs later or earlier the head first forked than the base, and links
+  the run. Under the strip are the rate's words from the comment.
 
-A tree is one run, drawn from the lineage in its `run.json`, left to right by epoch from 0 to 50.
-The top line is the trunk. Each line below left the line it drops from at that epoch and stops at
-its dot. The thicker a line, the more members it ended with. A ring counts the members that never
-joined. A run that moved is outlined. Hover a line for its numbers, or
-open the run ([From a moved run to your machine](/chat-sim/guide/investigate/moved-run/)).
+A tree is one run, drawn left to right by epoch, from 0 to 50:
 
-The report is kept while the pull request is open. When it closes, logos-chat's workflow has
-chat-sim's Prune Pages remove `logos-chat/pr-N/`. A run still going then writes it again, and the
-weekly run of Prune Pages removes every pull request's report that is not open.
+- The top line is the trunk: the line that starts at the group's first state.
+- Each line below is a branch. It drops from the line it left, at the epoch where it left, and
+  runs on to its dot.
+- The thicker a line, the more members it ended with.
+- A ring counts the members that never joined.
+- An outline marks a run that moved.
+
+Hover a line for its numbers, or open the run ([From a moved run to your
+machine](/chat-sim/guide/investigate/moved-run/)).
+
+The report is kept while the pull request is open.

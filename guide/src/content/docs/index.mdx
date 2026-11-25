@@ -6,18 +6,24 @@ tableOfContents: false
 
 import { CardGrid, LinkCard } from "@astrojs/starlight/components";
 
-chat-sim asks whether a group of logos-chat clients stays one group when the network delays and
-loses what its members send. A group that parts has forked: its members hold two states of the
-group, and neither side can read what the other sends.
+chat-sim asks one question. Does a group of logos-chat clients stay one group when the network
+delays and loses what its members send?
+
+When it does not, the group has **forked**: its members hold two states of the group, and neither
+side can read what the other sends.
 
 chat-sim runs every member of a group in one process, on a virtual clock, through a model of a
-lossy network, and on Linux a seed gives the same run every time. Each logos-chat pull request runs
-at its head and at its merge base, and the comment on it says whether the head forks earlier or
-later. Each push to logos-chat's `main` runs too, and the site draws `main` over time.
+lossy network. Each run starts from a **seed**. On Linux the same seed gives the same run every
+time.
+
+- Each logos-chat pull request runs at its head and at its merge base. A comment on it says
+  whether the head forks earlier or later.
+- Each push to logos-chat's `main` runs too. chat-sim's site draws `main` over time.
 
 <CardGrid>
-  <LinkCard title="Understand" href="/chat-sim/guide/understand/how-a-run-works/" description="How a run works, and what each scenario does and why it is shaped as it is." />
-  <LinkCard title="Track" href="/chat-sim/guide/track/pull-request/" description="Your pull request's comment, check and report, and logos-chat's main over time." />
-  <LinkCard title="Investigate" href="/chat-sim/guide/investigate/moved-run/" description="From a run that moved to the same run on your machine, and into its log." />
-  <LinkCard title="Reference" href="/chat-sim/guide/reference/scenario-format/" description="The scenario format, every command, and the records and files a run leaves." />
+  <LinkCard title="Your pull request got a comment" href="/chat-sim/guide/track/pull-request/" description="How to read the comment, the check and the report, and how the verdict is reached." />
+  <LinkCard title="How main is doing" href="/chat-sim/guide/track/main/" description="The graph over main, the page of a change, and the long run of each Sunday." />
+  <LinkCard title="A run moved" href="/chat-sim/guide/investigate/moved-run/" description="Open the run, make it again on your machine, and read its log." />
+  <LinkCard title="How a run works" href="/chat-sim/guide/understand/how-a-run-works/" description="What a fork is, how one process runs a whole group, and what a run reports." />
+  <LinkCard title="The scenarios" href="/chat-sim/guide/understand/scenarios/" description="How a group grows round by round, and why the scenarios are shaped as they are." />
 </CardGrid>

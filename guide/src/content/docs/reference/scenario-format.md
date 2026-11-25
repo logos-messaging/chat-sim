@@ -24,22 +24,33 @@ Members are named `saro`, `raya`, `pax`, `mira`, `kes`, `tomo`, then `peer7`, `p
 | `members` | | how many members there are, 1 to 65534 |
 | `steps` | | what they do, in order: a list of one step or more |
 | `group` | `v2` | `v2` for GroupV2, or `v3` for GroupV3 |
-| `timers` | `fast` | of a GroupV2 group: `fast`, `default` for the library's own, or an object of durations in milliseconds over the library's own |
-| `budget` | `180` | the seconds of the virtual clock the waits of one batch, one post or one cut may take together |
-| `seed` | `0` | what every random number of the run is drawn from |
+| `timers` | `fast` | of a GroupV2 group: `fast` for the short durations the harness's tests run under, `default` for logos-chat's own, or an object of durations in milliseconds that replace logos-chat's own |
+| `budget` | `180` | the seconds of the virtual clock that the waits of one batch, one post, one cut or one round of a grow may take together |
+| `seed` | `0` | what the members' random draws and the picks of a grow come from; the network's model has a `seed` of its own |
 | `network` | none | the model every member receives through |
-| `expect` | a whole group | how the outcome differs from a whole group at the tip in which every post was read |
+| `expect` | a whole group | what the run must come to, when that is not a whole group with every member at its tip and every post read ([What is expected](#what-is-expected)); a scenario with a `grow` step takes none |
+
+A scenario that leaves `timers` out gets `fast`, not the value named `default`.
 
 The durations `timers` can give are `voting_delay`, `consensus_timeout`, `commit_batch_window`,
 `freeze_duration`, `retry_window`, `backup_takeover_window`, `proposal_expiration` and
 `recovery_auto_commit_delay`. A GroupV3 group keeps timers of its own, whatever `timers` says.
+
+Four of them shape a GroupV2 epoch:
+
+| Duration | logos-chat's own | Does |
+|---|---|---|
+| `voting_delay` | 10 s | a member that has not voted by then votes yes |
+| `consensus_timeout` | 30 s | a proposal is decided by its votes, or at this time |
+| `commit_batch_window` | 60 s | every steward makes a commit candidate this long after the first approved proposal |
+| `freeze_duration` | 30 s | the candidates are gathered for up to this long before one is chosen |
 
 ## The network
 
 | Field | Default | Holds |
 |---|---|---|
 | `seed` | | what the model draws from: with the member's name and the frames shown so far, it decides each frame |
-| `loss` | `0` | the share of the frames each member loses, from 0 to 1 |
+| `loss` | `0` | the share of the frames that are not Welcomes that each member loses, from 0 to 1 |
 | `welcome_loss` | `0` | the share of the Welcomes each member loses |
 | `delay_ms` | `0` | how long each frame is held: one number for every member, or an object by name, where a member it does not name has none |
 
@@ -59,23 +70,25 @@ the budget.
 | `grow` | `epochs`, `branches`, and `adders` or `by`, and `size` | members add members in rounds ([A group that grows](/chat-sim/guide/understand/scenarios/#a-group-that-grows)) |
 
 `grow` takes `epochs` (at least 1), `branches` (at least 2, the trunk being one), and either
-`adders`, the most members drawn to add a round, or `by`, the one member who adds. `size`, at least
-twice `adders`, holds the group at that many members.
+`adders`, the most members drawn to add a round, or `by`, which names the creator as the one member
+who adds. `size`, at least twice `adders`, holds the group at that many members.
 
 ## What is refused
 
 - A `grow` step with any other step, or with `expect`: a grow expects no outcome.
 - `cut`, `heal` and `withhold` without `network`. A `cut` while one is in force, and a `heal` with
   none.
-- On a GroupV3 group, `withhold`, `cut` and a `grow` with `size`: it removes no member, has no
-  commit candidate, and its frames name no sender for a cut to stop.
-- A `withhold` that is not followed by a `seat` of one batch, a second one, one with a `cut`, one
-  with loss above 0, and one whose member posts later.
+- On a GroupV3 group, `withhold`, `cut` and a `grow` with `size`. A GroupV3 group has no commit
+  candidate to withhold, its frames name no sender for a cut to stop, and it removes no member.
+- A `withhold`, unless all of these are true: it is the scenario's only `withhold`, the step after
+  it is a `seat` of one batch, no other `seat` follows, the member it names does not post later,
+  and the scenario has no `cut` and no loss.
 - A name that is no member's, or a member that is not seated by the step that names it.
 
 ## What is expected
 
-`expect` is held to the fork report of a run that is not a grow.
+A run that is not a grow has its log read by `tools/forks`, and that report is checked against
+`expect`.
 
 | Field | Holds |
 |---|---|

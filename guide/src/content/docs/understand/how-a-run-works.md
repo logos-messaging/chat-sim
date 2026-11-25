@@ -1,41 +1,25 @@
 ---
 title: How a run works
-description: What a scenario asks, how one process runs a whole group on a virtual clock, what a fork is, what a run comes to, and when two runs of one seed differ.
+description: What a run is, the two kinds of group, what a fork is, how one process runs a whole group on a virtual clock, what a run's outcome is, and when two runs of one seed differ.
 ---
 
-A run takes a scenario file and plays it out on a group of logos-chat clients. The clients are
-logos-chat's own code, built at one revision. Nothing stands between them but a model of a network
-that delays and loses what each member receives. At the end, the run says whether the group is
-still one group, and if not, at which epoch it parted.
-
-```mermaid
-flowchart TB
-    sc["scenario.json<br/>members, steps, network"] --> sim["tools/sim"]
-    sim -->|"plan.json"| hr["harness-run<br/>every member in one process,<br/>on a virtual clock"]
-    hr --> out[("group.log<br/>result.json")]
-    out --> grow["a grow step:<br/>the lineage in result.json"]
-    out --> forks["any other step:<br/>tools/forks reads group.log"]
-    grow --> run["run.json, run.txt"]
-    forks --> run
-```
+A run plays a scenario out on a group of logos-chat clients. The clients are logos-chat's own
+code, built at one revision. Between them stands only a model of a network, which delays and
+loses what each member receives. At the end, the run says whether the group is still one group,
+and if not, at which epoch it forked.
 
 ## The two groups
 
 A logos-chat group conversation is an MLS group. It moves from epoch to epoch as its members apply
-commits, such as one that adds a member. chat-sim runs both kinds of group logos-chat has.
+commits, such as one that adds a member. chat-sim runs two of logos-chat's kinds of group:
 
-- **GroupV2.** Members vote on each proposal, such as an add. Stewards then make commit candidates,
-  and one of them is chosen. On the library's own timers, a member that has not voted within 10 s
-  votes yes (`voting_delay`), and a proposal is decided by its votes or at 30 s
-  (`consensus_timeout`). Every steward makes a candidate 60 s after the first approved proposal
-  (`commit_batch_window`). The candidates are gathered for up to 30 s before one is chosen
-  (`freeze_duration`).
-- **GroupV3.** Any member commits. Of the commits deferred for one epoch, a member applies the one
-  of the lowest fingerprint, 120 s after the first was deferred. A GroupV3 group removes no member
-  and has no commit candidate.
+- **GroupV2.** Members vote on each proposal, such as an add. The group's stewards then each
+  offer a commit, a **commit candidate**, and one of the candidates is chosen.
+- **GroupV3.** Any member commits. For each epoch, a member sets aside every commit it gets.
+  120 s after the first, it applies the one with the lowest fingerprint.
 
-A GroupV3 group can fork only where two members commit for one epoch. Of the adds of one round,
-one is applied, and the members the others added never join
+A GroupV3 group can fork only when two members commit for one epoch. When several members add at
+once, one of the adds is applied, and the members the others added never join
 ([logos-chat#352](https://github.com/logos-messaging/logos-chat/issues/352)).
 
 ## A fork
@@ -46,69 +30,103 @@ holds every member's state.
 
 ```mermaid
 flowchart LR
-    e3["epoch 3<br/>state 1c0e4b77d29a6f15<br/>all four"] -->|"commit X"| a4["epoch 4<br/>state 5a850890461cab7f<br/>saro, raya"]
-    e3 -->|"commit Y"| b4["epoch 4<br/>state c41d2e07b8f3a964<br/>pax, mira"]
+    e3["epoch 3<br/>state 1c0e<br/>all four"] -->|"commit X"| a4["epoch 4<br/>state 5a85<br/>saro, raya"]
+    e3 -->|"commit Y"| b4["epoch 4<br/>state c41d<br/>pax, mira"]
 ```
 
-Both sides reach epoch 4, so the epoch number says nothing about which group a member holds. Each
-member writes a record every time its epoch moves, with a **state**: 8 bytes of a hash of the
-MLS epoch authenticator. Members that applied the same commits hold the same state, and members
-that applied different ones hold different states. Two states at one epoch is a fork.
-[Records](/chat-sim/guide/reference/records/) lists what each member writes.
+Both sides reach epoch 4, so the epoch number says nothing about which group a member holds. So
+each member records a **state** every time its epoch moves: a fingerprint of the group at that
+epoch. Members that applied the same commits hold the same state. Two states at one epoch is a
+fork, counted at that epoch: epoch 4 in the picture. A state is 16 hex digits, cut to four
+there.
+[The records](/chat-sim/guide/reference/records/#the-records) lists what each member writes.
 
 ## One process, a virtual clock
 
-`tools/sim` writes the scenario as a plan for `harness-run`, the runner in `crates/harness`. The
-runner seats every member in one process and does the steps. Between each member and what it
-receives stands the scenario's network model, `crates/network-model`. It loses a share of the
-frames and holds the rest for a delay. A frame it loses never comes later.
+```mermaid
+flowchart LR
+    sc["scenario.json"] -->|"a plan"| hr["harness-run"]
+    hr --> out["group.log<br/>result.json"]
+    out --> run["run.txt<br/>run.json"]
+```
 
-The runner moves a virtual clock 50 ms at a time and waits for nothing. So a run takes the time
-its work takes, not the time its timers count. `50-epochs.json`, fifty epochs on the library's own
-timers, is about an hour on the clock and takes under a minute.
+`tools/sim` writes a plan from the scenario and hands it to `harness-run`, the runner, in
+`crates/harness`. The runner runs every member in one process and does the plan's steps. It
+leaves every member's log and what it measured, and from those `tools/sim` writes the run's
+outcome.
 
-## What a run comes to
+What a member sends reaches the others as **frames**, such as a commit, a vote, a Welcome or a
+post. Between each member and the frames sent to it stands the scenario's network model,
+`crates/network-model`. It loses a share of the frames and holds the rest for a delay. A frame it
+loses never comes later.
 
-Most scenarios have one `grow` step: members add members in rounds, on whatever branch each one
-holds, toward epoch 50 ([A group that
-grows](/chat-sim/guide/understand/scenarios/#a-group-that-grows)). The runner follows the states the
-members hold as lines. The creator's first state is on the trunk. Where a state has two states after
-it, the one more members hold carries the line on, and each other starts a branch. A grow run comes
-to:
+The clock is virtual: the runner moves it by at most 50 ms at a time and waits for nothing. So a
+run takes the time its work takes, not the time its timers count. The run of the goal that
+[What a run prints](/chat-sim/guide/investigate/moved-run/#what-a-run-prints) shows took 2712 s on
+the clock and 21 s of wall time.
+
+## A run's outcome
+
+Most scenarios have one `grow` step: members add members in rounds, toward epoch 50
+([A group that grows](/chat-sim/guide/understand/scenarios/#a-group-that-grows)). The runner
+follows the states the members hold, and puts them on lines. The **trunk** starts at the
+group's first state, and each fork starts a **branch**.
+
+A run of a growing group reports:
 
 | Part | Says |
 |---|---|
-| the first fork | the lowest epoch a branch left at, or none |
+| the first fork | the first epoch that holds two states, or none |
 | the trunk's epoch | how far the trunk got |
-| how it ended | `split` where a branch left; else `stalled` where the trunk stopped short of its epochs; else `behind` where members were behind at the end; else `whole` |
-| off the trunk | the lines off the trunk, and the members behind, on another line or never joined |
+| how it ended | `split`, `stalled`, `behind` or `whole` |
+| off the trunk | the branches, and the members that are behind, on a branch or never joined |
 
-The **epochs without a fork** are the first fork's epoch, or the trunk's where the run never
-forked. That is the number a pull request's runs are held to.
+How it ended is the first of these that is true:
 
-The two scenarios of fifty epochs seat members and post instead. Their log goes to `tools/forks`,
-which reads every member's records and gives the conversation a verdict, such as `whole` or
-`split at epoch 4`. `forks check` then holds that report to what the scenario expects.
+- `split`: a branch started
+- `stalled`: the trunk stopped short of the scenario's `epochs`
+- `behind`: some members were behind at the end. A member is behind when other members have
+  applied a commit that it has not.
+- `whole`: none of the three
+
+A run is measured by its **epochs without a fork**: the epoch of its first fork, or the epoch
+its trunk reached when it never forked. The graph over main calls them the epochs before the
+first fork. A pull request is judged by this number.
+
+Fewer than 50 epochs without a fork is not always a fork. A run that ended `stalled` never
+forked, and stopped short.
+
+A run's **outcome** is all of the above, with its seeds, the ids of its group and members, how
+many members were added, and the seconds of its clock. A run **moved** when its outcome differs
+in any field from the outcome it is compared with.
+
+A scenario without a `grow` step, such as `50-epochs.json`, reports another way. `tools/forks`
+reads its log and gives the conversation a verdict, such as `whole` or `split at epoch 4`
+([Commands](/chat-sim/guide/reference/commands/#forks)).
 
 ## The same run, and when it is not
 
-On Linux a scenario and its seeds give one run, whenever it is made. `harness-run` stands in for
-libc's `getrandom` with a generator seeded by the scenario's `seed`. It stands in for
-`clock_gettime` with the virtual clock, which starts at 2026-01-01T00:00:00Z. It runs openmls on
-one thread. Every random number of the run follows from the seed, the ids of the group and its
-members among them, and which commit the group applies follows from the ids. Two runs of one
-scenario at one revision write the same `group.log` byte for byte.
+On Linux a scenario and its seeds always give the same run. A scenario has two seeds:
 
-So when a run comes out otherwise at two revisions, what differs between them moved it. That does
-not make the move the change's doing alone:
+- The scenario's `seed` feeds every random draw of the members and the picks of a grow: the ids
+  of the group and of its members among them. This is the seed the pages name.
+- The `seed` of `network` fixes what a member's network model does with each frame, and nothing
+  else.
 
-- **One frame more re-deals the losses.** A member's network model decides each frame from the
-  seed, the member's name and the frames shown to it so far. A change that sends one frame more,
-  anywhere, shifts which frames each member loses after it.
-- **One hash map more re-keys the others.** Rust's standard library seeds each new `HashMap` from
-  keys drawn once per thread, and counts them up with every map built. A change that builds one
-  map more or fewer can change how a run comes out.
+The time comes from the virtual clock. So two runs of one scenario at one revision write the same
+`group.log`, byte for byte. On macOS and other systems the ids come from the operating system,
+and a run can differ from one time to the next.
 
-That is why a pull request is judged over many seeds, by a test of how far its first forks moved
-([Your pull request's result](/chat-sim/guide/track/pull-request/#the-verdict)). On macOS and other
-systems the ids come from the operating system, and a run can differ from one time to the next.
+So when a run moves between two revisions, something that differs between them moved it. That
+need not be what the change set out to do. Two side effects move runs too:
+
+- **One frame more shifts every later loss.** A member's network model decides each frame from
+  its seed, the member's name and the frames shown to it so far. A change that sends one frame
+  more, anywhere, shifts which frames each member loses after it.
+- **One hash map more can move a run too.** Rust's standard library seeds each new `HashMap`
+  from keys that it draws once, here from the run's seed, and counts up with every map built. So
+  a change that builds one map more or fewer gives every map built after it another seed, and
+  that can change a run's outcome.
+
+That is why a pull request is judged over many seeds
+([The verdict](/chat-sim/guide/track/pull-request/#the-verdict)).
