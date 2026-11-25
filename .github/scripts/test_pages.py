@@ -2021,6 +2021,60 @@ class Describe(unittest.TestCase):
                 pages.describe(scenario)
 
 
+DOCS = ROOT / "guide" / "src" / "content" / "docs"
+# What a link into the guide is in pages.py's source: the page's slug and the heading's id.
+GUIDE_LINK = re.compile(r"guide/([a-z0-9/-]+)/#([a-z0-9-]+)")
+# The links into the guide that the pages already on gh-pages were drawn with. A page that is not
+# drawn again, such as a point's past the window, keeps them.
+PUBLISHED = (
+    ("reports", "logos-chats-runs"),
+    ("reports", "the-pages-of-logos-chats-runs"),
+    ("simulations", "a-group-that-grows"),
+)
+# What github-slugger drops from a heading's text, of ASCII, to make the id Starlight gives it.
+_DROPPED = re.compile(r"[\x00-\x1f!-,./:-@\[-\^`{-~]")
+
+
+def heading_ids(slug: str) -> List[str]:
+    """The id of each heading of the guide's page `slug`, as Starlight gives them: its text
+    lowercased, the punctuation dropped and each space a hyphen, a repeat numbered from 1;
+    nothing where the page is not there."""
+    found = [DOCS / f"{slug}{suffix}" for suffix in (".md", ".mdx")]
+    page = next((path for path in found if path.is_file()), None)
+    if page is None:
+        return []
+    ids: List[str] = []
+    seen: Dict[str, int] = {}
+    fenced = False
+    for line in page.read_text(encoding="utf-8").splitlines():
+        if line.startswith("```"):
+            fenced = not fenced
+        heading = None if fenced else re.match(r"#{1,6} (.+)", line)
+        if heading is not None:
+            said = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", heading.group(1)).strip()
+            anchor = _DROPPED.sub("", said.lower()).replace(" ", "-")
+            ids.append(anchor if anchor not in seen else f"{anchor}-{seen[anchor]}")
+            seen[anchor] = seen.get(anchor, 0) + 1
+    return ids
+
+
+class Guide(unittest.TestCase):
+    """The headings of the guide that the site's pages link to."""
+
+    def test_each_link_pages_writes_into_the_guide_lands_on_a_heading_of_its_page(self):
+        source = (ROOT / ".github" / "scripts" / "pages.py").read_text(encoding="utf-8")
+        written = GUIDE_LINK.findall(source)
+        self.assertEqual(len(written), 5)
+        for slug, anchor in written:
+            with self.subTest(link=f"guide/{slug}/#{anchor}"):
+                self.assertIn(anchor, heading_ids(slug))
+
+    def test_each_link_into_the_guide_a_published_page_holds_lands_on_a_heading(self):
+        for slug, anchor in PUBLISHED:
+            with self.subTest(link=f"guide/{slug}/#{anchor}"):
+                self.assertIn(anchor, heading_ids(slug))
+
+
 class Pages(LogosChat):
     """The report page of a pull request's run and the page of each of its runs, and the page of
     main's point, as pr and point draw them from what they keep."""
@@ -2558,7 +2612,7 @@ class Pages(LogosChat):
                 "more, anywhere, shifts which frames each member loses after it.",
             ],
         )
-        self.assertIn("../../guide/simulations/#a-group-that-grows", Parsed(section).links)
+        self.assertIn("../../guide/understand/scenarios/#a-group-that-grows", Parsed(section).links)
         for group, timers in (
             ("v2", "A GroupV2 group, on GroupV2's default timers."),
             ("v3", "A GroupV3 group, on timers of its own, whatever the file's timers say."),

@@ -2,17 +2,16 @@
 
 Do the members of a group still hold one group?
 
-A GroupV2 conversation moves from epoch to epoch as its members apply commits. When two members
-apply different commits at the same epoch the group forks: each side goes on, and neither can read
-what the other sends. Nobody is told. Every installation writes a few trace records into its log
-as it goes, and `forks` reads the logs the members share and says what they add up to: one group
-or several, who is on which branch, who is behind, who was removed, and how much of the group the
-logs cover.
+A conversation of GroupV2 or GroupV3 moves from epoch to epoch as its members apply commits. When
+two members apply different commits at the same epoch the group forks: each side goes on, and
+neither can read what the other sends. Nobody is told. Every installation writes a few trace records
+into its log as it goes, and `forks` reads the logs the members share and says what they add up to:
+one group or several, who is on which branch, who is behind, who was removed, and how much of the
+group the logs cover.
 
-The tool reads logs and nothing else: `report` reads the files it is given, `check` holds what
-they add up to against a file that says what was expected, `serve` reads the logs members send
-it, and `share` sends files to where `serve` runs. It needs Python 3.9 or newer and no package
-beyond the standard library.
+The tool reads logs and nothing else: `report` reads the files it is given, and `check` holds what
+they add up to against a file that says what was expected. It needs Python 3.9 or newer and no
+package beyond the standard library.
 
 ## Getting a log with records in it
 
@@ -27,9 +26,10 @@ epoch each member reaches (see
 python3 tools/forks report OUT_DIR/group.log
 ```
 
-`chat-cli` writes the records into the log `--log-file` names, unless `RUST_LOG` sets another
-filter (see [The log](https://github.com/logos-messaging/chat-sim/blob/local-network/crates/chat-cli/README.md#the-log)). `tools/sim` has the tool read
-the logs of every member it ran, whichever of the two ran them.
+`chat-cli`, which runs a member as a process of its own on the
+[`local-network`](https://github.com/logos-messaging/chat-sim/tree/local-network) branch, writes them
+into the log `--log-file` names. `tools/sim` has the tool read the `group.log` of each
+run that is not a grow.
 
 logos-chat-module, the Logos module that wraps libchat, writes a log file of its own, in a line
 shape of its own. The tool reads both shapes: see [The lines it reads](#the-lines-it-reads).
@@ -120,7 +120,7 @@ the record's name and then `key=value` words, each separated by one space. The t
 its place in the line and never searched for, because a conversation id is text its creator chose
 and other lines print it.
 
-A record of a conversation takes `signer` and `convo` from the span of the GroupV2 op that wrote
+A record of a conversation takes `signer` and `convo` from the span of the group's op that wrote
 it, and where two spans name one, from the innermost. The span's `epoch` is the one the op began
 at, and the tool does not read it: the record's own `epoch` is the one it is of.
 
@@ -138,7 +138,7 @@ at, and the tool does not read it: the record's own `epoch` is the one it is of.
 |---|---|
 | `signer`, `from`, `by` | The first four bytes of the key the installation signs with: 8 hex characters. The report calls it the installation's id. |
 | `participant` | The first four bytes of the account id, in hex. An id shorter than four bytes is written whole, and an empty one as nothing. |
-| `convo` | The conversation id as one word. A byte outside `[0-9A-Za-z_-]` is written `%xx`, and the tool keeps the id as written. An id holds at most 1597 bytes, which is what fits the 8000 bytes of address the page asks for a conversation by. |
+| `convo` | The conversation id as one word. A byte outside `[0-9A-Za-z_-]` is written `%xx`, and the tool keeps the id as written. An id holds at most 1597 bytes, so that an address that asks for a conversation by its id, each byte written `%xx` taking five, fits the 8000 bytes RFC 9110 asks every server to take. |
 | `epoch`, `members` | A number, at most 9007199254740991, the largest a browser reads from JSON exactly. `members` is the length of `signers`. The `epoch` of an `unreadable` record is the one the frame's header names, which nothing has checked: any number below 2^64. |
 | `state` | 16 hex characters: a fingerprint of the group state. Installations that hold the same state write the same fingerprint. |
 | `signers` | The members, comma-separated, each `signer:participant`. |
@@ -203,9 +203,9 @@ is read as UTC when stamps are compared.
 
 The same run may be among the logs twice, at two lengths: a copy taken while it grew, and the
 file as it is now. For one installation, a run whose records, with their stamps, are the first
-records of another run is that run at an earlier length, and only the longer is read. A final
-mark on either, which the collector gives, counts for the one that is read: it is one run, and
-its writer is gone.
+records of another run is that run at an earlier length, and only the longer is read. Where the
+rule is told that either is final, the one that is read is final: it is one run, and its writer
+is gone.
 
 ## How the verdict is decided
 
@@ -260,11 +260,12 @@ A leave does not hide the roster of the state before it: it is a newest roster b
 as any other. A state on a side of a split the logs show still counts wherever its one reporter
 joined again, on the other side or back on its own: such a state is never passed.
 
-A file does not say whether its writer is gone, so `report` marks no run final and never says
-`ended`. The rule takes the final runs as an input, and the collector, which is told when a run
-is final, hands them to it: see [Collecting logs](#collecting-logs).
+A file does not say whether its writer is gone, so `report` and `check` mark no run final and
+never say `ended`. The rule takes the final runs and the kept lines as inputs, and neither command
+hands it any: the collector that does is on the
+[`local-network`](https://github.com/logos-messaging/chat-sim/tree/local-network) branch.
 
-A **kept line** is what the collector keeps of an installation in a conversation once the log of
+A **kept line** is what a collector keeps of an installation in a conversation once the log of
 its final run is gone: the installation, its account, the epoch of its last record there, and
 whether that record was a leave. The line says that the installation was here and how it ended,
 and nothing of what it held. A seat that goes by its line has that epoch and no state, is on no
@@ -330,7 +331,9 @@ worth.
 ## The JSON report
 
 `--json FILE` writes one object. The same logs give the same bytes, in whatever order the paths
-are given.
+are given. `row`, `folds`, `folded` and `shown_messages` lay out a page drawn from the report, as
+the collector on the
+[`local-network`](https://github.com/logos-messaging/chat-sim/tree/local-network) branch draws one.
 
 ```json
 {
@@ -718,396 +721,6 @@ why a cell is `unreadable`, but to word `sender` in a difference.
 | 1 | The report differs, or a line on a report target was malformed. |
 | 2 | The command line is wrong, a log cannot be read, or the file is no expectation: it is not JSON, says a field twice, lacks a field, holds one it does not know or one of another kind than the table gives, names an installation by anything but eight hex characters in lower case, gives a `sender` or an installation of `cells` that is not among `installations`, gives a position or a word of `cells` the report never says, or holds a `name`, a `verdict` or a `conversation` with a character that is not printed, a line break among them. Where the refusal quotes the file, such a character is escaped. |
 
-## Collecting logs
-
-`report` reads the logs someone gathered. `serve` gathers them: it takes the logs members send
-it as they run, keeps them, and answers each conversation's report as JSON, drawn by the same
-rule from what it holds when it is asked. [`share`](#sharing-logs) sends it the logs of a
-directory, and [its page](#the-page) draws the reports in a browser.
-
-From the repository root:
-
-```sh
-python3 tools/forks serve --data forks-data --token-file forks-token
-```
-
-`forks-data` is the directory the logs are kept in, and is made when it is missing.
-`forks-token` is a file that holds the token: 16 to 128 characters of `A-Z`, `a-z`, `0-9`, `_`
-and `-`, with nothing but white space around them. The token is read from that file and from
-nowhere else, so it is in no command line and no environment. The collector listens on
-`127.0.0.1`, port 8750, unless `--bind ADDRESS` or `--port N` says otherwise, and runs until it
-is interrupted. `--max-bytes N` is the most bytes of logs it holds at a time, and without it
-there is no such limit.
-
-It writes a log of its own to standard error, one line for each write:
-
-```text
-2026-10-09T17:28:42Z serving forks-data on http://127.0.0.1:8750/
-2026-10-09T17:28:51Z run 18fae263f6ea83ec26079157cea3f019 opened
-2026-10-09T17:28:51Z run 18fae263f6ea83ec26079157cea3f019 took 10025 bytes, holds 10025
-```
-
-A line also names each directory a start leaves alone, each run that goes at thirty days, and
-what failed when the disk or a call did. That log never holds the token, a receipt, a run's name
-or anything a member's log says, and when it cannot be written no call fails for it.
-
-### The calls
-
-On the collector a **run** is one stream of log bytes under an id the collector made. Its name is
-a label its sender gave it, and two runs may carry one name.
-
-| Call | Body | Answer |
-|---|---|---|
-| `POST /runs` | `{"name": NAME, "app": APP}`, each 1 to 64 characters | 201 `{"id": ID, "receipt": R}`: an empty run is open. |
-| `PUT /runs/ID/log?offset=N` | The run's bytes from `N` on, at most 4 MiB, or none. | 200 `{"size": S, "final": F}` when `N` was the size held: the bytes are appended. 409 with the same object when it was not: nothing is appended. |
-| `PUT /runs/ID/log?offset=N&final=1` | The last bytes, or none. | The same, and the run is final: its writer is gone. A final run answers 409 to more bytes, and 200 to its mark sent again. |
-| `DELETE /runs/ID` | | 204: the run's log and its records are gone. |
-| `GET /conversations` | | 200: every conversation the logs held name, the worst first. 304 when the request names the validator of that answer. |
-| `GET /conversations/CID` | | 200: the report of one conversation. 304 when the request names the validator of that answer. |
-| `GET /runs/ID/log?line=N` | | 200 `{"lines": [{"line": N, "text": "..."}]}`: line `N` of the run's log, the two before it and the three after. |
-| `GET /` | | 200: [the page](#the-page). |
-| `GET /page/NAME` | | 200: the file `NAME` of the page, which is `index.html`, `report.css` or `report.js`. |
-| `GET /?token=TOKEN` | | 303 to `./`, with a cookie that holds the token: a browser's way in. |
-
-| Status | When |
-|---|---|
-| 304 | A read of the list or of a conversation names, in `If-None-Match`, the validator of what it would be answered. The answer has no body. |
-| 400 | A body, an offset or a line is not what the call takes, or a body gives its length twice or beside a transfer coding. |
-| 401 | The call does not carry the token. The answer says nothing else, whatever was asked for. |
-| 403 | A write to a run does not carry that run's receipt. |
-| 404 | The collector has no such run, no such conversation, no such file of the page or no such call. |
-| 411 | A `POST` or a `PUT` does not say the length of its body. |
-| 413 | A body is longer than 4 MiB. |
-| 507 | With `--max-bytes`, the bytes would take the logs held past it. Nothing is appended and nothing is marked, and the run still counts as heard from. Its sender loses nothing, and asks again later. |
-
-Every answer with a body is JSON, but for the page and its files, and an error is
-`{"error": "..."}`. Every answer carries `Cache-Control: no-store`,
-`X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and a
-`Content-Security-Policy` that lets the page load from the collector alone, run no script or
-style written into it, and lets no page show an answer in a frame. A `PUT` without bytes at the size held changes no log, and it is
-how the collector knows it still hears from a run.
-Records are read from whole lines: what follows the last line break of the bytes held waits for
-the bytes that end it.
-
-The answers to `GET /conversations` and `GET /conversations/CID` carry an `ETag`, a validator
-made from the bytes of the JSON: it changes when the JSON does, and only then. A request that
-names it in `If-None-Match` is answered 304 with the same `ETag` and no body, so a reader that
-holds the answer is sent none of it again. The validator is weak, and is named as well without
-its `W/`, in a list of others, or by `*`. The list says how many seconds ago each conversation
-was heard from, so its JSON is another with every second. The report of a conversation says of
-each of its runs how many bytes are held and when it was last heard from, so its JSON is
-another whenever the collector hears from one of them, with a record more or without: a read
-finds it unchanged only while none of its runs is heard from. The token is asked for before
-the validator is read: without it the answer is 401, whatever the request names.
-
-The list, the report of a conversation and the page with its files are sent coded with gzip,
-under `Content-Encoding: gzip`, to a request whose `Accept-Encoding` names `gzip` at a weight
-above 0, and as they stand to any other. A `*` there does not name it. Those answers say
-`Vary: Accept-Encoding`, and so does a 304. Every other answer goes as it stands, whatever the
-request takes, and says no `Vary`: the lines of a log, the answer to a write, and an error.
-The 304 and the coded answers carry the headers every answer carries.
-
-### The token and the receipt
-
-**The token** goes on every call, in the header `Authorization: Bearer TOKEN`. Whoever holds it
-may send logs, and read every report and every line of every log held. It does not hide what
-crosses the network: the collector speaks plain HTTP, so off the loopback address the token and
-the logs travel in the clear unless something in front of it adds TLS.
-
-A browser sends no such header for an address a person opens, so it comes in by the share
-address: `GET /?token=TOKEN`, the token being the whole query, answers 303 to `./` and sets the
-cookie `forks_token=TOKEN; HttpOnly; SameSite=Lax; Max-Age=2592000`, with `; Secure` when the
-request carries `X-Forwarded-Proto: https`. The cookie lasts the thirty days a log does. It
-stands for the header on a `GET` and on nothing else: a write needs the header, so no page of
-another site can have a browser write. It is `Lax` so that a share address opens from where it
-was posted: a browser sends such a cookie when a link on another site is followed, and to
-nothing that site loads by itself. A token in the query of any other call opens nothing. The
-redirect is relative and the cookie names no path, so behind a proxy that serves the collector
-under a path both stay under that path.
-
-**The receipt** of a run is answered once, when the run is opened, and goes on every write to
-that run, in the header `Forks-Receipt: R`: an append, the final mark and the delete. So a holder
-of the token cannot add to, end or remove a run somebody else opened. It does not hide the run,
-which the token alone reads. The collector keeps only a hash of a receipt, and cannot give a lost
-one again.
-
-### What the directory holds
-
-Each run has a directory under `forks-data`, named after its id:
-
-| File | What it holds |
-|---|---|
-| `ID/ID.log` | The run's log as it was received, byte for byte. |
-| `ID/run.json` | The run's name and app, the hash of its receipt, whether it is final, and when the collector last heard from it. Once the log is gone, the lines kept of it. |
-
-The records are held in memory, and a start reads them again from the logs: each log whole,
-whatever its `run.json` says, so bytes appended just before a stop are not lost. `run.json` is
-replaced in one step. A directory that does not hold a run as the collector writes one is left as
-it is, and a line of the collector's log names it. The logs are files like any other, and
-`report` reads them, naming each run by its id and marking none final:
-
-```sh
-python3 tools/forks report forks-data/*/*.log
-```
-
-### Thirty days
-
-The collector hears from a run when it opens it and at every `PUT` it accepts, one without bytes
-included. It hears from it at a `PUT` it answers 507 as well: the sender is there, and it is the
-collector that cannot take the bytes. A run it has not heard from for thirty days goes: its log
-and its records, and a call for it then answers 404.
-
-Of a run that was not final nothing is left. Of a final run a line is kept for each installation and
-conversation in its log, the [kept line](#positions), so the report goes on naming those
-installations: one that goes by its line reads `removed` where its last record was a leave, or where
-there is a newest roster at or above the line's epoch and none of those lists it, and `ended`
-otherwise. `PUT` answers 404 for such a run, and `DELETE` with its receipt still answers 204 and
-removes the lines. The lines of a conversation also go when the last log that names it goes.
-
-A run the disk does not let go of stays as it is, log and records, and is tried again an hour
-later, with a line in the collector's log each time.
-
-### The collector's JSON
-
-`GET /conversations/CID` answers the object that `--json` holds for a conversation, with four
-differences. Wherever it names a run, it gives the run's id. It ends with `lines`, the count of
-lines over the runs its report lists. Before that stands `heard`, which says of each fold of
-`folds`, in their order, when the collector last heard from the runs its installations wrote
-in: `runs` counts those runs, each once, and `final` those of them that are final, and `first`
-and `last` are the earliest and the latest `heard` among them, each `null` where the fold's
-installations wrote in no run that is held. And each entry of `runs` says more:
-
-```json
-{
-  "id": "18fae263f6ea83ec26079157cea3f019",
-  "name": "saro",
-  "app": "logos-chat-ui 0.3.0",
-  "final": false,
-  "size": 10025,
-  "heard": "2026-10-09T17:28:51Z",
-  "delivery": []
-}
-```
-
-`size` is how many bytes of the run's log are held, and `heard` is when the collector last heard
-from it, in UTC. A conversation's id is text its creator chose, so in an address its `%` is
-written `%25`.
-
-`GET /conversations` answers `lines`, the count over every log held, and `conversations`, each
-with its `id`, `verdict`, `split_epoch` and `coverage`, the `label` and newest `epoch` of each of
-its `branches`, `heard`, the latest of the runs its report lists, and `unheard`, the seconds
-from then to the answer. They come the worst first: a split with two or more sides live, with
-one, with none, then `whole as far as seen`, `whole, members behind`, `not enough data`,
-`no live member` and `whole`. Of two that read alike, the one heard from last comes first.
-
-A report is drawn when it is asked for and kept until a write changes it: a record of one of its
-seats, a final mark on a run one of them wrote in, or a log that goes.
-
-### The page
-
-The collector serves a page that draws its reports. A person opens the collector's share address
-in a browser, the address `share` takes:
-
-```text
-http://127.0.0.1:8750/?token=5d1c0a9e7b3f42d8
-```
-
-The collector answers with [the cookie](#the-token-and-the-receipt) and sends the browser on to
-the same address without the token, where the page stays. The page is the three files of
-`forks/page`, served as they stand: it has no build step and loads nothing from another host.
-The guide's pictures in `guide/src/assets/shots/` are of this page: take them again when it
-changes.
-
-| Part | What it shows |
-|---|---|
-| The list at the left | Every conversation a held log names, the worst first, with its verdict, how many of its seats share a log and how long ago the collector heard from a run of it. |
-| The front page | The same conversations as a table, each also with the newest epoch of each of its branches, and under it the count of lines over every log held. |
-| The title | The conversation's id, and how long ago the collector heard from a run of it. |
-| The verdict | A conversation's verdict in the words of the report, how many of its seats share a log, and how many malformed lines were skipped when any was. |
-| The tiles | How many seats share a log, how many branches there are and the first epoch with two states when there is a split, and how many installations are in each position, with their ids when they are three or fewer. |
-| Lineage of states | Every reported state as a circle that holds how many installations reported it, in the column of its epoch and in its `row`, a line of states named for its newest: a branch, the states that only one branch's logs reach, the shared line, or the states of unknown lineage. A ring marks the newest state of installations that are `behind`, with how many they are under it. A line is a link, a mark stands at the first epoch with two states, and each branch ends in its name, its newest epoch and how many installations are on it. With the pointer on a circle, the words it gives end in the commit that made its state and who committed it, written as on the card of a branch, where a log names one. |
-| Installations | A row for each installation, under the headings of `lanes`, with a line for each run it wrote in: the run's name, what sent it and when the collector last heard from it. A cell for each epoch of its `cells`: every record it wrote there in the order written, each a state with the letter of its branch or a leave, or an epoch it has not reached, or an epoch whose roster lists a seat nobody shared a log of. Then its position, with an end mark where it is `removed`, `ended` or `never joined` unless a leave ends the lane, and the words `its log is gone` for a seat that goes by a kept line. The lanes open at the newest epoch. |
-| Timeline | A row for each installation over the time from the first to the last record that names the conversation: a line for each of its runs, cut where the run reaches past that time, dotted where the run's `delivery` records say it was not online, with a mark where it reached each epoch. For each post the messages draw, the row of an installation has a mark at the stamp of its own record of it: a filled circle where it sent the post, a ring where it read it, a cross where it arrived and could not be read. Times are UTC, and the date stands under the first stamp of each day. |
-| Messages | A row for each post in the order sent: its `utc`, with the stamp as written when the pointer is on it, its frame, its sender, and the state it was sent in as the lanes draw it, with the letter of its branch, or its epoch alone where its sender reported no state there. Then a cell for each installation, in the order and under the headings of `lanes`: `sent`, `read`, `unreadable` with the cause its installation gave, `no record`, a hatched cell for a seat nobody shared a log of, an empty box for one that was no member when the post was sent, each of the two with its word when the pointer is on it. Where `shown_messages` is less than the posts there are, the newest posts are drawn, as many as it says, here and on the timeline, and a button draws all of them, or the newest again. Under the table stands `unmatched_unreadable`, when it is not zero, as a count of reports, with what it counts. A conversation whose logs hold no post says so in a line where the table would be. |
-| The state each branch holds | The newest state of each branch: its epoch, its fingerprint, how many its roster lists, the installations on it and the seats its roster lists. Where the conversation has more than one branch, a branch whose first state names a commit also says that commit and who committed it: the names its runs were shared under, each once, where the collector holds a log of it, and its id. Where the installations that reported that state name more than one commit, each has a line of its own with how many of them name it. |
-| Log | The line of a record in its run's log with the lines around it, when a cell of the installations, a mark of the timeline or a cell of the messages that stands for a record is clicked. The lines stay open while the page reads again, and close when their record is drawn no more. |
-
-A conversation of more than 23 installations is drawn folded, as its `folded` says: a row for
-each fold of `folds` where the table above has a row or a column for each installation.
-
-| Part | What it shows folded |
-|---|---|
-| The tiles | A position of more than three installations has a button, `Names of all N`, which gives their ids under the tiles and takes them away again. No tile moves for them, and the button stays where it is, as far as the window scrolls. |
-| Installations | A row for each fold, under the headings of `lanes`: the installations of one position, and how many they are. A cell for each epoch of its `cells` counts how many of them wrote each state there, each count in the colour of its state and with the letter of its branch, then how many wrote a leave, how many have not reached the epoch and how many are seats nobody shared a log of. Then come its position, the epochs its installations are at and how far they are behind, each from the lowest to the highest, and from when to when the collector last heard from their runs, with how many of the runs are final and of how many installations no log is held. An installation that wrote two states at one epoch, or a state and a leave, is counted under each, and the row then says in words at which epoch and how many. A row opens to the row of each of its installations, drawn as on a page that is not folded, and closes again. |
-| Timeline | The same rows, and a row opened here is open among the installations as well. For each state a band reaches from the first to the last stamp at which one of the fold's installations wrote it, with the letter of its branch, and a filled circle stands for each post one of them sent. Such a line leaves out the runs and when they were not online, the leaves, and the posts read or unreadable, which the words over the timeline say. The line of each installation draws them once the row is open. A fold none of whose installations wrote in a log that is held has a hatched line, which says of how many the log is gone and how many shared none. |
-| Messages | A row stays a post, and a column is a fold. A cell counts the fold's installations by what became of the post on them, in the words and signs of a cell of one installation, with how many gave each cause under `unreadable`. It opens, in a row under the post, to those installations by what became of the post on them, each with its cause, and one that holds a record of the post opens the log lines around it. Who could not read a post is one press away, and the log line of one of them two. |
-| The state each branch holds | A roster of more than three installations is their count, and a button that gives their chips and takes them away again. |
-
-What a reader opened stays open while the page reads on, with the log lines and the place they
-were reading at: a row, the installations under a count, names. A post with a count that is open
-stays drawn, as one whose log lines are open does. Log lines stay open as well when a read
-moves their record out of every row that is open, as when its installation changes position or
-the page turns folded: the row of its fold, or the count under its post, is then opened for
-it, and stays open afterwards as what a reader opened does. Another conversation starts closed. A
-press draws anew only the parts it changes: a row the installations and the timeline, a count the
-messages, and names neither.
-
-The page reads `GET conversations`, and `GET conversations/CID` for the conversation its address
-names after `#`, when it is opened and again every 30 seconds while its tab is visible. A read
-of the 30 seconds is left out while the one before it is under way, and a read gives the
-collector up when 20 seconds pass without a byte of its answer. A read names the validator that
-came with what the page holds, and to a 304 the page keeps what it holds and draws nothing
-again. It reads `GET runs/ID/log?line=N` when a cell or a mark is opened. Every address it uses
-is relative, so it works under whatever path a proxy serves the collector at.
-
-The page decides nothing: every verdict, position, count, order and heading it shows is in the
-collector's JSON, and so are what became of a post on a seat, how many posts are drawn at
-first, whether the page starts folded, what each fold counts and when its runs were last heard
-from. What a run's name, an account, a frame or a log line says reaches the page as text and
-never as markup.
-
-When the collector answers 401, the page says that the share address must be opened again. When
-the collector holds no log that names the conversation shown, the page says so and links to the
-front page. When the collector does not answer, the page says when it last did, in UTC, and what
-it drew stays. It stays as well when the answer is not the collector's JSON, which the page says
-it cannot read. A reader is left at the part they were reading when a report grows. The
-installations, the timeline and the messages each scroll in a box of their own once they are
-higher than it, and such a box keeps its place: the first row in sight stays where it stood in
-the box while rows come and go above it, as far as the box scrolls, and the window does not
-move for them. While the newest posts alone are drawn, a post whose log lines are open, or
-whose cell or mark has the focus, stays drawn with every post after it through each read, and
-the page says that older posts are drawn for it. The button of the messages stays where it is
-when it is pressed, as far as the window scrolls. Pressed for the newest posts, it draws those
-alone, and the log lines of an older post close, or do not open if they were on their way.
-Every post, once asked for, stays drawn through each read, until the list or another
-conversation is drawn in its place.
-
-Every link, every cell that holds a record, of the installations and of the messages, and every
-mark of the timeline can be reached and opened from the keyboard, with an outline around the one
-that has the focus: Tab moves from part to part, the arrow keys, Home and End move among the
-cells and among the marks, Enter or Space opens the log lines, and Escape closes them. Along a
-row of the timeline the arrow keys go by where the marks stand, epochs and posts alike. The
-button of the messages is a stop of its own. A read or a press that draws the page anew leaves
-each table the cell the Tab key stopped at in it while that cell is drawn, and its first cell
-once it is not. A conversation that is opened takes the focus at its title, and closing the log
-lines gives it back to the mark that opened them. A position has its icon and its word, and a
-branch its letter as well as its hue. What became of a post has
-its word in its cell and in the name a screen reader is given, on the timeline as well, and a
-cell that stands for no record has that name and is no stop. On a folded page a row of a fold, a
-count of a post and a button for names are buttons that say to a screen reader whether what
-they open is open, and Enter or Space presses the one that has the focus. Among the
-installations, on the timeline and in the messages the arrow keys reach them as they reach the
-cells and the marks, and under a post they go through its installations in the order read. A
-cell the arrow keys move to is brought into sight in its box.
-
-## Sharing logs
-
-`share` sends logs to a collector from a terminal: every run in the paths it is given, once, and
-then it ends.
-
-From the repository root:
-
-```sh
-python3 tools/forks share --to 'http://127.0.0.1:8750/?token=5d1c0a9e7b3f42d8' logs/
-```
-
-`--to` takes the collector's share address: where its calls are made, and its token after
-`?token=`. A `PATH` is what it is to `report`: a log, or a directory, which stands for every
-`.log` file directly in it. The parts of a [run](#runs) go as one stream, in their order, and the
-run goes by the name `report` gives it, cut to 64 characters, with `forks share` as its app. A
-run is sent whole: a log named by itself while its directory holds another part of its run is
-refused, since the name the run is remembered by would stand for one stream now, and for another
-once the directory is named.
-
-```console
-$ python3 tools/forks share --to 'http://127.0.0.1:8750/?token=5d1c0a9e7b3f42d8' logs/
-mira: sent 2642 bytes, 127.0.0.1:8750 holds 2642 of 2642
-pax: sent 2397 bytes, 127.0.0.1:8750 holds 2397 of 2397
-raya: sent 2345 bytes, 127.0.0.1:8750 holds 2345 of 2345
-saro: sent 2399 bytes, 127.0.0.1:8750 holds 2399 of 2399
-```
-
-A line on standard output says of each run how many bytes this go sent, and how many the
-collector holds of the bytes the disk held when the go began: the run is whole there when the
-last two are one number. A run the collector gave no size of has no such line. What kept a run
-from being whole is a line on standard error. A line that speaks of the collector names it by its
-host, and the token is in nothing the command prints or writes. A line is written when its run is
-done: a go whose output nobody reads any more ends there, with 2.
-
-Run again, the command goes on with the same runs and sends what their logs gained. It keeps no
-offset: of a run it sent before it asks the collector, with a request that holds no bytes at the
-size the disk has, and a 409 says where to go on. A request holds at most 1 MiB of a run and is
-given up after 30 seconds.
-
-| Status | Meaning |
-|---|---|
-| 0 | The collector holds every run whole. |
-| 1 | A run is not whole there. |
-| 2 | The command line, the address or a path cannot be used, a directory's `.forks-share.json` cannot be read as its own or written, another `share` is sending from a directory, or nobody reads what the command prints. |
-
-### The share address
-
-Everything before `?` is the base, and each call is made under it, with a `/` added where the
-base does not end in one. `share` refuses an address that is not `http` or `https`, or that holds
-a fragment, a user or a password, no `token`, more than one, one spelled with an escape, or one
-that is not 16 to 128 characters of `A-Z`, `a-z`, `0-9`, `_` and `-`, or whose host has a label
-that is empty or longer than 63 characters. It quotes no address it refuses. Nor does `forks`
-quote one that stands out of its place, as in `forks --to ADDRESS share logs/`: in what it says
-of a command line, `ADDRESS` stands for each word that holds `token=`. An `https` address is
-checked against the certificates the system trusts.
-
-### What it remembers
-
-`share` keeps one file in each directory it sends logs from, `.forks-share.json`:
-
-```json
-{
-  "http://127.0.0.1:8750/": {
-    "saro": {
-      "id": "18fae263f6ea83ec26079157cea3f019",
-      "receipt": "vxNFW7h5EQ4zl8_C7fSShRxUJ-j9NDWkC0GtzFkQEcI"
-    }
-  }
-}
-```
-
-The file is cut to one run here. For each collector, under its base, and each run, under its
-name, it holds the id the collector gave the run and the receipt the run's writes must carry,
-and never the token: an id or a receipt that holds the token is not what the opening of a run
-promises. With it the next go adds to the same runs, and without it every log is sent as a new
-run beside the old one. It is replaced in one step, and only its owner can read it: beside the
-token, a receipt is the right to add to a run, to end it and to delete it. It is written once
-before a run is opened, so a directory no file can be made in has no run opened. A file that is
-not as `share` writes it, one that names a collector or a run twice among them, is refused: the
-go says so, sends nothing from that directory and leaves the file as it is.
-
-A go holds each directory it sends from until it ends, by a lock of the system's on the directory
-itself, which leaves no file behind. A second go at the same time says so and sends nothing from
-that directory: the two would each open a run for a log, and each replace the other's file.
-
-### What the collector answers
-
-| Answer | What `share` does |
-|---|---|
-| 200 | It goes on with the next bytes, until the collector holds what the disk held. |
-| 409 | It goes on from the size the answer gives. When that is more than the disk has, it stops the run and says so. So it does at the second 409 a run answers in one go: the run grows by another hand, or is final. |
-| 404 | It drops the run's entry, opens the run again and sends it whole, in the same go. |
-| 403 | It says that the run's receipt was refused, and goes on with the next run. |
-| 413 | It says that the request was longer than is taken, and goes on with the next run. |
-| 401 | It says that the token was refused, and stops. |
-| 507 | It says that the collector holds as many bytes as it may, and stops. |
-| Any other, one that does not say what its call promises, none in 30 seconds, or no connection | It says so in a line and stops, since no other run would fare better. A redirect is such an answer, and is not followed. |
-
-None of them loses anything: the logs are on the disk, and the next go asks again.
-
-### No run is marked final
-
-A file does not say whether its writer is gone, so `share` marks no run final. An installation
-whose logs all came this way never reads `ended`: one whose application has stopped stays live
-where it stood, and a group the others took on from there reads `whole, members behind` where it
-would read `whole`. That lasts while the collector holds the run, thirty days from the last go
-that named its log.
-
 ## Limits
 
 - In the line shape of `tracing`, a span without fields and a one-word target look alike: each is
@@ -1129,40 +742,10 @@ that named its log.
   passed, though a later state that nothing links to lacks it.
 - The tail of a split verdict also counts a live installation whose state is on no branch: one a
   later split follows, or one whose later states are not one line.
-- The collector speaks plain HTTP, one request to a connection, and closes a connection that
-  falls silent for 30 seconds.
-- The cookie is `Secure` only when the request says `X-Forwarded-Proto: https`. Behind a proxy
-  that adds TLS and not that header, a browser sends the cookie over plain HTTP as well.
-- A browser keeps a cookie by host, whatever the port. A second collector on the host, with a
-  token of its own, takes the place of the first one's cookie, and the first answers 401 until
-  its share address is opened again. Whatever else answers on another port of the host is sent
-  the cookie, and the token in it.
-- Behind a proxy that serves the collector under a path, a page of any other application of that
-  host is of the collector's origin: in the browser of someone who opened the share address it
-  reads the reports and the logs. A collector whose logs the rest of a host must not read wants
-  a host name of its own.
-- Opened in a browser, a share address with a path must end the path in `/`: the redirect and
-  every address of the page are relative, and after `http://HOST/forks?token=TOKEN` they lead to
-  `http://HOST/`.
-- The page shows what it read last, and reads only while its tab is visible: what it shows can be
-  30 seconds behind the collector. A read that finds nothing changed is answered 304 in 400
-  bytes, and finds nothing changed only while none of the conversation's runs is heard from. One
-  that follows a run heard from, with a record more or without, is answered the whole JSON of
-  the conversation shown, 25 MB for the conversation below and 2.8 or 2.9 MB coded with gzip, by
-  the zlib the collector's Python is built with, and the page draws it anew. Over a link that
-  does not carry it in 30 seconds one read follows another. The list is another with every
-  second, and is answered whole each time.
-- The collector closes the connection after each answer, a coded one as well. The `fetch` that
-  node 22.23 has of its own asks for gzip unasked, and on the coded reports of the two
-  conversations of 25 and 37 MB below its process ended on a failed assertion of its own each
-  time it was tried. It read a coded report of 0.3 MB whole, and with
-  `Accept-Encoding: identity` both of the large ones as they stand. Firefox, `curl --compressed`
-  and Python's `http.client` read the coded ones.
 - A post is known by its frame, its sender and its stamp: the records hold nothing of what it
-  said, and the page shows nothing of it.
-- A `received` record that names a frame no shared log holds a `sent` record of gives no row and
-  is counted nowhere. An `unreadable` one is counted in `unmatched_unreadable`, has no mark on
-  the timeline and opens no log lines.
+  said, and the report says nothing of it.
+- A `received` record that names a frame no shared log holds a `sent` record of gives no entry
+  of `messages` and is counted nowhere. An `unreadable` one is counted in `unmatched_unreadable`.
 - `no record` says that a seat's shared logs hold no record of the frame, and no more than
   that: the frame may never have arrived, or the log that would hold it was not shared. It
   stands as well for a seat whose every shared run began after the post was sent, or ended
@@ -1175,96 +758,6 @@ that named its log.
   `epoch` records alone.
 - A frame's id is of its bytes as they travel. Whoever relays a frame can encode it another
   way, and it is then read under an id no `sent` record carries.
-- While the newest posts alone are drawn, the oldest rows leave as newer posts come. A reader
-  at the top of the messages, with no cell open or in focus, then reads on at the oldest row
-  that is left.
-- A mark of a post stands at the stamp of the record its installation wrote. Where two clocks
-  differ, a post can stand as read before it was sent.
-- Marks of posts that an installation recorded within a few pixels of time lie over one another,
-  and a click reaches the last drawn alone. The arrow keys reach each, and so do the cells of
-  the messages.
-- `marks` is most of the JSON of a conversation with posts. With 8 installations and 50 posts it
-  is 103 kB, with 30 and 500 it is 2.9 MB, and with 100 and 2000 it is 37.0 MB, 30.6 MB of it
-  `marks` and 0.2 MB its `folds` and the `folds` of its posts. Coded with gzip they are 6 kB,
-  133 or 134 kB and 1.65 MB, by the zlib the collector's Python is built with. The collector
-  answered them in 0.01, 0.13 and 1.9 seconds when it drew the report. From the one it kept it
-  answered them in 1, 5 and 85 milliseconds as they stand, in 1, 12 and 170 coded with gzip, and
-  in 1, 5 and 85 when it answered 304: the validator is made from the bytes of the JSON at each
-  read, and nothing of an answer is kept for the next.
-- The messages start with the newest posts, as many as `shown_messages` says, and the timeline
-  marks the same posts. Firefox drew them, 50, 66 and 20 rows of the three conversations above,
-  the second and the third folded, in 0.04 to 0.07, 0.04 to 0.42 and 0.03 seconds, over three
-  runs of the first two and two of the third from a browser just started. Every post of the
-  second, 500 rows, took 0.06 seconds. Every post of the third, 2000 rows of a cell for each of
-  its two folds, took 0.21 seconds and its tab 0.6 GiB, and each read that brings a change
-  draws them all again. With them all drawn, opening its fold of 50 installations puts every
-  post on the line of each of them: 136,000 elements, which held the page for 0.9 to 1.9 seconds
-  over three runs, in a tab of 0.9 GiB. Closing it held the page for 0.17 to 0.20 seconds, and
-  opening a count of a post for 0.17 to 0.35.
-- A read that finds nothing changed holds the page for under 0.01 seconds. With those 136,000
-  elements drawn, the longest wait between two frames of the page was 0.03 to 0.05 seconds
-  around such a read.
-- A fold that is opened has a row for each of its installations, among the installations and on
-  the timeline, and none of them is left out. The conversation of 300 members and 300 epochs
-  below is 25 MB of JSON. Folded it is 4,700 elements, which Firefox showed 0.14 to 0.19 seconds
-  after it held the answer, over three runs, in a tab of 0.5 GiB. With its one fold opened it is
-  283,000 elements, which took 1.5 to 1.8 seconds to draw in a tab of 1.0 GiB, and each read
-  that brings a change draws them again while the fold is open. A press leaves standing the
-  parts it does not change: with that fold open, the names of a tile held the page for 0.05 to
-  0.06 seconds over three runs, and closing the fold for 0.16 to 0.18.
-- The page gives the first three branches a hue each and any further branch one fill: there the
-  letter alone tells the branches apart.
-- The timeline places a record by its stamp, and a stamp without an offset is read as UTC: logs
-  stamped in the local time of two zones are drawn that far apart.
-- The timeline covers the time of the records that name the conversation. A run that wrote
-  nothing within that time, as the run of a seat that never joined may, has a row and no line.
-- The page asks for the typeface Public Sans and ships no font: where it is not installed, the
-  browser uses the system's.
-- A body the collector refuses for its length, or for saying none, is answered unread. A client
-  that reads an answer only once it has sent its body finds the connection closed instead.
-- The body of a call without the token is read and kept nowhere, for 30 seconds at most, and then
-  the call is answered 401. The head of a request is read before the collector can know whether
-  it carries the token: a peer without it holds a connection for as long as it sends one slowly
-  and is never silent for 30 seconds.
-- The collector syncs nothing to disk. After a power cut a log may be shorter than the size last
-  answered, which its sender mends at its next `PUT`, and a `run.json` may be unreadable, which
-  leaves its run out until the file is mended or the directory removed by hand.
-- While a directory the collector left alone at its start holds a log, no kept line goes for want
-  of a log that names its conversation: the log nobody read may be the one that does. The lines
-  stay in their `run.json` until a start that finds no such directory.
-- The collector holds every record in memory. Logs of 300 members, each 300 epochs of one
-  conversation, 500 MB in all, took 20 seconds to read at a start and a second and a half to
-  draw the report of, in 235 MiB of memory at the most and 155 MiB once it was drawn.
-- A directory is for one collector. Nothing stops a second from starting on it, and the two
-  would each replace the other's `run.json`.
-- `--max-bytes` counts the bytes of the logs, and not what `run.json` takes.
-- The share address is an argument of `share`, so its token is in the shell's history and, while
-  the command runs, in the list of processes.
-- `share` sends a log from a file, which it can read again from where the collector stopped, and
-  refuses a pipe.
-- `share` sends a run as far as the disk held it when the go began: what a log gains during a go
-  is sent by the next, and a log its writer moved aside or cut during a go is sent no further in
-  that go.
-- A log written anew under the name of one that was sent is taken for that log, grown: `share`
-  adds its bytes past the size the collector holds, and stops only when it is the shorter. To
-  send it as a new run, take its entry out of `.forks-share.json`.
-- A run whose opening the collector answered and `share` did not hear, did not live to write
-  down or could not write down, as when the disk fills between the two writes of the file, stays
-  on the collector, empty, until its thirty days are over.
-- An entry stays in `.forks-share.json` when its log is gone from the directory.
-- `share` holds a directory by `flock`, which Python has on Unix. Where Python has none, or the
-  system gives no lock on a directory, it says so and sends nothing from the directory.
-- `share` reads a log through a link as `report` does: the run is named after the file the link
-  leads to, and `.forks-share.json` is kept in that file's directory, which must take it, and not
-  in the directory of the link.
-- A collector is remembered by its base as the address spells it. Under another spelling, such as
-  `HTTP://` for `http://`, `localhost` for `127.0.0.1`, a port with a zero before it or a second
-  `/` at the end, it is another collector to `share`, and every log is sent to it as a new run.
-- A request of `share` holds up to 1 MiB and is given up after 30 seconds, so over a link that
-  carries less than 34 KiB a second a run with 1 MiB or more to send does not arrive.
-- `.forks-share.json` is not synced to disk: after a power cut it may be cut short, and is then
-  refused until it is removed by hand.
-- `share` calls the collector itself, and reads no proxy from the environment.
 
 ## Tests
 
@@ -1279,15 +772,7 @@ members would share them, with the verdict and the positions the tool must give 
 The tests of `check` hold each of those histories against an expectation made of its
 `expect.json`, and against ones that differ from it.
 `tests/fixtures/real` holds two logs of a real group, cut to their records and the lines around
-them. The tests of the collector each start one on a loopback port the system picks, and call it
-over HTTP. The tests of `share` send to such a collector, and to a scripted stand-in for the
-answers a collector never gives. The tests of the page come in as a browser does, by the share
-address and the cookie, and read the page's files for what they must not hold. Where `node` is
-on the machine they also run the page's script over what a collector answers, in `tests/dom.js`,
-a stand-in for a document that lays out no more than says where a reader is, the parts of a
-report one under another and the rows of a box that scrolls, and that counts the elements the
-script makes, and hold what it draws against the JSON; without `node` those tests are skipped.
-No test runs a browser.
+them.
 
 ## Layout
 
@@ -1298,8 +783,4 @@ No test runs a browser.
 | `forks/rule.py` | Decides the report from records. It reads no file. |
 | `forks/text.py` | Writes the report as text. |
 | `forks/check.py` | Holds a conversation's report against an expectation. |
-| `forks/collector.py` | Keeps the runs members send, and draws each conversation's report. |
-| `forks/serve.py` | Serves a collector over HTTP. |
-| `forks/page/` | The page `serve` answers: `index.html`, `report.css` and `report.js`. |
-| `forks/share.py` | Sends the runs in some paths to a collector. |
 | `forks/cli.py` | The command line. |

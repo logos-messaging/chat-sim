@@ -1,15 +1,15 @@
 ---
 title: Records
-description: Each record logos-chat writes on the log target libchat::mls_trace, with its fields, at the revision chat-sim pins.
+description: Each record logos-chat writes on the log target libchat::mls_trace, with its fields, at the revision chat-sim pins; and the files a run leaves.
 ---
 
-A record is one log line at `trace` on the target `libchat::mls_trace`: a name, then `key=value` words.
-Every record but `run` is written in the span of the op that wrote it, a GroupV2 op (`groupv2.new`,
-`groupv2.new_from_welcome`, `groupv2.send_content`, `groupv2.handle_frame`, `groupv2.wakeup`,
-`groupv2.add_member` or `groupv2.remove_member`) or a GroupV3 one (`groupv3.new`,
+A record is one log line at `trace` on the target `libchat::mls_trace`: a name, then `key=value`
+words. Every record but `run` is written in the span of the op that wrote it, a GroupV2 op
+(`groupv2.new`, `groupv2.new_from_welcome`, `groupv2.send_content`, `groupv2.handle_frame`,
+`groupv2.wakeup`, `groupv2.add_member` or `groupv2.remove_member`) or a GroupV3 one (`groupv3.new`,
 `groupv3.new_from_welcome`, `groupv3.send_content`, `groupv3.handle_frame`, `groupv3.wakeup` or
-`groupv3.add_member`), and takes `signer` and `convo` from it. The span's own `epoch` is the one the op
-began at. This page is what logos-chat writes at the revision chat-sim pins in `Cargo.toml`.
+`groupv3.add_member`), and takes `signer` and `convo` from it. The span's own `epoch` is the one the
+op began at. This page is what logos-chat writes at the revision chat-sim pins in `Cargo.toml`.
 
 ```text
 2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178
@@ -38,13 +38,46 @@ began at. This page is what logos-chat writes at the revision chat-sim pins in `
 | `why` | `epoch` (of another epoch than the one held), `decrypt` (of the epoch held, and failed to decrypt), or `sender` (decrypted, and the sender's account could not be checked) |
 
 `sent` and `received` are for posts alone. A frame that is no MLS message of the group, such as a
-welcome, writes nothing, and nor does an installation's own frame coming back to it. A post that reaches
-an installation a second time is `unreadable` (`decrypt`) then: the key that opened it is spent.
+welcome, writes nothing, and nor does an installation's own frame coming back to it. A post that
+reaches an installation a second time is `unreadable` (`decrypt`) then: the key that opened it is
+spent.
 
-`run`, `epoch` and `left` decide the verdict; the others draw the page's posts and timeline. In the
-logos-chat tree the records are written in `core/conversations/src/conversation/mls_trace/record.rs`, from
-`core.rs` (`run`), `conversation/group_v2/trace.rs` and `conversation/group_v3/trace.rs` (the rest).
+`run`, `epoch` and `left` decide the verdict; the others say what became of each post. In the
+logos-chat tree the records are written in
+`core/conversations/src/conversation/mls_trace/record.rs`, from `core.rs` (`run`),
+`conversation/group_v2/trace.rs` and `conversation/group_v3/trace.rs` (the rest).
 
-`forks` reads two things this revision does not write: `commit` and `by` on an `epoch` record, the commit
-applied to reach the epoch and the installation that committed it, and a `delivery` record on the target
-`chat_module::report`, the state of an app's delivery service.
+`forks` reads two things this revision does not write: `commit` and `by` on an `epoch` record, the
+commit applied to reach the epoch and the installation that committed it, and a `delivery` record on
+the target `chat_module::report`, the state of an app's delivery service.
+
+## What a run leaves
+
+`tools/sim run` and each run of a sweep write a directory of their own:
+
+| File | Holds |
+|---|---|
+| `plan.json` | the plan the runner was given, written from the scenario |
+| `group.log` | every member's trace records, stamped with the virtual clock |
+| `result.json` | what the runner measured: each member, batch and post, and of a grow its lineage and rounds |
+| `runner.out`, `runner.stderr` | what the runner printed |
+| `run.json` | what the run came to, for scripts |
+| `run.txt` | the same, as tables to read |
+| `report.txt`, `report.json`, `expect.json` | of a run that is not a grow, the fork report of `group.log` and what it was held to |
+
+A sweep also writes `sweep.txt` and `sweep.json`, a row a run.
+[`tools/sim/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#what-a-run-in-one-process-writes)
+gives every field of `run.json`, and
+[`crates/harness/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/crates/harness/README.md#what-a-run-leaves)
+those of `result.json`.
+
+The site keeps `run.txt`, `run.json` and `report.txt` of each run it publishes, or `build.log` where
+chat-sim did not build, and never a `group.log`. Beside them it keeps:
+
+| File | Holds |
+|---|---|
+| `logos-chat/pr-N/matrix.json` | the matrix of a pull request's newest run, as `tools/sim matrix` writes it |
+| `logos-chat/pr-N/meta.json` | what ran: the pull request, the head and the base, chat-sim's commit and the measurement, the workflow run, and when |
+| `logos-chat/pr-N/scenarios/` | a copy of each scenario file the run ran |
+| `logos-chat/main/<sha>/<measurement>/point.json` | a point of main: what ran, the pull requests merged since the point it follows, each run's cell, and each rate's summary |
+| `logos-chat/long/<sha>/<measurement>/long.json` | a long run: what ran, and of each scenario what `compare` said and each run's outcome |

@@ -50,12 +50,14 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # variable CHAT_SIM_APP_CLIENT_ID and the secret CHAT_SIM_APP_PRIVATE_KEY;
 # without them, each says so and posts nothing, and the comment is in the run's
 # summary alone.
-# Started by hand. Every hour, measure-main.yml starts main at logos-chat main's
-# tip if the tip has no point at the current measurement, no run of main at it
-# is going, and no run of main at it ended at that measurement without its
-# point; and on Sundays, at the first tick that finds no run of long created
-# that day, it starts long at the tip, unless the tip has its long run at the
-# current measurement or a run of long is going.
+# logos-chat's chat-sim.yml starts pr when a pull request there is opened or
+# pushed to, and main for each push to main; it can be started by hand too.
+# Every hour, measure-main.yml starts main at logos-chat main's tip if the tip
+# has no point at the current measurement, no run of main at it is going, and no
+# run of main at it ended at that measurement without its point; and on Sundays,
+# at the first tick that finds no run of long created that day, it starts long
+# at the tip, unless the tip has its long run at the current measurement or a
+# run of long is going.
 # Only a dispatch starts it, never a pull_request event, so no fork's code
 # reaches the publish job, which can push to gh-pages.
 on:

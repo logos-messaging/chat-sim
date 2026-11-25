@@ -1,7 +1,8 @@
 """Holds the runs of a sweep in one process to the outcomes expected of them.
 
 A run in one process is the same run every time from its seeds, so a run that comes out other
-than expected was changed by the revision its runner was built from.
+than expected was moved by the revision its runner was built from, if only by a re-deal: one
+random number drawn or one frame received more shifts the draws after it.
 """
 
 from __future__ import annotations

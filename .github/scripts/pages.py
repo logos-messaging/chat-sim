@@ -1000,10 +1000,10 @@ def draw_point(directory: Path, point: dict) -> None:
             )
             + "</details>\n"
         )
+    shows = _link("../../../../guide/track/main/#the-page-of-a-point", "The page of a point")
     body += (
         "</section>\n"
-        f'<p class="muted">What the page shows: the guide\'s '
-        f'{_link("../../../../guide/reports/#the-pages-of-logos-chats-runs", "Reports")}.</p>\n'
+        f'<p class="muted">What the page shows: the guide\'s {shows}.</p>\n'
     )
     title = f"chat-sim: logos-chat main {logos_chat[:7]}"
     (directory / "index.html").write_text(_page(title, body, _CHARTS + _REPORT), encoding="utf-8")
@@ -1085,7 +1085,7 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
             draw_run(out, matrix, meta, cell, drawn[_run_href(cell)])
     body += (
         f'<p class="muted">What the page shows: the guide\'s '
-        f'{_link("../../guide/reports/#the-pages-of-logos-chats-runs", "Reports")}.</p>\n'
+        f'{_link("../../guide/track/pull-request/#the-report-page", "The report page")}.</p>\n'
     )
     title = f"chat-sim: logos-chat #{meta['pr']}"
     style = _CHARTS + _REPORT + _TREES + _GRID
@@ -1311,7 +1311,7 @@ def _scenarios(told: Dict[str, List[str]], every: List[str]) -> str:
     runs, and where the guide says how a grow runs. Nothing without them."""
     if not told:
         return ""
-    guide = _link("../../guide/simulations/#a-group-that-grows", "A group that grows")
+    guide = _link("../../guide/understand/scenarios/#a-group-that-grows", "A group that grows")
     return (
         f'<h2 id="scenarios">The scenarios</h2>\n<p class="lead">{_e(_TESTS)}</p>\n'
         + '<ul class="how">\n'
@@ -1430,7 +1430,7 @@ def draw_long(directory: Path, long: dict) -> None:
         body += "</section>\n"
     body += (
         f'<p class="muted">What the page shows: the guide\'s '
-        f'{_link("../../../../guide/reports/#the-pages-of-logos-chats-runs", "Reports")}.</p>\n'
+        f'{_link("../../../../guide/track/main/#the-long-runs", "The long runs")}.</p>\n'
     )
     title = f"chat-sim: logos-chat main {logos_chat[:7]}, the long suite"
     (directory / "index.html").write_text(_page(title, body, _CHARTS + _REPORT), encoding="utf-8")
@@ -1481,8 +1481,8 @@ def write_trend(site: Path) -> None:
     else:
         body += "<p>No point of main has been kept yet.</p>\n"
     body += (
-        f'<p class="muted">What a point holds: the guide\'s '
-        f'{_link("../guide/reports/#logos-chats-runs", "Reports")}.</p>\n'
+        f'<p class="muted">What the page shows: the guide\'s '
+        f'{_link("../guide/track/main/#the-graph-over-main", "The graph over main")}.</p>\n'
     )
     out = site / LOGOS_CHAT / "index.html"
     out.parent.mkdir(parents=True, exist_ok=True)

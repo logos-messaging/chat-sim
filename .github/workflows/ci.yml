@@ -106,7 +106,7 @@ jobs:
           attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
       # Fifty epochs as logos-chat-module runs a group. On Linux each run is
       # the same run whenever it is made, so a logos-chat revision that changes
-      # its outcome changed the core.
+      # its outcome changed the core, if only in the random numbers it draws.
       - name: Run fifty epochs
         run: nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out "$RUNNER_TEMP/sim/50-epochs"
       # Runs when the first run fails as well, so that the report has both.
@@ -185,8 +185,8 @@ jobs:
       - name: Sweep as many runs as are expected
         run: nix run .#groupv2-simulation -- sweep "tools/sim/scenarios/$SCENARIO.json" --runs "$RUNS" --out "$RUNNER_TEMP/sim/$SCENARIO"
       # A run in one process is the same run whenever it is made, so an outcome
-      # other than the one expected was changed by the revision its runner was
-      # built from.
+      # other than the one expected was moved by the revision its runner was
+      # built from, if only in what it draws at random or which frames it loses.
       - name: Hold the sweep to what is expected
         run: |
           out="$RUNNER_TEMP/sim/$SCENARIO"

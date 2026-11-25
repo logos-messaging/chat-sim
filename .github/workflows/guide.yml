@@ -46,8 +46,8 @@ jobs:
           cache: npm
           cache-dependency-path: guide/package-lock.json
 
-      # A private site is served at the root of a host of its own, a public one
-      # under /<repository>/, so the guide's base follows the site's address.
+      # The site's host, for the guide's link to the graph over main. The base,
+      # /chat-sim/guide, is the config's: the guide's links are written with it.
       - name: Read the Pages site's address
         shell: bash
         env:
@@ -62,7 +62,6 @@ jobs:
           from urllib.parse import urlsplit
           url = urlsplit(sys.argv[1])
           print(f"SITE={url.scheme}://{url.netloc}")
-          print(f"BASE={url.path.rstrip('/')}/guide")
           EOF
 
       - name: Build
