@@ -1859,6 +1859,20 @@ EMPTY = dict(
     behind=[],
     never_joined=[],
 )
+# Rounds of a grow of drawn adders, as a run.json has them: two adders in the second, and one of
+# them refused the whole third.
+ROUNDS = [
+    {"adders": ["saro"], "joiners": ["raya"], "refused": [], "settled_s": 0.55},
+    {"adders": ["saro", "raya"], "joiners": ["pax", "mira"], "refused": [], "settled_s": 12.5},
+    {"adders": ["raya", "pax"], "joiners": ["kes"], "refused": ["pax"], "settled_s": 180},
+]
+# The rows of the table of ROUNDS, its head first.
+ROUNDED = [
+    ["round", "adders", "joiners", "refused", "settled s"],
+    ["1", "saro", "raya", "-", "0.550"],
+    ["2", "saro, raya", "pax, mira", "-", "12.500"],
+    ["3", "raya, pax", "kes", "pax", "180.000"],
+]
 # The title of each line of GROW's tree, its top row first.
 GROWN = [
     "trunk: 11 members, epochs 0 to 14",
@@ -2408,7 +2422,6 @@ class Pages(LogosChat):
         out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
 
         matrix = pages.read_matrix(out / "matrix.json")
-        facts = {"revision": REVISION, "base": BASE, "chat_sim": SHA}
         for cell in matrix["cells"]:
             run = simulate.run_page(cell)
             with self.subTest(run=run):
@@ -2417,7 +2430,8 @@ class Pages(LogosChat):
                     parsed.h1, [f"GroupV2 · {cell['rate']} loss · seed {cell['seed']}"]
                 )
                 self.assertIn("../../../", parsed.links)
-                self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+                for side in (REVISION, BASE):
+                    self.assertIn("\n".join(simulate.again(cell, side, SHA)), parsed.text)
                 self.assertEqual(
                     [link for link in parsed.links if link.endswith((".txt", ".json"))],
                     [
@@ -2451,6 +2465,29 @@ class Pages(LogosChat):
         ):
             self.assertIn(said, parsed.text)
         self.assertEqual(self.rings(tree), [("2 never joined", "2")] * 2)
+
+    def test_a_run_s_page_says_what_seated_counts_and_running_it_takes_and_tables_its_rounds(self):
+        base = self.uploaded(**{"5/0": {"grow": dict(GROW, rounds=ROUNDS)}})
+        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
+
+        run = out / f"head/{GOAL.format(5)}/1"
+        parsed = self.stands_alone(run)
+        self.assertIn(
+            "seated counts every member added, the creator included, and not removed: those on a "
+            "line and those that never joined.",
+            parsed.text,
+        )
+        self.assertIn(
+            "It needs Linux on x86-64, Nix with flakes, jq and python3. Run each block from a "
+            "directory of its own, since each clones chat-sim.",
+            parsed.text,
+        )
+        rounds = Parsed(self.drawn(run).split("<h2>The rounds</h2>", 1)[1].split("<h2>", 1)[0])
+        self.assertEqual(rounds.rows, ROUNDED)
+        self.assertIn(f"the base {BASE[:7]}", rounds.text)
+        self.assertNotIn("the head", rounds.text)
+        self.assertIn("The run does not say which adder added which member.", rounds.text)
+        self.assertNotIn("<h2>The rounds</h2>", self.drawn(out / f"head/{GOAL.format(5)}/2"))
 
     def test_a_run_of_both_groups_lists_each_group_s_verdict_and_draws_its_runs_apart(self):
         base = self.uploaded(groupv3=True)
@@ -2517,7 +2554,8 @@ class Pages(LogosChat):
                 WELCOMED,
                 "A column is a seed, the same at the head and at the base. At one revision a seed "
                 "runs the same every time, so where a column's two trees differ, the pull request "
-                "changed the run.",
+                "changed the run. The change may be only a re-deal of the losses: one frame "
+                "more, anywhere, shifts which frames each member loses after it.",
             ],
         )
         self.assertIn("../../guide/simulations/#a-group-that-grows", Parsed(section).links)
@@ -2610,6 +2648,10 @@ class Pages(LogosChat):
         )
         self.assertIn("no base", run.text)
         self.assertEqual([link for link in run.links if "base/" in link], [])
+        cell = {"scenario": GOAL.format(1), "run": 2, "seed": 1}
+        self.assertIn("\n".join(simulate.again(cell, REVISION, SHA)), run.text)
+        self.assertNotIn("Run each block", run.text)
+        self.assertEqual(run.text.count("git clone "), 1)
 
     def test_where_chat_sim_did_not_build_the_build_s_log_takes_the_place_of_the_cells(self):
         head = self.scratch / "unbuilt"
@@ -2661,7 +2703,8 @@ class Pages(LogosChat):
 
     def test_a_point_s_page_draws_its_cells_its_rates_and_each_run_with_its_text_and_lines(self):
         self.point(sha(1), minute=1, run_number=1)
-        timed = {"5/0": {"grow": GROW, "wall_s": 0.916510242}, "1/1": {"wall_s": 189.4}}
+        grow = dict(GROW, rounds=ROUNDS)
+        timed = {"5/0": {"grow": grow, "wall_s": 0.916510242}, "1/1": {"wall_s": 189.4}}
         runs = self.uploaded(**timed)
         write(self.run_json(runs, "1/0").with_name("run.txt"), f"{MARKUP}\n")
         merged = self.commits(f"{TITLE} (#321)", "chore: bump the toolchain (#318)")
@@ -2696,10 +2739,14 @@ class Pages(LogosChat):
         runs_of_5 = [row for row in parsed.rows if len(row) == 5 and row[-1] == "0.9 s"]
         self.assertEqual([row[:2] for row in runs_of_5], [["0", "8"]])
         self.assertIn("never joined: tomo, peer14", parsed.text)
+        for row in ROUNDED:
+            self.assertEqual(parsed.rows.count(row), 1)
         self.assertIn(f"{GOAL.format(5)}/1/run.json", parsed.links)
-        facts = {"revision": sha(2), "base": "", "chat_sim": SHA}
+        self.assertIn(
+            "Run it again (Linux on x86-64, Nix with flakes, jq and python3):", parsed.text
+        )
         for cell in point["cells"]:
-            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+            self.assertIn("\n".join(simulate.again(cell, sha(2), SHA)), parsed.text)
 
     def test_a_point_of_both_groups_draws_a_heatmap_a_group_and_names_the_group_of_each_rate(self):
         self.point(runs=self.uploaded(groupv3=True, **{"v3/1/1": {"first_fork": 5}}))
@@ -2723,9 +2770,8 @@ class Pages(LogosChat):
         rates = [row[:2] for row in parsed.rows if len(row) == 13 and row[1].endswith("%")]
         self.assertEqual([" ".join(row) for row in rates], named)
         self.assertEqual(len(self.folds(self.at())), 12)
-        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
         for cell in self.read()["cells"]:
-            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+            self.assertIn("\n".join(simulate.again(cell, REVISION, SHA)), parsed.text)
 
     def test_a_point_json_of_groups_that_says_nothing_of_how_its_runs_forked_is_read_as_written(
         self,
@@ -2889,7 +2935,7 @@ COMPARED = (
 LOSS_5 = [
     "50-epochs-by-saro-waku-loss-5",
     "2",
-    "split at epoch 8, split at epoch 3",
+    "split at epoch 8 · split at epoch 3",
     "2 of 2 runs came out as expected",
 ]
 
@@ -3020,7 +3066,8 @@ class Long(LogosChat):
     ):
         runs, compared = self.long_uploaded()
         loss = runs / f"sim-revision-{LOSS_5[0]}-1" / LOSS_5[0]
-        write(loss / "1" / "run.json", json.dumps({"grow": GROW, "wall_s": 189.4}))
+        grow = dict(GROW, rounds=ROUNDS)
+        write(loss / "1" / "run.json", json.dumps({"grow": grow, "wall_s": 189.4}))
         self.long(uploaded=(runs, compared))
 
         out = self.held()
@@ -3043,14 +3090,20 @@ class Long(LogosChat):
         self.assertIn(["0", "split at epoch 8", held[0]["came_to"], "3 min 9 s"], parsed.rows)
         self.assertIn(["1", "split at epoch 3", held[1]["came_to"], "2 min 1 s"], parsed.rows)
         self.assertIn("never joined: tomo, peer14", parsed.text)
+        for row in ROUNDED:
+            self.assertEqual(parsed.rows.count(row), 1)
+        self.assertIn(
+            '"As expected" means the runs came out as tools/sim/expected holds them, not that '
+            "they came out well.",
+            parsed.text,
+        )
         self.assertIn("run.txt of 50-epochs-by-saro-waku-loss-5/1\n", parsed.text)
         self.assertIn("50-epochs-by-saro-waku-loss-5/1/run.json", parsed.links)
         self.assertNotIn("50-epochs-by-saro-waku-loss-5/1/report.json", parsed.links)
-        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
         for name, count in self.suite():
             for number in range(1, count + 1):
                 cell = {"scenario": name, "run": number, "seed": number - 1}
-                self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+                self.assertIn("\n".join(simulate.again(cell, REVISION, SHA)), parsed.text)
         self.assertEqual(len(self.folds(out)), sum(count for _, count in self.suite()))
         self.assertNotIn("build", parsed.ids)
 
@@ -3075,12 +3128,12 @@ class Long(LogosChat):
 
         out = self.held()
         parsed = self.stands_alone(out)
-        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
         for name, count in self.suite():
             for number in range(1, count + 1):
                 cell = {"scenario": name, "run": number, "seed": number - 1}
                 with self.subTest(scenario=name, run=number):
-                    self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+                    again = simulate.again(cell, REVISION, SHA)
+                    self.assertIn("\n".join(again), parsed.text)
         self.assertEqual(len(self.folds(out)), sum(count for _, count in self.suite()))
         self.assertIn((False, "seed 0 does not build"), self.folds(out))
         for row in (
@@ -3113,8 +3166,8 @@ class Long(LogosChat):
         long = pages.read_long(self.held() / "long.json")
         self.assertEqual(long["scenarios"][0]["runs"][0]["seed"], 7)
         cell = {"scenario": "50-epochs", "run": 1, "seed": 7}
-        facts = {"revision": REVISION, "base": "", "chat_sim": SHA}
-        self.assertIn("\n".join(simulate.again(cell, facts)), Parsed(self.drawn(self.held())).text)
+        again = simulate.again(cell, REVISION, SHA)
+        self.assertIn("\n".join(again), Parsed(self.drawn(self.held())).text)
         write(sweep / "outcomes.json", json.dumps([FIFTY]))
         status, _, err = self.run_pages("long", *given)
         self.assertEqual(status, 2)
@@ -3275,8 +3328,7 @@ class Long(LogosChat):
             self.assertNotIn(COMPARED, parsed.text)
             self.assertIn(LOSS_5, parsed.rows)
             cell = {"scenario": "50-epochs-by-saro-waku-loss-5", "run": 2, "seed": 1}
-            facts = {"revision": sha(100 - number), "base": "", "chat_sim": SHA}
-            self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
+            self.assertIn("\n".join(simulate.again(cell, sha(100 - number), SHA)), parsed.text)
         self.assertIn("50-epochs-by-saro-waku-loss-5/compare.txt", self.files(self.held(sha(97))))
 
     def test_the_graph_over_main_links_the_newest_long_run_and_draws_nothing_of_it(self):

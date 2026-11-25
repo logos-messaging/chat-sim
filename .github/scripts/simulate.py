@@ -1049,15 +1049,16 @@ def _missing(cell: dict, side: str) -> str:
     return "does not build" if cell["unbuilt"][side] else "no outcome"
 
 
-def again(cell: dict, facts: dict) -> List[str]:
-    """The commands that run a cell again, at the head or at the base."""
-    pins = f"# move both pins to {facts['revision']}"
-    if facts["base"]:
-        pins += f", or to {facts['base']} for the base"
+def again(cell: dict, revision: str, chat_sim: str) -> List[str]:
+    """The commands that run a cell again at `revision` of logos-chat, from chat-sim at
+    `chat_sim`: its checkout, the lines of sweep.yml's step that pin logos-chat, the build, and
+    the cell's run of its sweep."""
     scenario = cell["scenario"]
     return [
-        f"git clone {CHAT_SIM} && cd chat-sim && git checkout {facts['chat_sim']}",
-        f"{pins}, then",
+        f"git clone {CHAT_SIM} && cd chat-sim && git checkout {chat_sim}",
+        "pinned=$(jq -r '.nodes.\"logos-chat\".locked.rev' flake.lock)",
+        f'sed -i "s/$pinned/{revision}/g" flake.nix Cargo.toml',
+        "nix flake lock",
         "nix develop -c cargo build --release -p harness --bin harness-run",
         f"python3 tools/sim sweep tools/sim/scenarios/{scenario}.json --from {cell['run']} "
         f"--runs 1 --one-process target/release/harness-run --out tmp/{scenario}-seed-"
@@ -1080,11 +1081,11 @@ def _p(p: float) -> str:
 
 
 def came_to(now: Optional[List[dict]]) -> str:
-    """What the runs of a sweep came to, `now` their outcomes: how each came out, or `no outcome`
-    without them."""
+    """What the runs of a sweep came to, `now` their outcomes: how each came out, apart by ` · `
+    since a run can come out in words that hold a comma, or `no outcome` without them."""
     if now is None:
         return "no outcome"
-    return ", ".join(came_out(one) for one in now)
+    return " · ".join(came_out(one) for one in now)
 
 
 def came_out(outcome: dict) -> str:

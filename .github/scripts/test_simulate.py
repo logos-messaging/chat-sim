@@ -1348,7 +1348,7 @@ class Comment(Fixture):
             rows["grow-waku-loss-0.1"],
             [
                 "3",
-                "whole, split at epoch 9, split at epoch 4",
+                "whole · split at epoch 9 · split at epoch 4",
                 "1 of 3 runs came out as expected",
             ],
         )
@@ -1365,7 +1365,7 @@ class Comment(Fixture):
         self.assertEqual(rows["50-epochs"], ["1", "whole", "nothing held"])
         self.assertEqual(
             rows["grow-waku-size-50"],
-            ["3", "whole, whole, whole", "3 of 3 runs came out as expected"],
+            ["3", "whole · whole · whole", "3 of 3 runs came out as expected"],
         )
 
     def test_a_scenario_with_no_outcome_says_so(self):
@@ -1377,7 +1377,7 @@ class Comment(Fixture):
         _, out, _ = self.comment(*self.with_base)
         rows = self.rows(out)
         self.assertEqual(rows["50-epochs"], ["1", "no outcome", "-"])
-        self.assertEqual(rows["grow-waku-loss-0.1"][1], "whole, no verdict")
+        self.assertEqual(rows["grow-waku-loss-0.1"][1], "whole · no verdict")
 
     def test_a_run_of_a_grow_step_with_no_verdict_says_how_its_lineage_ended(self):
         endings = (
@@ -1396,7 +1396,7 @@ class Comment(Fixture):
 
         self.assertEqual(
             self.rows(out)["grow-waku-loss-0.1"][1],
-            "split at epoch 9, stalled at epoch 4, whole, whole, members behind",
+            "split at epoch 9 · stalled at epoch 4 · whole · whole, members behind",
         )
 
     def test_a_revision_chat_sim_does_not_build_at_ran_nothing(self):
@@ -1643,6 +1643,20 @@ class SweepWorkflow(unittest.TestCase):
             "${{ matrix.run.from }}\n",
             self.sweep,
         )
+
+    def test_a_run_made_again_pins_logos_chat_in_each_job_s_own_lines(self):
+        step = re.search(
+            r"\n      - name: Pin logos-chat at the revision\n"
+            r"        run: \|\n((?:          .+\n)+)",
+            self.sweep,
+        )[1]
+        pin = [line.strip().replace("$REVISION", REVISION) for line in step.splitlines()]
+        cell = {"scenario": "grow-waku-loss-0.1", "run": 2, "seed": 1}
+
+        again = simulate.again(cell, REVISION, CHAT_SIM)
+
+        self.assertEqual(again[1 : 1 + len(pin)], pin)
+        self.assertEqual(len(pin), 3)
 
 
 class CiWorkflow(unittest.TestCase):

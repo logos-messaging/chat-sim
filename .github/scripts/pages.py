@@ -76,8 +76,13 @@ _CREATOR = "saro"
 _TESTS = "How many epochs a growing group of logos-chat clients lasts before it first forks."
 _SEEDS = (
     "A column is a seed, the same at the head and at the base. At one revision a seed runs the "
-    "same every time, so where a column's two trees differ, the pull request changed the run."
+    "same every time, so where a column's two trees differ, the pull request changed the run. "
+    "The change may be only a re-deal of the losses: one frame more, anywhere, shifts which "
+    "frames each member loses after it."
 )
+# What running a run again takes: on Linux alone a run is the same every time from its seed, and
+# CI runs on x86-64.
+_NEEDS = "Linux on x86-64, Nix with flakes, jq and python3"
 # How many rates of a group the graph over main tells apart, a hue of `_STYLE`'s ramp each.
 HUES = 4
 # The repositories whose commits and pull requests a point names.
@@ -385,8 +390,8 @@ details.run>summary{font-size:1.1em;font-weight:600}
 summary span{font-weight:normal;margin-left:.4rem}
 details.text>summary{font-size:13px;color:var(--muted)}
 .who{font-size:14px;margin:.4rem 0}
-.lines,.runs,.rates{font-size:14px}
-.lines th,.lines td{padding:.15rem 1rem .15rem 0}
+.lines,.runs,.rates,.rounds{font-size:14px}
+.lines th,.lines td,.rounds th,.rounds td{padding:.15rem 1rem .15rem 0}
 .n{text-align:right;font-variant-numeric:tabular-nums}
 .rates th[colspan]{text-align:center}
 .rates td,.runs td.n{white-space:nowrap}
@@ -918,11 +923,10 @@ def draw_point(directory: Path, point: dict) -> None:
     """Writes the page of the point in `directory`, its index.html, from `point` and the runs'
     text `directory` keeps: what ran, the pull requests it merged and the point it follows, its
     cells as a heatmap a group, how the runs of each group's rate ended, and each run with the
-    command that runs it again and, while its text is kept, the text, its lines and its wall time;
-    where chat-sim did not build, the build's log, once. Every file it links is one `directory`
-    holds."""
+    commands that run it again and, while its text is kept, the text, its lines and rounds and
+    its wall time; where chat-sim did not build, the build's log, once. Every file it links is
+    one `directory` holds."""
     logos_chat, measured, before = point["logos_chat"], point["measurement"], point["previous"]
-    facts = {"revision": logos_chat, "base": "", "chat_sim": point["chat_sim"]}
     rows = _by_rate(point["cells"])
     merged = ", ".join(
         _link(f"{LOGOS_CHAT_URL}/pull/{one['number']}", f"#{one['number']}")
@@ -990,7 +994,7 @@ def draw_point(directory: Path, point: dict) -> None:
                     _run_href(cell),
                     inline=not cell["unbuilt"]["head"],
                 )
-                + _again(cell, facts)
+                + _again(cell, logos_chat, point["chat_sim"])
                 + "</details>\n"
                 for cell in listed
             )
@@ -1098,10 +1102,9 @@ def draw_run(
     """Writes the page of `cell`'s run of the pull request kept in `out`, index.html in its
     directory under `head/`: what the head's run came to against the base's, in a sentence; both
     sides' trees, `trees` their lineages, large on one axis of epochs, each line labelled, with
-    who fell behind and the members of each; the command that runs it again; and each side's
-    text the site keeps."""
+    who fell behind and the members of each; each side's rounds; what running it again takes and
+    the commands that run it again at each side; and each side's text the site keeps."""
     head, base = meta["revision"], meta["base"]
-    facts = {"revision": head, "base": base or "", "chat_sim": meta["chat_sim"]}
     named = _job(cell)
     chip, said = _run_said(matrix, cell)
     up = "../../../"
@@ -1115,15 +1118,37 @@ def draw_run(
         + ("no base" if base is None else f"merge base {_commit(LOGOS_CHAT_URL, base)}")
         + f" · chat-sim {_commit(CHAT_SIM_URL, meta['chat_sim'])}</p>\n"
         f'<div class="chart wide">\n{_run_trees(matrix, meta, cell, trees)}</div>\n'
-        "<h2>Run it yourself</h2>\n"
-        f"<pre>{_e(chr(10).join(simulate.again(cell, facts)))}</pre>\n"
-        "<h2>The text</h2>\n"
+        '<p class="reading">seated counts every member added, the creator included, and not '
+        "removed: those on a line and those that never joined.</p>\n"
     )
-    run = out / simulate.run_page(cell)
+    run, based = out / simulate.run_page(cell), _base_run(out, matrix, cell)
+    sides = [("head", head, run)] + ([] if based is None else [("base", base, based[0])])
+    rounds = ""
+    for side, sha, at in sides:
+        table = _rounds(_run_json(at / "run.json"))
+        if table:
+            rounds += f'<p class="side">the {side} {_code(sha)}</p>\n{table}'
+    if rounds:
+        body += (
+            f"<h2>The rounds</h2>\n{rounds}"
+            '<p class="caption">Each round\'s adders, the members they added, the adders refused '
+            "the whole round, and the virtual seconds the round took. The run does not say which "
+            "adder added which member.</p>\n"
+        )
+    apart = " Run each block from a directory of its own, since each clones chat-sim."
+    body += (
+        "<h2>Run it yourself</h2>\n"
+        f'<p class="reading">It needs {_NEEDS}.{apart if based else ""}</p>\n'
+        + "".join(
+            f'<p class="side">the {side} {_code(sha)}</p>\n'
+            f"<pre>{_e(chr(10).join(simulate.again(cell, sha, meta['chat_sim'])))}</pre>\n"
+            for side, sha, _ in sides
+        )
+        + "<h2>The text</h2>\n"
+    )
     body += f'<p class="side">the head {_code(head)}</p>\n' + (
         _files(run, "") or '<p class="muted">The run left no text.</p>\n'
     )
-    based = _base_run(out, matrix, cell)
     if base is not None:
         body += f'<p class="side">the base {_code(base)}</p>\n'
     if based is not None:
@@ -1320,10 +1345,9 @@ def draw_long(directory: Path, long: dict) -> None:
     `directory` keeps: what ran, a row a scenario with what its runs came to and what compare said
     of them, the build's log once where chat-sim did not build, then a section a scenario with
     compare's verdict and, while its text is kept, its output, its runs as a table, and each run
-    with the command that runs it again and, while its text is kept, the text and its lines. Every
-    file it links is one `directory` holds."""
+    with the commands that run it again and, while its text is kept, the text and its lines and
+    rounds. Every file it links is one `directory` holds."""
     logos_chat = long["logos_chat"]
-    facts = {"revision": logos_chat, "base": "", "chat_sim": long["chat_sim"]}
     kept = any(path.is_file() for path in _long_texts(directory, long))
     body = (
         f'<p class="muted">{_link("../../../../", "chat-sim")} / '
@@ -1357,7 +1381,9 @@ def draw_long(directory: Path, long: dict) -> None:
         f"<tbody>\n{rows}</tbody>\n</table></div>\n"
         '<p class="caption">Came to: each run\'s verdict. Against what is held: the count '
         "<code>tools/sim compare</code> ends with, each run of the sweep held to the outcome "
-        "expected of it; nothing held where chat-sim holds no outcome of the scenario.</p>\n"
+        "expected of it; nothing held where chat-sim holds no outcome of the scenario. "
+        '"As expected" means the runs came out as <code>tools/sim/expected</code> holds them, not '
+        "that they came out well.</p>\n"
         "</section>\n"
     )
     unbuilt = next(
@@ -1395,7 +1421,11 @@ def draw_long(directory: Path, long: dict) -> None:
             )
             cell = {"head": got, "unbuilt": {"head": run["unbuilt"]}}
             body += _side(cell, "head", directory / at, f"{at}/", inline=not run["unbuilt"])
-            body += _again({"scenario": name, "run": run["run"], "seed": run["seed"]}, facts)
+            body += _again(
+                {"scenario": name, "run": run["run"], "seed": run["seed"]},
+                logos_chat,
+                long["chat_sim"],
+            )
             body += "</details>\n"
         body += "</section>\n"
     body += (
@@ -3361,9 +3391,9 @@ def _width(text: str, size: float = 11) -> float:
 
 def _side(cell: dict, side: str, run: Path, href: str, inline: bool = True) -> str:
     """A side's run of a cell, its text kept in `run` and linked at `href`: what it came to, its
-    lines and who was off the trunk as its run.json has them, and its text, linked and, with
-    `inline`, shown; or why it has no outcome, with what text it left or the build's log of a job
-    that could not build chat-sim."""
+    lines, who was off the trunk and its rounds as its run.json has them, and its text, linked
+    and, with `inline`, shown; or why it has no outcome, with what text it left or the build's
+    log of a job that could not build chat-sim."""
     drawn = "<div>\n"
     outcome = cell[side]
     if outcome is None and not cell["unbuilt"][side]:
@@ -3384,8 +3414,9 @@ def _side(cell: dict, side: str, run: Path, href: str, inline: bool = True) -> s
 
 
 def _grown(report: Optional[dict]) -> str:
-    """The lines of a run's grow as a table, and who fell behind, who was behind at the end and
-    who never joined, as `report`, its run.json, has them; nothing where it has no lines."""
+    """The lines of a run's grow as a table, who fell behind, who was behind at the end and who
+    never joined, and its rounds, as `report`, its run.json, has them; nothing where it has no
+    lines."""
     grow = report.get("grow") if report is not None else None
     lines = grow.get("lines") if isinstance(grow, dict) else None
     if not isinstance(lines, list) or not all(isinstance(line, dict) for line in lines):
@@ -3417,7 +3448,37 @@ def _grown(report: Optional[dict]) -> str:
     ):
         if names:
             drawn += f'<p class="who">{said}: {_e(", ".join(names))}</p>\n'
-    return drawn
+    return drawn + _rounds(report)
+
+
+def _rounds(report: Optional[dict]) -> str:
+    """The rounds of a run's grow as a table, from 1: the names of its adders, of the members
+    they added and of the adders refused the whole round, and the virtual seconds it took, as
+    `report`, its run.json, has them; nothing where it has no rounds."""
+    grow = report.get("grow") if report is not None else None
+    rounds = _listed(grow.get("rounds")) if isinstance(grow, dict) else []
+    if not rounds or not all(isinstance(held, dict) for held in rounds):
+        return ""
+    rows = "".join(
+        f'<tr><td class="n">{number}</td>'
+        + "".join(
+            f"<td>{_e(', '.join(_names(held.get(field))) or '-')}</td>"
+            for field in ("adders", "joiners", "refused")
+        )
+        + f'<td class="n">{_settled(held.get("settled_s"))}</td></tr>\n'
+        for number, held in enumerate(rounds, 1)
+    )
+    return (
+        '<div class="wide"><table class="rounds">\n'
+        '<thead><tr><th class="n">round</th><th>adders</th><th>joiners</th><th>refused</th>'
+        f'<th class="n">settled s</th></tr></thead>\n<tbody>\n{rows}</tbody>\n</table></div>\n'
+    )
+
+
+def _settled(value: object) -> str:
+    """A round's virtual seconds as run.txt says them, to the millisecond, or `-` for none."""
+    timed = isinstance(value, (int, float)) and not isinstance(value, bool)
+    return f"{value:.3f}" if timed else "-"
 
 
 def _rates_table(directory: Path, point: dict) -> str:
@@ -3569,11 +3630,12 @@ def _first_seed(path: Path) -> int:
     return seed
 
 
-def _again(cell: dict, facts: dict) -> str:
-    """The command that runs a cell again, under a line that says so."""
+def _again(cell: dict, revision: str, chat_sim: str) -> str:
+    """The commands that run a cell again at `revision` of logos-chat, from chat-sim at
+    `chat_sim`, under a line that says so and what it takes."""
     return (
-        '<p class="side">Run it again:</p>\n'
-        f"<pre>{_e(chr(10).join(simulate.again(cell, facts)))}</pre>\n"
+        f'<p class="side">Run it again ({_NEEDS}):</p>\n'
+        f"<pre>{_e(chr(10).join(simulate.again(cell, revision, chat_sim)))}</pre>\n"
     )
 
 

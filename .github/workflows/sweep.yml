@@ -38,7 +38,8 @@ jobs:
       - uses: logos-co/setup-nix-cache-action@v1
       # Both pins, which ci.yml's Lint holds to one revision: the flake's input,
       # whose lock gives the toolchain, and Cargo.toml's git dependencies, which
-      # cargo locks again on the build.
+      # cargo locks again on the build. A run's page prints these lines for
+      # running it again.
       - name: Pin logos-chat at the revision
         run: |
           pinned=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
