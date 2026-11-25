@@ -6,9 +6,6 @@
   "steps_done": 1,
   "group": "v2",
   "timers": "default",
-  "preset": null,
-  "cluster_id": null,
-  "max_message_kib": 512,
   "budget": 180.0,
   "seed": 1,
   "network": {
@@ -218,17 +215,16 @@
       "peer200": 507
     }
   },
-  "wire": null,
   "load": {
     "start": [
-      2.791015625,
-      0.86328125,
-      0.302734375
+      2.1142578125,
+      0.72998046875,
+      0.2666015625
     ],
     "end": [
-      2.7275390625,
-      0.88232421875,
-      0.31201171875
+      2.02490234375,
+      0.73486328125,
+      0.27099609375
     ]
   },
   "nodes": [
@@ -6445,8 +6441,8 @@
   "held_to": null,
   "check": null,
   "unchecked": "a `grow` step expects no outcome",
-  "verdict": "split at epoch 14",
-  "at_tip": 36,
+  "verdict": null,
+  "at_tip": null,
   "seated": 37,
   "grow": {
     "behind": [],
@@ -6800,9 +6796,7 @@
     ],
     "trunk_epoch": 19
   },
-  "page": null,
-  "unshared": [],
   "rig": "one process",
   "virtual_s": 1808.7,
-  "wall_s": 5.495540255
+  "wall_s": 5.5596448160000005
 }

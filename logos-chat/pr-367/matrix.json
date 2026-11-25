@@ -7,11 +7,6 @@
   "runs": 18,
   "unbuilt": 0
  },
- "base_point": {
-  "logos_chat": "8b9cd8efa7f413be073c222b76746e7add669e17",
-  "measurement": "278bcec5814142be48f0f45307d3a89da16d8c8b",
-  "run_url": "https://github.com/logos-messaging/chat-sim/actions/runs/45477038232"
- },
  "cells": [
   {
    "scenario": "grow-waku-loss-0.5",
@@ -25,11 +20,12 @@
     "network_seed": 1,
     "conversation": "ee89b1a642",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 5",
-    "at_tip": 19,
+    "verdict": null,
+    "at_tip": null,
     "seated": 20,
     "virtual_s": 1041.209,
     "trunk_epoch": 9,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 5,
@@ -42,11 +38,12 @@
     "network_seed": 1,
     "conversation": "ee89b1a642",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 5",
-    "at_tip": 19,
+    "verdict": null,
+    "at_tip": null,
     "seated": 20,
     "virtual_s": 1041.209,
     "trunk_epoch": 9,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 5,
@@ -67,8 +64,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5",
@@ -82,11 +78,12 @@
     "network_seed": 2,
     "conversation": "af92293c83",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 14",
-    "at_tip": 36,
+    "verdict": null,
+    "at_tip": null,
     "seated": 37,
     "virtual_s": 1808.7,
     "trunk_epoch": 19,
+    "first_fork": 14,
     "ended": "split",
     "lines_off_trunk": 6,
     "members_off_trunk": 7,
@@ -99,11 +96,12 @@
     "network_seed": 2,
     "conversation": "af92293c83",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 14",
-    "at_tip": 36,
+    "verdict": null,
+    "at_tip": null,
     "seated": 37,
     "virtual_s": 1808.7,
     "trunk_epoch": 19,
+    "first_fork": 14,
     "ended": "split",
     "lines_off_trunk": 6,
     "members_off_trunk": 7,
@@ -124,8 +122,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5",
@@ -139,11 +136,12 @@
     "network_seed": 3,
     "conversation": "8159753266",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 14",
-    "at_tip": 48,
+    "verdict": null,
+    "at_tip": null,
     "seated": 50,
     "virtual_s": 2038.0,
     "trunk_epoch": 23,
+    "first_fork": 14,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 7,
@@ -156,11 +154,12 @@
     "network_seed": 3,
     "conversation": "8159753266",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 14",
-    "at_tip": 48,
+    "verdict": null,
+    "at_tip": null,
     "seated": 50,
     "virtual_s": 2038.0,
     "trunk_epoch": 23,
+    "first_fork": 14,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 7,
@@ -181,8 +180,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1",
@@ -196,11 +194,12 @@
     "network_seed": 1,
     "conversation": "ee89b1a642",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 5",
-    "at_tip": 24,
+    "verdict": null,
+    "at_tip": null,
     "seated": 26,
     "virtual_s": 1321.55,
     "trunk_epoch": 11,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 8,
@@ -213,11 +212,12 @@
     "network_seed": 1,
     "conversation": "ee89b1a642",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 5",
-    "at_tip": 24,
+    "verdict": null,
+    "at_tip": null,
     "seated": 26,
     "virtual_s": 1321.55,
     "trunk_epoch": 11,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 8,
@@ -238,8 +238,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1",
@@ -253,11 +252,12 @@
     "network_seed": 2,
     "conversation": "af92293c83",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 11",
-    "at_tip": 23,
+    "verdict": null,
+    "at_tip": null,
     "seated": 25,
     "virtual_s": 1276.55,
     "trunk_epoch": 14,
+    "first_fork": 11,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 6,
@@ -270,11 +270,12 @@
     "network_seed": 2,
     "conversation": "af92293c83",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 11",
-    "at_tip": 23,
+    "verdict": null,
+    "at_tip": null,
     "seated": 25,
     "virtual_s": 1276.55,
     "trunk_epoch": 14,
+    "first_fork": 11,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 6,
@@ -295,8 +296,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1",
@@ -310,11 +310,12 @@
     "network_seed": 3,
     "conversation": "8159753266",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 4",
-    "at_tip": 27,
+    "verdict": null,
+    "at_tip": null,
     "seated": 27,
     "virtual_s": 1439.35,
     "trunk_epoch": 13,
+    "first_fork": 4,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 9,
@@ -327,11 +328,12 @@
     "network_seed": 3,
     "conversation": "8159753266",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 4",
-    "at_tip": 27,
+    "verdict": null,
+    "at_tip": null,
     "seated": 27,
     "virtual_s": 1439.35,
     "trunk_epoch": 13,
+    "first_fork": 4,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 9,
@@ -352,8 +354,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5",
@@ -367,11 +368,12 @@
     "network_seed": 1,
     "conversation": "ee89b1a642",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 3",
-    "at_tip": 34,
+    "verdict": null,
+    "at_tip": null,
     "seated": 43,
     "virtual_s": 2712.459,
     "trunk_epoch": 11,
+    "first_fork": 3,
     "ended": "split",
     "lines_off_trunk": 10,
     "members_off_trunk": 39,
@@ -384,11 +386,12 @@
     "network_seed": 1,
     "conversation": "ee89b1a642",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 3",
-    "at_tip": 34,
+    "verdict": null,
+    "at_tip": null,
     "seated": 43,
     "virtual_s": 2712.459,
     "trunk_epoch": 11,
+    "first_fork": 3,
     "ended": "split",
     "lines_off_trunk": 10,
     "members_off_trunk": 39,
@@ -409,8 +412,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5",
@@ -424,11 +426,12 @@
     "network_seed": 2,
     "conversation": "af92293c83",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 5",
-    "at_tip": 18,
+    "verdict": null,
+    "at_tip": null,
     "seated": 22,
     "virtual_s": 1602.95,
     "trunk_epoch": 11,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 7,
     "members_off_trunk": 15,
@@ -441,11 +444,12 @@
     "network_seed": 2,
     "conversation": "af92293c83",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 5",
-    "at_tip": 18,
+    "verdict": null,
+    "at_tip": null,
     "seated": 22,
     "virtual_s": 1602.95,
     "trunk_epoch": 11,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 7,
     "members_off_trunk": 15,
@@ -466,8 +470,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5",
@@ -481,11 +484,12 @@
     "network_seed": 3,
     "conversation": "8159753266",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 5",
-    "at_tip": 13,
+    "verdict": null,
+    "at_tip": null,
     "seated": 20,
     "virtual_s": 1626.559,
     "trunk_epoch": 11,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 12,
@@ -498,11 +502,12 @@
     "network_seed": 3,
     "conversation": "8159753266",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 5",
-    "at_tip": 13,
+    "verdict": null,
+    "at_tip": null,
     "seated": 20,
     "virtual_s": 1626.559,
     "trunk_epoch": 11,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 12,
@@ -523,8 +528,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5-groupv3",
@@ -538,11 +542,12 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 24",
-    "at_tip": 53,
+    "verdict": null,
+    "at_tip": null,
     "seated": 103,
     "virtual_s": 8064.6,
     "trunk_epoch": 50,
+    "first_fork": 24,
     "ended": "split",
     "lines_off_trunk": 1,
     "members_off_trunk": 54,
@@ -555,11 +560,12 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 24",
-    "at_tip": 53,
+    "verdict": null,
+    "at_tip": null,
     "seated": 103,
     "virtual_s": 8064.6,
     "trunk_epoch": 50,
+    "first_fork": 24,
     "ended": "split",
     "lines_off_trunk": 1,
     "members_off_trunk": 54,
@@ -580,8 +586,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5-groupv3",
@@ -595,11 +600,12 @@
     "network_seed": 2,
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 10",
-    "at_tip": 68,
+    "verdict": null,
+    "at_tip": null,
     "seated": 107,
     "virtual_s": 8063.35,
     "trunk_epoch": 50,
+    "first_fork": 10,
     "ended": "split",
     "lines_off_trunk": 2,
     "members_off_trunk": 59,
@@ -612,11 +618,12 @@
     "network_seed": 2,
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 10",
-    "at_tip": 68,
+    "verdict": null,
+    "at_tip": null,
     "seated": 107,
     "virtual_s": 8063.35,
     "trunk_epoch": 50,
+    "first_fork": 10,
     "ended": "split",
     "lines_off_trunk": 2,
     "members_off_trunk": 59,
@@ -637,8 +644,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5-groupv3",
@@ -652,11 +658,12 @@
     "network_seed": 3,
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 27",
-    "at_tip": 53,
+    "verdict": null,
+    "at_tip": null,
     "seated": 108,
     "virtual_s": 8238.9,
     "trunk_epoch": 50,
+    "first_fork": 27,
     "ended": "split",
     "lines_off_trunk": 2,
     "members_off_trunk": 59,
@@ -669,11 +676,12 @@
     "network_seed": 3,
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 27",
-    "at_tip": 53,
+    "verdict": null,
+    "at_tip": null,
     "seated": 108,
     "virtual_s": 8238.9,
     "trunk_epoch": 50,
+    "first_fork": 27,
     "ended": "split",
     "lines_off_trunk": 2,
     "members_off_trunk": 59,
@@ -694,8 +702,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1-groupv3",
@@ -709,11 +716,12 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 24",
-    "at_tip": 41,
+    "verdict": null,
+    "at_tip": null,
     "seated": 83,
     "virtual_s": 6375.65,
     "trunk_epoch": 39,
+    "first_fork": 24,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 47,
@@ -726,11 +734,12 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 24",
-    "at_tip": 41,
+    "verdict": null,
+    "at_tip": null,
     "seated": 83,
     "virtual_s": 6375.65,
     "trunk_epoch": 39,
+    "first_fork": 24,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 47,
@@ -751,8 +760,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1-groupv3",
@@ -766,11 +774,12 @@
     "network_seed": 2,
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 12",
-    "at_tip": 53,
+    "verdict": null,
+    "at_tip": null,
     "seated": 71,
     "virtual_s": 5126.6,
     "trunk_epoch": 33,
+    "first_fork": 12,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 42,
@@ -783,11 +792,12 @@
     "network_seed": 2,
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 12",
-    "at_tip": 53,
+    "verdict": null,
+    "at_tip": null,
     "seated": 71,
     "virtual_s": 5126.6,
     "trunk_epoch": 33,
+    "first_fork": 12,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 42,
@@ -808,8 +818,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1-groupv3",
@@ -823,11 +832,12 @@
     "network_seed": 3,
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 14",
-    "at_tip": 54,
+    "verdict": null,
+    "at_tip": null,
     "seated": 94,
     "virtual_s": 6857.3,
     "trunk_epoch": 41,
+    "first_fork": 14,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 57,
@@ -840,11 +850,12 @@
     "network_seed": 3,
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 14",
-    "at_tip": 54,
+    "verdict": null,
+    "at_tip": null,
     "seated": 94,
     "virtual_s": 6857.3,
     "trunk_epoch": 41,
+    "first_fork": 14,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 57,
@@ -865,8 +876,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5-groupv3",
@@ -880,11 +890,12 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 12",
-    "at_tip": 21,
+    "verdict": null,
+    "at_tip": null,
     "seated": 40,
     "virtual_s": 3068.6,
     "trunk_epoch": 19,
+    "first_fork": 12,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 26,
@@ -897,11 +908,12 @@
     "network_seed": 1,
     "conversation": "15a00cfb038295fd6463c4f58a947f42",
     "members_digest": "e488a3e2806f41ee",
-    "verdict": "split at epoch 12",
-    "at_tip": 21,
+    "verdict": null,
+    "at_tip": null,
     "seated": 40,
     "virtual_s": 3068.6,
     "trunk_epoch": 19,
+    "first_fork": 12,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 26,
@@ -922,8 +934,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5-groupv3",
@@ -937,11 +948,12 @@
     "network_seed": 2,
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 14",
-    "at_tip": 27,
+    "verdict": null,
+    "at_tip": null,
     "seated": 49,
     "virtual_s": 3851.409,
     "trunk_epoch": 23,
+    "first_fork": 14,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 30,
@@ -954,11 +966,12 @@
     "network_seed": 2,
     "conversation": "ecc153091067054925f8d2c3ffd8e793",
     "members_digest": "d2eb242052b1fa76",
-    "verdict": "split at epoch 14",
-    "at_tip": 27,
+    "verdict": null,
+    "at_tip": null,
     "seated": 49,
     "virtual_s": 3851.409,
     "trunk_epoch": 23,
+    "first_fork": 14,
     "ended": "split",
     "lines_off_trunk": 4,
     "members_off_trunk": 30,
@@ -979,8 +992,7 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5-groupv3",
@@ -994,11 +1006,12 @@
     "network_seed": 3,
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 5",
-    "at_tip": 42,
+    "verdict": null,
+    "at_tip": null,
     "seated": 58,
     "virtual_s": 4033.6,
     "trunk_epoch": 20,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 5,
     "members_off_trunk": 42,
@@ -1011,11 +1024,12 @@
     "network_seed": 3,
     "conversation": "dbab77347029e73de5133d3fcb015ec2",
     "members_digest": "9f50fb7f0f75164f",
-    "verdict": "split at epoch 5",
-    "at_tip": 42,
+    "verdict": null,
+    "at_tip": null,
     "seated": 58,
     "virtual_s": 4033.6,
     "trunk_epoch": 20,
+    "first_fork": 5,
     "ended": "split",
     "lines_off_trunk": 5,
     "members_off_trunk": 42,
@@ -1036,19 +1050,14 @@
     "head": "split",
     "base": "split"
    },
-   "moved": null,
-   "below": false
+   "d": 0
   }
  ],
  "counts": {
   "cells": 18,
   "compared": 18,
   "same": 18,
-  "changed": 0,
-  "better": 0,
-  "worse": 0,
-  "re-rolled": 0,
-  "below": 0,
+  "moved": 0,
   "no-outcome": 0
  },
  "verdict": "same",
@@ -1059,14 +1068,54 @@
     "cells": 9,
     "compared": 9,
     "same": 9,
-    "changed": 0,
-    "better": 0,
-    "worse": 0,
-    "re-rolled": 0,
-    "below": 0,
+    "moved": 0,
     "no-outcome": 0
    },
-   "verdict": "same"
+   "verdict": "same",
+   "results": [
+    {
+     "scenario": "grow-waku-loss-0.5",
+     "rate": "0.5%",
+     "seeds": [
+      0,
+      1,
+      2
+     ],
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
+    },
+    {
+     "scenario": "grow-waku-loss-1",
+     "rate": "1%",
+     "seeds": [
+      0,
+      1,
+      2
+     ],
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
+    },
+    {
+     "scenario": "grow-waku-loss-5",
+     "rate": "5%",
+     "seeds": [
+      0,
+      1,
+      2
+     ],
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
+    }
+   ]
   },
   {
    "group": "v3",
@@ -1074,948 +1123,55 @@
     "cells": 9,
     "compared": 9,
     "same": 9,
-    "changed": 0,
-    "better": 0,
-    "worse": 0,
-    "re-rolled": 0,
-    "below": 0,
+    "moved": 0,
     "no-outcome": 0
    },
-   "verdict": "same"
+   "verdict": "same",
+   "results": [
+    {
+     "scenario": "grow-waku-loss-0.5-groupv3",
+     "rate": "0.5%",
+     "seeds": [
+      0,
+      1,
+      2
+     ],
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
+    },
+    {
+     "scenario": "grow-waku-loss-1-groupv3",
+     "rate": "1%",
+     "seeds": [
+      0,
+      1,
+      2
+     ],
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
+    },
+    {
+     "scenario": "grow-waku-loss-5-groupv3",
+     "rate": "5%",
+     "seeds": [
+      0,
+      1,
+      2
+     ],
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
+    }
+   ]
   }
  ],
- "summary": null,
- "spread": {
-  "logos_chat": "8b9cd8efa7f413be073c222b76746e7add669e17",
-  "measurement": "278bcec5814142be48f0f45307d3a89da16d8c8b",
-  "run_url": "https://github.com/logos-messaging/chat-sim/actions/runs/45477038232",
-  "summary": [
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "group": "v2",
-    "loss": 0.005,
-    "rate": "0.5%",
-    "runs": 20,
-    "no-outcome": 0,
-    "whole": 0,
-    "behind": 0,
-    "split": 20,
-    "stalled": 0,
-    "epochs": {
-     "lowest": 3,
-     "median": 8.5,
-     "highest": 19
-    },
-    "split_at": {
-     "lowest": 3,
-     "median": 8.5,
-     "highest": 19
-    },
-    "lines_off_trunk": {
-     "median": 4.5
-    },
-    "members_off_trunk": {
-     "median": 8
-    },
-    "never_joined": {
-     "median": 1
-    },
-    "seated": {
-     "median": 37.5
-    }
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "group": "v2",
-    "loss": 0.01,
-    "rate": "1%",
-    "runs": 20,
-    "no-outcome": 0,
-    "whole": 0,
-    "behind": 0,
-    "split": 20,
-    "stalled": 0,
-    "epochs": {
-     "lowest": 3,
-     "median": 7,
-     "highest": 16
-    },
-    "split_at": {
-     "lowest": 3,
-     "median": 7,
-     "highest": 16
-    },
-    "lines_off_trunk": {
-     "median": 4
-    },
-    "members_off_trunk": {
-     "median": 8.5
-    },
-    "never_joined": {
-     "median": 1
-    },
-    "seated": {
-     "median": 29
-    }
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "group": "v2",
-    "loss": 0.05,
-    "rate": "5%",
-    "runs": 20,
-    "no-outcome": 0,
-    "whole": 0,
-    "behind": 0,
-    "split": 20,
-    "stalled": 0,
-    "epochs": {
-     "lowest": 3,
-     "median": 4,
-     "highest": 6
-    },
-    "split_at": {
-     "lowest": 3,
-     "median": 4,
-     "highest": 6
-    },
-    "lines_off_trunk": {
-     "median": 5
-    },
-    "members_off_trunk": {
-     "median": 16.5
-    },
-    "never_joined": {
-     "median": 3
-    },
-    "seated": {
-     "median": 23.5
-    }
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "group": "v3",
-    "loss": 0.005,
-    "rate": "0.5%",
-    "runs": 20,
-    "no-outcome": 0,
-    "whole": 0,
-    "behind": 0,
-    "split": 20,
-    "stalled": 0,
-    "epochs": {
-     "lowest": 6,
-     "median": 25.5,
-     "highest": 42
-    },
-    "split_at": {
-     "lowest": 6,
-     "median": 25.5,
-     "highest": 42
-    },
-    "lines_off_trunk": {
-     "median": 3
-    },
-    "members_off_trunk": {
-     "median": 56.5
-    },
-    "never_joined": {
-     "median": 42.5
-    },
-    "seated": {
-     "median": 103.5
-    }
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "group": "v3",
-    "loss": 0.01,
-    "rate": "1%",
-    "runs": 20,
-    "no-outcome": 0,
-    "whole": 0,
-    "behind": 0,
-    "split": 20,
-    "stalled": 0,
-    "epochs": {
-     "lowest": 6,
-     "median": 12.5,
-     "highest": 42
-    },
-    "split_at": {
-     "lowest": 6,
-     "median": 12.5,
-     "highest": 42
-    },
-    "lines_off_trunk": {
-     "median": 4.5
-    },
-    "members_off_trunk": {
-     "median": 50.5
-    },
-    "never_joined": {
-     "median": 32
-    },
-    "seated": {
-     "median": 91
-    }
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "group": "v3",
-    "loss": 0.05,
-    "rate": "5%",
-    "runs": 20,
-    "no-outcome": 0,
-    "whole": 0,
-    "behind": 0,
-    "split": 20,
-    "stalled": 0,
-    "epochs": {
-     "lowest": 2,
-     "median": 8.5,
-     "highest": 21
-    },
-    "split_at": {
-     "lowest": 2,
-     "median": 8.5,
-     "highest": 21
-    },
-    "lines_off_trunk": {
-     "median": 4
-    },
-    "members_off_trunk": {
-     "median": 28
-    },
-    "never_joined": {
-     "median": 17.5
-    },
-    "seated": {
-     "median": 45
-    }
-   }
-  ],
-  "seeds": [
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 0,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 1,
-    "epochs": 14,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 2,
-    "epochs": 14,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 3,
-    "epochs": 9,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 4,
-    "epochs": 8,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 5,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 6,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 7,
-    "epochs": 7,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 8,
-    "epochs": 13,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 9,
-    "epochs": 16,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 10,
-    "epochs": 3,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 11,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 12,
-    "epochs": 8,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 13,
-    "epochs": 11,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 14,
-    "epochs": 16,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 15,
-    "epochs": 14,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 16,
-    "epochs": 19,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 17,
-    "epochs": 12,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 18,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5",
-    "seed": 19,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 0,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 1,
-    "epochs": 11,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 2,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 3,
-    "epochs": 9,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 4,
-    "epochs": 8,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 5,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 6,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 7,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 8,
-    "epochs": 16,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 9,
-    "epochs": 11,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 10,
-    "epochs": 3,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 11,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 12,
-    "epochs": 8,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 13,
-    "epochs": 14,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 14,
-    "epochs": 15,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 15,
-    "epochs": 8,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 16,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 17,
-    "epochs": 12,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 18,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1",
-    "seed": 19,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 0,
-    "epochs": 3,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 1,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 2,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 3,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 4,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 5,
-    "epochs": 3,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 6,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 7,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 8,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 9,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 10,
-    "epochs": 3,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 11,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 12,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 13,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 14,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 15,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 16,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 17,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 18,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5",
-    "seed": 19,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 0,
-    "epochs": 24,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 1,
-    "epochs": 10,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 2,
-    "epochs": 27,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 3,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 4,
-    "epochs": 20,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 5,
-    "epochs": 17,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 6,
-    "epochs": 19,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 7,
-    "epochs": 41,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 8,
-    "epochs": 34,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 9,
-    "epochs": 38,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 10,
-    "epochs": 35,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 11,
-    "epochs": 26,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 12,
-    "epochs": 25,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 13,
-    "epochs": 39,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 14,
-    "epochs": 9,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 15,
-    "epochs": 28,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 16,
-    "epochs": 42,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 17,
-    "epochs": 16,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 18,
-    "epochs": 23,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-0.5-groupv3",
-    "seed": 19,
-    "epochs": 27,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 0,
-    "epochs": 24,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 1,
-    "epochs": 12,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 2,
-    "epochs": 14,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 3,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 4,
-    "epochs": 9,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 5,
-    "epochs": 8,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 6,
-    "epochs": 14,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 7,
-    "epochs": 8,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 8,
-    "epochs": 25,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 9,
-    "epochs": 17,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 10,
-    "epochs": 18,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 11,
-    "epochs": 9,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 12,
-    "epochs": 18,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 13,
-    "epochs": 16,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 14,
-    "epochs": 9,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 15,
-    "epochs": 12,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 16,
-    "epochs": 42,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 17,
-    "epochs": 9,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 18,
-    "epochs": 13,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-1-groupv3",
-    "seed": 19,
-    "epochs": 11,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 0,
-    "epochs": 12,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 1,
-    "epochs": 14,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 2,
-    "epochs": 5,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 3,
-    "epochs": 2,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 4,
-    "epochs": 8,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 5,
-    "epochs": 9,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 6,
-    "epochs": 7,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 7,
-    "epochs": 4,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 8,
-    "epochs": 21,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 9,
-    "epochs": 7,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 10,
-    "epochs": 7,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 11,
-    "epochs": 6,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 12,
-    "epochs": 7,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 13,
-    "epochs": 12,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 14,
-    "epochs": 9,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 15,
-    "epochs": 10,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 16,
-    "epochs": 13,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 17,
-    "epochs": 18,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 18,
-    "epochs": 17,
-    "ended": "split"
-   },
-   {
-    "scenario": "grow-waku-loss-5-groupv3",
-    "seed": 19,
-    "epochs": 6,
-    "ended": "split"
-   }
-  ]
- }
+ "summary": null
 }
