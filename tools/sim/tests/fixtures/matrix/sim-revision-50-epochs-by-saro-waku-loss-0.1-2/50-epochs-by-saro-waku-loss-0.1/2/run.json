@@ -161,8 +161,8 @@
       "installation": "a97a33c2"
     }
   ],
-  "verdict": "split at epoch 46",
-  "at_tip": 50,
+  "verdict": null,
+  "at_tip": null,
   "seated": 51,
   "virtual_s": 3790.744,
   "stopped": null,
@@ -173,6 +173,7 @@
     "lines": [
       {
         "kind": "trunk",
+        "forked_at": null,
         "members": [
           "saro",
           "raya",
@@ -228,6 +229,7 @@
       },
       {
         "kind": "main",
+        "forked_at": 46,
         "members": [
           "peer45"
         ]

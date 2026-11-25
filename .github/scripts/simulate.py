@@ -47,7 +47,7 @@ LOGOS_CHAT = "https://github.com/logos-messaging/logos-chat"
 CHAT_SIM = "https://github.com/logos-messaging/chat-sim"
 # What a run measures: a commit under these paths can move how a run comes out, where one to the
 # guide or to the pages cannot. The build reads the files at the root besides crates/, and
-# tools/sim judges each run's logs with tools/forks.
+# tools/sim judges a run without a `grow` step by its logs with tools/forks.
 MEASURED = (
     "crates/",
     "Cargo.toml",
@@ -1016,11 +1016,25 @@ def _rate(rate: Optional[str]) -> str:
 
 
 def came_to(now: Optional[List[dict]]) -> str:
-    """What the runs of a sweep came to, `now` their outcomes: each run's verdict, or `no outcome`
+    """What the runs of a sweep came to, `now` their outcomes: how each came out, or `no outcome`
     without them."""
     if now is None:
         return "no outcome"
-    return ", ".join(one.get("verdict") or "no verdict" for one in now)
+    return ", ".join(came_out(one) for one in now)
+
+
+def came_out(outcome: dict) -> str:
+    """How a run came out, in the words of a verdict: its verdict, or how its lineage says a run
+    of a `grow` step with none ended, split at its first fork, stalled at the trunk's epoch,
+    whole, or whole with members behind."""
+    verdict, ended = outcome.get("verdict"), outcome.get("ended")
+    if verdict is not None or ended is None:
+        return verdict or "no verdict"
+    if ended == "split":
+        return f"split at epoch {outcome['first_fork']}"
+    if ended == "stalled":
+        return f"stalled at epoch {outcome['trunk_epoch']}"
+    return "whole" if ended == "whole" else "whole, members behind"
 
 
 def compare_count(now: Optional[List[dict]], compared: Optional[str], missing: str) -> str:

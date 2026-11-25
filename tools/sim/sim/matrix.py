@@ -5,8 +5,8 @@ A side is what the jobs at one revision uploaded, read at any depth: each run's
 `<scenario>/<run>/run.json`, and `<scenario>/<run>/unbuilt` for each run of a job that could not
 build chat-sim. A cell is a scenario and a seed either side has a run of, or that is asked of
 each side. A cell has no outcome at a side whose job could not build it, that has no run of it,
-or whose run has no verdict, as when its runner left no result. Its change is what `compare` says
-of the base's outcome and the head's, where both have one.
+or whose run has no lineage of its `grow` step, as when its runner left no result. Its change is
+what `compare` says of the base's outcome and the head's, where both have one.
 
 The verdict is the first of these that holds, so that what went wrong at the head is said before
 what is missing at the base, and that before what moved:
@@ -206,8 +206,8 @@ def _cell(
 
 
 def _outcome(run: Optional[Run]) -> Optional[dict]:
-    """A run's outcome, or `None` where there is no run, it was not built or it has no verdict."""
-    if run is None or run.outcome is None or run.outcome["verdict"] is None:
+    """A run's outcome, or `None` where there is no run, it was not built or it has no lineage."""
+    if run is None or run.outcome is None or run.outcome["ended"] is None:
         return None
     return run.outcome
 

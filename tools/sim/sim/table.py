@@ -237,10 +237,13 @@ def _outcome(report: dict) -> List[str]:
     if check is None and report["unchecked"] is None:
         lines.append("not checked: " + _unchecked(report))
         return lines
-    lines.append(
-        f"{report['verdict'] or 'no report'}: "
-        f"{report['at_tip'] or 0} of {report['seated']} members at the tip"
-    )
+    if report["grow"] is not None:
+        lines.append(_grew(report["grow"]))
+    else:
+        lines.append(
+            f"{report['verdict'] or 'no report'}: "
+            f"{report['at_tip'] or 0} of {report['seated']} members at the tip"
+        )
     if report["withheld"] is not None:
         lines.append(_withheld(report["withheld"]))
     if check is None:

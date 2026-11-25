@@ -161,8 +161,8 @@
       "installation": "a97a33c2"
     }
   ],
-  "verdict": "split at epoch 3",
-  "at_tip": 30,
+  "verdict": null,
+  "at_tip": null,
   "seated": 51,
   "virtual_s": 7070.894,
   "stopped": null,
@@ -173,6 +173,7 @@
     "lines": [
       {
         "kind": "trunk",
+        "forked_at": null,
         "members": [
           "saro",
           "pax",
@@ -206,6 +207,7 @@
       },
       {
         "kind": "main",
+        "forked_at": 3,
         "members": [
           "raya",
           "mira"
@@ -213,54 +215,63 @@
       },
       {
         "kind": "main",
+        "forked_at": 6,
         "members": [
           "tomo"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 7,
         "members": [
           "kes"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 14,
         "members": [
           "peer10"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 19,
         "members": [
           "peer15"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 19,
         "members": [
           "peer17"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 20,
         "members": [
           "peer19"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 30,
         "members": [
           "peer21"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 30,
         "members": [
           "peer28"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 32,
         "members": [
           "peer24",
           "peer30",
@@ -269,12 +280,14 @@
       },
       {
         "kind": "main",
+        "forked_at": 37,
         "members": [
           "peer33"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 39,
         "members": [
           "peer27",
           "peer39"
@@ -282,6 +295,7 @@
       },
       {
         "kind": "main",
+        "forked_at": 42,
         "members": [
           "peer32",
           "peer41"
@@ -289,18 +303,21 @@
       },
       {
         "kind": "main",
+        "forked_at": 44,
         "members": [
           "peer43"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 45,
         "members": [
           "peer40"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 47,
         "members": [
           "peer35"
         ]

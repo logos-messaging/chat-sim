@@ -216,9 +216,6 @@ jobs:
             ${{ runner.temp }}/sim/*/compare.status
             ${{ runner.temp }}/sim/*/*/run.txt
             ${{ runner.temp }}/sim/*/*/run.json
-            ${{ runner.temp }}/sim/*/*/report.txt
-            ${{ runner.temp }}/sim/*/*/report.json
-            ${{ runner.temp }}/sim/*/*/expect.json
 
   publish:
     name: Publish the report to GitHub Pages

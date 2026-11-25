@@ -17,17 +17,14 @@ def judge(settings: Settings, installations: List[str], report: dict) -> None:
 
     `installations` are the ids of the members in the order of the members. The report gains
     `verdict` and `at_tip`, and `check` or why there is none as `unchecked`. Its `held_to` says
-    which outcome is expected of a run that withheld a candidate. A run of a `grow` step is
-    reported on and not checked, and each member the report knows is counted at the tip or not.
+    which outcome is expected of a run that withheld a candidate.
     """
     out: Path = settings.out
     convo = report["conversation"]
     applied = report["held_to"] == "applied"
-    expectation = None
-    if not settings.scenario.grows:
-        expectation = settings.scenario.expectation(convo, installations, applied)
-        held = json.dumps(expectation, indent=2) + "\n"
-        (out / "expect.json").write_text(held, encoding="utf-8")
+    expectation = settings.scenario.expectation(convo, installations, applied)
+    held = json.dumps(expectation, indent=2) + "\n"
+    (out / "expect.json").write_text(held, encoding="utf-8")
 
     _, drawn, _ = _forks(settings, "report", "--json", str(out / "report.json"), str(out))
     (out / "report.txt").write_text(drawn, encoding="utf-8")
@@ -35,15 +32,11 @@ def judge(settings: Settings, installations: List[str], report: dict) -> None:
     if conversation is not None:
         seats = {seat["id"]: seat["position"] for seat in conversation["installations"]}
         report["verdict"] = conversation["verdict"]
-        counted = seats if expectation is None else expectation["installations"]
-        report["at_tip"] = sum(seats.get(seat) == "tip" for seat in counted)
+        report["at_tip"] = sum(seats.get(seat) == "tip" for seat in expectation["installations"])
 
-    if expectation is None:
-        report["unchecked"] = "a `grow` step expects no outcome"
-    else:
-        report["check"], report["unchecked"] = _checked(
-            *_forks(settings, "check", "--expect", str(out / "expect.json"), str(out))
-        )
+    report["check"], report["unchecked"] = _checked(
+        *_forks(settings, "check", "--expect", str(out / "expect.json"), str(out))
+    )
 
 
 def _checked(status: int, said: str, complained: str) -> Tuple[Optional[dict], Optional[str]]:

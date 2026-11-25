@@ -11,7 +11,7 @@ from sim.cli import main
 from sim.matrix import Run, Side
 
 from tests import FIXTURES, Scratch
-from tests.test_compare import SPLIT, STALLED, WHOLE
+from tests.test_compare import GROWN, SPLIT, STALLED, WHOLE
 
 SCENARIO = "50-epochs-by-saro-waku-loss-1"
 GOAL = "50-epochs-by-saro-waku-loss-{}"
@@ -21,12 +21,13 @@ GROUPV3 = "50-epochs-by-saro-waku-loss-{}-groupv3"
 # probe at logos-chat fa5282a3 ran them, each `run.json` cut to what the matrix reads.
 UPLOADED = FIXTURES / "matrix"
 
-# The run of SPLIT, split at epoch 18 at 1% and seed 0, as it could come out at another revision.
-LATER = dict(SPLIT, verdict="split at epoch 20")
-SOONER = dict(SPLIT, verdict="split at epoch 12")
+# The run of SPLIT, first forked at epoch 18 at 1% and seed 0, as it could come out at another
+# revision.
+LATER = dict(SPLIT, first_fork=20)
+SOONER = dict(SPLIT, first_fork=12)
 DREW = dict(SPLIT, conversation="7c3e9a01b2")
 SLOWER = dict(SPLIT, virtual_s=SPLIT["virtual_s"] + 1)
-CRASHED = dict(SPLIT, conversation=None, members_digest=None, verdict=None, at_tip=None)
+CRASHED = dict(SPLIT, conversation=None, members_digest=None, **dict.fromkeys(GROWN))
 # A run whose job could not build chat-sim, as `side` takes it.
 UNBUILT = object()
 
@@ -97,7 +98,7 @@ class Verdict(unittest.TestCase):
             [{"head": True, "base": False}, {"head": False, "base": False}],
         )
 
-    def test_a_cell_with_no_run_at_the_head_or_one_with_no_verdict_has_no_outcome(self):
+    def test_a_cell_with_no_run_at_the_head_or_one_that_read_no_result_has_no_outcome(self):
         for head in (side(SPLIT, None), side(SPLIT, CRASHED)):
             with self.subTest(head=head):
                 said, counts = verdict(head, side(SPLIT, SPLIT))
@@ -204,7 +205,7 @@ class Cells(unittest.TestCase):
         )
 
     def test_a_cell_better_or_worse_says_the_part_of_the_standing_that_moved(self):
-        behind = dict(WHOLE, verdict="whole, members behind", ended="behind", members_off_trunk=1)
+        behind = dict(WHOLE, ended="behind", members_off_trunk=1)
         for was, now, moved in (
             (WHOLE, behind, {"part": "ended", "head": "behind", "base": "whole"}),
             (
@@ -307,7 +308,7 @@ class Cells(unittest.TestCase):
 
 class Summary(unittest.TestCase):
     def test_without_a_base_each_scenario_says_how_its_runs_ended_and_their_epochs(self):
-        behind = dict(WHOLE, verdict="whole, members behind", ended="behind", members_off_trunk=1)
+        behind = dict(WHOLE, ended="behind", members_off_trunk=1)
 
         (summary,) = matrix.matrix(side(WHOLE, SPLIT, STALLED, behind, CRASHED))["summary"]
 
@@ -363,12 +364,21 @@ class Read(Scratch):
         shutil.copytree(UPLOADED, copy)
         return copy
 
-    def edit(self, side: Path, rate: str, seed: int, **changed) -> None:
+    def run_json(self, side: Path, rate: str, seed: int) -> Path:
         name = GOAL.format(rate)
-        file = side / f"sim-revision-{name}-{seed + 1}" / name / str(seed + 1) / "run.json"
+        return side / f"sim-revision-{name}-{seed + 1}" / name / str(seed + 1) / "run.json"
+
+    def edit(self, side: Path, rate: str, seed: int, **changed) -> None:
+        file = self.run_json(side, rate, seed)
         report = json.loads(file.read_text(encoding="utf-8"))
         report.update(changed)
         file.write_text(json.dumps(report), encoding="utf-8")
+
+    def fork(self, side: Path, rate: str, seed: int, at: int) -> None:
+        """Has the first line off the trunk of a run fork at epoch `at`."""
+        grow = json.loads(self.run_json(side, rate, seed).read_text(encoding="utf-8"))["grow"]
+        grow["lines"][1]["forked_at"] = at
+        self.edit(side, rate, seed, grow=grow)
 
     def test_the_runs_are_read_at_any_depth_by_scenario_and_seed(self):
         read = matrix.read(UPLOADED)
@@ -379,11 +389,11 @@ class Read(Scratch):
         )
         one = read.runs[(GOAL.format("5"), 1)]
         self.assertEqual((one.number, one.loss), (2, 0.05))
-        self.assertEqual(one.outcome["verdict"], "split at epoch 3")
+        self.assertEqual((one.outcome["first_fork"], one.outcome["ended"]), (3, "split"))
 
     def test_a_head_beside_a_base_that_split_later_once_and_drew_other_ids_once_is_a_hint(self):
         base = self.uploaded("base")
-        self.edit(base, "0.1", 1, verdict="split at epoch 48")
+        self.fork(base, "0.1", 1, 48)
         self.edit(base, "5", 1, conversation="7c3e9a01b2")
 
         made = matrix.matrix(matrix.read(UPLOADED), matrix.read(base))

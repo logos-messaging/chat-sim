@@ -75,12 +75,15 @@ def _judged(settings: Settings, installations: List[str], report: dict, watch: W
     """Has the logs of a run that is over judged, and writes the report it returns.
 
     `installations` are the ids the logs know the members by, in the order of the members.
-    A run a signal interrupted is not judged.
+    A run a signal interrupted is not judged, nor is a run of a `grow` step, whose lineage says
+    how it came out.
     """
     report["load"]["end"] = list(os.getloadavg())
     _withheld(settings.scenario, report)
     if watch.signal is not None:
         report["stopped"] = f"interrupted by {signal.Signals(watch.signal).name}"
+    elif report["conversation"] is not None and settings.scenario.grows:
+        report["unchecked"] = "a `grow` step expects no outcome"
     elif report["conversation"] is not None:
         judge.judge(settings, installations, report)
     check = report["check"]

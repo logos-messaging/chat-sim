@@ -348,16 +348,16 @@ class Running(Scratch):
         (post,) = report["posts"]
         self.assertEqual((post["poster"], post["readers"], post["unread"]), ("pax", 2, []))
 
-    def test_a_grow_is_reported_on_and_not_checked_and_counts_the_members_it_seated(self):
+    def test_a_grow_is_neither_reported_on_nor_checked_and_counts_the_members_it_seated(self):
         report = self.run_of(members=5, steps=[GROW])
 
         self.assertTrue(report["ok"], report["stopped"])
         self.assertEqual(
             (report["check"], report["unchecked"]), (None, "a `grow` step expects no outcome")
         )
-        self.assertFalse((self.out / "expect.json").exists())
-        self.assertTrue((self.out / "report.txt").exists())
-        self.assertEqual((report["verdict"], report["at_tip"], report["seated"]), ("whole", 4, 4))
+        for name in ("expect.json", "report.json", "report.txt"):
+            self.assertFalse((self.out / name).exists(), name)
+        self.assertEqual((report["verdict"], report["at_tip"], report["seated"]), (None, None, 4))
         self.assertEqual(report["grow"]["ended"], "the trunk reached epoch 3")
         self.assertEqual(report["batches"], [])
         self.assertIn("\nnot checked: a `grow` step expects no outcome\n", table.render(report))
@@ -366,7 +366,7 @@ class Running(Scratch):
         report = self.run_of(members=3, steps=[dict(GROW, epochs=50)])
 
         self.assertEqual(report["grow"]["ended"], "every member of the plan was seated")
-        self.assertEqual((report["at_tip"], report["seated"]), (3, 3))
+        self.assertEqual(report["seated"], 3)
 
     def test_the_runner_is_told_the_plan_the_run_keeps_with_its_seed_on_a_clock_from_2026(self):
         report = self.run_of(members=4, timers="default", seed=5, network={"seed": 7})
@@ -1078,6 +1078,24 @@ class Render(unittest.TestCase):
             ],
         )
 
+    def test_a_grow_says_how_it_ended_in_place_of_a_verdict_and_that_it_is_not_checked(self):
+        grown = whole_run(
+            grow=GROWN,
+            check=None,
+            unchecked="a `grow` step expects no outcome",
+            verdict=None,
+            at_tip=None,
+        )
+
+        self.assertEqual(
+            table.render(grown).splitlines()[1:3],
+            [
+                "2 main branches ran side by side: trunk at epoch 7, 2 main, 1 sub, 1 fell "
+                "behind, 1 behind at the end, 1 never joined",
+                "not checked: a `grow` step expects no outcome",
+            ],
+        )
+
     def test_a_grow_says_how_it_ended_and_each_line_after_the_tables(self):
         grown = whole_run(grow=GROWN, check=None, unchecked="a `grow` step expects no outcome")
 
@@ -1131,11 +1149,11 @@ class Row(unittest.TestCase):
         )
 
     def test_the_row_of_a_grow_says_how_it_ended_in_place_of_a_check(self):
-        grown = whole_run(grow=GROWN, check=None, verdict="split at epoch 3", at_tip=2)
+        grown = whole_run(grow=GROWN, check=None, verdict=None, at_tip=None)
 
         self.assertEqual(
             table.row(2, grown),
-            "  2      1.4      2 of 3  split at epoch 3        2 main branches ran side by side: "
+            "  2      1.4           -  -                       2 main branches ran side by side: "
             "trunk at epoch 7, 2 main, 1 sub, 1 fell behind, 1 behind at the end, "
             "1 never joined; seed 1",
         )

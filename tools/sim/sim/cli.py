@@ -24,7 +24,7 @@ SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """Runs one command and returns the exit status.
 
-    0 when every step was done and the report of the logs is as the scenario expects, in
+    0 when every step was done and any report of the logs is as the scenario expects, in
     every run of a sweep, for `compare` when every run came out as expected, and for `matrix`
     when it wrote the matrix. A command a signal interrupted returns 128 and the signal's
     number.
@@ -32,17 +32,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="sim",
         description="Has a runner do the steps of a scenario with its members as clients in one "
-        "process on a virtual clock, and holds the fork report of its log against what the "
-        "scenario expects.",
+        "process on a virtual clock. A run of a `grow` step says how its lineage ended, and any "
+        "other holds the fork report of its log against what the scenario expects.",
     )
     commands = parser.add_subparsers(metavar="COMMAND", required=True)
     one = commands.add_parser(
         "run",
         help="do a scenario once",
-        description="Does a scenario's steps once and checks the report of the logs. Exits 0 "
-        "when every step was done and the report is as expected, 1 when not, 2 when the "
-        "command line or the scenario is refused, and 128 and the number of the signal that "
-        "interrupted it.",
+        description="Does a scenario's steps once. A run without a `grow` step checks the report "
+        "of its logs. Exits 0 when every step was done and any report is as expected, 1 when "
+        "not, 2 when the command line or the scenario is refused, and 128 and the number of the "
+        "signal that interrupted it.",
     )
     _add_arguments(one)
     one.set_defaults(run=_run)

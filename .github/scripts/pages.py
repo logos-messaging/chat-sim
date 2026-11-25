@@ -187,6 +187,7 @@ _OUTCOME = {
     "seated": (int, _NONE),
     "virtual_s": (int, float, _NONE),
     "trunk_epoch": (int, _NONE),
+    "first_fork": (int, _NONE),
     "ended": (str, _NONE),
     "lines_off_trunk": (int, _NONE),
     "members_off_trunk": (int, _NONE),
@@ -194,9 +195,12 @@ _OUTCOME = {
     "came_to": (str,),
     "stopped": (str, _NONE),
 }
-# An outcome a point, a pull request's matrix or a long run holds need not count the members that
-# never joined: the outcomes that do not are of earlier measurements.
-_UNJOINED_OUTCOME = {field: kind for field, kind in _OUTCOME.items() if field != "never_joined"}
+# An outcome a point or a long run holds need not hold the epoch of its first fork, nor count the
+# members that never joined: the outcomes that do not are of earlier measurements.
+_UNFORKED_OUTCOME = {field: kind for field, kind in _OUTCOME.items() if field != "first_fork"}
+_UNJOINED_OUTCOME = {
+    field: kind for field, kind in _UNFORKED_OUTCOME.items() if field != "never_joined"
+}
 _MOVED = {"part": (str,), "head": (int, str), "base": (int, str)}
 _SUMMARY = {
     "scenario": (str,),
@@ -512,12 +516,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "point",
         help="keep a point of logos-chat's main",
         description="Writes the point of a run of the main suite to "
-        "logos-chat/main/SHA/MEASUREMENT/ of SITE: point.json, each run's run.txt, report.txt "
-        "and run.json, or build.log of a job that could not build chat-sim, and the point's "
-        "page, index.html. What was there is replaced, unless it is the point of a run of a "
-        f"higher number. Then removes the runs' text of each point past the newest {WINDOW}, by "
-        "run number, and draws again the page of each point that loses it or has none. A matrix "
-        "that read no run at the revision, built or not, is refused.",
+        "logos-chat/main/SHA/MEASUREMENT/ of SITE: point.json, each run's run.txt, run.json and "
+        "report.txt where it has one, or build.log of a job that could not build chat-sim, and "
+        "the point's page, index.html. What was there is replaced, unless it is the point of a "
+        "run of a higher number. Then removes the runs' text of each point past the newest "
+        f"{WINDOW}, by run number, and draws again the page of each point that loses it or has "
+        "none. A matrix that read no run at the revision, built or not, is refused.",
     )
     _add_ran(point, runs="the run jobs uploaded")
     point.add_argument(
@@ -553,11 +557,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "pr",
         help="keep the run of a logos-chat pull request",
         description="Writes the run of the pr suite for a logos-chat pull request to "
-        "logos-chat/pr-N/ of SITE: the matrix, each run's run.txt, report.txt and run.json, or "
-        "build.log of a job that could not build chat-sim, at the revision under head/ and at "
-        "the base under base/, meta.json, each scenario file it ran under scenarios/, the report "
-        "page, index.html, and the page of each run, index.html in its directory under head/. "
-        "What was there is replaced, unless it is a run of a higher number.",
+        "logos-chat/pr-N/ of SITE: the matrix, each run's run.txt, run.json and report.txt where "
+        "it has one, or build.log of a job that could not build chat-sim, at the revision under "
+        "head/ and at the base under base/, meta.json, each scenario file it ran under "
+        "scenarios/, the report page, index.html, and the page of each run, index.html in its "
+        "directory under head/. What was there is replaced, unless it is a run of a higher "
+        "number.",
     )
     _add_ran(pr, runs="the run jobs at the revision uploaded")
     pr.add_argument("--pr", metavar="N", type=int, required=True, help="the pull request")
@@ -582,11 +587,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Writes the run of the long suite, held to what is expected, to "
         "logos-chat/long/SHA/MEASUREMENT/ of SITE: long.json, which says what ran and what each "
         "scenario came to, each scenario's compare output as compare.txt, each run's run.txt, "
-        "report.txt and run.json, or build.log of a job that could not build chat-sim, and the "
-        "page, index.html. What was there is replaced, unless it is the long run of a run of a "
-        f"higher number. Then removes the text of each long run past the newest {LONG_WINDOW}, by "
-        "run number, and draws its page again. Runs of which none was read, built or not, are "
-        "refused.",
+        "run.json and report.txt where it has one, or build.log of a job that could not build "
+        "chat-sim, and the page, index.html. What was there is replaced, unless it is the long "
+        "run of a run of a higher number. Then removes the text of each long run past the newest "
+        f"{LONG_WINDOW}, by run number, and draws its page again. Runs of which none was read, "
+        "built or not, are refused.",
     )
     _add_ran(held, runs="the run jobs uploaded", matrix=False)
     held.add_argument(
@@ -2107,11 +2112,12 @@ def _outcome(outcome: object, where: str, shape: dict = _OUTCOME) -> None:
 
 
 def _held_outcome(outcome: object) -> dict:
-    """The shape of an outcome a point or a long run holds: one from before the outcomes counted
-    the members that never joined has no such count."""
-    if not isinstance(outcome, dict) or "never_joined" in outcome:
+    """The shape of an outcome a point or a long run holds: one from before the outcomes held the
+    epoch of the first fork has no such epoch, and one from before they counted the members that
+    never joined has no such count either."""
+    if not isinstance(outcome, dict) or "first_fork" in outcome:
         return _OUTCOME
-    return _UNJOINED_OUTCOME
+    return _UNFORKED_OUTCOME if "never_joined" in outcome else _UNJOINED_OUTCOME
 
 
 def _held_summary(one: object) -> dict:
@@ -2193,7 +2199,8 @@ def _json(path: Path) -> object:
 
 
 def _sweep(sweep: Path, name: str, said: str, show: Callable[..., str]) -> str:
-    """The section of one sweep: compare's output, sweep.txt, and each run's two files."""
+    """The section of one sweep: compare's output, sweep.txt, and each run's run.txt and its
+    report.txt where it has one."""
     head = f'<h3 id="{_e(name)}">{_e(name)} <span class="{_CLASS[said]}">{said}</span></h3>\n'
     if not sweep.is_dir():
         return head + "<p>The job uploaded nothing.</p>\n"
@@ -2208,7 +2215,7 @@ def _sweep(sweep: Path, name: str, said: str, show: Callable[..., str]) -> str:
         + "".join(
             f"<details>\n<summary>Run {run}</summary>\n"
             + show(name, run, "run.txt")
-            + show(name, run, "report.txt")
+            + (show(name, run, "report.txt") if (sweep / run / "report.txt").is_file() else "")
             + "</details>\n"
             for run in runs
         )
@@ -3220,7 +3227,7 @@ def _sketch(cell: dict, side: str, x: Callable[[float], float], top: float, pitc
     its trunk dashed to the trunk's epoch, and a mark down from the epoch it first forked at."""
     outcome, epochs = cell[side], cell["epochs"][side]
     trunk = epochs if outcome["trunk_epoch"] is None else outcome["trunk_epoch"]
-    said = outcome["verdict"] or "no verdict"
+    said = simulate.came_out(outcome)
     if outcome["lines_off_trunk"]:
         said += f", {_plural(outcome['lines_off_trunk'], 'line')} off the trunk"
     drawn = f'<g class="tree {side} sketch"><title>{_e(said)}: no lineage kept</title>'
@@ -3314,7 +3321,7 @@ def _side(cell: dict, side: str, run: Path, href: str, inline: bool = True) -> s
     if outcome is None:
         shown = _shown(run, href, "build.log") if inline else _files(run, href)
         return drawn + "<p>does not build</p>\n" + shown + "</div>\n"
-    drawn += f"<p>{_e(outcome['verdict'] or 'no verdict')} · {_e(outcome['came_to'])}</p>\n"
+    drawn += f"<p>{_e(simulate.came_out(outcome))} · {_e(outcome['came_to'])}</p>\n"
     if inline:
         drawn += _grown(_run_json(run / "run.json"))
     drawn += _files(run, href)
@@ -3469,9 +3476,9 @@ def _long_runs_table(directory: Path, one: dict) -> str:
 
 
 def _long_ended(run: dict) -> str:
-    """How a run of a long run ended: its verdict, or why it has no outcome."""
+    """How a run of a long run ended: as `simulate.came_out` says it, or why it has no outcome."""
     if run["outcome"] is not None:
-        return run["outcome"]["verdict"] or "no verdict"
+        return simulate.came_out(run["outcome"])
     return "does not build" if run["unbuilt"] else "no outcome"
 
 

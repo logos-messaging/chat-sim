@@ -44,13 +44,42 @@ def write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def edited(report: dict, changed: dict) -> None:
+    """Gives `report`, a run.json, the fields `changed` gives it. Two are its grow's: `behind`,
+    and `first_fork`, which has no line off the trunk fork before that epoch and the first one
+    fork at it, or with `None` has every line off the trunk gone and its members on the trunk."""
+    grown = {field: changed[field] for field in ("behind", "first_fork") if field in changed}
+    report.update((field, held) for field, held in changed.items() if field not in grown)
+    grow = report["grow"]
+    if "behind" in grown:
+        grow["behind"] = grown["behind"]
+    if "first_fork" in grown:
+        at, (trunk, *off) = grown["first_fork"], grow["lines"]
+        if at is None:
+            trunk["members"] += [member for line in off for member in line["members"]]
+            grow.update(lines=[trunk], main=1)
+        else:
+            first = min(off, key=lambda line: line["forked_at"])
+            for line in off:
+                if line is first or line["forked_at"] < at:
+                    line["forked_at"] = at
+
+
+def reported(outcome: dict) -> dict:
+    """`outcome` as one of an earlier measurement holds it, which holds no first fork and says
+    how its run came out by the verdict `forks` gave it."""
+    outcome["verdict"] = simulate.came_out(outcome)
+    del outcome["first_fork"]
+    return outcome
+
+
 def unjoined(held: dict) -> dict:
-    """`held`, a point, as one of an earlier measurement holds it, whose outcomes and summaries
-    do not count the members that never joined."""
+    """`held`, a point, as one of an earlier measurement holds it, whose outcomes are `reported`
+    and whose outcomes and summaries do not count the members that never joined."""
     for cell in held["cells"]:
         for side in ("head", "base"):
             if cell.get(side) is not None:
-                del cell[side]["never_joined"]
+                del reported(cell[side])["never_joined"]
     for one in held["summary"]:
         del one["never_joined"]
     return held
@@ -129,7 +158,8 @@ class Site(unittest.TestCase):
             write(self.expected / f"{name}.json", "[]\n")
 
     def sweep(self, name: str, status: Optional[str], runs: int = 2, text: str = "") -> None:
-        """Uploads a sweep of `runs` runs, whose compare exited `status`, or left none."""
+        """Uploads a sweep of `runs` runs of a `grow` step, which `forks` does not report on, whose
+        compare exited `status`, or left none."""
         out = self.artifacts / name
         write(out / "sweep.txt", f"{runs} of {runs} runs went as expected\n")
         write(out / "compare.txt", f"compare of {name}\n")
@@ -137,7 +167,6 @@ class Site(unittest.TestCase):
             write(out / "compare.status", f"{status}\n")
         for run in range(1, runs + 1):
             write(out / str(run) / "run.txt", f"run {run} of {name}\n{text}")
-            write(out / str(run) / "report.txt", "conversation 2a30d6a2c1\n")
 
     def ran(self, name: str) -> None:
         """Uploads a run of the job in one process."""
@@ -286,13 +315,14 @@ class Report(Site):
         out = self.site / "reports" / "master"
         parsed = Parsed(self.page("reports", "master", "index.html"))
         files = [link for link in parsed.links if link.endswith(".txt")]
-        self.assertEqual(len(files), 2 + 3 * 2 + 2 + 1)
+        self.assertEqual(len(files), 2 + 3 + 2 + 1)
         for link in files:
             self.assertEqual((out / link).read_bytes(), (self.artifacts / link).read_bytes())
         anchors = {link[1:] for link in parsed.links if link.startswith("#")}
         self.assertEqual(anchors, {"held", "fifty-epochs", "grow-a", "grow-b"})
         self.assertLessEqual(anchors, parsed.ids)
         self.assertIn(f"{second}\nrun.txt was not uploaded", parsed.text)
+        self.assertEqual(parsed.text.count("was not uploaded"), 1)
 
     def test_a_report_replaces_the_one_before_it_whole(self):
         self.swept("grow-a")
@@ -464,8 +494,8 @@ class LogosChat(unittest.TestCase):
     def uploaded(self, groupv3: bool = False, **edits: dict) -> Path:
         """A copy of UPLOADED, with `groupv3` each of its runs again as GroupV3's, under the name
         of the GroupV3 goal at its rate; each run with its run.txt, report.txt and report.json
-        beside its run.json, and the fields `edits` gives a run changed, by its rate and seed, or
-        by its group, rate and seed."""
+        beside its run.json, and the fields `edits` gives a run changed as `edited` changes them,
+        by its rate and seed, or by its group, rate and seed."""
         self.made += 1
         copy = self.scratch / f"uploaded-{self.made}"
         shutil.copytree(UPLOADED, copy)
@@ -479,7 +509,7 @@ class LogosChat(unittest.TestCase):
                 write(report.parent / name, f"{name} of {report.parent.relative_to(copy)}\n")
         for cell, changed in edits.items():
             report = json.loads(self.run_json(copy, cell).read_text(encoding="utf-8"))
-            report.update(changed)
+            edited(report, changed)
             self.run_json(copy, cell).write_text(json.dumps(report), encoding="utf-8")
         return copy
 
@@ -761,7 +791,7 @@ class Point(LogosChat):
 
     def test_a_point_whose_runs_drew_other_ids_than_the_point_it_follows_is_re_rolled(self):
         self.point(sha(1), minute=1, run_number=1)
-        moved = self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}})
+        moved = self.uploaded(**{"1/1": {"first_fork": 5}})
         self.point(sha(2), minute=2, run_number=2, runs=moved, commits=self.commits())
         self.assertFalse(self.read(sha(2))["previous"]["rerolled"])
         drawn = self.uploaded(**{"1/1": {"conversation": "7c3e9a01b2"}})
@@ -859,7 +889,7 @@ class Point(LogosChat):
     def test_the_point_of_a_newer_run_is_kept_against_an_older_one(self):
         self.point(run_number=8)
         written = self.read()
-        moved = self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}})
+        moved = self.uploaded(**{"1/1": {"first_fork": 5}})
         printed = self.point(run_number=7, minute=5, runs=moved)
         self.assertEqual(
             printed,
@@ -872,7 +902,7 @@ class Point(LogosChat):
         self.point(run_number=8)
         stale = self.at() / GOAL.format(1) / "9" / "run.txt"
         write(stale, "an earlier run\n")
-        moved = self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}})
+        moved = self.uploaded(**{"1/1": {"first_fork": 5}})
         self.assertEqual(self.point(run_number=8, minute=5, runs=moved), "")
         self.assertFalse(stale.exists())
         self.assertEqual(self.read()["cells"][3]["epochs"]["head"], 5)
@@ -977,7 +1007,7 @@ class PullRequest(LogosChat):
         return json.loads((self.site / "logos-chat" / "pr-316" / "meta.json").read_text("utf-8"))
 
     def test_a_pull_request_s_run_holds_its_matrix_both_sides_text_and_its_meta(self):
-        head = self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}})
+        head = self.uploaded(**{"1/1": {"first_fork": 5}})
         self.pr(head=head, base=self.uploaded(), run_number=12, minute=581)
         out = self.site / "logos-chat" / "pr-316"
         texts = [
@@ -1150,14 +1180,14 @@ class Trend(LogosChat):
             dict(revision=sha(1)),
             dict(
                 revision=sha(2),
-                runs=self.uploaded(**{"1/1": {"verdict": "split at epoch 5"}}),
+                runs=self.uploaded(**{"1/1": {"first_fork": 5}}),
                 commits=self.commits(f"{TITLE} (#321)", "chore: bump the toolchain (#318)"),
             ),
             dict(revision=sha(3), runs=self.uploaded(**{"1/1": drawn}), commits=self.commits()),
             dict(
                 revision=sha(3),
                 measurement=MOVED,
-                runs=self.uploaded(**{"1/1": drawn, "0.1/1": {"verdict": "whole"}}),
+                runs=self.uploaded(**{"1/1": drawn, "0.1/1": {"first_fork": None, "behind": []}}),
                 commits=self.commits(status="identical"),
             ),
         ]
@@ -1401,7 +1431,7 @@ class Trend(LogosChat):
         self.assertEqual(said[-1], "5%: 0 of 2 whole, 1 with no outcome")
 
     def test_a_run_that_ended_one_group_with_members_behind_is_a_ringed_cell(self):
-        self.point(runs=self.uploaded(**{"0.1/1": {"verdict": "whole, members behind"}}))
+        self.point(runs=self.uploaded(**{"0.1/1": {"first_fork": None}}))
         self.trend()
         cells = [group for group in self.chart("newest").iter(f"{SVG}g") if group.get("class")]
         ringed = [
@@ -1614,8 +1644,8 @@ class Trend(LogosChat):
                 del one["group"]
             write(self.at(sha(number)) / "point.json", json.dumps(written))
         # GroupV3's 0.1% has every run whole, and at the fifth point its 1% seed 1 splits sooner.
-        whole = {"v3/0.1/1": {"verdict": "whole"}}
-        split = dict(whole, **{"v3/1/1": {"verdict": "split at epoch 5"}})
+        whole = {"v3/0.1/1": {"first_fork": None, "behind": []}}
+        split = dict(whole, **{"v3/1/1": {"first_fork": 5}})
         for number, edits in ((4, whole), (5, split)):
             given = dict(runs=self.uploaded(groupv3=True, **edits), commits=self.commits())
             self.point(sha(number), minute=number, run_number=number, **given)
@@ -1937,7 +1967,7 @@ class Pages(LogosChat):
     def moved(self, **edits: dict) -> Path:
         """The runs at a head whose 1% seed 1 split at epoch 5 and 5% seed 0 at epoch 4, sooner
         than the fixture's 9 and 8, and the fields `edits` gives a run changed."""
-        sooner = {"1/1": {"verdict": "split at epoch 5"}, "5/0": {"verdict": "split at epoch 4"}}
+        sooner = {"1/1": {"first_fork": 5}, "5/0": {"first_fork": 4}}
         for cell, changed in edits.items():
             sooner[cell] = dict(sooner.get(cell, {}), **changed)
         return self.uploaded(**sooner)
@@ -2120,8 +2150,8 @@ class Pages(LogosChat):
         head = self.uploaded(
             **{
                 "0.1/1": {"virtual_s": 1.5},
-                "1/1": {"verdict": "split at epoch 30"},
-                "5/0": {"verdict": "split at epoch 4"},
+                "1/1": {"first_fork": 30},
+                "5/0": {"first_fork": 4},
                 "5/1": {"conversation": "7c3e9a01b2"},
             }
         )
@@ -2213,9 +2243,9 @@ class Pages(LogosChat):
         sketch = looped.find(f".//{SVG}g[@class='tree head sketch']")
         self.assertEqual(
             sketch.find(f"{SVG}title").text,
-            "split at epoch 9, 2 lines off the trunk: no lineage kept",
+            "split at epoch 8, 2 lines off the trunk: no lineage kept",
         )
-        self.assertEqual(sketch.findall(f"{SVG}path")[1].get("d"), "M50.8 7.0V14.0")
+        self.assertEqual(sketch.findall(f"{SVG}path")[1].get("d"), "M45.6 7.0V14.0")
         self.assertEqual(self.rings(looped), [("2 never joined", "2")] * 2)
         large = self.charts(out / f"head/{GOAL.format(5)}/1")
         tree = large["GroupV2 5%, seed 0: the head's tree over the base's"]
@@ -2320,8 +2350,8 @@ class Pages(LogosChat):
         head = self.uploaded(
             groupv3=True,
             **{
-                "v3/1/1": {"verdict": "split at epoch 5"},
-                "v3/5/0": {"verdict": "split at epoch 4"},
+                "v3/1/1": {"first_fork": 5},
+                "v3/5/0": {"first_fork": 4},
             },
         )
         out = self.pr(head, self.matrix(head, base), base)
@@ -2500,20 +2530,19 @@ class Pages(LogosChat):
         )
 
     def test_every_text_of_a_run_is_escaped(self):
-        head = self.moved(**{"1/1": {"verdict": f"split at epoch 5 {MARKUP}"}})
+        fell = [dict(GROW["fell_behind"][0], name=MARKUP)]
+        head = self.moved(**{"1/1": {"grow": dict(GROW, fell_behind=fell)}})
         for name in ("run.txt", "report.txt"):
             write(self.run_json(head, "1/1").with_name(name), f"{MARKUP}\n")
         base = self.uploaded()
         out = self.pr(head, self.matrix(head, base), base)
 
-        for drawn in (
-            out / "index.html",
-            out / f"head/{GOAL.format(1)}/2/index.html",
-        ):
+        run = out / f"head/{GOAL.format(1)}/2/index.html"
+        for drawn in (out / "index.html", run):
             with self.subTest(drawn=drawn.relative_to(out)):
-                text = drawn.read_text(encoding="utf-8")
-                self.assertNotIn("<script", text)
-                self.assertEqual(Parsed(text).text.count(MARKUP), 1)
+                self.assertNotIn("<script", drawn.read_text(encoding="utf-8"))
+        # The run's page names who fell behind.
+        self.assertIn(MARKUP, Parsed(run.read_text(encoding="utf-8")).text)
 
     def test_a_point_s_page_draws_its_cells_its_rates_and_each_run_with_its_text_and_lines(self):
         self.point(sha(1), minute=1, run_number=1)
@@ -2558,7 +2587,7 @@ class Pages(LogosChat):
             self.assertIn("\n".join(simulate.again(cell, facts)), parsed.text)
 
     def test_a_point_of_both_groups_draws_a_heatmap_a_group_and_names_the_group_of_each_rate(self):
-        self.point(runs=self.uploaded(groupv3=True, **{"v3/1/1": {"verdict": "split at epoch 5"}}))
+        self.point(runs=self.uploaded(groupv3=True, **{"v3/1/1": {"first_fork": 5}}))
 
         parsed = self.stands_alone(self.at())
         page = self.drawn(self.at())
@@ -2598,6 +2627,25 @@ class Pages(LogosChat):
             re.findall(r"<h3>(.*?)</h3>", self.drawn(self.at())), ["GroupV2", "GroupV3"]
         )
         self.stands_alone(self.at())
+        status, _, err = self.run_pages("trend", str(self.site))
+        self.assertEqual((status, err), (0, ""))
+
+    def test_a_point_json_whose_outcomes_hold_no_first_fork_is_read_and_drawn_as_its_verdicts(
+        self,
+    ):
+        self.point()
+        path, written = self.at() / "point.json", self.read()
+        drawn = self.stands_alone(self.at()).text
+        for cell in written["cells"]:
+            reported(cell["head"])
+        write(path, json.dumps(written))
+
+        point = pages.read_point(path)
+        pages.draw_point(self.at(), point)
+
+        self.assertEqual(point, written)
+        self.assertEqual(self.stands_alone(self.at()).text, drawn)
+        self.assertIn(f"split at epoch 18 · {written['cells'][2]['head']['came_to']}", drawn)
         status, _, err = self.run_pages("trend", str(self.site))
         self.assertEqual((status, err), (0, ""))
 
@@ -2705,6 +2753,7 @@ FIFTY = {
     "seated": 51,
     "virtual_s": 3494.75,
     "trunk_epoch": None,
+    "first_fork": None,
     "ended": None,
     "lines_off_trunk": None,
     "members_off_trunk": None,
@@ -3075,7 +3124,7 @@ class Long(LogosChat):
         outcomes = [run["outcome"] for one in written["scenarios"] for run in one["runs"]]
         for outcome in outcomes:
             if outcome is not None:
-                del outcome["never_joined"]
+                del reported(outcome)["never_joined"]
         write(path, json.dumps(written))
 
         long = pages.read_long(path)

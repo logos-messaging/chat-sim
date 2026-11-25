@@ -13,6 +13,7 @@ from typing import List, Optional, Sequence
 
 import pages
 import simulate
+from test_pages import edited
 
 REVISION = "0123456789abcdef0123456789abcdef01234567"
 BASE = "89abcdef0123456789abcdef0123456789abcdef"
@@ -39,7 +40,7 @@ HELD_GOALS = {
 }
 # Two of UPLOADED's runs as a head that split sooner, by the run's rate and seed: 1% seed 1 at
 # epoch 5, not 9, and 5% seed 0 at 4, not 8.
-SOONER = {"1/1": {"verdict": "split at epoch 5"}, "5/0": {"verdict": "split at epoch 4"}}
+SOONER = {"1/1": {"first_fork": 5}, "5/0": {"first_fork": 4}}
 HELD_SUITES = {
     "GOALS": HELD_GOALS,
     "RATES": {"pr": ("0.1", "1", "5"), "main": ("0", "0.1", "1", "5")},
@@ -583,7 +584,8 @@ class Drawn(unittest.TestCase):
 
     def uploaded(self, name: str, both: bool = False, **edits: dict) -> Path:
         """A copy of UPLOADED, with `both` its runs on each group, with the fields `edits` gives a
-        run changed, by its rate and seed, and `/v3` after them for GroupV3's run."""
+        run changed as `edited` changes them, by its rate and seed, and `/v3` after them for
+        GroupV3's run."""
         copy = self.root / name
         with_groupv3(UPLOADED, copy) if both else shutil.copytree(UPLOADED, copy)
         for cell, changed in edits.items():
@@ -592,7 +594,7 @@ class Drawn(unittest.TestCase):
             number = int(seed) + 1
             file = copy / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
             report = json.loads(file.read_text(encoding="utf-8"))
-            report.update(changed)
+            edited(report, changed)
             file.write_text(json.dumps(report), encoding="utf-8")
         return copy
 
@@ -712,8 +714,8 @@ class Drawn(unittest.TestCase):
             "head",
             both=True,
             **{
-                "1/1/v3": {"verdict": "split at epoch 5"},
-                "5/0/v3": {"verdict": "split at epoch 4"},
+                "1/1/v3": {"first_fork": 5},
+                "5/0/v3": {"first_fork": 4},
             },
         )
         matrix = self.matrix(head, self.uploaded("base", both=True), self.pr_jobs())
@@ -769,8 +771,8 @@ class Drawn(unittest.TestCase):
         shutil.rmtree(no_outcome / "sim-revision-50-epochs-by-saro-waku-loss-5-2")
         unbuilt = self.uploaded("unbuilt-head", both=True)
         self.unbuilt(unbuilt, "1", 1)
-        sooner = self.uploaded("sooner", both=True, **{"5/0": {"verdict": "split at epoch 4"}})
-        later = {"1/0": {"verdict": "split at epoch 4"}, "5/0": {"verdict": "split at epoch 49"}}
+        sooner = self.uploaded("sooner", both=True, **{"5/0": {"first_fork": 4}})
+        later = {"1/0": {"first_fork": 4}, "5/0": {"first_fork": 49}}
         mixed = self.uploaded("mixed", both=True, **later)
         shutil.rmtree(mixed / "sim-revision-50-epochs-by-saro-waku-loss-5-2")
         for head, against, said in (
@@ -938,7 +940,7 @@ class Drawn(unittest.TestCase):
     def test_a_pr_worse_in_2_of_6_fails_its_check_with_the_comment_and_the_report(self):
         head = self.uploaded(
             "head",
-            **{"1/1": {"verdict": "split at epoch 5"}, "5/0": {"verdict": "split at epoch 4"}},
+            **{"1/1": {"first_fork": 5}, "5/0": {"first_fork": 4}},
         )
         matrix = self.matrix(head, UPLOADED)
         given = ("--base", BASE, "--report-url", REPORT_URL)
@@ -1130,6 +1132,26 @@ class Comment(Fixture):
         rows = self.rows(out)
         self.assertEqual(rows["50-epochs"], ["1", "no outcome", "-"])
         self.assertEqual(rows["grow-waku-loss-0.1"][1], "whole, no verdict")
+
+    def test_a_run_of_a_grow_step_with_no_verdict_says_how_its_lineage_ended(self):
+        endings = (
+            (50, 9, "split"),
+            (4, None, "stalled"),
+            (50, None, "whole"),
+            (50, None, "behind"),
+        )
+        grown = [
+            dict(outcome(seed, None), trunk_epoch=trunk, first_fork=fork, ended=ended)
+            for seed, (trunk, fork, ended) in enumerate(endings)
+        ]
+        write(self.swept(self.runs, "grow-waku-loss-0.1") / "outcomes.json", grown)
+
+        _, out, _ = self.comment(*self.with_base)
+
+        self.assertEqual(
+            self.rows(out)["grow-waku-loss-0.1"][1],
+            "split at epoch 9, stalled at epoch 4, whole, whole, members behind",
+        )
 
     def test_a_revision_chat_sim_does_not_build_at_ran_nothing(self):
         self.unbuilt(self.runs)

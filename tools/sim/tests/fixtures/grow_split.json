@@ -160,8 +160,8 @@
       "installation": "90557d44"
     }
   ],
-  "verdict": "split at epoch 18",
-  "at_tip": 42,
+  "verdict": null,
+  "at_tip": null,
   "seated": 51,
   "virtual_s": 6076.244,
   "stopped": null,
@@ -172,6 +172,7 @@
     "lines": [
       {
         "kind": "trunk",
+        "forked_at": null,
         "members": [
           "saro",
           "raya",
@@ -218,12 +219,14 @@
       },
       {
         "kind": "main",
+        "forked_at": 18,
         "members": [
           "peer17"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 28,
         "members": [
           "peer13",
           "peer22"
@@ -231,24 +234,28 @@
       },
       {
         "kind": "main",
+        "forked_at": 30,
         "members": [
           "pax"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 33,
         "members": [
           "peer19"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 34,
         "members": [
           "peer9"
         ]
       },
       {
         "kind": "main",
+        "forked_at": 39,
         "members": [
           "peer31",
           "peer36"
@@ -256,6 +263,7 @@
       },
       {
         "kind": "main",
+        "forked_at": 47,
         "members": [
           "peer34"
         ]
