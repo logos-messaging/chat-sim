@@ -67,6 +67,13 @@ LONG_WINDOW = 15
 # The text of a run the site keeps, and the build's log of one whose job could not build
 # chat-sim. Its report.json, ten times the rest, stays in the artifacts.
 TEXTS = ("run.txt", "report.txt", "run.json", "build.log")
+# The artifacts that hold the logs of a scenario's runs at a side of a workflow run, as
+# sweep.yml names each job's, by the glob `gh run download` takes. The site keeps no log.
+LOGS = "logs-{side}-{scenario}-[0-9]*"
+# How many days GitHub keeps them, as sweep.yml asks of it.
+LOGS_KEPT = 90
+# Where the guide says what a run's log holds, from the site's root.
+_INTO_THE_LOG = "guide/investigate/moved-run/#into-the-log"
 # Where a pull request's run keeps a copy of each scenario file it ran, which its page describes
 # and links.
 SCENARIOS = "scenarios"
@@ -92,6 +99,8 @@ CHAT_SIM_URL = "https://github.com/logos-messaging/chat-sim"
 _KEY = re.compile(r"master|pr-([1-9][0-9]*)")
 _SHA = re.compile(r"[0-9a-f]{40}")
 _URL = re.compile(r"https?://[^\s\"'<>]+")
+# A workflow run's address: its repository and its number.
+_WORKFLOW_RUN = re.compile(r"https://github\.com/([\w.-]+/[\w.-]+)/actions/runs/([0-9]+)")
 _TIME = "%Y-%m-%dT%H:%M:%SZ"
 _RUN = re.compile(r"[0-9]+")
 _PR = re.compile(r"[1-9][0-9]*")
@@ -923,9 +932,9 @@ def draw_point(directory: Path, point: dict) -> None:
     """Writes the page of the point in `directory`, its index.html, from `point` and the runs'
     text `directory` keeps: what ran, the pull requests it merged and the point it follows, its
     cells as a heatmap a group, how the runs of each group's rate ended, and each run with the
-    commands that run it again and, while its text is kept, the text, its lines and rounds and
-    its wall time; where chat-sim did not build, the build's log, once. Every file it links is
-    one `directory` holds."""
+    commands that run it again and that download its log and, while its text is kept, the text,
+    its lines and rounds and its wall time; where chat-sim did not build, the build's log, once.
+    Every file it links is one `directory` holds."""
     logos_chat, measured, before = point["logos_chat"], point["measurement"], point["previous"]
     rows = _by_rate(point["cells"])
     merged = ", ".join(
@@ -976,6 +985,13 @@ def draw_point(directory: Path, point: dict) -> None:
     if unbuilt is not None:
         body += _build(_job(unbuilt), _run_dir(directory, unbuilt), _run_href(unbuilt), kept)
     body += _rates_table(directory, point) + '<section id="runs">\n<h2>The runs</h2>\n'
+    if _WORKFLOW_RUN.fullmatch(point["run_url"]):
+        body += (
+            '<p class="reading">The site keeps no log: each job uploads its runs\' as an '
+            f"artifact of the workflow run, which GitHub keeps {LOGS_KEPT} days. The command "
+            "under a run downloads its scenario's. Where it finds none, the command above it "
+            "runs the run again.</p>\n"
+        )
     # The section above shows the build's log once; a run that could not build links its own.
     for name, cells in rows:
         listed = [cells[seed] for seed in sorted(cells)]
@@ -995,6 +1011,7 @@ def draw_point(directory: Path, point: dict) -> None:
                     inline=not cell["unbuilt"]["head"],
                 )
                 + _again(cell, logos_chat, point["chat_sim"])
+                + _log(point["run_url"], cell)
                 + "</details>\n"
                 for cell in listed
             )
@@ -1103,7 +1120,8 @@ def draw_run(
     directory under `head/`: what the head's run came to against the base's, in a sentence; both
     sides' trees, `trees` their lineages, large on one axis of epochs, each line labelled, with
     who fell behind and the members of each; each side's rounds; what running it again takes and
-    the commands that run it again at each side; and each side's text the site keeps."""
+    the commands that run it again at each side; each side's text the site keeps; and the
+    command that downloads each side's log."""
     head, base = meta["revision"], meta["base"]
     named = _job(cell)
     chip, said = _run_said(matrix, cell)
@@ -1153,6 +1171,21 @@ def draw_run(
         body += f'<p class="side">the base {_code(base)}</p>\n'
     if based is not None:
         body += _files(based[0], up + based[1]) or '<p class="muted">The run left no text.</p>\n'
+    # A job that could not build chat-sim uploaded no log.
+    built = [side for side, _, _ in sides if not cell["unbuilt"][side]]
+    uploaded = ["revision" if side == "head" else side for side in built]
+    logs = _logs(meta["run_url"], cell["scenario"], uploaded, "logs") if built else ""
+    if logs:
+        whose = "both sides'" if len(built) == 2 else f"the {built[0]}'s"
+        body += (
+            "<h2>The log</h2>\n"
+            '<p class="reading">The site keeps no log: each job uploads its runs\' as an artifact '
+            f"of the workflow run, which GitHub keeps {LOGS_KEPT} days. This downloads {whose}, "
+            f"and the run's log is <code>group.log</code> under run {cell['run']}"
+            f"{' of each' if len(built) == 2 else ''}. What to read in it: the guide's "
+            f"{_link(up + '../../' + _INTO_THE_LOG, 'Into the log')}.</p>\n"
+            f"<pre>{_e(logs)}</pre>\n"
+        )
     run.mkdir(parents=True, exist_ok=True)
     title = f"chat-sim: logos-chat #{meta['pr']}, {named}"
     style = _CHARTS + _REPORT + _TREES + _GRID
@@ -3645,6 +3678,31 @@ def _files(run: Path, href: str) -> str:
     if not kept:
         return ""
     return '<p class="file">' + " · ".join(_link(href + name, name) for name in kept) + "</p>\n"
+
+
+def _logs(run_url: str, scenario: str, sides: Sequence[str], into: str) -> str:
+    """The command that downloads into `into` the logs of the runs of `scenario` at `sides` of
+    the workflow run at `run_url`, an artifact a job; nothing where `run_url` is not a workflow
+    run's address."""
+    found = _WORKFLOW_RUN.fullmatch(run_url)
+    if found is None:
+        return ""
+    named = (LOGS.format(side=side, scenario=scenario) for side in sides)
+    patterns = " ".join(f"--pattern '{name}'" for name in named)
+    return f"gh run download {found[2]} --repo {found[1]} --dir {into} {patterns}"
+
+
+def _log(run_url: str, cell: dict) -> str:
+    """Where the log of a cell's run at the revision is: the command that downloads its
+    scenario's, under a line that names the run's file in them; nothing of a run whose job could
+    not build chat-sim, which uploaded none."""
+    command = _logs(run_url, cell["scenario"], ("revision",), "logs")
+    if not command or cell["unbuilt"]["head"]:
+        return ""
+    return (
+        f'<p class="side">Its log, <code>group.log</code> under run {cell["run"]} in what this '
+        f"downloads:</p>\n<pre>{_e(command)}</pre>\n"
+    )
 
 
 def _shown(run: Path, href: str, name: str) -> str:

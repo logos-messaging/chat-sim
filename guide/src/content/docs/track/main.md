@@ -43,8 +43,10 @@ before it, so every seed's run is another run.
 The page of a point names the logos-chat commit, chat-sim's commit and the measurement, the pull
 requests merged since the point it follows, and that point. A heatmap of its runs follows, then a
 row for each group's rate with how its runs ended, then a fold a rate with each run. Each run has
-its lines, its rounds, its text and the commands that run it again ([From a moved run to your
-machine](/chat-sim/guide/investigate/moved-run/#run-it-yourself)).
+its lines, its rounds, its text, the commands that run it again ([From a moved run to your
+machine](/chat-sim/guide/investigate/moved-run/#run-it-yourself)) and the command that downloads
+its log ([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)). A run whose job
+could not build chat-sim has no log.
 
 The newest eleven points keep their runs' text. An older point keeps its `point.json`, and its page
 is drawn again from it alone, so the commands stay.

@@ -72,7 +72,8 @@ gives every field of `run.json`, and
 those of `result.json`.
 
 The site keeps `run.txt`, `run.json` and `report.txt` of each run it publishes, or `build.log` where
-chat-sim did not build, and never a `group.log`. Beside them it keeps:
+chat-sim did not build, and never a `group.log`: that is in the workflow run's artifacts
+([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)). Beside them it keeps:
 
 | File | Holds |
 |---|---|

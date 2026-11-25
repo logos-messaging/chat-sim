@@ -17,7 +17,8 @@ import pages
 import simulate
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
-RUN_URL = "https://github.com/logos-messaging/chat-sim/actions/runs/42"
+RUNS_URL = "https://github.com/logos-messaging/chat-sim/actions/runs"
+RUN_URL = f"{RUNS_URL}/42"
 COMMIT_URL = f"https://github.com/logos-messaging/chat-sim/commit/{SHA}"
 # A logos-chat commit, the base it is compared with, and the chat-sim commit a run measures.
 REVISION = "89abcdef0123456789abcdef0123456789abcdef"
@@ -557,12 +558,12 @@ class LogosChat(unittest.TestCase):
         write(out, json.dumps({"status": status, "commits": given}))
         return out
 
-    def ran(self, run_number: int, minute: int) -> List[str]:
+    def ran(self, run_number: int, minute: int, run_url: str = RUN_URL) -> List[str]:
         return [
             "--chat-sim",
             SHA,
             "--run-url",
-            RUN_URL,
+            run_url,
             "--run-number",
             str(run_number),
             "--time",
@@ -588,12 +589,13 @@ class LogosChat(unittest.TestCase):
         runs: Optional[Path] = None,
         matrix: Optional[Path] = None,
         commits: Optional[Path] = None,
+        run_url: str = RUN_URL,
     ) -> str:
         """Writes the point of a run at `revision`, and returns what the command printed."""
         runs = self.uploaded() if runs is None else runs
         matrix = self.matrix(runs) if matrix is None else matrix
         given = [str(matrix), str(runs), str(self.site), "--revision", revision]
-        given += ["--measurement", measurement, *self.ran(run_number, minute)]
+        given += ["--measurement", measurement, *self.ran(run_number, minute, run_url)]
         given += [] if commits is None else ["--commits", str(commits)]
         status, out, err = self.run_pages("point", *given)
         self.assertEqual(status, 0, err)
@@ -2064,7 +2066,7 @@ class Guide(unittest.TestCase):
     def test_each_link_pages_writes_into_the_guide_lands_on_a_heading_of_its_page(self):
         source = (ROOT / ".github" / "scripts" / "pages.py").read_text(encoding="utf-8")
         written = GUIDE_LINK.findall(source)
-        self.assertEqual(len(written), 5)
+        self.assertEqual(len(written), 6)
         for slug, anchor in written:
             with self.subTest(link=f"guide/{slug}/#{anchor}"):
                 self.assertIn(anchor, heading_ids(slug))
@@ -2801,6 +2803,60 @@ class Pages(LogosChat):
         )
         for cell in point["cells"]:
             self.assertIn("\n".join(simulate.again(cell, sha(2), SHA)), parsed.text)
+
+    def test_a_point_s_page_gives_each_run_the_command_that_downloads_its_log(self):
+        self.point()
+        parsed = self.stands_alone(self.at())
+        for rate in ("0.1", "1", "5"):
+            command = (
+                "gh run download 42 --repo logos-messaging/chat-sim --dir logs --pattern "
+                f"'logs-revision-{GOAL.format(rate)}-[0-9]*'"
+            )
+            self.assertEqual(parsed.text.count(command), 2)
+        for run in (1, 2):
+            said = f"Its log, group.log under run {run} in what this downloads:"
+            self.assertEqual(parsed.text.count(said), 3)
+        self.assertIn("an artifact of the workflow run, which GitHub keeps 90 days.", parsed.text)
+        self.assertEqual([link for link in parsed.links if "group.log" in link], [])
+
+    def test_a_run_of_a_point_that_did_not_build_has_no_command_for_its_log(self):
+        runs = self.uploaded()
+        self.unbuilt(runs, "5/0")
+        self.point(runs=runs)
+        text = self.stands_alone(self.at()).text
+        self.assertEqual(text.count(f"'logs-revision-{GOAL.format(5)}-[0-9]*'"), 1)
+        self.assertEqual(text.count("Its log, group.log under run 1 in what this downloads:"), 2)
+
+    def test_a_point_whose_run_is_not_a_workflow_run_s_has_no_command_for_its_logs(self):
+        self.point(run_url="https://ci.example/runs/42")
+        self.assertNotIn("gh run download", self.stands_alone(self.at()).text)
+
+    def test_a_run_s_page_gives_the_command_that_downloads_the_log_of_each_side_that_ran(self):
+        scenario, at = GOAL.format(1), "--repo logos-messaging/chat-sim --dir logs"
+        head = f"--pattern 'logs-revision-{scenario}-[0-9]*'"
+        base = f"'logs-base-{scenario}-[0-9]*'"
+        out = self.pr(self.moved(), self.matrix(self.moved(), self.uploaded()), self.uploaded())
+        parsed = self.stands_alone(out / f"head/{scenario}/2")
+        self.assertIn(f"gh run download 42 {at} {head} --pattern {base}\n", parsed.text)
+        self.assertIn("the run's log is group.log under run 2 of each.", parsed.text)
+        drawn = (out / f"head/{scenario}/2/index.html").read_text(encoding="utf-8")
+        self.assertIn("<title>chat-sim: logos-chat #316, GroupV2 1%, seed 1</title>", drawn)
+        self.assertIn("../../../../../guide/investigate/moved-run/#into-the-log", parsed.links)
+        out = self.pr(self.moved(), self.matrix(self.moved()), None)
+        parsed = self.stands_alone(out / f"head/{scenario}/2")
+        self.assertIn(f"gh run download 42 {at} {head}\n", parsed.text)
+        self.assertIn("the run's log is group.log under run 2.", parsed.text)
+        self.assertIn("which GitHub keeps 90 days. This downloads the head's, and", parsed.text)
+        # A side whose job could not build chat-sim uploaded no log.
+        lacking = self.uploaded()
+        self.unbuilt(lacking, "1/1")
+        out = self.pr(self.moved(), self.matrix(self.moved(), lacking), lacking)
+        parsed = self.stands_alone(out / f"head/{scenario}/2")
+        self.assertIn(f"gh run download 42 {at} {head}\n", parsed.text)
+        out = self.pr(lacking, self.matrix(lacking, self.uploaded()), self.uploaded())
+        parsed = self.stands_alone(out / f"head/{scenario}/2")
+        self.assertIn(f"gh run download 42 {at} --pattern {base}\n", parsed.text)
+        self.assertIn("This downloads the base's, and", parsed.text)
 
     def test_a_point_of_both_groups_draws_a_heatmap_a_group_and_names_the_group_of_each_rate(self):
         self.point(runs=self.uploaded(groupv3=True, **{"v3/1/1": {"first_fork": 5}}))
