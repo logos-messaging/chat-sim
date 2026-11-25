@@ -141,8 +141,8 @@ python3 tools/forks report tmp/<scenario>-seed-<seed>/<run>/group.log
 CI keeps each run's log as well. The site holds none: each run job uploads its runs' logs as an
 artifact of the workflow run, `logs-<side>-<scenario>-<from>`, where the side is `revision` or
 `base` and `<from>` is the number of the job's first run. GitHub keeps it 90 days. A job that could
-not build chat-sim uploads none. The page of a run and of a point each give the command that
-downloads the artifacts of a scenario, such as:
+not build chat-sim uploads none. The page of a run, of a point and of a change each give the
+command that downloads the artifacts of a scenario, such as:
 
 ```sh
 gh run download <run-id> --repo logos-messaging/chat-sim --dir logs --pattern 'logs-revision-grow-waku-loss-5-[0-9]*'
