@@ -19,6 +19,13 @@ BASE = "89abcdef0123456789abcdef0123456789abcdef"
 CHAT_SIM = "fedcba9876543210fedcba9876543210fedcba98"
 RUN_URL = "https://github.com/logos-messaging/chat-sim/actions/runs/42"
 REPORT_URL = "https://logos-messaging.github.io/chat-sim/logos-chat/pr-316/"
+# What the comment on a pull request links where REPORT_URL is its report's page: the trees of its
+# runs there, the page, the graph over main above it, and the run.
+LINKS = (
+    f"[The trees]({REPORT_URL}#runs) · [the report]({REPORT_URL}), kept while the pull request is "
+    "open · [the graph over main](https://logos-messaging.github.io/chat-sim/logos-chat/) · "
+    f"[the run]({RUN_URL})"
+)
 ROOT = Path(__file__).resolve().parents[2]
 # What the GroupV2 jobs of HELD_SUITES' pr suite uploaded at a revision, seeds 0 and 1 of its three
 # rates, cut to what tools/sim matrix reads: 0.1% whole and split at epoch 46, 1% split at 18 and
@@ -668,8 +675,7 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             out,
             f"⚪ **Nothing moved.** All 12 runs of GroupV2 and GroupV3 at {commit(REVISION)} "
-            f"replayed its merge base {commit(BASE)} exactly. [The report]({REPORT_URL}) · "
-            f"[the run]({RUN_URL})\n",
+            f"replayed its merge base {commit(BASE)} exactly. {LINKS}\n",
         )
         checked = self.check(both, out)
         self.assertEqual(
@@ -690,35 +696,15 @@ class Drawn(unittest.TestCase):
             f"merge base {commit(BASE)} exactly. [The run]({RUN_URL})\n",
         )
 
-    def test_a_pr_whose_runs_moved_shows_them_with_the_links_and_how_to_read_the_trees(self):
+    def test_a_pr_whose_runs_moved_says_so_by_group_and_links_their_trees(self):
         matrix = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
         _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
 
-        picture, scenario = f"{REPORT_URL}moved-{REVISION}", HELD_GOALS["v2"]
         self.assertEqual(
             out,
             "🔴 **GroupV2: worse in 2 runs** · 4 same\n"
             "\n"
-            f'<picture><source media="(prefers-color-scheme: dark)" srcset="{picture}-dark.svg">'
-            f'<img alt="GroupV2 1% seed 1: worse; GroupV2 5% seed 0: worse" src="{picture}.svg">'
-            "</picture>\n"
-            "\n"
-            f"Open a run: [GroupV2 1% seed 1]({REPORT_URL}head/{scenario.format('1')}/2/) · "
-            f"[GroupV2 5% seed 0]({REPORT_URL}head/{scenario.format('5')}/1/)\n"
-            "\n"
-            f"[The report]({REPORT_URL}) · [the run]({RUN_URL}) · {commit(REVISION)} against "
-            f"its merge base {commit(BASE)}\n"
-            "\n"
-            "<details><summary>How to read the trees</summary>\n"
-            "\n"
-            "- A tree is one run, left to right by epoch from 0 to the goal of 50. The head's tree "
-            "sits over the base's.\n"
-            "- The top line is the trunk. Each line below left the line it drops from at that "
-            "epoch and stops at its dot. The thicker a line, the more members it ended with.\n"
-            "- The ring and its number count the members that never joined.\n"
-            "- Main's seeds after the merge are the measurement. This check blocks nothing yet.\n"
-            "\n"
-            "</details>\n",
+            f"{LINKS} · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
 
     def test_a_pr_on_both_groups_says_each_on_a_line_of_its_own_and_fails_on_either(self):
@@ -761,8 +747,7 @@ class Drawn(unittest.TestCase):
             out,
             "🔁 **GroupV2: re-rolled in 6 runs**\n"
             "\n"
-            f"[The report]({REPORT_URL}) · [the run]({RUN_URL}) · {commit(REVISION)} against "
-            f"its merge base {commit(BASE)}\n",
+            f"{LINKS} · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
 
     def test_a_changed_run_moved_and_its_mark_leads_a_re_rolled_one_s(self):
@@ -775,7 +760,6 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             self.said(out), ["🟡 **GroupV2: changed in 1 run** · 1 re-rolled, 4 same"]
         )
-        self.assertIn('<img alt="GroupV2 1% seed 0: changed" ', out)
 
     def test_a_run_with_no_outcome_at_the_head_leads_and_one_not_compared_follows(self):
         base = self.uploaded("base", both=True)
@@ -820,7 +804,7 @@ class Drawn(unittest.TestCase):
             f"against its merge base {commit(BASE)} · [the run]({RUN_URL})\n",
         )
 
-    def test_the_picture_its_links_and_how_to_read_it_are_there_only_with_the_report_page(self):
+    def test_without_the_report_s_page_the_comment_links_the_run_alone(self):
         matrix = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
         _, out, _ = self.comment("pr", matrix, "--base", BASE)
 
@@ -830,42 +814,18 @@ class Drawn(unittest.TestCase):
             "\n"
             f"[The run]({RUN_URL}) · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
-        _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
-        paragraphs = out.split("\n\n")
-        self.assertTrue(paragraphs[1].startswith('<picture><source media="'))
-        self.assertTrue(paragraphs[2].startswith(f"Open a run: [GroupV2 1% seed 1]({REPORT_URL}"))
-        self.assertTrue(paragraphs[3].startswith(f"[The report]({REPORT_URL}) · [the run]("))
-        self.assertEqual(paragraphs[4], "<details><summary>How to read the trees</summary>")
 
-    def test_comment_says_where_the_picture_is_once_it_writes_the_comment_to_a_file(self):
-        moved = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
-        given = ("--base", BASE, "--report-url", REPORT_URL)
-        for extra, picture in ((given, f"{REPORT_URL}moved-{REVISION}.svg"), (given[:2], "")):
-            with self.subTest(extra=extra):
-                _, shown, _ = self.comment("pr", moved, *extra)
-                self.assertEqual(self.written("pr", moved, *extra), (f"picture={picture}\n", shown))
-        same = self.matrix(UPLOADED, UPLOADED)
-        _, shown, _ = self.comment("pr", same, *given)
-        self.assertEqual(self.written("pr", same, *given), ("picture=\n", shown))
-        main = self.matrix(UPLOADED)
-        _, shown, _ = self.comment("main", main)
-        self.assertEqual(self.written("main", main), ("picture=\n", shown))
-
-    def test_the_words_of_the_picture_are_escaped(self):
-        matrix = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
-        written = json.loads(matrix.read_text(encoding="utf-8"))
-        cell = next(cell for cell in written["cells"] if cell["change"] == "worse")
-        cell["rate"] = '1%" onerror="alert(1)'
-        matrix.write_text(json.dumps(written), encoding="utf-8")
-        _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
-
-        shown = next(line for line in out.splitlines() if line.startswith("<picture>"))
-        self.assertIn(
-            '<img alt="GroupV2 1%&quot; onerror=&quot;alert(1) seed 1: worse; GroupV2 5% seed 0: '
-            'worse" src="',
-            shown,
-        )
-        self.assertNotIn('" onerror="', shown)
+    def test_a_comment_written_to_a_file_is_what_it_prints_without_one(self):
+        for suite, head, base, extra in (
+            ("pr", self.uploaded("head", **SOONER), UPLOADED, ("--base", BASE)),
+            ("main", UPLOADED, None, ()),
+        ):
+            with self.subTest(suite=suite):
+                matrix = self.matrix(head, base)
+                _, shown, _ = self.comment(suite, matrix, *extra, "--report-url", REPORT_URL)
+                self.assertEqual(
+                    self.written(suite, matrix, *extra, "--report-url", REPORT_URL), ("", shown)
+                )
 
     def test_a_head_chat_sim_does_not_build_at_ran_nothing(self):
         head = self.root / "head"
@@ -1221,12 +1181,12 @@ class Comment(Fixture):
         )
         self.assertEqual(out.count("<details>"), 1)
 
-    def test_written_to_a_file_says_it_shows_no_picture(self):
+    def test_written_to_a_file_prints_nothing(self):
         _, shown, _ = self.comment(*self.with_base)
         out = self.root / "comment.md"
         status, printed, err = self.comment(*self.with_base, "--out", str(out))
 
-        self.assertEqual((status, printed), (0, "picture=\n"), err)
+        self.assertEqual((status, printed), (0, ""), err)
         self.assertEqual(out.read_text(encoding="utf-8"), shown)
 
 
@@ -1308,65 +1268,6 @@ class Post(unittest.TestCase):
                 self.assertIn("not pages of comments, each with its id", err)
 
 
-class Built(unittest.TestCase):
-    """Whether the Pages site has built a push to gh-pages, from its builds as the API lists
-    them, newest first."""
-
-    PUSHED = "a2bb8438ac65a2a7e1f2b7d3b1a7d0c5e4f3a2b1"
-    LATER = "2569837127fd0e3a8c1b4d5e6f7a8b9c0d1e2f3a"
-
-    def setUp(self):
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        self.builds = Path(directory.name) / "builds.json"
-
-    def built(self, *builds: "tuple[str, str, str]") -> "tuple[int, str, str]":
-        """What `built` says of PUSHED among `builds`, each a commit, a status and a time."""
-        listed = [{"commit": sha, "status": status, "created_at": at} for sha, status, at in builds]
-        self.builds.write_text(json.dumps(listed), encoding="utf-8")
-        return run("built", "--builds", str(self.builds), "--commit", self.PUSHED)
-
-    def test_the_site_serves_a_push_once_its_build_or_a_later_one_is_done(self):
-        before = ("9" * 40, "built", "2026-11-23T19:50:00Z")
-        for builds, said in (
-            ((), "false"),
-            ((before,), "false"),
-            (((self.PUSHED, "building", "2026-11-23T19:52:24Z"), before), "false"),
-            (((self.PUSHED, "built", "2026-11-23T19:52:24Z"), before), "true"),
-            (
-                (
-                    (self.LATER, "built", "2026-11-23T19:52:25Z"),
-                    (self.PUSHED, "errored", "2026-11-23T19:52:24Z"),
-                ),
-                "true",
-            ),
-            (
-                (
-                    (self.LATER, "building", "2026-11-23T19:52:25Z"),
-                    (self.PUSHED, "errored", "2026-11-23T19:52:24Z"),
-                    before,
-                ),
-                "false",
-            ),
-        ):
-            with self.subTest(builds=builds):
-                self.assertEqual(self.built(*builds), (0, f"{said}\n", ""))
-
-    def test_refuses_what_is_not_builds_or_not_a_commit(self):
-        self.builds.write_text("[]", encoding="utf-8")
-        status, out, err = run("built", "--builds", str(self.builds), "--commit", "gh-pages")
-        self.assertEqual((status, out), (2, ""))
-        self.assertIn("'gh-pages' is not a commit's 40 hex digits", err)
-        for builds in ({"message": "Not Found"}, [{"commit": self.PUSHED, "status": "built"}]):
-            with self.subTest(builds=builds):
-                self.builds.write_text(json.dumps(builds), encoding="utf-8")
-                status, out, err = run(
-                    "built", "--builds", str(self.builds), "--commit", self.PUSHED
-                )
-                self.assertEqual((status, out), (2, ""))
-                self.assertIn("not builds, each with its commit, status and time", err)
-
-
 class Workflow(unittest.TestCase):
     """simulate.yml as it is written, a job by its name."""
 
@@ -1396,17 +1297,6 @@ class Workflow(unittest.TestCase):
         self.assertIn("\n    needs: [plan, comment, publish]\n", post)
         self.assertIn("!cancelled() && needs.comment.result == 'success'", condition)
         self.assertNotIn("needs.publish", condition)
-        self.assertIn("PUBLISHED: ${{ needs.publish.result }}", post)
-
-    def test_the_comment_waits_for_the_build_of_publish_s_push_and_never_asks_for_the_picture(self):
-        publish, post = self.jobs["publish"], self.jobs["post"]
-
-        self.assertIn("\n      pushed: ${{ steps.push.outputs.pushed }}\n", publish)
-        self.assertIn('echo "pushed=$(git -C site rev-parse HEAD)" >> "$GITHUB_OUTPUT"', publish)
-        self.assertIn("PUSHED: ${{ needs.publish.outputs.pushed }}", post)
-        self.assertIn("\n      pages: read ", post)
-        self.assertIn("simulate.py built --builds", post)
-        self.assertNotIn("curl", post)
 
     def test_publish_keeps_the_scenario_files_of_the_tree_that_ran(self):
         publish = self.jobs["publish"]

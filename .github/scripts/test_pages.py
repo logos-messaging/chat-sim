@@ -992,9 +992,8 @@ class PullRequest(LogosChat):
             for rate in ("0.1", "1", "5")
             for run in (1, 2)
         ]
-        pictures = [simulate.moved_image(REVISION, dark) for dark in (False, True)]
         scenarios = [f"scenarios/{GOAL.format(rate)}.json" for rate in ("0.1", "1", "5")]
-        kept = ["index.html", "matrix.json", "meta.json", *texts, *drawn, *pictures, *scenarios]
+        kept = ["index.html", "matrix.json", "meta.json", *texts, *drawn, *scenarios]
         self.assertEqual(self.files(out), sorted(kept))
         self.assertEqual(
             (out / "head" / GOAL.format(1) / "2" / "run.json").read_bytes(),
@@ -1026,7 +1025,6 @@ class PullRequest(LogosChat):
         self.pr(base=None)
         out = self.site / "logos-chat" / "pr-316"
         self.assertFalse((out / "base").exists())
-        self.assertEqual(list(out.glob("*.svg")), [])
         self.assertIsNone(self.meta()["base"])
         self.assertEqual(pages.read_matrix(out / "matrix.json")["verdict"], "no-base")
 
@@ -1933,9 +1931,8 @@ class Describe(unittest.TestCase):
 
 
 class Pages(LogosChat):
-    """The report page of a pull request's run, the page of each of its runs and the picture of
-    those that moved, and the page of main's point, as pr and point draw them from what they
-    keep."""
+    """The report page of a pull request's run and the page of each of its runs, and the page of
+    main's point, as pr and point draw them from what they keep."""
 
     def moved(self, **edits: dict) -> Path:
         """The runs at a head whose 1% seed 1 split at epoch 5 and 5% seed 0 at epoch 4, sooner
@@ -2072,6 +2069,8 @@ class Pages(LogosChat):
         self.assertEqual(parsed.h1, ["logos-chat #316"])
         self.assertIn(f"Ran at {REVISION[:7]} against its merge base {BASE[:7]}.", parsed.text)
         self.assertEqual(self.verdicts(out), ["GroupV2 ▼ worse in 2 · 4 same"])
+        # The comment links the trees by it.
+        self.assertIn("runs", parsed.ids)
         for link in (
             f"{pages.LOGOS_CHAT_URL}/commit/{REVISION}",
             f"{pages.LOGOS_CHAT_URL}/commit/{BASE}",
@@ -2467,71 +2466,6 @@ class Pages(LogosChat):
         self.assertIn("no base", run.text)
         self.assertEqual([link for link in run.links if "base/" in link], [])
 
-    def test_the_picture_of_the_runs_that_moved_stands_alone_light_and_dark_named_by_revision(
-        self,
-    ):
-        base = self.uploaded(**{"5/0": {"grow": GROW}})
-        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
-
-        named = [simulate.moved_image(REVISION, dark) for dark in (False, True)]
-        self.assertEqual(named, [f"moved-{REVISION}.svg", f"moved-{REVISION}-dark.svg"])
-        self.assertEqual(sorted(path.name for path in out.glob("*.svg")), sorted(named))
-        drawn = []
-        for name, theme in zip(named, (0, 1)):
-            with self.subTest(name=name):
-                text = (out / name).read_text(encoding="utf-8")
-                drawn.append(text)
-                svg = ElementTree.fromstring(text)
-                self.assertEqual((svg.tag, svg.get("role")), (f"{SVG}svg", "img"))
-                wide, high = svg.get("width"), svg.get("height")
-                self.assertEqual(svg.get("viewBox"), f"0 0 {wide} {high}")
-                self.assertEqual(svg[0].tag, f"{SVG}title")
-                self.assertEqual(
-                    svg[0].text,
-                    "GroupV2 1%, seed 1 worse: first fork 5, base 9; "
-                    "GroupV2 5%, seed 0 worse: first fork 4, base 8",
-                )
-                self.assertIsNone(
-                    re.search(r"href|url\(|@import|<script|<image|<foreignObject| on[a-z]+=", text)
-                )
-                style = svg.find(f"{SVG}style").text
-                self.assertNotIn("var(", style)
-                colours = set(re.findall(r"#[0-9a-f]{3,6}\b|rgba\([^)]*\)", style))
-                self.assertTrue(colours)
-                self.assertLessEqual(colours, {both[theme] for both in pages._COLOURS.values()})
-                panels = svg.findall(f"{SVG}g")
-                self.assertEqual(
-                    [panel.find(f"{SVG}text").text for panel in panels],
-                    ["GroupV2 · 1% loss · seed 1", "GroupV2 · 5% loss · seed 0"],
-                )
-                self.assertEqual([title for title, _, _ in self.lines(panels[1], "base")], GROWN)
-                self.assertIsNotNone(panels[1].find(f".//{SVG}g[@class='tree head sketch']"))
-        self.assertNotEqual(*drawn)
-
-        head = self.moved(**{"0.1/1": {"virtual_s": 1.5}, "1/0": {"verdict": "split at epoch 30"}})
-        out = self.pr(head, self.matrix(head, base), base)
-        svg = ElementTree.fromstring((out / named[0]).read_text(encoding="utf-8"))
-        placed = [panel.get("transform") for panel in svg.findall(f"{SVG}g")]
-        below = (int(svg.get("height")) + 14) // 2
-        self.assertEqual(
-            placed,
-            [f"translate({x},0)" for x in (0, 300, 600)] + [f"translate(0,{below})"],
-        )
-
-    def test_no_picture_is_written_where_no_run_moved_or_none_was_compared(self):
-        base = self.uploaded()
-        out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
-        self.assertEqual(len(list(out.glob("moved-*.svg"))), 2)
-
-        for said, head, against in (
-            ("the same", self.uploaded(), base),
-            ("re-rolled alone", self.uploaded(**{"5/1": {"conversation": "7c3e9a01b2"}}), base),
-            ("no base", self.moved(), None),
-        ):
-            with self.subTest(said=said):
-                out = self.pr(head, self.matrix(head, against), against)
-                self.assertEqual(list(out.glob("moved-*.svg")), [])
-
     def test_where_chat_sim_did_not_build_the_build_s_log_takes_the_place_of_the_cells(self):
         head = self.scratch / "unbuilt"
         for rate in ("0.1", "1", "5"):
@@ -2564,7 +2498,6 @@ class Pages(LogosChat):
                 for number in (1, 2)
             ),
         )
-        self.assertEqual(list(out.glob("moved-*.svg")), [])
 
     def test_every_text_of_a_run_is_escaped(self):
         head = self.moved(**{"1/1": {"verdict": f"split at epoch 5 {MARKUP}"}})
@@ -2576,7 +2509,6 @@ class Pages(LogosChat):
         for drawn in (
             out / "index.html",
             out / f"head/{GOAL.format(1)}/2/index.html",
-            *(out / simulate.moved_image(REVISION, dark) for dark in (False, True)),
         ):
             with self.subTest(drawn=drawn.relative_to(out)):
                 text = drawn.read_text(encoding="utf-8")

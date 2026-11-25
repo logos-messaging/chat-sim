@@ -16,13 +16,12 @@ point that loses it is drawn again from its point.json. The points are in the or
 runs' numbers, which GitHub gives in the order the runs were started and a re-run keeps;
 `previous` names the point a new one follows. `pr` keeps the newest run of a logos-chat pull
 request in `logos-chat/pr-N/` the same way: its matrix, both sides' runs' text, its `meta.json`,
-the scenario files it ran, its report page and a page for each run, and where a run moved, the
-picture of the runs that moved the comment shows. `long` keeps a run of the long suite at a
-commit of main, held to what is expected, in `logos-chat/long/<sha>/<measurement>/` the same way:
-its `long.json`, each scenario's compare output, its runs' text and its page; the newest fifteen
-long runs keep their text. `trend` draws the graph over main, `logos-chat/index.html`, from the
-`point.json` of every point, and links the newest long run; one it cannot read is left out, with
-a warning. `closed` names the runs of logos-chat's pull requests that are no longer open.
+the scenario files it ran, its report page and a page for each run. `long` keeps a run of the long
+suite at a commit of main, held to what is expected, in `logos-chat/long/<sha>/<measurement>/` the
+same way: its `long.json`, each scenario's compare output, its runs' text and its page; the newest
+fifteen long runs keep their text. `trend` draws the graph over main, `logos-chat/index.html`, from
+the `point.json` of every point, and links the newest long run; one it cannot read is left out,
+with a warning. `closed` names the runs of logos-chat's pull requests that are no longer open.
 
 The pages run no script, and every text that comes from a run, from a pull request's title or
 from an API is escaped.
@@ -270,8 +269,7 @@ _PR_META = {
 
 # The colours of the pages, each its property's name and its value in the light theme and in the
 # dark. The rates are one blue ramp, the heavier the loss the darker, and so are the six bins of a
-# cell's epochs without a fork; each bin's ink is the light or the dark one. The picture of the
-# runs that moved writes them out, since no page's style reaches an image.
+# cell's epochs without a fork; each bin's ink is the light or the dark one.
 _COLOURS = {
     "fg": ("#1f2328", "#f0f6fc"),
     "muted": ("#59636e", "#9198a1"),
@@ -391,9 +389,9 @@ details.text>summary{font-size:13px;color:var(--muted)}
 .rates th[colspan]{text-align:center}
 .rates td,.runs td.n{white-space:nowrap}
 """
-# The trees of a pull request's runs, on its report page, its runs' pages and the picture of the
-# runs that moved: the head's in the blue of the rates and the base's muted, a sketch dashed, with
-# the ring of the members that never joined.
+# The trees of a pull request's runs, on its report page and its runs' pages: the head's in the
+# blue of the rates and the base's muted, a sketch dashed, with the ring of the members that never
+# joined.
 _TREES = """
 .tree path{fill:none;stroke-linejoin:round;stroke-linecap:round}
 .tree.head path{stroke:var(--rate-2)}
@@ -451,21 +449,6 @@ font-size:16px}
 .about{max-width:52rem;margin:0 0 1rem}
 #scenarios+.lead{max-width:52rem}
 .about a{white-space:nowrap}
-"""
-# The picture of the runs that moved, beside `_TREES`: an image, so its text sets its own font.
-_PICTURE = """
-text{font:11px system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
-.panel{fill:var(--bg);stroke:var(--line)}
-.label{fill:var(--fg)}
-.note,.axis{fill:var(--muted)}
-.small{font-size:10px}
-.title{font-size:12px}
-.chip rect{fill:var(--neutral-bg)}
-.chip text{fill:var(--fg);font-weight:600}
-.chip.worse rect{fill:var(--bad-bg)}
-.chip.worse text{fill:var(--bad)}
-.chip.better rect{fill:var(--good-bg)}
-.chip.better text{fill:var(--good)}
 """
 
 
@@ -573,10 +556,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "logos-chat/pr-N/ of SITE: the matrix, each run's run.txt, report.txt and run.json, or "
         "build.log of a job that could not build chat-sim, at the revision under head/ and at "
         "the base under base/, meta.json, each scenario file it ran under scenarios/, the report "
-        "page, index.html, the page of each run, index.html in its directory under head/, and "
-        "where a run moved, the picture of the runs that moved, light and dark, "
-        "moved-REVISION.svg and moved-REVISION-dark.svg. What was there is replaced, unless it "
-        "is a run of a higher number.",
+        "page, index.html, and the page of each run, index.html in its directory under head/. "
+        "What was there is replaced, unless it is a run of a higher number.",
     )
     _add_ran(pr, runs="the run jobs at the revision uploaded")
     pr.add_argument("--pr", metavar="N", type=int, required=True, help="the pull request")
@@ -857,8 +838,7 @@ def write_pr(
     `head/<scenario>/<run>/` and under `base_runs` in `base/<scenario>/<run>/`, at any depth and
     each run by number, the file in `scenarios` of each scenario the matrix ran in
     `scenarios/`, `meta`, which says what ran, as meta.json, the report page and its runs'
-    pages, and the picture of the runs that moved. The picture is written here alone, so that a
-    page drawn again never changes what a comment posted shows.
+    pages.
 
     Returns `meta`, as `read_pr_meta` reads it back.
     """
@@ -877,7 +857,6 @@ def write_pr(
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     meta = read_pr_meta(out / "meta.json")
     draw_pr(out, matrix, meta)
-    draw_moved(out, matrix, meta)
     return meta
 
 
@@ -1132,19 +1111,6 @@ def draw_run(
     title = f"chat-sim: logos-chat #{meta['pr']}, {named}"
     style = _CHARTS + _REPORT + _TREES + _GRID
     (run / "index.html").write_text(_page(title, body, style), encoding="utf-8")
-
-
-def draw_moved(out: Path, matrix: dict, meta: dict) -> None:
-    """Writes the picture of the runs of the pull request kept in `out` that moved against the
-    base's, for its comment, as `simulate.moved_image` names it, light and dark: each run's head
-    tree over its base's, three a row. Nothing where no run was compared or none moved."""
-    cells = [cell for cell in matrix["cells"] if simulate.moved(cell)]
-    if not simulate.compares(matrix) or not cells:
-        return
-    trees = [_trees(out, matrix, cell) for cell in cells]
-    for dark in (False, True):
-        picture = _picture(matrix, cells, trees, dark)
-        (out / simulate.moved_image(meta["revision"], dark)).write_text(picture, encoding="utf-8")
 
 
 def describe(scenario: object) -> List[str]:
@@ -3108,75 +3074,6 @@ def _members(cell: dict, side: str, lineage: Optional[dict], left: float, y: flo
     return drawn
 
 
-def _picture(
-    matrix: dict,
-    cells: Sequence[dict],
-    trees: Sequence[Tuple[Optional[dict], Optional[dict]]],
-    dark: bool,
-) -> str:
-    """The picture of the runs that moved, `cells`, `trees` their lineages, a standalone SVG in the
-    dark theme's colours or the light's: a panel a run, three a row, each with the run's name, its
-    change against the base's, and the head's tree over the base's, each with its ring. Its text is
-    placed by an estimate of its width, since no browser measures it here."""
-    panel, gap, pitch, pad, between = 286, 14, 7, 7, 8
-    columns = min(len(cells), 3)
-    drawn_trees = [tree for both in trees for tree in both]
-    tall = pad + (max(map(_rows_of, drawn_trees)) - 1) * pitch + pad
-    top = 70
-    high = top + tall * 2 + between + 10
-    lines = math.ceil(len(cells) / columns)
-    wide, height = columns * panel + (columns - 1) * gap, lines * high + (lines - 1) * gap
-    width = _widths(_most(drawn_trees), 1.2, 4.6)
-    x = _along(46, panel - 52)
-    plain, strong = "{}", '<tspan class="label strong">{}</tspan>'
-    title = "; ".join(
-        f"{_e(_job(cell))} {cell['change']}: {_against(cell, plain)}" for cell in cells
-    )
-    drawn = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{wide}" height="{height}" '
-        f'viewBox="0 0 {wide} {height}" role="img">',
-        f"<title>{title}</title>",
-        f"<style>{_themed(_TREES + _PICTURE, dark)}</style>",
-    ]
-    for number, (cell, both) in enumerate(zip(cells, trees)):
-        shown = _ARROWS.get(cell["change"], "") + cell["change"]
-        chip = round(16 + _width(shown) * 1.08)
-        drawn.append(
-            f'<g transform="translate({(number % columns) * (panel + gap)},'
-            f'{(number // columns) * (high + gap)})">'
-            f'<rect class="panel" x="0.5" y="0.5" width="{panel - 1}" height="{high - 1}" rx="6"/>'
-            f'<text class="label strong title" x="12" y="23">{_e(_run_heading(cell))}</text>'
-            f'<g class="chip {cell["change"]}">'
-            f'<rect x="12" y="31" width="{chip}" height="18" rx="9"/>'
-            f'<text x="20" y="44">{shown}</text></g>'
-            f'<text class="note" x="{20 + chip}" y="44">{_against(cell, strong)}</text>'
-        )
-        bottom = top + tall * 2 + between
-        drawn.append(_epoch_lines(x, top, bottom))
-        drawn.append(_epoch_ticks(x, top - 6))
-        for side, lineage, y in (
-            ("head", both[0], top + pad),
-            ("base", both[1], top + tall + between + pad),
-        ):
-            drawn.append(f'<text class="note" x="12" y="{y + 4}">{side}</text>')
-            if lineage is None:
-                drawn.append(_sketch(cell, side, x, y, pitch))
-            else:
-                drawn.append(_tree(lineage, side, x, y, pitch, width, 1.8))
-            never = _never(cell, side, lineage)
-            if never:
-                drawn.append(_ring(panel - 44, y, never))
-        drawn.append("</g>")
-    return "\n".join(drawn) + "\n</svg>\n"
-
-
-def _themed(style: str, dark: bool) -> str:
-    """`style` with each colour of `_COLOURS` it takes written out, of the dark theme or the light,
-    for an image, which no page's style reaches."""
-    theme = 1 if dark else 0
-    return re.sub(r"var\(--([a-z0-9-]+)\)", lambda found: _COLOURS[found[1]][theme], style)
-
-
 def _trees(out: Path, matrix: dict, cell: dict) -> Tuple[Optional[dict], Optional[dict]]:
     """The lineages of `cell`'s runs of the pull request kept in `out`, at the head and at the
     base, from the run.json of each the site keeps, each `None` where it keeps none that can be
@@ -3702,8 +3599,7 @@ def _loss(cell: dict) -> str:
 
 
 def _run_heading(cell: dict) -> str:
-    """A cell's run by its group, its rate of loss and its seed, as its page and its panel of
-    the picture head it."""
+    """A cell's run by its group, its rate of loss and its seed, as its page heads it."""
     return f"{simulate.GROUPS[group(cell)]} · {_loss(cell)} · seed {cell['seed']}"
 
 

@@ -9,28 +9,26 @@ to 19 of the four rates, two jobs of ten a rate, and no base. `long` runs the tw
 fifty epochs and every other one `tools/sim/expected` holds but the goal's, a job a scenario a
 side. `plan` checks what it was handed and prints the run jobs. `comment` writes the comment in
 Markdown: for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, each group's
-apart, for `pr` with a picture of the runs that moved, and for `long` a row for each scenario with
-what `tools/sim compare` said of its runs against the base's, or against what `tools/sim/expected`
-holds when there is no base. It says where the picture is, so that the workflow posts the comment
-once the Pages site serves it. `measurement` prints the chat-sim commit a run measures, and
-`changed` whether a commit changes a path chat-sim's own CI holds its runs to against its merge
-base with another. `running` writes the update that moves a check run on logos-chat to in progress
-while the runs go, and `check` the one that completes it with the groups' verdicts; `post` says
-where the comment goes on a logos-chat pull request, an edit of the App's comment there or a new
-one, and writes it for GitHub's API; `built` says whether the Pages site has built a push to
-gh-pages, which the comment's picture waits for.
+apart, for `pr` with links to the trees of the runs on the pull request's page and to the graph
+over main, and for `long` a row for each scenario with what `tools/sim compare` said of its runs
+against the base's, or against what `tools/sim/expected` holds when there is no base. `measurement`
+prints the chat-sim commit a run measures, and `changed` whether a commit changes a path chat-sim's
+own CI holds its runs to against its merge base with another. `running` writes the update that
+moves a check run on logos-chat to in progress while the runs go, and `check` the one that
+completes it with the groups' verdicts; and `post` says where the comment goes on a logos-chat pull
+request, an edit of the App's comment there or a new one, and writes it for GitHub's API.
 """
 
 from __future__ import annotations
 
 import argparse
-import html
 import json
 import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Callable, List, Optional, Sequence, Tuple
+from urllib.parse import urljoin
 
 # The goal's scenario of each group at a rate of loss in percent, by the group's name in a
 # scenario: two or more adders a round can commit for one epoch, which a GroupV3 group needs to
@@ -139,15 +137,6 @@ _MARKS = {
     "same": "⚪",
     "uncompared": "⚫",
 }
-# How to read the trees the runs are drawn as: what they draw, and what the comment cannot tell.
-_TREES = (
-    "A tree is one run, left to right by epoch from 0 to the goal of 50. The head's tree sits over "
-    "the base's.",
-    "The top line is the trunk. Each line below left the line it drops from at that epoch and "
-    "stops at its dot. The thicker a line, the more members it ended with.",
-    "The ring and its number count the members that never joined.",
-)
-_MEASURED_AFTER = "Main's seeds after the merge are the measurement. This check blocks nothing yet."
 _OFF = {"lines_off_trunk": "line", "members_off_trunk": "member"}
 _MAIN_FOOT = (
     f"A row: the runs of a group at a rate of loss, a seed each, by how each ended ({_ENDED}); "
@@ -186,12 +175,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="write the comment on what the run jobs came to",
         description="Writes the comment in Markdown. For pr and main it is drawn from --matrix: "
         "for pr a line that says nothing moved, or else a line for each group by how its runs "
-        "compare, the picture of the runs that moved on the report's page with a link to each "
-        "one's page, and how to read the trees; for main a row a group's rate with how its runs "
-        "ended and forked. For long it is a row for each scenario from the "
-        "outcomes.json the run jobs uploaded under RUNS and the compare.txt written beside it, "
-        "and the output of each compare. With --out it is written there, and standard output "
-        "says, as a line for $GITHUB_OUTPUT, where the picture is that it shows, or nothing.",
+        "compare, then links to the trees of the runs on the report's page, to the report, "
+        "kept while the pull request is open, to the graph over main and to the run; for main a "
+        "row a group's rate with how its runs ended and forked. For long it is a row for each "
+        "scenario from the outcomes.json the run jobs uploaded under RUNS and the compare.txt "
+        "written beside it, and the output of each compare. With --out it is written there.",
     )
     comment.add_argument(
         "runs",
@@ -324,21 +312,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--out", metavar="FILE", type=Path, required=True, help="where to write what is sent"
     )
     post.set_defaults(command=_post)
-    built = commands.add_parser(
-        "built",
-        help="say whether the Pages site has built a push to gh-pages",
-        description="Prints true where, among --builds, the Pages site built the push of "
-        "--commit or a push after it, and so serves what --commit holds; else false.",
-    )
-    built.add_argument(
-        "--builds",
-        metavar="FILE",
-        type=Path,
-        required=True,
-        help="the site's newest builds, a JSON array as gh api lists repos/<repo>/pages/builds",
-    )
-    built.add_argument("--commit", metavar="SHA", required=True, help="the commit pushed")
-    built.set_defaults(command=_built)
     args = parser.parse_args(argv)
     return args.command(parser, args)
 
@@ -483,22 +456,6 @@ def run_page(cell: dict) -> str:
     return f"head/{cell['scenario']}/{cell['run']}/"
 
 
-def moved_image(revision: str, dark: bool = False) -> str:
-    """The name of the picture of the runs that moved at `revision`, under its pull request's
-    report, in the light theme or the dark. It names the revision, since GitHub's image proxy
-    keeps a picture it fetched once."""
-    return f"moved-{revision}{'-dark' if dark else ''}.svg"
-
-
-def picture(matrix: dict, facts: dict) -> Optional[str]:
-    """Where the picture of the runs that moved is that the comment on a pull request shows, in
-    the light theme: under the report's page, where it has one and a run of `matrix` moved; else
-    `None`."""
-    if not facts["report_url"] or not any(moved(cell) for cell in matrix["cells"]):
-        return None
-    return facts["report_url"] + moved_image(facts["revision"])
-
-
 def concluded(matrix: dict, required: bool) -> str:
     """The check's conclusion of `matrix`: a failure where the verdict of a group's runs fails it,
     else a success where one's succeeds, else neutral, so that one group's runs standing higher
@@ -553,22 +510,11 @@ def post_to(pages: Sequence[Sequence[dict]], login: str, pr: str) -> Tuple[str, 
     return "PATCH", f"{ON_LOGOS_CHAT}/issues/comments/{found['id']}"
 
 
-def built_since(builds: Sequence[dict], commit: str) -> bool:
-    """Whether the Pages site serves `commit` of gh-pages, from its `builds` as the API lists
-    them: it built the push of `commit`, or a push after it, which holds `commit` too and can have
-    cut the build of `commit` short."""
-    ours = next((one for one in builds if one["commit"] == commit), None)
-    return ours is not None and any(
-        one["status"] == "built" and one["created_at"] >= ours["created_at"] for one in builds
-    )
-
-
 def render_pr(matrix: dict, facts: dict) -> str:
     """The comment on a pull request. Where every run came out the same as the base's, one line
-    that says so. Else a line for each group by how its runs compare; where a run moved and the
-    report has a page, the picture of the runs that moved and a link to each one's page; the
-    links; and with the picture, how to read its trees. A head chat-sim does not build at, or runs
-    with nothing to compare, have the verdict line alone."""
+    that says so and the links. Else a line for each group by how its runs compare, and the links.
+    A head chat-sim does not build at, or runs with nothing to compare, have the verdict line
+    alone."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
     if not compares(matrix):
@@ -584,29 +530,7 @@ def render_pr(matrix: dict, facts: dict) -> str:
     # A backslash breaks the line wherever the comment is rendered, the check's summary and the
     # run's summary too, where the end of a line alone does not.
     lines = [f"{line}\\" for line in said[:-1]] + said[-1:]
-    shown, shifted = picture(matrix, facts), [cell for cell in cells if moved(cell)]
-    if shown is not None:
-        report = facts["report_url"]
-        dark = report + moved_image(facts["revision"], dark=True)
-        alt = "; ".join(f"{_run_name(cell)}: {cell['change']}" for cell in shifted)
-        opened = " · ".join(f"[{_run_name(cell)}]({report}{run_page(cell)})" for cell in shifted)
-        lines += [
-            "",
-            f'<picture><source media="(prefers-color-scheme: dark)" srcset="{html.escape(dark)}">'
-            f'<img alt="{html.escape(alt)}" src="{html.escape(shown)}"></picture>',
-            "",
-            f"Open a run: {opened}",
-        ]
     lines += ["", f"{_links(facts)} · {head} against {base}"]
-    if shown is not None:
-        lines += [
-            "",
-            "<details><summary>How to read the trees</summary>",
-            "",
-            *_trees(),
-            "",
-            "</details>",
-        ]
     return "".join(f"{line}\n" for line in lines)
 
 
@@ -759,7 +683,7 @@ def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         if (args.base_runs is None) != (not args.base):
             parser.error("--base-runs: given with --base, and only with it")
         swept = scenarios(args.suite, args.expected)
-        return _written(render(swept, args.runs, args.base_runs, facts), None, args.out)
+        return _written(render(swept, args.runs, args.base_runs, facts), args.out)
     if args.matrix is None or args.runs is not None or args.base_runs is not None:
         parser.error(f"--matrix: the {args.suite} suite is written from its matrix alone")
     matrix = _matrix(args.matrix)
@@ -768,18 +692,16 @@ def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     if (matrix["base"] is None) != (not args.base):
         parser.error("--matrix: a matrix with a base is given with --base, and only with it")
     if args.suite == "main":
-        return _written(render_main(matrix, facts), None, args.out)
-    return _written(render_pr(matrix, facts), picture(matrix, facts), args.out)
+        return _written(render_main(matrix, facts), args.out)
+    return _written(render_pr(matrix, facts), args.out)
 
 
-def _written(comment: str, shown: Optional[str], out: Optional[Path]) -> int:
-    """Writes `comment` to `out`, and then says where the picture it shows is, `shown`, or
-    nothing; without `out`, writes it to standard output."""
+def _written(comment: str, out: Optional[Path]) -> int:
+    """Writes `comment` to `out`, or without `out` to standard output."""
     if out is None:
         sys.stdout.write(comment)
-        return 0
-    out.write_text(comment, encoding="utf-8")
-    print(f"picture={shown or ''}")
+    else:
+        out.write_text(comment, encoding="utf-8")
     return 0
 
 
@@ -861,23 +783,6 @@ def _post(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     args.out.write_text(json.dumps({"body": body}), encoding="utf-8")
     print(f"method={method}")
     print(f"endpoint={endpoint}")
-    return 0
-
-
-def _built(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
-    if _SHA.fullmatch(args.commit) is None:
-        parser.error(f"--commit: {args.commit!r} is not a commit's 40 hex digits")
-    try:
-        builds = json.loads(_read(parser, "--builds", args.builds))
-    except ValueError as error:
-        parser.error(f"--builds: {args.builds}: {error}")
-    if not isinstance(builds, list) or not all(
-        isinstance(one, dict)
-        and all(isinstance(one.get(key), str) for key in ("commit", "status", "created_at"))
-        for one in builds
-    ):
-        parser.error(f"--builds: {args.builds}: not builds, each with its commit, status and time")
-    print("true" if built_since(builds, args.commit) else "false")
     return 0
 
 
@@ -991,21 +896,16 @@ def _merge_base(facts: dict) -> str:
 
 
 def _links(facts: dict) -> str:
-    """The links of the comment on a pull request: the report's page where it has one, and the
-    run."""
-    if not facts["report_url"]:
+    """The links of the comment on a pull request: where the report has a page, the trees of its
+    runs there, the page, which the site keeps while the pull request is open, and the graph over
+    main, the page above it; and the run."""
+    report = facts["report_url"]
+    if not report:
         return f"[The run]({facts['run_url']})"
-    return f"[The report]({facts['report_url']}) · [the run]({facts['run_url']})"
-
-
-def _run_name(cell: dict) -> str:
-    """A cell's run as the comment on a pull request names it: its group, rate and seed."""
-    return f"{GROUPS[cell['group']]} {_rate(cell['rate'])} seed {cell['seed']}"
-
-
-def _trees() -> List[str]:
-    """How to read the trees the runs are drawn as, a bullet each."""
-    return [f"- {said}" for said in (*_TREES, _MEASURED_AFTER)]
+    return (
+        f"[The trees]({report}#runs) · [the report]({report}), kept while the pull request is "
+        f"open · [the graph over main]({urljoin(report, '../')}) · [the run]({facts['run_url']})"
+    )
 
 
 def words(cell: dict, against: bool) -> str:
