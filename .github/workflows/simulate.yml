@@ -31,6 +31,8 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # newest. Each keeps its runs' text, and the build's log of a job that could not
 # build chat-sim. The comment links the page, and for a pr run the trees of its
 # runs there and the graph over main.
+# The site keeps no run's log. Each run job uploads its runs' as an artifact no
+# job downloads, and the page of a run gives the command that does.
 # Main's points and the long runs are series the site shares, so only a run of
 # the default branch keeps one; a pr run keeps its pull request's run from any
 # branch.

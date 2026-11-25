@@ -11,13 +11,14 @@ import unittest
 import xml.etree.ElementTree as ElementTree
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import pages
 import simulate
 
 SHA = "0123456789abcdef0123456789abcdef01234567"
-RUN_URL = "https://github.com/logos-messaging/chat-sim/actions/runs/42"
+RUNS_URL = "https://github.com/logos-messaging/chat-sim/actions/runs"
+RUN_URL = f"{RUNS_URL}/42"
 COMMIT_URL = f"https://github.com/logos-messaging/chat-sim/commit/{SHA}"
 # A logos-chat commit, the base it is compared with, and the chat-sim commit a run measures.
 REVISION = "89abcdef0123456789abcdef0123456789abcdef"
@@ -481,12 +482,14 @@ class Index(Site):
 
 
 def sha(number: int) -> str:
-    """The `number`th of a run of made-up commits."""
-    return f"{number:040x}"
+    """The `number`th of a run of made-up commits, each with a short form of its own."""
+    return f"{number:07x}".ljust(40, "0")
 
 
 def time(minute: int) -> str:
-    return f"2026-11-09T{minute // 60:02d}:{minute % 60:02d}:00Z"
+    """The minute of 2026-11-09 a run ended at, or of a day after it."""
+    day, minute = divmod(minute, 24 * 60)
+    return f"2026-11-{9 + day:02d}T{minute // 60:02d}:{minute % 60:02d}:00Z"
 
 
 class LogosChat(unittest.TestCase):
@@ -530,6 +533,18 @@ class LogosChat(unittest.TestCase):
         scenario, number = goal.format(rate), int(seed) + 1
         return side / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
 
+    def seeded(self, side: Path, rate: str, seeds: Sequence[int], **edits: dict) -> Path:
+        """`side` with runs of GroupV2 at `rate` at `seeds` too, each a copy of seed 0's at its own
+        seed with its text, and the fields `edits` gives a run changed, by its rate and seed."""
+        first = self.run_json(side, f"{rate}/0")
+        for seed in seeds:
+            copy = self.run_json(side, f"{rate}/{seed}")
+            shutil.copytree(first.parent, copy.parent)
+            report = dict(json.loads(first.read_text(encoding="utf-8")), seed=seed)
+            edited(report, edits.get(f"{rate}/{seed}", {}))
+            copy.write_text(json.dumps(report), encoding="utf-8")
+        return side
+
     def matrix(
         self,
         head: Path,
@@ -557,12 +572,12 @@ class LogosChat(unittest.TestCase):
         write(out, json.dumps({"status": status, "commits": given}))
         return out
 
-    def ran(self, run_number: int, minute: int) -> List[str]:
+    def ran(self, run_number: int, minute: int, run_url: str = RUN_URL) -> List[str]:
         return [
             "--chat-sim",
             SHA,
             "--run-url",
-            RUN_URL,
+            run_url,
             "--run-number",
             str(run_number),
             "--time",
@@ -588,12 +603,13 @@ class LogosChat(unittest.TestCase):
         runs: Optional[Path] = None,
         matrix: Optional[Path] = None,
         commits: Optional[Path] = None,
+        run_url: str = RUN_URL,
     ) -> str:
         """Writes the point of a run at `revision`, and returns what the command printed."""
         runs = self.uploaded() if runs is None else runs
         matrix = self.matrix(runs) if matrix is None else matrix
         given = [str(matrix), str(runs), str(self.site), "--revision", revision]
-        given += ["--measurement", measurement, *self.ran(run_number, minute)]
+        given += ["--measurement", measurement, *self.ran(run_number, minute, run_url)]
         given += [] if commits is None else ["--commits", str(commits)]
         status, out, err = self.run_pages("point", *given)
         self.assertEqual(status, 0, err)
@@ -1186,34 +1202,33 @@ class PullRequest(LogosChat):
 MOVED = "5d81c0a" * 5 + "5d81c"
 SVG = "{http://www.w3.org/2000/svg}"
 TITLE = """feat(core): hold <script>alert("merged")</script> & 'flush'"""
-
-
-def moved_to(number: int) -> str:
-    """The chat-sim commit the measurement moved to at the `number`th point of a history."""
-    return f"{number:07x}" + "c" * 33
+# The runs of the fixture with 1% seed 1 split at epoch 5, four epochs earlier than its 9.
+EARLIER = {"1/1": {"first_fork": 5}}
 
 
 class Trend(LogosChat):
     """The graph over main, drawn from a history of points of what the run jobs uploaded."""
 
     def history(self, points: int = 4) -> None:
-        """Writes the first `points` of four: the fixture's runs; a point that merged two pull
-        requests, one titled with markup, with 1% seed 1 split at epoch 5; one re-rolled, 1% seed
-        1 drawing another group, and its runs as the first's but for that; and its commit at
-        another measurement, with 0.1% seed 1 whole. 5% has no run whole at any of them."""
-        drawn = {"conversation": "7c3e9a01b2"}
+        """Writes the first `points` of four: the fixture's runs; a commit that merged two pull
+        requests, one titled with markup, whose runs are `EARLIER`; a commit whose runs are that
+        commit's; and that commit again at another measurement, its runs the same."""
         made = [
             dict(revision=sha(1)),
             dict(
                 revision=sha(2),
-                runs=self.uploaded(**{"1/1": {"first_fork": 5}}),
+                runs=self.uploaded(**EARLIER),
                 commits=self.commits(f"{TITLE} (#321)", "chore: bump the toolchain (#318)"),
             ),
-            dict(revision=sha(3), runs=self.uploaded(**{"1/1": drawn}), commits=self.commits()),
+            dict(
+                revision=sha(3),
+                runs=self.uploaded(**EARLIER),
+                commits=self.commits("fix: a typo (#322)"),
+            ),
             dict(
                 revision=sha(3),
                 measurement=MOVED,
-                runs=self.uploaded(**{"1/1": drawn, "0.1/1": {"first_fork": None, "behind": []}}),
+                runs=self.uploaded(**EARLIER),
                 commits=self.commits(status="identical"),
             ),
         ]
@@ -1229,431 +1244,56 @@ class Trend(LogosChat):
     def page(self) -> str:
         return (self.site / "logos-chat" / "index.html").read_text(encoding="utf-8")
 
-    def svgs(self) -> List[ElementTree.Element]:
-        """Every SVG of the page, each parsed as XML."""
-        return [
-            ElementTree.fromstring(svg) for svg in re.findall(r"<svg.*?</svg>", self.page(), re.S)
-        ]
+    def section(self, name: str, page: Optional[str] = None) -> str:
+        """A section of the page, or of `page`, by its id."""
+        drawn = self.page() if page is None else page
+        return drawn.split(f'id="{name}"', 1)[1].split("</section>", 1)[0]
 
-    def chart(self, section: str) -> ElementTree.Element:
-        """The SVG of a chart, by the id of its section, past its legend's keys."""
-        return self.charts(section)[0]
+    def now(self) -> List[Tuple[str, str]]:
+        """Each cell of the newest commit's numbers: its median and what is under it."""
+        return re.findall(r"<td><b>([^<]*)</b>.*?<small>([^<]*)</small></td>", self.section("now"))
 
-    def charts(self, section: str) -> List[ElementTree.Element]:
-        """The SVGs of a chart, by the id of its section, a panel each, past its legend's keys."""
-        drawn = self.page().split(f'id="{section}"', 1)[1].split("</section>", 1)[0]
-        found = re.findall(r'<svg[^>]* role="img".*?</svg>', drawn, re.S)
-        return [ElementTree.fromstring(svg) for svg in found]
+    def panels(
+        self, page: Optional[str] = None, name: str = "commits"
+    ) -> Dict[str, ElementTree.Element]:
+        """The panels of a section, each by its title."""
+        found = re.findall(
+            r'<div class="panel">\n<p>([^<]*)</p>\n(<svg.*?</svg>)', self.section(name, page), re.S
+        )
+        return {title: ElementTree.fromstring(svg) for title, svg in found}
 
-    def scale(self, svg: ElementTree.Element) -> Callable[[float], float]:
-        """What a height of a chart stands for, read from its grid and the labels of its ticks."""
-        lines, texts = svg.iter(f"{SVG}line"), svg.iter(f"{SVG}text")
-        grid = [float(line.get("y1")) for line in lines if line.get("class") == "grid"]
-        labels = [(text.text or "").removesuffix("%") for text in texts]
-        ticks = [float(label) for label in labels if label.isdigit()]
-        (low, zero), (high, top) = (grid[0], ticks[0]), (grid[-1], ticks[-1])
-        return lambda y: zero + (y - low) * (top - zero) / (high - low)
+    def rows(self) -> List[List[str]]:
+        """The rows of what changed, the newest commit first, each its cells' text."""
+        return Parsed(self.section("changes")).rows[1:]
 
-    def history_of(self, count: int, moved_at: Sequence[int] = ()) -> None:
-        """Writes `count` points of the fixture's runs, a commit each, measured by another chat-sim
-        commit from each point of `moved_at` on."""
+    def change(self, revision: str, measurement: str = MEASUREMENT) -> Path:
+        return self.at(revision, measurement) / "change" / "index.html"
+
+    def series(self, svg: ElementTree.Element, group: str) -> ElementTree.Element:
+        return next(one for one in svg.iter(f"{SVG}g") if one.get("class") == group)
+
+    def since(self) -> str:
+        """The line under the newest commit's numbers, on what moved since the first commit."""
+        return Parsed(self.page().split('<p class="since">', 1)[1].split("</p>", 1)[0]).text
+
+    def none_built(self) -> Path:
+        """What the run jobs of a commit chat-sim does not build against uploaded."""
         runs = self.uploaded()
-        matrix = self.matrix(runs)
-        measurement = MEASUREMENT
-        for number in range(1, count + 1):
-            if number in moved_at:
-                measurement = moved_to(number)
-            given = dict(runs=runs, matrix=matrix, measurement=measurement)
-            given["commits"] = None if number == 1 else self.commits()
-            self.point(sha(number), minute=number, run_number=number, **given)
-
-    def markers(self, svg: ElementTree.Element) -> List[Tuple[str, str]]:
-        """Each marker of a chart, its title and its class."""
-        return [
-            (group.find(f"{SVG}title").text, circle.get("class"))
-            for group in svg.iter(f"{SVG}g")
-            for circle in group.findall(f"{SVG}circle")
-            if circle.get("class", "").startswith("marker")
-        ]
-
-    def test_the_page_holds_the_four_charts_in_the_design_s_order_and_then_the_points(self):
-        self.history()
-        self.trend()
-        page = self.page()
-        self.assertEqual(
-            re.findall(r'<section[^>]* id="([^"]+)"', page),
-            ["epochs", "whole", "newest", "off", "points"],
-        )
-        self.assertEqual(
-            re.findall(r"<h2>(.*?)</h2>", page),
-            [
-                "Epochs without a fork",
-                "Runs whole at 50 epochs",
-                "The newest point",
-                "Members off the trunk at the end",
-                "The points",
-            ],
-        )
-        self.assertEqual(
-            re.findall(r"<h3>(.*?)</h3>", page),
-            ["GroupV2", "GroupV2 runs whole, of 2", "GroupV2", "GroupV2"],
-        )
-        self.assertEqual(Parsed(page).h1, ["Over main"])
-
-    def test_each_rate_is_a_hue_of_its_own_in_the_order_of_its_loss(self):
-        self.history()
-        self.trend()
-        panel = r'<div class="panel">\n<p><svg class="(s\d)".*?</svg>(.*?)</p>'
-        panels = re.findall(panel, self.page())
-        self.assertEqual(panels, [("s1", "0.1%"), ("s2", "1%"), ("s3", "5%")])
-        for section in ("whole", "off"):
-            lines = [group for group in self.chart(section).iter(f"{SVG}g") if group.get("class")]
-            series = [group.get("class") for group in lines if group.find(f"{SVG}path") is not None]
-            self.assertEqual(series, ["s1", "s2", "s3"])
-            ends = [group for group in lines if group.find(f"{SVG}rect") is not None]
-            self.assertEqual(sorted(group.get("class") for group in ends), ["s1", "s2", "s3"])
-        keyed = [
-            re.findall(r'<span><svg class="(s\d)"[^>]*>.*?</svg>([^<]+)</span>', legend)[:3]
-            for legend in re.findall(r'<p class="legend">(.*?)</p>', self.page())
-        ]
-        self.assertEqual(keyed[1], [("s1", "0.1%"), ("s2", "1%"), ("s3", "5%")])
-        self.assertEqual(keyed[3], keyed[1])
-
-    def test_the_runs_whole_of_each_rate_are_drawn_as_its_points_hold_them(self):
-        self.history()
-        self.trend()
-        said = [title.split(" · ")[-1] for title, _ in self.markers(self.chart("whole"))]
-        self.assertEqual(
-            said,
-            ["0.1%: 1 of 2 whole"] * 3 + ["0.1%: 2 of 2 whole"]
-            + ["1%: 0 of 2 whole"] * 4
-            + ["5%: 0 of 2 whole"] * 4,
-        )
-        ends = sorted(
-            text.text
-            for text in self.chart("whole").iter(f"{SVG}text")
-            if text.get("class") == "label"
-        )
-        self.assertEqual(ends, ["0.1% 100%", "1% 0%", "5% 0%"])
-        panel = [title.split(" · ")[-1] for title, _ in self.markers(self.chart("epochs"))]
-        self.assertEqual(
-            panel,
-            ["0.1%: median 48, lowest 46, highest 50"] * 3
-            + ["0.1%: median 50, lowest 50, highest 50"],
-        )
-        # A panel's band runs over each point's highest, and back under each one's lowest.
-        held = [self.read(*at) for at in ((sha(1),), (sha(2),), (sha(3),), (sha(3), MOVED))]
-        for rate, drawn in enumerate(self.charts("epochs")):
-            (band,) = [shape for shape in drawn.iter(f"{SVG}polygon") if shape.get("class")]
-            corners = [float(corner.split(",")[1]) for corner in band.get("points").split()]
-            epochs = [point["summary"][rate]["epochs"] for point in held]
-            self.assertEqual(
-                [round(self.scale(drawn)(corner)) for corner in corners],
-                [one["highest"] for one in epochs] + [one["lowest"] for one in reversed(epochs)],
-            )
-        whole = self.chart("whole")
-        goal = [
-            float(line.get("y1"))
-            for line in whole.iter(f"{SVG}line")
-            if line.get("class") == "measure" and line.get("y1") == line.get("y2")
-        ]
-        self.assertEqual([round(self.scale(whole)(at), 1) for at in goal], [100])
-        self.assertIn("the goal", [text.text for text in whole.iter(f"{SVG}text")])
-        merged = sorted(
-            (float(text.get("x")), text.text or "")
-            for text in whole.iter(f"{SVG}text")
-            if text.get("class") == "axis small"
-        )
-        self.assertEqual([said for _, said in merged], ["", "#321, #318", "", ""])
-
-    def test_a_rate_s_runs_whole_are_drawn_as_a_share_of_its_runs_whatever_their_number(self):
-        self.point(sha(1), minute=1, run_number=1)
-        fewer = self.uploaded()
-        shutil.rmtree(fewer / f"sim-revision-{GOAL.format('0.1')}-2")
-        self.point(sha(2), minute=2, run_number=2, runs=fewer, commits=self.commits())
-        self.trend()
-        whole = self.chart("whole")
-        said = [title.split(" · ")[-1] for title, _ in self.markers(whole)]
-        self.assertEqual(said[:2], ["0.1%: 1 of 2 whole", "0.1%: 1 of 1 whole"])
-        drawn = [
-            round(self.scale(whole)(float(circle.get("cy"))))
-            for circle in whole.iter(f"{SVG}circle")
-            if circle.get("class", "").startswith("marker")
-        ]
-        self.assertEqual(drawn[:2], [50, 100])
-        parsed = Parsed(self.page())
-        self.assertEqual(parsed.rows[0][3], "GroupV2 runs whole")
-        self.assertEqual(parsed.rows[2][6], "GroupV2 0.1% whole 1 of 2 to 1 of 1, median 48 to 50")
-        self.assertEqual(parsed.rows[3][6], "the first point")
-
-    def test_a_dashed_line_marks_the_point_at_another_measurement(self):
-        self.history()
-        self.trend()
-        page = self.page()
-        # One a panel of the first chart, one in the second and one in the fourth.
-        lines = [
-            line
-            for svg in self.svgs()
-            if svg.get("role") == "img"
-            for line in svg.iter(f"{SVG}line")
-            if line.get("class") == "measure" and line.get("x1") == line.get("x2")
-        ]
-        self.assertEqual(len(lines), 5)
-        self.assertEqual(len({line.get("x1") for line in lines[3:]}), 1)
-        # Its note is the second chart's alone.
-        self.assertEqual(page.count("chat-sim moved: 5d81c0a"), 1)
-        notes = [text.text for text in self.chart("whole").iter(f"{SVG}text")]
-        self.assertIn("chat-sim moved: 5d81c0a", notes)
-        moved = [title for title, _ in self.markers(self.chart("whole")) if "moved" in title]
-        self.assertEqual(len(moved), 3)
-        self.assertTrue(all(title.startswith("2026-11-09 00:04 UTC · main ") for title in moved))
-        self.assertIn("the measurement moved: another chat-sim commit", Parsed(page).text)
-
-    def test_an_open_marker_marks_the_point_re_rolled_against_the_one_it_follows(self):
-        self.history()
-        self.trend()
-        for section in ("epochs", "whole", "off"):
-            with self.subTest(section=section):
-                markers = self.markers(self.chart(section))
-                opened = [title for title, kind in markers if kind == "marker open"]
-                re_rolled = [title for title, _ in markers if "re-rolled" in title]
-                self.assertEqual(opened, re_rolled)
-                self.assertEqual(len(opened), 1 if section == "epochs" else 3)
-                self.assertTrue(all(" 00:03 UTC " in title for title in opened))
-
-    def test_every_marker_and_cell_has_its_hover_text_and_a_cell_s_is_how_its_run_came_out(self):
-        self.history()
-        self.trend()
-        for svg in self.svgs():
-            for group in svg.iter(f"{SVG}g"):
-                if group.find(f"{SVG}circle[@class='hit']") is not None:
-                    self.assertIsNotNone(group.find(f"{SVG}title"))
-        newest = self.read(sha(3), MOVED)
-        cells = [
-            group
-            for group in self.chart("newest").iter(f"{SVG}g")
-            if group.get("class", "").startswith("cell")
-        ]
-        self.assertEqual(len(cells), 6)
-        said = [cell.find(f"{SVG}title").text for cell in cells]
-        self.assertEqual(
-            said,
-            [
-                f"{cell['rate']}, seed {cell['seed']} · {cell['epochs']['head']} epochs without a "
-                f"fork · {cell['head']['came_to']}"
-                for cell in newest["cells"]
-            ],
-        )
-        self.assertIn("5%, seed 0 · 8 epochs without a fork · no member took part: ", said[4])
-        kinds = [(cell.get("class"), cell.find(f"{SVG}text").text) for cell in cells]
-        self.assertEqual(
-            kinds,
-            [
-                ("cell bin5", "50"),
-                ("cell bin5", "50"),
-                ("cell bin1", "18"),
-                ("cell bin0", "9"),
-                ("cell bin0", "8"),
-                ("cell bin0", "3"),
-            ],
-        )
-        whole = [len(cell.findall(f"{SVG}circle[@class='whole']")) for cell in cells]
-        self.assertEqual(whole, [1, 1, 0, 0, 0, 0])
-
-    def test_a_run_with_no_outcome_is_an_empty_cell_that_says_why(self):
-        unbuilt = self.uploaded()
-        report = self.run_json(unbuilt, "5/1")
-        for name in ("run.json", "run.txt", "report.txt", "report.json"):
-            report.with_name(name).unlink()
-        write(report.with_name("unbuilt"), "chat-sim does not build\n")
-        self.point(runs=unbuilt)
-        self.trend()
-        cells = [group for group in self.chart("newest").iter(f"{SVG}g") if group.get("class")]
-        last = cells[-1]
-        self.assertEqual(
-            (last.get("class"), last.find(f"{SVG}text").text, last.find(f"{SVG}title").text),
-            ("cell empty", "-", "5%, seed 1 · chat-sim did not build"),
-        )
-        said = [title.split(" · ")[-1] for title, _ in self.markers(self.chart("whole"))]
-        self.assertEqual(said[-1], "5%: 0 of 2 whole, 1 with no outcome")
-
-    def test_a_run_that_ended_one_group_with_members_behind_is_a_ringed_cell(self):
-        self.point(runs=self.uploaded(**{"0.1/1": {"first_fork": None}}))
-        self.trend()
-        cells = [group for group in self.chart("newest").iter(f"{SVG}g") if group.get("class")]
-        ringed = [
-            cell.find(f"{SVG}title").text
-            for cell in cells
-            if cell.find(f"{SVG}circle[@class='behind']") is not None
-        ]
-        self.assertEqual(len(ringed), 1)
-        self.assertTrue(ringed[0].startswith("0.1%, seed 1 · 50 epochs without a fork · "))
-        self.assertIsNone(cells[1].find(f"{SVG}circle[@class='whole']"))
-
-    def test_the_points_are_listed_newest_first_with_what_moved_and_the_pull_requests_merged(self):
-        self.history()
-        self.trend()
-        parsed = Parsed(self.page())
-        rows = parsed.rows[2:]
-        self.assertEqual([row[0] for row in rows], [f"2026-11-09 00:0{n}" for n in (4, 3, 2, 1)])
-        self.assertEqual([row[1] for row in rows], [sha(n)[:7] for n in (3, 3, 2, 1)])
-        self.assertEqual([row[3:6] for row in rows], [["2", "0", "0"]] + [["1", "0", "0"]] * 3)
-        self.assertEqual(
-            [row[6] for row in rows],
-            [
-                "GroupV2 0.1% whole 1 to 2, median 48 to 50 · chat-sim moved",
-                "GroupV2 1% median 11.5 to 13.5 · re-rolled",
-                "GroupV2 1% median 13.5 to 11.5",
-                "the first point",
-            ],
-        )
-        self.assertEqual([row[7] for row in rows], ["5d81c0a moved"] + [MEASUREMENT[:7]] * 3)
-        self.assertEqual([row[8] for row in rows], ["point · the run"] * 4)
-        self.assertEqual(rows[2][2], f"#321 {TITLE}#318 chore: bump the toolchain")
-        self.assertEqual([row[2] for row in (rows[0], rows[1], rows[3])], ["none"] * 3)
-        self.assertEqual(parsed.rows[0][3], "GroupV2 runs whole, of 2")
-        self.assertEqual(parsed.rows[1][3:6], ["0.1%", "1%", "5%"])
-        pulls = [link for link in parsed.links if "/pull/" in link]
-        self.assertEqual(pulls, [f"{pages.LOGOS_CHAT_URL}/pull/{n}" for n in (321, 318)])
-        self.assertIn(f"main/{sha(3)}/{MOVED}/", parsed.links)
-        self.assertIn(f"{pages.CHAT_SIM_URL}/commit/{MOVED}", parsed.links)
-
-    def test_a_pull_request_s_title_is_escaped(self):
-        self.history(points=2)
-        self.trend()
-        page = self.page()
-        self.assertNotIn("<script", page)
-        self.assertNotIn("script", Parsed(page).tags)
-        self.assertIn(TITLE, Parsed(page).text)
-
-    def test_the_svgs_parse_as_xml_and_the_page_as_html_and_runs_no_script(self):
-        self.history()
-        self.trend()
-        svgs = self.svgs()
-        drawn = [svg for svg in svgs if svg.get("role") == "img"]
-        self.assertEqual(len(drawn), 3 + 3)
-        page = self.page()
-        self.assertNotIn("script", Parsed(page).tags)
-        self.assertIsNone(re.search(r"<[^>]* on[a-z]+=", page))
-        # Colours are the style block's alone.
-        self.assertIsNone(re.search(r' (style|fill|stroke|color)="', page))
-
-    def test_the_members_off_the_trunk_are_left_out_until_a_rate_with_loss_has_every_run_whole(
-        self,
-    ):
-        self.history(points=3)
-        for number in (1, 2, 3):
-            point = self.read(sha(number))
-            lossy = point["summary"][0]
-            whole = {"whole": lossy["runs"], "behind": 0, "split": 0, "stalled": 0}
-            point["summary"].insert(0, dict(lossy, scenario="no-loss", loss=0, rate="0%", **whole))
-            write(self.at(sha(number)) / "point.json", json.dumps(point))
-        self.trend()
-        self.assertNotIn('id="off"', self.page())
-        self.history(points=4)
-        self.trend()
-        self.assertIn('id="off"', self.page())
-        said = [title.split(" · ")[-1] for title, _ in self.markers(self.chart("off"))]
-        self.assertEqual(said[0], "0.1%: a median of 1 members off the trunk at the end")
-
-    def test_a_single_point_is_drawn(self):
-        self.point()
-        self.trend()
-        self.assertEqual(len(self.markers(self.chart("whole"))), 3)
-        self.assertEqual(len(Parsed(self.page()).rows), 3)
-
-    def test_a_point_json_that_is_refused_is_left_out_and_warned_of(self):
-        self.history(points=2)
-        written = self.at(sha(1)) / "point.json"
-        write(written, json.dumps(dict(self.read(sha(1)), run_number="1")))
-        self.assertEqual(self.trend(), [f"::warning::{written}: run_number is not of its kind"])
-        rows = Parsed(self.page()).rows[2:]
-        self.assertEqual([row[1] for row in rows], [sha(2)[:7]])
-        self.assertEqual(rows[0][6], "the first point")
-
-    def test_a_site_with_no_point_says_so(self):
-        self.trend()
-        self.assertIn("No point of main has been kept yet.", Parsed(self.page()).text)
-        self.assertEqual(self.svgs(), [])
-
-    def test_a_newest_point_of_more_rates_than_the_page_has_hues_is_refused(self):
-        self.point()
-        written = self.read()
-        summary = written["summary"] + [
-            dict(written["summary"][0], scenario=f"grow-{n}", loss=0.1 * n) for n in (1, 2)
-        ]
-        write(self.at() / "point.json", json.dumps(dict(written, summary=summary)))
-        status, _, err = self.run_pages("trend", str(self.site))
-        self.assertEqual(status, 2)
-        said = "the newest point holds 5 rates of GroupV2, and the page tells 4 apart"
-        self.assertIn(said, err.splitlines()[-1])
-        self.assertFalse((self.site / "logos-chat" / "index.html").exists())
-
-    def test_the_rates_drawn_are_the_newest_point_s_and_one_only_older_points_ran_is_not(self):
-        self.point(sha(1), minute=1, run_number=1)
-        written = self.read(sha(1))
-        summary = written["summary"] + [
-            dict(written["summary"][0], scenario=f"grow-{n}", loss=0.1 * n, rate=f"{10 * n}%")
-            for n in (1, 2)
-        ]
-        write(self.at(sha(1)) / "point.json", json.dumps(dict(written, summary=summary)))
-        self.point(sha(2), minute=2, run_number=2, commits=self.commits())
-
-        self.assertEqual(self.trend(), [])
-        panel = r'<div class="panel">\n<p><svg class="(s\d)".*?</svg>(.*?)</p>'
-        self.assertEqual(
-            re.findall(panel, self.page()), [("s1", "0.1%"), ("s2", "1%"), ("s3", "5%")]
-        )
-        self.assertNotIn("10%", Parsed(self.page()).text)
-
-    def test_four_rates_of_each_of_two_groups_are_told_apart_a_hue_each_within_its_group(self):
-        self.point(runs=self.uploaded(groupv3=True))
-        written = self.read()
-        summary = written["summary"] + [
-            dict(one, scenario=HELD_GOALS[one["group"]].format(0), loss=0, rate="0%")
-            for one in written["summary"]
-            if one["rate"] == "0.1%"
-        ]
-        write(self.at() / "point.json", json.dumps(dict(written, summary=summary)))
-        self.trend()
-        panel = r'<div class="panel">\n<p><svg class="(s\d)".*?</svg>(.*?)</p>'
-        hues = [("s1", "0%"), ("s2", "0.1%"), ("s3", "1%"), ("s4", "5%")]
-        self.assertEqual(re.findall(panel, self.page()), hues * 2)
-
-    def test_a_point_where_no_run_of_a_rate_had_an_outcome_breaks_the_rate_s_lines(self):
-        self.point(sha(1), minute=1, run_number=1)
-        unbuilt = self.uploaded()
-        for report in list(unbuilt.rglob("run.json")):
-            for name in ("run.json", "run.txt", "report.txt", "report.json"):
-                report.with_name(name).unlink()
+        for report in list(runs.rglob("run.json")):
+            report.unlink()
             write(report.with_name("unbuilt"), "chat-sim does not build\n")
-        self.point(sha(2), minute=2, run_number=2, runs=unbuilt, commits=self.commits())
-        self.point(sha(3), minute=3, run_number=3, commits=self.commits())
-        self.trend()
-        for section in ("epochs", "whole"):
-            for drawn in self.charts(section):
-                with self.subTest(section=section):
-                    lines = [path.get("d") for path in drawn.iter(f"{SVG}path")]
-                    self.assertTrue(all(line.count("M") == 2 for line in lines), lines)
-                    self.assertTrue(lines and not any("L" in line for line in lines), lines)
-                    drawn_at = {title.split(" UTC")[0] for title, _ in self.markers(drawn)}
-                    self.assertEqual(drawn_at, {"2026-11-09 00:01", "2026-11-09 00:03"})
-        rows = Parsed(self.page()).rows[2:]
-        self.assertEqual([row[3:6] for row in rows], [["1", "0", "0"], ["-"] * 3, ["1", "0", "0"]])
-        self.assertEqual(
-            [row[6] for row in rows],
-            [
-                "GroupV2 0.1% whole - to 1, median - to 48 · GroupV2 1% whole - to 0, median - to "
-                "13.5 · GroupV2 5% whole - to 0, median - to 5.5",
-                "GroupV2 0.1% chat-sim did not build · GroupV2 1% chat-sim did not build · "
-                "GroupV2 5% chat-sim did not build",
-                "the first point",
-            ],
-        )
+        return runs
 
-    def test_a_rate_whose_scenario_is_renamed_at_a_new_measurement_goes_on_as_its_line(self):
-        self.point(sha(1), minute=1, run_number=1)
-        runs, renamed = self.uploaded(), self.scratch / "renamed"
+    def without(self, runs: Path, *cells: str) -> Path:
+        """`runs` less the job of each of `cells`, a run by its rate and seed."""
+        for cell in cells:
+            shutil.rmtree(self.run_json(runs, cell).parents[2])
+        return runs
+
+    def renamed(self, runs: Path) -> dict:
+        """`runs` and their matrix, as a point takes them, under scenarios no file names."""
+        self.made += 1
+        renamed = self.scratch / f"renamed-{self.made}"
         for report in runs.rglob("run.json"):
             job, scenario, run = report.parts[-4:-1]
             name = scenario.replace("50-epochs-by-saro", "fifty-by-saro")
@@ -1663,131 +1303,532 @@ class Trend(LogosChat):
         matrix = self.matrix(runs)
         text = matrix.read_text(encoding="utf-8")
         write(matrix, text.replace("50-epochs-by-saro", "fifty-by-saro"))
-        given = dict(runs=renamed, matrix=matrix, measurement=MOVED, commits=self.commits())
-        self.point(sha(2), minute=2, run_number=2, **given)
-        named = [one["scenario"] for one in self.read(sha(2), MOVED)["summary"]]
-        self.assertEqual(named, [f"fifty-by-saro-waku-loss-{rate}" for rate in ("0.1", "1", "5")])
+        return dict(runs=renamed, matrix=matrix)
+
+    def test_the_page_holds_now_the_commits_and_what_changed_in_that_order(self):
+        self.history()
         self.trend()
-        lines = [
-            [title.split(" · ")[-1].split(":")[0] for title, _ in self.markers(svg)]
-            for section in ("epochs", "whole")
-            for svg in self.charts(section)
-        ]
-        self.assertEqual(
-            lines,
-            [["0.1%"] * 2, ["1%"] * 2, ["5%"] * 2, ["0.1%"] * 2 + ["1%"] * 2 + ["5%"] * 2],
-        )
-        self.assertEqual(Parsed(self.page()).rows[1][3:6], ["0.1%", "1%", "5%"])
-        cells = [group for group in self.chart("newest").iter(f"{SVG}g") if group.get("class")]
-        self.assertEqual(len(cells), 6)
-
-    def test_group_v2_s_lines_go_on_and_group_v3_s_start_at_the_first_point_that_ran_it(self):
-        # The points of main from before it ran GroupV3 name no group.
-        for number in (1, 2, 3):
-            commits = None if number == 1 else self.commits()
-            self.point(sha(number), minute=number, run_number=number, commits=commits)
-            written = unforked(self.read(sha(number)))
-            for one in written["cells"] + written["summary"]:
-                del one["group"]
-            write(self.at(sha(number)) / "point.json", json.dumps(written))
-        # GroupV3's 0.1% has every run whole, and at the fifth point its 1% seed 1 splits sooner.
-        whole = {"v3/0.1/1": {"first_fork": None, "behind": []}}
-        split = dict(whole, **{"v3/1/1": {"first_fork": 5}})
-        for number, edits in ((4, whole), (5, split)):
-            given = dict(runs=self.uploaded(groupv3=True, **edits), commits=self.commits())
-            self.point(sha(number), minute=number, run_number=number, **given)
-
-        self.assertEqual(self.trend(), [])
         page = self.page()
-        self.assertEqual(
-            re.findall(r"<h3>(.*?)</h3>", page),
-            ["GroupV2", "GroupV3", "GroupV2 runs whole, of 2", "GroupV3 runs whole, of 2"]
-            + ["GroupV2", "GroupV3", "GroupV3"],
+        at = [page.index(f'id="{name}"') for name in ("now", "commits", "changes")]
+        self.assertEqual(at, sorted(at))
+        parsed = Parsed(page)
+        self.assertEqual(parsed.h1, ["Over main"])
+        self.assertIn("lasts before it first forks. The goal is 50.", parsed.text)
+        self.assertIn("../guide/track/main/#the-graph-over-main", parsed.links)
+
+    def test_now_holds_each_rate_s_median_at_the_newest_commit_and_how_many_runs_gave_it(self):
+        self.history()
+        self.trend()
+        self.assertEqual(self.now(), [("48", "2 runs"), ("11.5", "2 runs"), ("5.5", "2 runs")])
+        heads = Parsed(self.section("now")).rows[0]
+        self.assertEqual(heads, ["", "0.1% loss", "1% loss", "5% loss"])
+        self.assertIn(f"main/{sha(3)}/{MOVED}/", Parsed(self.section("now")).links)
+        self.assertNotIn("has no outcome", Parsed(self.section("now")).text)
+
+    def test_now_says_how_many_members_an_epoch_of_each_group_joins_where_runs_did_not_fork(self):
+        self.point()
+        self.trend()
+        self.assertIn("an epoch joins another number of members in each.", self.section("now"))
+        # The run of each group that went 50 epochs without a fork seated 53 and 103.
+        edits = {"0.1/0": {"seated": 53}, "v3/0.1/0": {"seated": 103}}
+        self.point(runs=self.uploaded(groupv3=True, **edits))
+        self.trend()
+        said = (
+            "in the runs that went without a fork, a GroupV2 epoch joins 1 member and a GroupV3 "
+            "epoch joins 2 members."
         )
-        panel = r'<div class="panel">\n<p><svg class="(s\d)".*?</svg>(.*?)</p>'
-        self.assertEqual(re.findall(panel, page), [("s1", "0.1%"), ("s2", "1%"), ("s3", "5%")] * 2)
+        self.assertIn(said, self.section("now"))
+
+    def test_a_rate_no_run_of_which_forked_says_so_and_has_no_panel(self):
+        self.point(runs=self.uploaded(**{"0.1/1": {"first_fork": None, "behind": []}}))
+        self.trend()
+        self.assertEqual(self.now()[0], ("50", "no fork in 2 of 2 runs"))
+        self.assertEqual(list(self.panels()), ["1% loss", "5% loss"])
+        self.assertIn("At 0.1% loss no run of these commits forked.", self.section("commits"))
+
+    def test_a_commit_s_runs_get_the_verdict_tools_sim_matrix_gives_a_pull_request_s(self):
+        base, head = self.uploaded(), self.uploaded(**EARLIER)
+        self.point(sha(1), minute=1, run_number=1, runs=base)
+        self.point(sha(2), minute=2, run_number=2, runs=head, commits=self.commits())
+        self.trend()
+        matrix = json.loads(self.matrix(head, base).read_text(encoding="utf-8"))
+        (judged,) = matrix["groups"]
+        moved = next(one for one in judged["results"] if one["result"] != "same")
+        self.assertEqual((judged["verdict"], moved["rate"], moved["earlier"]), ("within", "1%", 1))
+        newest, first = self.rows()
+        self.assertIn(simulate.RESULTS[judged["verdict"]], newest[3])
+        self.assertIn("1%13.5 → 11.5", newest[3])
+        self.assertIn(
+            f"{moved['earlier']} earlier · {moved['zero']} tied · {moved['later']} later", newest[3]
+        )
+        self.assertNotIn("0.1%", newest[3])
+        self.assertEqual(first[3], "the first commit this test ran on")
+        classes = re.findall(r'<tr class="(\w+)">', self.section("changes"))
+        self.assertEqual(classes, ["moved", "quiet"])
+        self.assertIn(f"main/{sha(2)}/{MEASUREMENT}/change/", Parsed(self.page()).links)
+        self.assertTrue(self.change(sha(2)).is_file())
+
+    def test_a_commit_that_changed_no_run_says_nothing_moved_and_has_no_page_of_a_change(self):
+        self.history(3)
+        self.trend()
+        newest = self.rows()[0]
+        self.assertEqual(newest[1:4], [sha(3)[:7], "#322 fix: a typo", "nothing moved"])
+        self.assertFalse(self.change(sha(3)).exists())
+        self.assertTrue(self.change(sha(2)).is_file())
+
+    def test_a_marker_is_on_a_group_s_line_at_each_commit_that_changed_its_runs_alone(self):
+        self.history(3)
+        self.trend()
+        for title, svg in self.panels().items():
+            with self.subTest(panel=title):
+                hits = [one for one in svg.iter(f"{SVG}rect") if one.get("class") == "hit"]
+                commits = [float(one.get("x")) + float(one.get("width")) / 2 for one in hits]
+                marked = [one.get("cx") for one in self.series(svg, "v2").iter(f"{SVG}circle")]
+                self.assertEqual(len(commits), 3)
+                self.assertEqual(list(map(float, marked)), [round(commits[1], 1)])
+
+    def test_chat_sim_changing_under_main_is_one_commit_where_no_first_fork_moved(self):
+        self.history()
+        self.trend()
+        self.assertEqual([row[1] for row in self.rows()], [sha(3)[:7], sha(2)[:7], sha(1)[:7]])
+        self.assertEqual(self.rows()[0][3], "nothing moved")
+        said = "chat-sim itself changed 1 time since, and each time no seed's first fork moved."
+        self.assertIn(said, Parsed(self.page()).text)
+        self.assertFalse((self.site / "logos-chat" / "earlier").exists())
+
+    def test_a_chat_sim_change_that_moves_a_first_fork_starts_the_page_again_from_its_run(self):
+        self.point(sha(1), minute=1, run_number=1)
+        self.point(sha(2), minute=2, run_number=2, commits=self.commits("fix: flush (#321)"))
+        again = dict(measurement=MOVED, runs=self.uploaded(**EARLIER))
+        again["commits"] = self.commits(status="identical")
+        self.point(sha(2), minute=3, run_number=3, **again)
+        self.trend()
+        # The commit's pull request is the one its point of the test before merged.
+        (row,) = self.rows()
+        self.assertEqual(row[2:4], ["#321 fix: flush", "the first commit this test ran on"])
+        self.assertIn(f"This test has run since 2026-11-09, at chat-sim", Parsed(self.page()).text)
+        self.assertIn("The 2 points before ran another test", Parsed(self.page()).text)
+        earlier = Parsed((self.site / "logos-chat" / "earlier" / "index.html").read_text("utf-8"))
+        self.assertEqual([row[1] for row in earlier.rows[1:]], [sha(2)[:7], sha(1)[:7]])
+        self.assertIn("chat-sim changed the test since", earlier.text)
+        self.assertIn(f"../main/{sha(1)}/{MEASUREMENT}/", earlier.links)
+        self.assertEqual(earlier.rows[1][4], "6 of 6")
+
+    def test_a_first_fork_that_moves_as_chat_sim_and_main_both_change_is_laid_to_neither(self):
+        self.point(sha(1), minute=1, run_number=1)
+        given = dict(measurement=MOVED, runs=self.uploaded(**EARLIER), commits=self.commits())
+        self.point(sha(2), minute=2, run_number=2, **given)
+        self.trend()
+        self.assertEqual([row[1] for row in self.rows()], [sha(2)[:7]])
+        said = "The 1 point before are not compared with these, since chat-sim and main changed"
+        self.assertIn(said, Parsed(self.page()).text)
+        self.assertNotIn("another test", self.page())
+        earlier = Parsed((self.site / "logos-chat" / "earlier" / "index.html").read_text("utf-8"))
+        self.assertIn("cannot tell which of the two changed the runs", earlier.text)
+        self.assertNotIn("chat-sim changed the test since", earlier.text)
+
+    def test_a_point_that_shares_no_run_with_the_one_before_at_another_measurement_starts_the_page(
+        self,
+    ):
+        rates = ("0.1", "1", "5")
+        first = self.without(self.uploaded(), *(f"{rate}/1" for rate in rates))
+        second = self.without(self.uploaded(), *(f"{rate}/0" for rate in rates))
+        self.point(sha(1), minute=1, run_number=1, runs=first)
+        again = dict(measurement=MOVED, runs=second, commits=self.commits(status="identical"))
+        self.point(sha(1), minute=2, run_number=2, **again)
+        self.trend()
+        self.assertEqual(len(self.rows()), 1)
+        self.assertIn("The 1 point before ran another test", Parsed(self.page()).text)
+
+    def test_the_earlier_points_page_goes_once_no_point_is_before_the_test(self):
+        self.point(sha(1), minute=1, run_number=1)
+        again = dict(measurement=MOVED, runs=self.uploaded(**EARLIER))
+        again["commits"] = self.commits(status="identical")
+        self.point(sha(1), minute=2, run_number=2, **again)
+        self.trend()
+        earlier = self.site / "logos-chat" / "earlier" / "index.html"
+        self.assertTrue(earlier.is_file())
+        write(self.at(sha(1)) / "point.json", "{}")
+        self.assertEqual(len(self.trend()), 1)
+        self.assertFalse(earlier.exists())
+
+    def test_the_test_has_run_since_the_day_of_its_first_point(self):
+        self.point(sha(1), minute=1, run_number=1)
+        self.point(sha(2), minute=24 * 60 + 1, run_number=2, commits=self.commits())
+        self.trend()
+        self.assertIn("This test has run since 2026-11-09, at chat-sim", Parsed(self.page()).text)
+
+    def test_a_point_with_no_outcome_ahead_of_the_test_s_first_at_its_measurement_is_of_the_test(
+        self,
+    ):
+        # The second commit does not build at either measurement.
+        self.point(sha(1), minute=1, run_number=1)
+        lacking = dict(runs=self.none_built(), commits=self.commits())
+        self.point(sha(2), minute=2, run_number=2, **lacking)
+        again = dict(measurement=MOVED, commits=self.commits())
+        self.point(sha(2), minute=3, run_number=3, runs=self.none_built(), **again)
+        self.point(sha(3), minute=4, run_number=4, runs=self.uploaded(**EARLIER), **again)
+        self.trend()
         self.assertEqual(
-            [svg.get("aria-label") for svg in self.charts("epochs")],
+            [row[3] for row in self.rows()],
+            ["the first commit this test ran on", "no run had an outcome"],
+        )
+        self.assertIn("The 2 points before are not compared with these", Parsed(self.page()).text)
+
+    def test_the_points_with_no_outcome_before_any_that_has_one_are_commits_of_the_test(self):
+        self.point(sha(1), minute=1, run_number=1, runs=self.none_built())
+        again = dict(measurement=MOVED, commits=self.commits())
+        self.point(sha(2), minute=2, run_number=2, **again)
+        self.trend()
+        self.assertEqual(
+            [row[3] for row in self.rows()],
+            ["the first commit this test ran on", "no run had an outcome"],
+        )
+        self.assertFalse((self.site / "logos-chat" / "earlier").exists())
+
+    def test_since_the_first_commit_says_what_the_newest_s_runs_came_to_against_its(self):
+        self.history(3)
+        self.trend()
+        self.assertEqual(
+            self.since(),
+            f"Since the first commit of this test, {sha(1)[:7]} on 2026-11-09: GroupV2 moved, "
+            "within chance",
+        )
+
+    def test_since_the_first_commit_nothing_moved_where_no_commit_changed_a_run(self):
+        # chat-sim's change retimes a run of the second commit, which no commit of main did.
+        self.point(sha(1), minute=1, run_number=1)
+        self.point(sha(2), minute=2, run_number=2, commits=self.commits())
+        again = dict(measurement=MOVED, runs=self.uploaded(**{"1/1": {"virtual_s": 1.5}}))
+        self.point(sha(2), minute=3, run_number=3, commits=self.commits(), **again)
+        self.trend()
+        self.assertTrue(self.since().endswith("GroupV2 nothing moved"), self.since())
+
+    def test_a_group_that_forks_earlier_says_so_of_the_commit_and_since_the_first(self):
+        more = range(2, 10)
+        base = self.seeded(self.uploaded(), "1", more)
+        sooner = {f"1/{seed}": {"first_fork": 5} for seed in more}
+        head = self.seeded(self.uploaded(), "1", more, **sooner)
+        self.point(sha(1), minute=1, run_number=1, runs=base)
+        self.point(sha(2), minute=2, run_number=2, runs=head, commits=self.commits())
+        self.trend()
+        newest = self.rows()[0][3]
+        self.assertIn("forks earlier", newest)
+        self.assertIn("1%18 → 5", newest)
+        self.assertIn("8 earlier · 2 tied · 0 later", newest)
+        self.assertTrue(self.since().endswith("GroupV2 ▼ forks earlier"), self.since())
+
+    def test_a_commit_at_a_measurement_the_commit_before_never_ran_at_is_not_compared(self):
+        # Its 1% seed 1 took another time and first forked at the same epoch, so the test goes on.
+        self.point(sha(1), minute=1, run_number=1)
+        again = dict(measurement=MOVED, runs=self.uploaded(**{"1/1": {"virtual_s": 1.5}}))
+        self.point(sha(2), minute=2, run_number=2, commits=self.commits(), **again)
+        self.trend()
+        newest, first = self.rows()
+        self.assertEqual(newest[3], "not compared with the commit before")
+        self.assertEqual(first[3], "the first commit this test ran on")
+        self.assertTrue(self.since().endswith("GroupV2 moved, within chance"), self.since())
+
+    def test_a_commit_is_compared_at_the_newest_measurement_it_shares_with_the_commit_before(self):
+        # Its 1% seed 1 took another time at the first measurement alone.
+        again = dict(measurement=MOVED, commits=self.commits(status="identical"))
+        retimed = self.uploaded(**{"1/1": {"virtual_s": 1.5}})
+        self.point(sha(1), minute=1, run_number=1)
+        self.point(sha(1), minute=2, run_number=2, **again)
+        self.point(sha(2), minute=3, run_number=3, runs=retimed, commits=self.commits())
+        self.point(sha(2), minute=4, run_number=4, **again)
+        self.trend()
+        self.assertEqual(self.rows()[0][3], "nothing moved")
+
+    def test_a_commit_after_one_with_no_outcome_is_compared_with_the_last_that_had_one(self):
+        self.point(sha(1), minute=1, run_number=1)
+        self.point(sha(2), minute=2, run_number=2, runs=self.none_built(), commits=self.commits())
+        given = dict(runs=self.uploaded(**EARLIER), commits=self.commits())
+        self.point(sha(3), minute=3, run_number=3, **given)
+        self.trend()
+        newest, lacking, _ = self.rows()
+        self.assertIn("1%13.5 → 11.5", newest[3])
+        self.assertEqual(lacking[3], "no run had an outcome")
+
+    def test_a_commit_of_scenarios_since_renamed_is_compared_under_the_newest_point_s_names(self):
+        self.point(sha(1), minute=1, run_number=1, **self.renamed(self.uploaded()))
+        moved = dict(self.renamed(self.uploaded(**EARLIER)), commits=self.commits())
+        self.point(sha(2), minute=2, run_number=2, **moved)
+        again = dict(measurement=MOVED, runs=self.uploaded(**EARLIER))
+        again["commits"] = self.commits(status="identical")
+        self.point(sha(2), minute=3, run_number=3, **again)
+        self.assertEqual(self.trend(), [])
+        self.assertIn("1%13.5 → 11.5", self.rows()[0][3])
+
+    def test_points_whose_outcomes_hold_no_first_fork_are_compared_as_the_newest_are(self):
+        self.history(2)
+        for number in (1, 2):
+            held = unjoined(self.read(sha(number)))
+            write(self.at(sha(number)) / "point.json", json.dumps(held))
+        self.assertEqual(self.trend(), [])
+        newest = self.rows()[0][3]
+        self.assertIn("1%13.5 → 11.5", newest)
+        self.assertIn("1 earlier · 1 tied · 0 later", newest)
+
+    def test_a_newest_run_with_no_outcome_is_said_and_the_numbers_are_the_commit_before_s(self):
+        self.point(sha(1), minute=1, run_number=1)
+        self.point(sha(2), minute=2, run_number=2, runs=self.none_built(), commits=self.commits())
+        self.trend()
+        now = Parsed(self.section("now"))
+        newest = f"The newest run, at main {sha(2)[:7]} on 2026-11-09 00:02 UTC, has no"
+        self.assertIn(newest, now.text)
+        self.assertIn(f"main/{sha(2)}/{MEASUREMENT}/", now.links)
+        self.assertEqual(self.now()[0], ("48", "2 runs"))
+        newest, first = self.rows()
+        self.assertEqual(newest[1:4], [sha(2)[:7], "none", "no run had an outcome"])
+        self.assertEqual(first[3], "the first commit this test ran on")
+
+    def test_a_run_the_commit_before_has_no_outcome_of_is_counted_and_not_compared(self):
+        lacking = self.uploaded()
+        for seed in (0, 1):
+            report = self.run_json(lacking, f"5/{seed}")
+            report.unlink()
+            write(report.with_name("unbuilt"), "chat-sim does not build\n")
+        self.point(sha(1), minute=1, run_number=1, runs=lacking)
+        self.point(sha(2), minute=2, run_number=2, commits=self.commits())
+        self.trend()
+        said = "nothing moved 2 of 6 runs had none to compare with"
+        self.assertEqual(self.rows()[0][3], said)
+        self.assertTrue(self.since().endswith(f"GroupV2 {said}"), self.since())
+        self.assertEqual(len(self.now()), 3)
+        self.assertFalse(self.change(sha(2)).exists())
+        for svg in self.panels().values():
+            self.assertEqual(list(self.series(svg, "v2").iter(f"{SVG}circle")), [])
+
+    def test_a_group_the_commit_before_did_not_run_has_no_run_to_compare_with(self):
+        self.point(sha(1), minute=1, run_number=1)
+        given = dict(runs=self.uploaded(groupv3=True), commits=self.commits())
+        self.point(sha(2), minute=2, run_number=2, **given)
+        self.trend()
+        self.assertEqual(self.rows()[0][3:5], ["nothing moved", "no run to compare with"])
+        said = "GroupV2 nothing moved GroupV3 no run to compare with"
+        self.assertTrue(self.since().endswith(said), self.since())
+
+    def test_a_run_the_commit_before_could_not_build_is_said_on_the_page_of_the_change(self):
+        lacking = self.uploaded()
+        report = self.run_json(lacking, "5/0")
+        report.unlink()
+        write(report.with_name("unbuilt"), "chat-sim does not build\n")
+        self.point(sha(1), minute=1, run_number=1, runs=lacking)
+        given = dict(runs=self.uploaded(**EARLIER), commits=self.commits())
+        self.point(sha(2), minute=2, run_number=2, **given)
+        self.trend()
+        self.assertIn("1 of 6 runs had none to compare with", self.rows()[0][3])
+        text = Parsed(self.change(sha(2)).read_text(encoding="utf-8")).text
+        said = "5%: nothing moved in seeds 0 to 1, does not build at the base in 1 of 2 runs"
+        self.assertIn(said, text)
+        self.assertIn("the base is the commit before", text)
+
+    def test_a_run_the_commit_before_ran_and_the_commit_did_not_is_left_out(self):
+        self.point(sha(1), minute=1, run_number=1)
+        fewer = self.without(self.uploaded(), "5/1")
+        self.point(sha(2), minute=2, run_number=2, runs=fewer, commits=self.commits())
+        self.trend()
+        self.assertEqual(self.rows()[0][3], "nothing moved")
+
+    def test_a_commit_one_of_whose_runs_has_no_outcome_says_so(self):
+        self.point(sha(1), minute=1, run_number=1)
+        lacking = self.without(self.uploaded(), "5/1")
+        asked = [{"scenario": GOAL.format(rate), "from": 1, "runs": 2} for rate in ("0.1", "5")]
+        given = dict(runs=lacking, matrix=self.matrix(lacking, asked=asked))
+        self.point(sha(2), minute=2, run_number=2, commits=self.commits(), **given)
+        # The same run of the commit after has none either, and none before to hold it to.
+        self.point(sha(3), minute=3, run_number=3, commits=self.commits(), **given)
+        self.trend()
+        self.assertEqual([row[3] for row in self.rows()[:2]], ["no outcome", "no outcome"])
+
+    def test_a_marker_and_the_page_of_a_change_are_of_the_group_whose_runs_moved(self):
+        self.point(sha(1), minute=1, run_number=1, runs=self.uploaded(groupv3=True))
+        moved = self.uploaded(groupv3=True, **{"v3/1/1": {"first_fork": 5}})
+        self.point(sha(2), minute=2, run_number=2, runs=moved, commits=self.commits())
+        self.trend()
+        for svg in self.panels().values():
+            marked = {
+                key: len(list(self.series(svg, key).iter(f"{SVG}circle"))) for key in ("v2", "v3")
+            }
+            self.assertEqual(marked, {"v2": 0, "v3": 1})
+        page = self.change(sha(2)).read_text(encoding="utf-8")
+        self.assertEqual(re.findall(r'<section class="chart" id="(\w+)">', page), ["v3"])
+
+    def test_the_page_of_a_change_goes_with_the_test_its_commit_ran(self):
+        self.history(2)
+        self.trend()
+        self.assertTrue(self.change(sha(2)).is_file())
+        again = dict(measurement=MOVED, commits=self.commits(status="identical"))
+        self.point(sha(2), minute=3, run_number=3, **again)
+        self.trend()
+        self.assertFalse(self.change(sha(2)).parent.exists())
+
+    def test_the_numbers_under_the_panels_have_a_row_a_commit_the_newest_first(self):
+        self.history(3)
+        self.trend()
+        heads, *rows = Parsed(self.section("commits")).rows
+        self.assertEqual(heads[1:], ["GroupV2 0.1% loss", "GroupV2 1% loss", "GroupV2 5% loss"])
+        self.assertEqual([row[0] for row in rows], [sha(3)[:7], sha(2)[:7], sha(1)[:7]])
+        self.assertEqual([row[2] for row in rows], ["11.5", "11.5", "13.5"])
+
+    def test_each_group_has_its_row_of_numbers_and_its_line_in_each_panel(self):
+        runs = self.uploaded(groupv3=True, **{"v3/1/1": {"first_fork": 5}})
+        self.point(runs=runs)
+        self.trend()
+        names = [row[0] for row in Parsed(self.section("now")).rows[1:]]
+        self.assertEqual([name[: len("GroupV2")] for name in names], ["GroupV2", "GroupV3"])
+        medians = [median for median, _ in self.now()]
+        self.assertEqual(medians, ["48", "13.5", "5.5", "48", "11.5", "5.5"])
+        for svg in self.panels().values():
+            ends = [text.text for text in svg.iter(f"{SVG}text") if text.get("class") == "label"]
+            self.assertEqual(sorted(end.split()[0] for end in ends), ["GroupV2", "GroupV3"])
+
+    def test_a_commit_s_hover_says_its_pull_requests_and_each_group_s_runs(self):
+        self.history(2)
+        self.trend()
+        titles = [title.text for title in self.panels()["1% loss"].iter(f"{SVG}title")]
+        self.assertEqual(
+            titles[1].splitlines(),
             [
-                f"Epochs without a fork at {group} {rate}"
-                for group in ("GroupV2", "GroupV3")
-                for rate in ("0.1%", "1%", "5%")
+                f"main {sha(2)[:7]} · #321, #318 · 2026-11-09 00:02 UTC",
+                "GroupV2: median 11.5, the middle half 8.25 to 14.75, 2 runs",
             ],
         )
-        groupv2, groupv3 = self.charts("whole")
+
+    def test_a_pull_request_s_title_is_escaped(self):
+        self.history(2)
+        self.trend()
+        for page in (self.page(), self.change(sha(2)).read_text(encoding="utf-8")):
+            self.assertNotIn("<script>alert", page)
+            self.assertIn(f"#321 {TITLE}", Parsed(page).text)
+
+    def test_the_svgs_parse_as_xml_and_the_pages_as_html_and_run_no_script(self):
+        self.history()
+        self.trend()
+        for page in (self.page(), self.change(sha(2)).read_text(encoding="utf-8")):
+            drawn = re.findall(r"<svg.*?</svg>", page, re.S)
+            self.assertTrue([ElementTree.fromstring(svg) for svg in drawn])
+            self.assertNotIn("script", Parsed(page).tags)
+
+    def test_a_single_point_is_drawn_as_a_line_as_wide_as_its_band_with_no_marker(self):
+        self.history(1)
+        self.trend()
+        self.assertEqual(len(self.rows()), 1)
+        self.assertNotIn('class="since"', self.page())
+        for svg in self.panels().values():
+            series = self.series(svg, "v2")
+            self.assertEqual(list(series.iter(f"{SVG}circle")), [])
+            (line,) = series.iter(f"{SVG}path")
+            (x, y), (to, level) = re.findall(r"[ML]([0-9.]+) ([0-9.]+)", line.get("d"))[-2:]
+            self.assertEqual((float(to) - float(x), level), (8.0, y))
+
+    def test_a_point_json_that_is_refused_is_left_out_and_warned_of(self):
+        self.history(2)
+        broken = self.at(sha(2)) / "point.json"
+        write(broken, "{}")
+        warned = self.trend()
+        self.assertEqual(len(warned), 1)
+        self.assertIn(f"::warning::{broken}: ", warned[0])
+        self.assertEqual([row[1] for row in self.rows()], [sha(1)[:7]])
+
+    def test_a_site_with_no_point_says_so(self):
+        self.trend()
+        self.assertIn("No point of main has had an outcome yet.", self.page())
+        self.assertEqual(re.findall(r"<svg", self.page()), [])
+
+    def test_a_site_whose_points_have_no_outcome_says_so_and_calls_none_another_test_s(self):
+        self.point(runs=self.none_built())
+        self.trend()
+        self.assertIn("No point of main has had an outcome yet.", self.page())
+        self.assertNotIn("another test", self.page())
+        self.assertFalse((self.site / "logos-chat" / "earlier").exists())
+
+    def test_a_rate_whose_scenario_is_renamed_at_a_new_measurement_goes_on_as_its_line(self):
+        self.point(sha(1), minute=1, run_number=1)
+        given = dict(self.renamed(self.uploaded()), measurement=MOVED, commits=self.commits())
+        self.point(sha(2), minute=2, run_number=2, **given)
+        # No file names the renamed scenarios, so the newest commit is not held to the first.
+        warned = self.trend()
+        self.assertEqual(len(warned), 1)
+        self.assertIn("fifty-by-saro-waku-loss-", warned[0])
         self.assertEqual(
-            [svg.get("aria-label") for svg in (groupv2, groupv3)],
-            ["GroupV2 runs whole at 50 epochs", "GroupV3 runs whole at 50 epochs"],
+            [row[3] for row in self.rows()],
+            ["not compared with the commit before", "the first commit this test ran on"],
         )
-        for svg, count in ((groupv2, 5), (groupv3, 2)):
-            with self.subTest(chart=svg.get("aria-label")):
-                lines = [path.get("d") for path in svg.iter(f"{SVG}path")]
-                drawn = [(line.count("M"), line.count("L")) for line in lines]
-                self.assertEqual(drawn, [(1, count - 1)] * 3)
-        drawn_at = [title.split(" UTC")[0] for title, _ in self.markers(groupv3)]
-        self.assertEqual(drawn_at, ["2026-11-09 00:04", "2026-11-09 00:05"] * 3)
-        said = [title.split(" · ")[-1] for title, _ in self.markers(groupv3)]
-        self.assertEqual(said[:2], ["0.1%: 2 of 2 whole"] * 2)
-        newest = self.charts("newest")
-        self.assertEqual(
-            [svg.get("aria-label") for svg in newest],
-            ["The newest point's GroupV2 runs", "The newest point's GroupV3 runs"],
-        )
-        cells = [[one for one in svg.iter(f"{SVG}g") if one.get("class")] for svg in newest]
-        self.assertEqual([len(one) for one in cells], [6, 6])
-        self.assertEqual(
-            [svg.get("aria-label") for svg in self.charts("off")],
-            ["GroupV3 members off the trunk at the end"],
-        )
+        for svg in self.panels().values():
+            line = self.series(svg, "v2").find(f"{SVG}path").get("d")
+            self.assertEqual(len(line.split("L")), 2)
+
+    def test_the_page_of_a_change_holds_each_seed_s_two_runs_and_the_round_they_part_in(self):
+        base, head = self.uploaded(), self.uploaded(**EARLIER)
+        joined = [
+            {"adders": ["saro"], "joiners": [name], "refused": [], "settled_s": 1.5}
+            for name in ("raya", "pax")
+        ]
+        retimed = [joined[0], dict(joined[1], settled_s=2.5)]
+        # 1% seed 1 parts in a round both runs have, 5% seed 0 where the shorter run ends.
+        held = {"1/1": (joined, retimed), "5/0": (joined, joined + [retimed[1]])}
+        for cell, both in held.items():
+            for side, rounds in zip((base, head), both):
+                report = json.loads(self.run_json(side, cell).read_text(encoding="utf-8"))
+                report["grow"]["rounds"] = rounds
+                write(self.run_json(side, cell), json.dumps(report))
+        self.point(sha(1), minute=1, run_number=1, runs=base, run_url=f"{RUNS_URL}/71")
+        given = dict(runs=head, commits=self.commits("fix: flush (#321)"))
+        self.point(sha(2), minute=2, run_number=2, run_url=f"{RUNS_URL}/72", **given)
+        self.trend()
+        page = self.change(sha(2)).read_text(encoding="utf-8")
         parsed = Parsed(page)
-        wholes = ["GroupV2 runs whole, of 2", "GroupV3 runs whole, of 2"]
-        self.assertEqual(parsed.rows[0][3:5], wholes)
-        self.assertEqual(parsed.rows[1][3:9], ["0.1%", "1%", "5%"] * 2)
-        rows = parsed.rows[2:]
-        self.assertEqual(
-            [row[3:9] for row in rows],
-            [["1", "0", "0", "2", "0", "0"]] * 2 + [["1", "0", "0", "-", "-", "-"]] * 3,
+        self.assertEqual(parsed.h1, ["#321 fix: flush"])
+        self.assertIn(f"main {sha(2)[:7]} against the commit before it, {sha(1)[:7]}", parsed.text)
+        self.assertIn("1%: 0 later, 1 earlier, 1 tied (p 1)", parsed.text)
+        (panel,) = self.panels(page, "v2").values()
+        self.assertEqual(list(self.panels(page, "v2")), ["1%"])
+        # The seed that moved earliest is the first row, its ring the commit before's 9 epochs.
+        seeds = [one.text for one in panel.iter(f"{SVG}text") if one.get("text-anchor") == "end"]
+        self.assertEqual(seeds, ["1", "0"])
+        (ring,) = (one for one in panel.iter(f"{SVG}circle") if one.get("class") == "before")
+        dot = next(one for one in panel.iter(f"{SVG}circle") if one.get("class") == "after")
+        self.assertLess(float(dot.get("cx")), float(ring.get("cx")))
+        self.assertIn("At 0.1% and 5% no seed's first fork moved.", page)
+        rows = {tuple(row[:4]): row[4:6] for row in parsed.rows if len(row) == 8}
+        self.assertEqual(rows[("1", "2", "9", "5")], ["4 earlier", "round 2"])
+        self.assertEqual(rows[("0", "1", "18", "18")][0], "the same outcome")
+        self.assertEqual(rows[("0", "1", "8", "8")], ["the same outcome", "round 3"])
+        self.assertIn("two runs of the same outcome can part in a round", parsed.text)
+        run = f"{GOAL.format('1')}/2/"
+        self.assertIn(f"../{run}run.json", parsed.links)
+        self.assertIn(f"../../../{sha(1)}/{MEASUREMENT}/{run}run.json", parsed.links)
+        named = f"--pattern 'logs-revision-{GOAL.format('1')}-[0-9]*'"
+        self.assertIn(
+            f"gh run download 71 --repo logos-messaging/chat-sim --dir before {named}\n"
+            f"gh run download 72 --repo logos-messaging/chat-sim --dir after {named}",
+            parsed.text,
         )
-        self.assertEqual(
-            [row[9] for row in rows],
-            ["GroupV3 1% median 13.5 to 11.5", "nothing", "nothing", "nothing", "the first point"],
-        )
+        self.assertEqual([link for link in parsed.links if "group.log" in link], [])
+        self.assertIn("GitHub keeps a run's logs 90 days.", parsed.text)
+        self.assertLessEqual({"../", f"../../../{sha(1)}/{MEASUREMENT}/"}, set(parsed.links))
+        self.assertIn("../../../../../guide/track/main/#the-page-of-a-change", parsed.links)
+        self.assertIn("../../../../../guide/investigate/moved-run/#into-the-log", parsed.links)
+        for link in parsed.links:
+            if not link.startswith("http") and "/guide/" not in link:
+                self.assertTrue((self.change(sha(2)).parent / link.split("#")[0]).exists(), link)
 
-    def test_a_marker_s_hover_reaches_no_further_than_half_the_way_to_the_next_point(self):
-        self.history_of(20)
+    def test_the_page_of_a_change_whose_runs_text_is_gone_links_none_and_names_no_round(self):
+        self.history(2)
+        for directory in (self.at(sha(1)), self.at(sha(2))):
+            for kept in directory.glob("*/*/*"):
+                if kept.name in pages.TEXTS:
+                    kept.unlink()
         self.trend()
-        for section, reach in (("epochs", 156 / 19 / 2), ("whole", 10)):
-            for drawn in self.charts(section):
-                with self.subTest(section=section):
-                    hits = [one for one in drawn.iter(f"{SVG}circle") if one.get("class") == "hit"]
-                    xs = sorted({float(one.get("cx")) for one in hits})
-                    apart = min(after - before for before, after in zip(xs, xs[1:]))
-                    self.assertTrue(all(float(one.get("r")) <= apart / 2 + 0.05 for one in hits))
-                    self.assertAlmostEqual(float(hits[0].get("r")), reach, places=1)
+        parsed = Parsed(self.change(sha(2)).read_text(encoding="utf-8"))
+        rows = [row for row in parsed.rows if len(row) == 8 and row[0] != "Seed"]
+        self.assertEqual(len(rows), 6)
+        self.assertEqual({tuple(row[5:]) for row in rows}, {("-", "-", "-")})
+        self.assertIn("gh run download 42 ", parsed.text)
 
-    def test_a_note_of_chat_sim_moving_that_would_run_into_other_text_is_left_out(self):
-        # The second point's note would run into the goal's label, the thirteenth's into the
-        # twelfth's.
-        self.history_of(14, moved_at=(2, 12, 13))
-        self.trend()
-        whole = self.chart("whole")
-        dashed = [
-            line.get("x1")
-            for line in whole.iter(f"{SVG}line")
-            if line.get("class") == "measure" and line.get("x1") == line.get("x2")
-        ]
-        self.assertEqual(len(dashed), 3)
-        notes = [
-            (text.get("x"), text.text)
-            for text in whole.iter(f"{SVG}text")
-            if text.get("class") == "note" and text.text.startswith("chat-sim moved")
-        ]
-        self.assertEqual(notes, [(dashed[1], f"chat-sim moved: {moved_to(12)[:7]}")])
-        moved = [title for title, _ in self.markers(whole) if "chat-sim moved to" in title]
-        self.assertEqual(len(moved), 3 * 3)
 
-# The grow of the probe's run at 5% loss, seed 0, as its run.json has it, but its rounds; the
-# fixture's is cut to what tools/sim matrix reads.
 GROW = {
     "ended": "no member took part",
     "trunk_epoch": 14,
@@ -2064,7 +2105,7 @@ class Guide(unittest.TestCase):
     def test_each_link_pages_writes_into_the_guide_lands_on_a_heading_of_its_page(self):
         source = (ROOT / ".github" / "scripts" / "pages.py").read_text(encoding="utf-8")
         written = GUIDE_LINK.findall(source)
-        self.assertEqual(len(written), 5)
+        self.assertEqual(len(written), 7)
         for slug, anchor in written:
             with self.subTest(link=f"guide/{slug}/#{anchor}"):
                 self.assertIn(anchor, heading_ids(slug))
@@ -2097,18 +2138,6 @@ class Pages(LogosChat):
         status, _, err = self.run_pages("pr", *given, *self.ran(1, 0))
         self.assertEqual(status, 0, err)
         return self.site / "logos-chat" / "pr-316"
-
-    def seeded(self, side: Path, rate: str, seeds: Sequence[int], **edits: dict) -> Path:
-        """`side` with runs of GroupV2 at `rate` at `seeds` too, each a copy of seed 0's at its own
-        seed with its text, and the fields `edits` gives a run changed, by its rate and seed."""
-        first = self.run_json(side, f"{rate}/0")
-        for seed in seeds:
-            copy = self.run_json(side, f"{rate}/{seed}")
-            shutil.copytree(first.parent, copy.parent)
-            report = dict(json.loads(first.read_text(encoding="utf-8")), seed=seed)
-            edited(report, edits.get(f"{rate}/{seed}", {}))
-            copy.write_text(json.dumps(report), encoding="utf-8")
-        return side
 
     def nothing(self) -> Path:
         """An empty directory of its own, as a side whose jobs uploaded nothing."""
@@ -2801,6 +2830,72 @@ class Pages(LogosChat):
         )
         for cell in point["cells"]:
             self.assertIn("\n".join(simulate.again(cell, sha(2), SHA)), parsed.text)
+
+    def test_a_point_s_page_gives_each_run_the_command_that_downloads_its_log(self):
+        self.point()
+        parsed = self.stands_alone(self.at())
+        for rate in ("0.1", "1", "5"):
+            command = (
+                "gh run download 42 --repo logos-messaging/chat-sim --dir logs --pattern "
+                f"'logs-revision-{GOAL.format(rate)}-[0-9]*'"
+            )
+            self.assertEqual(parsed.text.count(command), 2)
+        for run in (1, 2):
+            said = f"Its log, group.log under run {run} in what this downloads:"
+            self.assertEqual(parsed.text.count(said), 3)
+        self.assertIn("an artifact of the workflow run, which GitHub keeps 90 days.", parsed.text)
+        self.assertEqual([link for link in parsed.links if "group.log" in link], [])
+
+    def test_a_run_of_a_point_that_did_not_build_has_no_command_for_its_log(self):
+        runs = self.uploaded()
+        self.unbuilt(runs, "5/0")
+        self.point(runs=runs)
+        text = self.stands_alone(self.at()).text
+        self.assertEqual(text.count(f"'logs-revision-{GOAL.format(5)}-[0-9]*'"), 1)
+        self.assertEqual(text.count("Its log, group.log under run 1 in what this downloads:"), 2)
+
+    def test_a_point_whose_run_is_not_a_workflow_run_s_has_no_command_for_its_logs(self):
+        self.point(run_url="https://ci.example/runs/42")
+        self.assertNotIn("gh run download", self.stands_alone(self.at()).text)
+
+    def test_a_run_s_page_gives_the_command_that_downloads_the_log_of_each_side_that_ran(self):
+        scenario, at = GOAL.format(1), "--repo logos-messaging/chat-sim --dir logs"
+        head = f"--pattern 'logs-revision-{scenario}-[0-9]*'"
+        base = f"'logs-base-{scenario}-[0-9]*'"
+        out = self.pr(self.moved(), self.matrix(self.moved(), self.uploaded()), self.uploaded())
+        parsed = self.stands_alone(out / f"head/{scenario}/2")
+        self.assertIn(f"gh run download 42 {at} {head} --pattern {base}\n", parsed.text)
+        self.assertIn("the run's log is group.log under run 2 of each.", parsed.text)
+        drawn = (out / f"head/{scenario}/2/index.html").read_text(encoding="utf-8")
+        self.assertIn("<title>chat-sim: logos-chat #316, GroupV2 1%, seed 1</title>", drawn)
+        self.assertIn("../../../../../guide/investigate/moved-run/#into-the-log", parsed.links)
+        out = self.pr(self.moved(), self.matrix(self.moved()), None)
+        parsed = self.stands_alone(out / f"head/{scenario}/2")
+        self.assertIn(f"gh run download 42 {at} {head}\n", parsed.text)
+        self.assertIn("the run's log is group.log under run 2.", parsed.text)
+        self.assertIn("which GitHub keeps 90 days. This downloads the head's, and", parsed.text)
+        # A side whose job could not build chat-sim uploaded no log.
+        lacking = self.uploaded()
+        self.unbuilt(lacking, "1/1")
+        out = self.pr(self.moved(), self.matrix(self.moved(), lacking), lacking)
+        parsed = self.stands_alone(out / f"head/{scenario}/2")
+        self.assertIn(f"gh run download 42 {at} {head}\n", parsed.text)
+        out = self.pr(lacking, self.matrix(lacking, self.uploaded()), self.uploaded())
+        parsed = self.stands_alone(out / f"head/{scenario}/2")
+        self.assertIn(f"gh run download 42 {at} --pattern {base}\n", parsed.text)
+        self.assertIn("This downloads the base's, and", parsed.text)
+
+    def test_the_graph_over_main_the_page_of_a_change_and_the_earlier_points_stand_alone(self):
+        # A point of another test, then two commits of the test the graph draws, the second of
+        # which moved a first fork.
+        self.point(sha(1), minute=1, run_number=1)
+        again = dict(measurement=MOVED, commits=self.commits())
+        self.point(sha(1), minute=2, run_number=2, runs=self.uploaded(**EARLIER), **again)
+        self.point(sha(2), minute=3, run_number=3, **again)
+        logos_chat = self.site / "logos-chat"
+        for directory in (logos_chat, logos_chat / "earlier", self.at(sha(2), MOVED) / "change"):
+            with self.subTest(page=directory.relative_to(self.site)):
+                self.stands_alone(directory)
 
     def test_a_point_of_both_groups_draws_a_heatmap_a_group_and_names_the_group_of_each_rate(self):
         self.point(runs=self.uploaded(groupv3=True, **{"v3/1/1": {"first_fork": 5}}))

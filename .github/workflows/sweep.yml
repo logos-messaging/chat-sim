@@ -3,7 +3,8 @@ name: Sweep
 # and, for a pull request whose runs moved, again for the seeds it widens to:
 # a job each of the run jobs it is handed, each runs FROM to FROM + RUNS - 1
 # of a scenario's sweep at a logos-chat revision, and uploads their text as
-# the artifact sim-<side>-<scenario>-<from>.
+# the artifact sim-<side>-<scenario>-<from> and their logs as
+# logs-<side>-<scenario>-<from>.
 
 on:
   workflow_call:
@@ -111,3 +112,15 @@ jobs:
             ${{ runner.temp }}/sim/*/*/report.txt
             ${{ runner.temp }}/sim/*/*/report.json
             ${{ runner.temp }}/sim/*/*/expect.json
+      # Each run's log, every member's trace records, in the directory named
+      # for the scenario, as the text is. An artifact of its own, which no job
+      # downloads: the Pages site gives the command that does, and says how
+      # long GitHub keeps it. A job that could not build chat-sim has none.
+      - name: Upload the runs' logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-${{ matrix.run.side }}-${{ matrix.run.scenario }}-${{ matrix.run.from }}
+          path: ${{ runner.temp }}/sim/*/*/group.log
+          if-no-files-found: ignore
+          retention-days: 90

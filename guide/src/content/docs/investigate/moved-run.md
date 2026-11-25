@@ -25,6 +25,7 @@ A run that moved at the same first fork says so, and counts neither earlier nor 
 | The rounds | of each side, a row a round: its adders, the members they added, the adders refused the whole round, and the virtual seconds the round took |
 | Run it yourself | what running the run again takes, and the commands for the head and for the base |
 | The text | each side's `run.txt` and `run.json`, or the build's log where chat-sim did not build |
+| The log | the command that downloads each side's `group.log` ([Into the log](#into-the-log)) |
 
 Read the rounds of both sides from the top. The first round where the two tables differ is the
 first the rounds show of the runs parting. The run does not say which adder added which member.
@@ -136,6 +137,20 @@ says where the group parted:
 ```sh
 python3 tools/forks report tmp/<scenario>-seed-<seed>/<run>/group.log
 ```
+
+CI keeps each run's log as well. The site holds none: each run job uploads its runs' logs as an
+artifact of the workflow run, `logs-<side>-<scenario>-<from>`, where the side is `revision` or
+`base` and `<from>` is the number of the job's first run. GitHub keeps it 90 days. A job that could
+not build chat-sim uploads none. The page of a run, of a point and of a change each give the
+command that downloads the artifacts of a scenario, such as:
+
+```sh
+gh run download <run-id> --repo logos-messaging/chat-sim --dir logs --pattern 'logs-revision-grow-waku-loss-5-[0-9]*'
+```
+
+Each artifact holds the runs of one job, a directory a run by its number, as the sweep names it:
+run 7 of ten is `logs/logs-revision-grow-waku-loss-5-1/grow-waku-loss-5/07/group.log`. Where the
+command finds no artifact, [run the run again](#run-it-yourself): its directory holds the log.
 
 A grow run's report is long. The tests of `tools/forks` hold a split among four members, whose
 report reads in full:

@@ -31,7 +31,7 @@ change to the runs takes.
 | [`tools/forks`](tools/forks/README.md) | Reads the logs of a group's members and says whether the group forked |
 | [`guide`](guide) | The guide, a Starlight site: how a run works, what the scenarios are, how to read what CI finds, and how to take a run to your machine |
 | `.github/scripts/measure.py` | Says whether `simulate.yml`'s main suite is to run at logos-chat main's tip, from the points on `gh-pages` and the runs going, and on Sundays whether its long suite is |
-| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main, its long runs and the runs of its pull requests that `simulate.yml` makes, draws the page of each, draws the graph over main from the points, and names the runs of logos-chat's pull requests that are no longer open |
+| `.github/scripts/pages.py` | Writes the Pages site: the report of a CI run from the text its sim jobs upload, the list of the reports, and the landing page; and keeps the points of logos-chat's main, its long runs and the runs of its pull requests that `simulate.yml` makes, draws the page of each, draws the graph over main from the points, with the page of each commit found to change a run, and names the runs of logos-chat's pull requests that are no longer open |
 | `.github/scripts/simulate.py` | Plans the jobs of `simulate.yml` and the seeds a pull request's run widens to, says whether a commit changes a path the runs depend on, writes the comment on what the runs came to, says where it goes on a logos-chat pull request, and writes the updates of the check run there |
 
 ## The logos-chat it runs
