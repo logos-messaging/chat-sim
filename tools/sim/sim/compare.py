@@ -14,7 +14,6 @@ from typing import List, Optional, Tuple
 
 from . import table
 
-_SPLIT = re.compile(r"split at epoch (\d+)")
 # How the runner says a `grow` step ended at the epoch it grew toward, which a run records
 # nowhere else: each other ending is short of it.
 _REACHED = re.compile(r"the trunk reached epoch \d+")
@@ -31,9 +30,6 @@ _KEYS = _ROW | {
     "members_off_trunk",
     "never_joined",
 }
-# The parts of where a run of a `grow` step stands, in the order they rank it: the epochs
-# without a fork, whether it ended whole, then the lines and the members off the trunk.
-STANDING = ("epochs", "ended", "lines_off_trunk", "members_off_trunk")
 
 
 class Unreadable(Exception):
@@ -107,22 +103,8 @@ def held_runs(directory: Path) -> List[Tuple[str, int]]:
 
 
 def change(was: dict, now: dict) -> str:
-    """`same`; `re-rolled` when both runs drew ids and the group's or the members' differ;
-    `better` or `worse` by where the run stands; or `changed` when it stands where it did.
-
-    The ids follow from the seed, and a run that drew others says nothing of the group against
-    the one expected. A run that read no result drew none, and stands lowest.
-    """
-    if now == was:
-        return "same"
-    ids = [(was[key], now[key]) for key in ("conversation", "members_digest")]
-    if all(None not in pair for pair in ids) and any(held != drawn for held, drawn in ids):
-        return "re-rolled"
-    if _standing(now) > _standing(was):
-        return "better"
-    if _standing(now) < _standing(was):
-        return "worse"
-    return "changed"
+    """`same` where a run came out as `was` says, in every field, else `moved`."""
+    return "same" if now == was else "moved"
 
 
 def unforked(outcome: dict) -> Optional[int]:
@@ -131,17 +113,6 @@ def unforked(outcome: dict) -> Optional[int]:
     if outcome["ended"] is None:
         return None
     return outcome["trunk_epoch"] if outcome["first_fork"] is None else outcome["first_fork"]
-
-
-def apart(was: dict, now: dict) -> Optional[str]:
-    """The first part of `STANDING` in which two runs of a `grow` step stand apart; `None` where
-    they stand alike, or either is not such a run."""
-    if any(one["ended"] is None for one in (was, now)):
-        return None
-    for part, held, drawn in zip(STANDING, _standing(was)[1:], _standing(now)[1:]):
-        if held != drawn:
-            return part
-    return None
 
 
 def render(was: List[dict], now: List[dict]) -> Tuple[str, bool]:
@@ -158,12 +129,6 @@ def render(was: List[dict], now: List[dict]) -> Tuple[str, bool]:
             lines.append(_row("", "", "was", expected_one))
     held = changes.count("same")
     counted = f"{held} of {len(changes)} runs came out as expected"
-    moved = [
-        f"{changes.count(kind)} {kind}" for kind in ("better", "worse", "re-rolled", "changed")
-    ]
-    moved = [said for said in moved if not said.startswith("0 ")]
-    if moved:
-        counted += f": {', '.join(moved)}"
     if len(was) != len(now):
         counted += f"; {len(was)} runs were expected, and the sweep has {len(now)}"
     lines.append(counted)
@@ -236,36 +201,6 @@ def _ended(grow: dict, first_fork: Optional[int]) -> str:
     if not _REACHED.fullmatch(grow["ended"]):
         return "stalled"
     return "behind" if grow["behind"] else "whole"
-
-
-def _standing(outcome: dict) -> Tuple[int, ...]:
-    """Where a run stands, the higher the better, a run with neither a verdict nor the ending of
-    a `grow` step lowest.
-
-    A run of a `grow` step: the epochs without a fork, the first fork's or else the trunk's; at
-    the same, whole at the end over any other ending; then the fewer lines off the trunk, and the
-    fewer members off it. Any other: a split, the later the better, then any other verdict, then
-    whole; and at each, the more members at the tip, the better.
-    """
-    verdict = outcome["verdict"]
-    split = None if verdict is None else _SPLIT.match(verdict)
-    if outcome["ended"] is not None:
-        return (
-            1,
-            unforked(outcome),
-            outcome["ended"] == "whole",
-            -outcome["lines_off_trunk"],
-            -outcome["members_off_trunk"],
-        )
-    if verdict is None:
-        rank = (0, 0)
-    elif split is not None:
-        rank = (1, int(split[1]))
-    elif verdict == "whole":
-        rank = (3, 0)
-    else:
-        rank = (2, 0)
-    return (*rank, outcome["at_tip"] or 0)
 
 
 def _read(file: Path) -> object:

@@ -1,47 +1,47 @@
 """The matrix of a revision's runs beside its base's: a cell for each scenario and seed, the
-change of the cell, and the verdict over the cells and over each group's.
+change of the cell, and the result of each group's runs at each rate of loss.
 
 A side is what the jobs at one revision uploaded, read at any depth: each run's
 `<scenario>/<run>/run.json`, and `<scenario>/<run>/unbuilt` for each run of a job that could not
 build chat-sim. A cell is a scenario and a seed either side has a run of, or that is asked of
 each side. A cell has no outcome at a side whose job could not build it, that has no run of it,
 or whose run has no lineage of its `grow` step, as when its runner left no result. Its change is
-what `compare` says of the base's outcome and the head's, where both have one.
+what `compare` says of the base's outcome and the head's, where both have one, and its `d` how
+many epochs later the head's run first forked than the base's, the trunk's epoch standing in for a
+run that did not fork.
 
-The verdict is the first of these that holds, so that what went wrong at the head is said before
-what is missing at the base, and that before what moved:
+A scenario is of one group, the one its creator creates, GroupV2 or GroupV3, at one rate. The
+result of its cells is the first of these that holds, and what moved is said only of the cells
+with an outcome at both sides:
 
-- `unbuilt`: a job at the head could not build chat-sim, and no run at the head was read.
+- `unbuilt`: the head does not build: no run at the head was read, and a job there could not
+  build chat-sim.
 - `no-outcome`: a cell has no outcome at the head.
-- `no-base`: no cell has a change.
-- `mixed`: cells are better and cells are worse.
-- `better`: cells are better, and none worse.
-- `worse`: two or more cells are worse, and none better.
-- `hint`: one cell is worse, and none better.
-- `re-rolled`: cells are re-rolled, and none better or worse.
-- `same`: every cell with a change is the same or changed.
+- `no-base`: no cell has an outcome at the base.
+- `same`: every cell with an outcome at both sides came out the same at both.
+- `earlier` or `later`: the seeds whose run first forked earlier at the head, and those whose
+  run first forked later, are apart beyond chance: an exact two-sided sign test on how many of
+  each gives `ALPHA` or less. A cell whose runs moved at the same first fork counts on neither
+  side.
+- `within`: the cells moved, within chance.
 
-A cell that is `changed`, which differs from the base's but stands where it did with the same
-ids, counts as the same, since the verdict says where the runs stand. A re-rolled cell is neither
-better nor worse, so the cells better or worse beside it decide the verdict, and it is
-`re-rolled` only when no other cell moved. With no base, a base that did not build, or a base
-with no outcome for any cell, no cell has a change and the head's cells stand alone: `no-base`.
-A cell the base has no outcome for has no change, and the cells that have one decide.
-
-A cell is of the group its scenario's creator creates, GroupV2 or GroupV3, and the verdict over a
-group's cells is the same rule over them alone, so that one group's cells better cannot hide the
-other's worse.
+A group's verdict is the worst of its scenarios' results, in the order of `WORST`, and the
+matrix's the worst of its groups', so that one group's runs forking later cannot hide the
+other's forking earlier. With no base, a result is `unbuilt`, `no-outcome` or else `None`. A
+matrix of no cell has no outcome.
 """
 
 from __future__ import annotations
 
 import functools
 import json
+import math
 import re
 import statistics
 from dataclasses import dataclass
+from fractions import Fraction
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 from . import compare, scenario, table
 
@@ -49,7 +49,12 @@ from . import compare, scenario, table
 ENDINGS = ("whole", "behind", "split", "stalled")
 # The files of the scenarios a cell can be of, each its name and `.json`.
 SCENARIOS = Path(__file__).resolve().parents[1] / "scenarios"
-_CHANGES = ("same", "changed", "better", "worse", "re-rolled")
+# The p at or below which the sign test says the head's runs forked earlier or later than the
+# base's beyond chance.
+ALPHA = Fraction(1, 100)
+# The results of a scenario's cells, the worst first.
+WORST = ("unbuilt", "no-outcome", "earlier", "later", "within", "no-base", "same")
+_CHANGES = ("same", "moved")
 _RUN = re.compile(r"[0-9]+")
 
 
@@ -111,18 +116,22 @@ def asked(file: Path) -> List[Tuple[str, int]]:
 def matrix(head: Side, base: Optional[Side] = None, asked: Sequence[Tuple[str, int]] = ()) -> dict:
     """The matrix of `head` beside `base`: of each side how many runs were read and how many
     could not be built, the cells, the count of each change, the verdict, the same counts and
-    verdict of each group's cells as `groups`, and with no base each scenario's summary. `asked`
-    holds the runs asked of each side, each its scenario and its number in a sweep, so that a cell
-    no side has a run of is there all the same.
+    verdict of each group's cells as `groups` with the result of each of its scenarios, and with
+    no base each scenario's summary. `asked` holds the runs asked of each side, each its scenario
+    and its number in a sweep, so that a cell no side has a run of is there all the same.
 
     A cell holds its `scenario`, the `group` its scenario creates, `seed`, the `run` of a sweep
     it is, the `loss` of its network model and that loss in percent as its `rate`; the `head`'s
     outcome and the `base`'s, each `None` where the side has no outcome; whether each side's job
     could not build it, as `unbuilt`; the `change`, `None` where there is none; for each side the
-    `epochs` without a fork and how the run `ended`; where it is better or worse, the `part` of
-    the standing in which it `moved` and each side's value of it, else `moved` is `None`. The
-    cells are in the order of their group, then loss, then scenario, then seed, and `groups` in
-    the order of its group.
+    `epochs` without a fork and how the run `ended`; and `d`, the head's epochs less the base's,
+    `None` where there is no change. The cells are in the order of their group, then loss, then
+    scenario, then seed, and `groups` in the order of its group.
+
+    A scenario's result holds its `scenario`, `rate` and the `seeds` of its cells; where a cell
+    has a change, how many of those first forked `later` at the head than at the base, how
+    many `earlier`, how many at the same epoch as `zero`, and the sign test's `p`, else each
+    `None`; and the `result`.
     """
     sides = [head] + ([] if base is None else [base])
     where = {key: (run.number, run.loss) for side in sides for key, run in side.runs.items()}
@@ -133,21 +142,81 @@ def matrix(head: Side, base: Optional[Side] = None, asked: Sequence[Tuple[str, i
     groups: Dict[str, List[dict]] = {}
     for cell in cells:
         groups.setdefault(cell["group"], []).append(cell)
-    counts = _counts(cells)
+    unbuilt = _unbuilt_head(_side(head))
+    judged = [_judged(group, its, unbuilt, base is not None) for group, its in groups.items()]
     return {
         "head": _side(head),
         "base": None if base is None else _side(base),
         "cells": cells,
-        "counts": counts,
-        "verdict": _verdict(_side(head), counts),
-        "groups": [_judged(group, its, head) for group, its in groups.items()],
+        "counts": _counts(cells),
+        "verdict": _worst(one["verdict"] for one in judged) if cells else "no-outcome",
+        "groups": judged,
         "summary": _summary(cells) if base is None else None,
     }
 
 
-def _judged(group: str, cells: List[dict], head: Side) -> dict:
-    counts = _counts(cells)
-    return {"group": group, "counts": counts, "verdict": _verdict(_side(head), counts)}
+def sign_test(later: int, earlier: int) -> Fraction:
+    """The two-sided p of an exact sign test of `later` seeds against `earlier`: twice the chance
+    that as few or fewer fall on the side with fewer, each seed a fair coin, at most 1; and 1 with
+    no seed on either side."""
+    seeds = later + earlier
+    if not seeds:
+        return Fraction(1)
+    tail = sum(math.comb(seeds, one) for one in range(min(later, earlier) + 1))
+    return min(Fraction(1), Fraction(2 * tail, 2**seeds))
+
+
+def _judged(group: str, cells: List[dict], unbuilt: bool, based: bool) -> dict:
+    scenarios: Dict[str, List[dict]] = {}
+    for cell in cells:
+        scenarios.setdefault(cell["scenario"], []).append(cell)
+    results = [_result(its, unbuilt, based) for its in scenarios.values()]
+    return {
+        "group": group,
+        "counts": _counts(cells),
+        "verdict": _worst(one["result"] for one in results),
+        "results": results,
+    }
+
+
+def _result(cells: List[dict], unbuilt: bool, based: bool) -> dict:
+    """The result of one scenario's `cells`, of a head that does not build where `unbuilt`, beside
+    a base where `based`, and the sign test of its cells with an outcome at both sides."""
+    compared = [cell for cell in cells if cell["change"] is not None]
+    tested = bool(compared)
+    d = [cell["d"] for cell in compared]
+    later, earlier = sum(one > 0 for one in d), sum(one < 0 for one in d)
+    p = sign_test(later, earlier)
+    if unbuilt:
+        result: Optional[str] = "unbuilt"
+    elif any(cell["head"] is None for cell in cells):
+        result = "no-outcome"
+    elif not based:
+        result = None
+    elif not tested:
+        result = "no-base"
+    elif all(cell["change"] == "same" for cell in compared):
+        result = "same"
+    elif p <= ALPHA:
+        result = "earlier" if earlier > later else "later"
+    else:
+        result = "within"
+    return {
+        "scenario": cells[0]["scenario"],
+        "rate": cells[0]["rate"],
+        "seeds": [cell["seed"] for cell in cells],
+        "later": later if tested else None,
+        "earlier": earlier if tested else None,
+        "zero": len(compared) - later - earlier if tested else None,
+        "p": float(p) if tested else None,
+        "result": result,
+    }
+
+
+def _worst(results: Iterable[Optional[str]]) -> Optional[str]:
+    """The worst of `results` by `WORST`, `None` where none is any."""
+    found = [one for one in results if one is not None]
+    return min(found, key=WORST.index, default=None)
 
 
 def _counts(cells: List[dict]) -> dict:
@@ -164,6 +233,11 @@ def _side(side: Side) -> dict:
     return {"runs": len(side.runs) - unbuilt, "unbuilt": unbuilt}
 
 
+def _unbuilt_head(head: dict) -> bool:
+    """Whether a head does not build: a job could not build chat-sim, and no run was read."""
+    return bool(head["unbuilt"]) and not head["runs"]
+
+
 def _cell(
     key: Tuple[str, int], number: int, loss: Optional[float], head: Side, base: Optional[Side]
 ) -> dict:
@@ -173,9 +247,7 @@ def _cell(
     change = None
     if None not in (head_outcome, base_outcome):
         change = compare.change(base_outcome, head_outcome)
-    part = None
-    if change in ("better", "worse"):
-        part = compare.apart(base_outcome, head_outcome)
+    epochs = {"head": _unforked(head_outcome), "base": _unforked(base_outcome)}
     return {
         "scenario": key[0],
         "group": _scenario(key[0]).group,
@@ -187,21 +259,12 @@ def _cell(
         "base": base_outcome,
         "unbuilt": {"head": _unbuilt(now), "base": _unbuilt(was)},
         "change": change,
-        "epochs": {
-            "head": _unforked(head_outcome),
-            "base": _unforked(base_outcome),
-        },
+        "epochs": epochs,
         "ended": {
             "head": None if head_outcome is None else head_outcome["ended"],
             "base": None if base_outcome is None else base_outcome["ended"],
         },
-        "moved": None
-        if part is None
-        else {
-            "part": part,
-            "head": _value(head_outcome, part),
-            "base": _value(base_outcome, part),
-        },
+        "d": None if change is None else epochs["head"] - epochs["base"],
     }
 
 
@@ -220,11 +283,6 @@ def _unforked(outcome: Optional[dict]) -> Optional[int]:
     return None if outcome is None else compare.unforked(outcome)
 
 
-def _value(outcome: dict, part: str) -> Union[int, str]:
-    """A run's value of a part of `compare.STANDING`: the epochs without a fork, else its field."""
-    return compare.unforked(outcome) if part == "epochs" else outcome[part]
-
-
 def _rate(loss: Optional[float]) -> Optional[str]:
     return None if loss is None else f"{loss * 100:g}%"
 
@@ -232,25 +290,6 @@ def _rate(loss: Optional[float]) -> Optional[str]:
 def _order(cell: dict) -> tuple:
     group = scenario.GROUPS.index(cell["group"])
     return (group, cell["loss"] is None, cell["loss"] or 0, cell["scenario"], cell["seed"])
-
-
-def _verdict(head: dict, counts: dict) -> str:
-    better, worse = counts["better"], counts["worse"]
-    if head["unbuilt"] and not head["runs"]:
-        return "unbuilt"
-    if counts["no-outcome"] or not counts["cells"]:
-        return "no-outcome"
-    if not counts["compared"]:
-        return "no-base"
-    if better and worse:
-        return "mixed"
-    if better:
-        return "better"
-    if worse:
-        return "worse" if worse > 1 else "hint"
-    if counts["re-rolled"]:
-        return "re-rolled"
-    return "same"
 
 
 def _summary(cells: List[dict]) -> List[dict]:

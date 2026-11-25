@@ -127,25 +127,12 @@ _CHAR = 6.2
 # What `tools/sim matrix` writes, as the field of each kind, or a shape of its own.
 _NONE = type(None)
 _ENDINGS = ("whole", "behind", "split", "stalled")
-_CHANGES = ("same", "changed", "better", "worse", "re-rolled")
-_STANDING = ("epochs", "ended", "lines_off_trunk", "members_off_trunk")
-# What a run's lines and members off the trunk each are, and the mark of a change that has a
-# direction, beside its word.
-_OFF = {"lines_off_trunk": "line", "members_off_trunk": "member"}
-_ARROWS = {"worse": "▼ ", "better": "▲ "}
+_CHANGES = ("same", "moved")
+_RESULTS = ("unbuilt", "no-outcome", "earlier", "later", "within", "no-base", "same")
+# The mark of a result that has a direction, beside its word.
+_ARROWS = {"earlier": "▼ ", "later": "▲ "}
 # The chip of a group's runs missing at a side, which has the colour of a run that did not build.
-_MISSING = {"no-outcome": "unbuilt", "uncompared": "unbuilt"}
-_VERDICTS = (
-    "unbuilt",
-    "no-outcome",
-    "no-base",
-    "mixed",
-    "better",
-    "worse",
-    "hint",
-    "re-rolled",
-    "same",
-)
+_MISSING = {"no-outcome": "unbuilt", "no-base": "unbuilt"}
 _SIDE = {"runs": (int,), "unbuilt": (int,)}
 _COUNTS = {field: (int,) for field in ("cells", "compared", *_CHANGES, "no-outcome")}
 _MATRIX = {
@@ -153,12 +140,22 @@ _MATRIX = {
     "base": (dict, _NONE),
     "cells": (list,),
     "counts": _COUNTS,
-    "verdict": (str,),
+    "verdict": (str, _NONE),
     "groups": (list,),
     "summary": (list, _NONE),
 }
-# The counts and the verdict of a group's cells.
-_GROUP = {"group": (str,), "counts": _COUNTS, "verdict": (str,)}
+# The counts and the verdict of a group's cells, and the result of each of its scenarios.
+_GROUP = {"group": (str,), "counts": _COUNTS, "verdict": (str, _NONE), "results": (list,)}
+_RESULT = {
+    "scenario": (str,),
+    "rate": (str, _NONE),
+    "seeds": (list,),
+    "later": (int, _NONE),
+    "earlier": (int, _NONE),
+    "zero": (int, _NONE),
+    "p": (float, _NONE),
+    "result": (str, _NONE),
+}
 _CELL = {
     "scenario": (str,),
     "group": (str,),
@@ -172,11 +169,13 @@ _CELL = {
     "change": (str, _NONE),
     "epochs": {"head": (int, _NONE), "base": (int, _NONE)},
     "ended": {"head": (str, _NONE), "base": (str, _NONE)},
-    "moved": (dict, _NONE),
+    "d": (int, _NONE),
 }
-# A point need not name the group of a cell or a scenario: the points that do not ran GroupV2's
-# alone.
-_UNGROUPED_CELL = {field: kind for field, kind in _CELL.items() if field != "group"}
+# A point's cell need not hold `d`: the cells that do not, of earlier measurements, hold `moved`
+# in its place, `null` in a point. Nor need it name the group of a cell or a scenario: the points
+# that do not ran GroupV2's alone.
+_MOVED_CELL = {**{field: kind for field, kind in _CELL.items() if field != "d"}, "moved": (_NONE,)}
+_UNGROUPED_CELL = {field: kind for field, kind in _MOVED_CELL.items() if field != "group"}
 _OUTCOME = {
     "seed": (int,),
     "network_seed": (int, _NONE),
@@ -201,7 +200,6 @@ _UNFORKED_OUTCOME = {field: kind for field, kind in _OUTCOME.items() if field !=
 _UNJOINED_OUTCOME = {
     field: kind for field, kind in _UNFORKED_OUTCOME.items() if field != "never_joined"
 }
-_MOVED = {"part": (str,), "head": (int, str), "base": (int, str)}
 _SUMMARY = {
     "scenario": (str,),
     "group": (str,),
@@ -421,10 +419,10 @@ _GRID = """
 .verdicts .muted{font-size:14px}
 .chip{padding:1px 8px;border-radius:2em;font-size:12px;font-weight:600;white-space:nowrap;
 background:var(--neutral-bg);color:var(--muted)}
-.chip.changed{color:var(--fg)}
-.chip.better{background:var(--good-bg);color:var(--good)}
-.chip.worse{background:var(--bad-bg);color:var(--bad)}
-.chip.rerolled,.chip.unbuilt{background:var(--none-bg);color:var(--none)}
+.chip.moved,.chip.within{color:var(--fg)}
+.chip.later{background:var(--good-bg);color:var(--good)}
+.chip.earlier{background:var(--bad-bg);color:var(--bad)}
+.chip.unbuilt{background:var(--none-bg);color:var(--none)}
 #runs>.legend{margin:1rem 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
 .forks{display:flex;flex-direction:column;gap:10px;width:max-content}
 .forks>div{display:flex;align-items:flex-start;gap:10px}
@@ -436,16 +434,14 @@ background:var(--neutral-bg);color:var(--muted)}
 .fork{padding:6px 8px 8px;border:1px solid var(--line);border-radius:6px;color:var(--fg);
 text-decoration:none}
 .fork:hover{border-color:var(--link)}
-.fork.worse{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
-.fork.better{border-color:var(--good);box-shadow:0 0 0 1px var(--good)}
-.fork.changed{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
-.fork.rerolled,.fork.unbuilt{border-color:var(--none);border-style:dashed}
+.fork.moved{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
+.fork.unbuilt{border-color:var(--none);border-style:dashed}
 .said{display:flex;align-items:center;gap:6px;height:20px;margin:0 0 2px;font-size:12px;
 color:var(--muted);white-space:nowrap}
 .said b{color:var(--fg)}
 .rate .said{font-size:13px}
-.outlined{padding:0 6px;border:1px solid var(--bad);border-radius:4px;
-box-shadow:0 0 0 1px var(--bad)}
+.outlined{padding:0 6px;border:1px solid var(--fg);border-radius:4px;
+box-shadow:0 0 0 1px var(--fg)}
 .ran{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:.75rem 0 .25rem;
 font-size:16px}
 .reading{max-width:52rem;color:var(--muted)}
@@ -976,7 +972,7 @@ def draw_point(directory: Path, point: dict) -> None:
             + _runs_table(directory, listed)
             + "".join(
                 f'<details class="run">\n<summary>seed {cell["seed"]} <span class="muted">'
-                f"{_e(simulate.words(cell, False))}</span></summary>\n"
+                f"{_e(simulate.words(cell))}</span></summary>\n"
                 + _side(
                     cell,
                     "head",
@@ -1554,14 +1550,16 @@ def read_matrix(path: Path) -> dict:
         _shaped(matrix, _MATRIX)
         if matrix["base"] is not None:
             _shaped(matrix["base"], _SIDE, "base")
-        if matrix["verdict"] not in _VERDICTS:
+        if matrix["verdict"] not in (None, *_RESULTS):
             raise Unreadable(f"verdict {matrix['verdict']!r} is none of a matrix")
         for number, one in enumerate(matrix["groups"]):
             where = f"groups[{number}]"
             _shaped(one, _GROUP, where)
             _group(one, where)
-            if one["verdict"] not in _VERDICTS:
+            if one["verdict"] not in (None, *_RESULTS):
                 raise Unreadable(f"{where}.verdict {one['verdict']!r} is none of a matrix")
+            for counted, result in enumerate(one["results"]):
+                _result(result, f"{where}.results[{counted}]")
         if (matrix["summary"] is None) != (matrix["base"] is not None):
             raise Unreadable("summary is there without a base, and only without one")
         for number, cell in enumerate(matrix["cells"]):
@@ -1592,8 +1590,7 @@ def read_point(path: Path) -> dict:
             _shaped(point["previous"], _PREVIOUS, "previous")
             _commits(point["previous"], "logos_chat", "measurement", where="previous.")
         for number, cell in enumerate(point["cells"]):
-            shape = _CELL if "group" in cell else _UNGROUPED_CELL
-            _cell(cell, f"cells[{number}]", alone=True, shape=shape)
+            _cell(cell, f"cells[{number}]", alone=True, shape=_held_cell(cell))
         for number, one in enumerate(point["summary"]):
             _summary(one, f"summary[{number}]", _held_summary(one))
     except Unreadable as refused:
@@ -2092,13 +2089,26 @@ def _cell(cell: object, where: str, alone: bool, shape: dict = _CELL) -> None:
             raise Unreadable(f"{where}.ended.{side} is not how a run ended")
     if cell["change"] not in (None, *_CHANGES):
         raise Unreadable(f"{where}.change {cell['change']!r} is none of compare's")
-    if cell["moved"] is not None:
-        _shaped(cell["moved"], _MOVED, f"{where}.moved")
-        if cell["moved"]["part"] not in _STANDING:
-            raise Unreadable(f"{where}.moved.part is no part of where a run stands")
     based = (cell["base"], cell["epochs"]["base"], cell["ended"]["base"], cell["change"])
-    if alone and (based != (None,) * 4 or cell["unbuilt"]["base"] or cell["moved"] is not None):
+    if alone and (based != (None,) * 4 or cell["unbuilt"]["base"] or cell.get("d") is not None):
         raise Unreadable(f"{where} has a base")
+
+
+def _held_cell(cell: object) -> dict:
+    """The shape of a cell a point holds: one from before the cells held `d` holds `moved`, and
+    one from before they named their group names none too."""
+    if not isinstance(cell, dict) or "d" in cell:
+        return _CELL
+    return _MOVED_CELL if "group" in cell else _UNGROUPED_CELL
+
+
+def _result(result: object, where: str) -> None:
+    """Refuses `result` unless it is the result of a scenario's cells of a matrix."""
+    _shaped(result, _RESULT, where)
+    if not all(type(seed) is int for seed in result["seeds"]):
+        raise Unreadable(f"{where}.seeds is not a list of seeds")
+    if result["result"] not in (None, *_RESULTS):
+        raise Unreadable(f"{where}.result {result['result']!r} is none of a matrix")
 
 
 def _outcome(outcome: object, where: str, shape: dict = _OUTCOME) -> None:
@@ -2688,32 +2698,28 @@ def _heat_legend(*extra: Tuple[str, str]) -> str:
 
 def _verdicts(matrix: dict) -> str:
     """What each group's runs came to against the base's, a line a group, as the comment's line
-    on them has it: the chip of each of what `simulate.told` leads with and how many runs it has,
-    or of the same and how many of all; then how many runs each of the rest has."""
+    on them has it: the chip of its verdict, then what each of its scenarios came to, by its
+    rate; or of runs with no base, how many."""
     listed = ""
-    for key, called in simulate.GROUPS.items():
-        counted = simulate.tally(matrix, key)
-        if not counted["cells"]:
-            continue
-        led, rest = simulate.told(counted)
-        said = [f"<b>{_e(called)}</b>"]
-        if led == ["same"]:
-            said += [_chip("same"), f"<span>in {counted['same']} of {counted['cells']} runs</span>"]
+    for one in matrix["groups"]:
+        verdict = one["verdict"]
+        said = [f"<b>{_e(simulate.GROUPS[group(one)])}</b>"]
+        if verdict is None:
+            said.append(_chip("same", "not compared"))
+            told = f"{one['counts']['cells']} runs, no base to compare with"
         else:
-            for one in led:
-                shown = f"{_ARROWS.get(one, '')}{simulate.STANDINGS[one]} in {counted[one]}"
-                said.append(_chip(_MISSING.get(one, one), shown))
-        if rest:
-            told = ", ".join(f"{counted[one]} {simulate.STANDINGS[one]}" for one in rest)
-            said.append(f'<span class="muted">· {told}</span>')
+            shown = _ARROWS.get(verdict, "") + simulate.RESULTS[verdict]
+            said.append(_chip(_MISSING.get(verdict, verdict), shown))
+            told = " · ".join(simulate.told(matrix, result) for result in one["results"])
+        said.append(f'<span class="muted">· {_e(told)}</span>')
         listed += f"<li>{' '.join(said)}</li>\n"
     return f'<ul class="verdicts">\n{listed}</ul>\n'
 
 
-def _chip(change: str, said: Optional[str] = None) -> str:
-    """The chip of a change, its word beside its colour: `said`, or the change itself."""
-    shown = _ARROWS.get(change, "") + change if said is None else said
-    return f'<span class="chip {change.replace("-", "")}">{_e(shown)}</span>'
+def _chip(kind: str, said: Optional[str] = None) -> str:
+    """The chip of a change or a result, its word beside its colour: `said`, or `kind` itself."""
+    shown = kind if said is None else said
+    return f'<span class="chip {kind.replace("-", "")}">{_e(shown)}</span>'
 
 
 def _forks_key(matrix: dict, most: int, width: Callable[[int], float]) -> str:
@@ -2745,7 +2751,7 @@ def _forks_key(matrix: dict, most: int, width: Callable[[int], float]) -> str:
         keys.append((drawn, f"{', '.join(map(str, shown))} member{'' if most == 1 else 's'}"))
     ring = f'<svg width="34" height="16" viewBox="0 0 34 16" aria-hidden="true">{_ring(1, 8, "n")}'
     keys.append((ring + "</svg>", "never joined"))
-    if any(simulate.moved(cell) for cell in matrix["cells"]):
+    if any(cell["change"] == "moved" for cell in matrix["cells"]):
         keys.append(('<span class="outlined">outline</span>', "moved"))
     return _legend(*keys)
 
@@ -2806,12 +2812,12 @@ def _fork(
     height: float,
 ) -> str:
     """A run's place in its row, a link to its page: what moved in a few words, over the head's
-    tree and the base's, `trees` their lineages, at `tops`, each with its ring; outlined in its
-    change's colour where it moved, dashed where it was re-rolled or a side did not build."""
+    tree and the base's, `trees` their lineages, at `tops`, each with its ring; outlined where it
+    moved, dashed where a side did not build."""
     x = _along(4, 264)
     kind = "fork"
-    if simulate.moved(cell) or cell["change"] == "re-rolled":
-        kind += " " + cell["change"].replace("-", "")
+    if cell["change"] == "moved":
+        kind += " moved"
     elif any(cell["unbuilt"].values()):
         kind += " unbuilt"
     drawn = [
@@ -2846,11 +2852,9 @@ def _fork_said(matrix: dict, cell: dict) -> str:
     if cell["head"] is None:
         unbuilt = _chip("unbuilt") + " " if cell["unbuilt"]["head"] else ""
         return f"{unbuilt}<span>{_unshown(cell, 'head')}</span>"
-    if cell["change"] == "re-rolled":
-        return _chip("re-rolled") + " <span>other ids, not compared</span>"
     bold = "<b>{}</b>"
-    if simulate.moved(cell):
-        return _chip(cell["change"]) + f" <span>{_against(cell, bold)}</span>"
+    if cell["change"] == "moved":
+        return _chip("moved") + f" <span>{_against(cell, bold)}</span>"
     reach = _first_fork(cell, "head", bold)
     if matrix["base"] is not None and cell["base"] is None:
         unbuilt = _chip("unbuilt") + " " if cell["unbuilt"]["base"] else ""
@@ -2870,14 +2874,10 @@ def _first_fork(cell: dict, side: str, strong: str) -> str:
 
 def _against(cell: dict, strong: str) -> str:
     """A run of `cell` that moved against the base's in a few words: where the head's first forked
-    and the base's did, or how each ended, or how many lines or members each had off the trunk,
-    the head's in `strong`, a format."""
-    moved, epochs = cell["moved"] or {"part": "epochs"}, cell["epochs"]["base"]
-    if moved["part"] in _OFF:
-        now, was = _e(str(moved["head"])), _e(str(moved["base"]))
-        return f"{strong.format(now)} {_OFF[moved['part']]}s off, base {was}"
-    reach = _first_fork(cell, "head", strong)
-    if moved["part"] == "ended":
+    and the base's did, or at the same epoch how each ended where that differs, the head's epoch
+    in `strong`, a format."""
+    reach, epochs = _first_fork(cell, "head", strong), cell["epochs"]["base"]
+    if cell["d"] == 0 and cell["ended"]["head"] != cell["ended"]["base"]:
         return f"{reach}, base {cell['ended']['base'] or 'ended'} at {epochs}"
     return f"{reach}, base {epochs}"
 
@@ -2901,34 +2901,21 @@ def _run_said(matrix: dict, cell: dict) -> Tuple[str, str]:
             why = "The base's run came to no outcome"
         chip = _chip("unbuilt" if cell["unbuilt"]["base"] else "same", "not compared")
         return chip, f"The head {reached}. {why}, so the two are not compared."
-    said = _moved_said(cell)
-    if change == "re-rolled":
-        said = "The head's run drew other ids than the base's, so the two are not compared."
-    return _chip(change), said
+    return _chip(change), _moved_said(cell)
 
 
 def _moved_said(cell: dict) -> str:
     """How a run of `cell` that moved came out against the base's, in a sentence: how much sooner
-    or later the head's first forked, how each ended, or how many lines or members each had off
-    the trunk."""
-    now, was = cell["epochs"]["head"], cell["epochs"]["base"]
-    moved = cell["moved"]
+    or later the head's first forked, or that it first forked at the base's epoch."""
+    d, was = cell["d"], cell["epochs"]["base"]
     said = f"The head {_forked(cell, 'head')}"
-    if moved is None:
-        said += f", and the base {_forked(cell, 'base')}."
-        if cell["change"] == "changed":
-            said += " The runs differ, but neither is better or worse."
-        return said
-    if moved["part"] in _OFF:
-        noun = _OFF[moved["part"]]
-        return (
-            f"{said}, as the base did. It ended with {moved['head']} {noun}s off the trunk, and "
-            f"the base with {moved['base']}."
-        )
-    if moved["part"] == "ended" or None in (now, was) or now == was:
-        return f"{said}, and the base {_forked(cell, 'base')}."
-    later = "earlier" if now < was else "later"
-    return f"{said}, {_plural(abs(now - was), 'epoch')} {later} than the base's {was}."
+    if d:
+        later = "earlier" if d < 0 else "later"
+        return f"{said}, {_plural(abs(d), 'epoch')} {later} than the base's {was}."
+    return (
+        f"{said}, and the base {_forked(cell, 'base')}. The runs differ, but not in the epoch "
+        "of the first fork, so the run counts neither earlier nor later."
+    )
 
 
 def _forked(cell: dict, side: str) -> str:
@@ -3084,8 +3071,8 @@ def _members(cell: dict, side: str, lineage: Optional[dict], left: float, y: flo
 def _trees(out: Path, matrix: dict, cell: dict) -> Tuple[Optional[dict], Optional[dict]]:
     """The lineages of `cell`'s runs of the pull request kept in `out`, at the head and at the
     base, from the run.json of each the site keeps, each `None` where it keeps none that can be
-    drawn; the base's `None` too where the head's drew other ids, as it is not drawn."""
-    based = None if cell["change"] == "re-rolled" else _base_run(out, matrix, cell)
+    drawn."""
+    based = _base_run(out, matrix, cell)
     head = _lineage(_run_json(out / simulate.run_page(cell) / "run.json"))
     return head, None if based is None else _lineage(_run_json(based[0] / "run.json"))
 
@@ -3276,11 +3263,8 @@ def _never(cell: dict, side: str, lineage: Optional[dict]) -> Optional[int]:
 
 
 def _unshown(cell: dict, side: str) -> Optional[str]:
-    """Why a side's run of `cell` has no tree: the base's of a run that drew other ids is not set
-    beside the head's, and a run without an outcome did not build or came to none. `None` where
-    it has one."""
-    if side == "base" and cell["change"] == "re-rolled":
-        return "the base drew other ids: not drawn side by side"
+    """Why a side's run of `cell` has no tree: a run without an outcome did not build or came to
+    none. `None` where it has one."""
     if cell[side] is None:
         return f"{'does not build' if cell['unbuilt'][side] else 'no outcome'} at the {side}"
     return None
@@ -3419,7 +3403,7 @@ def _runs_table(directory: Path, cells: Sequence[dict]) -> str:
     rows = []
     for cell in cells:
         outcome = cell["head"]
-        ended = cell["ended"]["head"] or ("-" if outcome else simulate.words(cell, False))
+        ended = cell["ended"]["head"] or ("-" if outcome else simulate.words(cell))
         wall = _wall(_run_json(_run_dir(directory, cell) / "run.json"))
         rows.append(
             f'<tr><td class="n">{cell["seed"]}</td>'

@@ -3,10 +3,11 @@ import io
 import json
 import shutil
 import unittest
+from fractions import Fraction
 from pathlib import Path
 from typing import Optional, Tuple
 
-from sim import compare, matrix
+from sim import compare, matrix, scenario
 from sim.cli import main
 from sim.matrix import Run, Side
 
@@ -43,146 +44,235 @@ def side(*outcomes: object) -> Side:
     return Side(runs)
 
 
-def verdict(head: Side, base: Optional[Side]) -> Tuple[str, dict]:
-    made = matrix.matrix(head, base)
-    return made["verdict"], made["counts"]
+def sides(**scenarios: tuple) -> Side:
+    """A side with a run at each seed from 0 of each scenario given by name, of each outcome
+    given."""
+    runs = {}
+    for name, outcomes in scenarios.items():
+        loss = scenario.read(matrix.SCENARIOS / f"{name}.json").network.loss
+        for seed, one in enumerate(outcomes):
+            runs[(name, seed)] = Run(seed + 1, loss, dict(one, seed=seed))
+    return Side(runs)
 
 
-class Verdict(unittest.TestCase):
-    """The verdict over a matrix's cells, one rule of its order a test."""
+def result(head: Side, base: Optional[Side]) -> dict:
+    """The result of the one scenario of `head` beside `base`."""
+    ((one,),) = [group["results"] for group in matrix.matrix(head, base)["groups"]]
+    return one
+
+
+class SignTest(unittest.TestCase):
+    """The exact two-sided sign test of the seeds whose run first forked later at the head
+    against those whose run first forked earlier."""
+
+    def test_three_seeds_never_reach_alpha_as_their_least_p_is_a_quarter(self):
+        tested = [matrix.sign_test(later, 3 - later) for later in range(4)]
+
+        self.assertEqual(min(tested), Fraction(1, 4))
+        self.assertEqual(tested, [Fraction(1, 4), 1, 1, Fraction(1, 4)])
+        self.assertTrue(all(p > matrix.ALPHA for p in tested))
+
+    def test_at_twenty_seeds_17_against_3_is_beyond_chance_and_16_against_4_is_not(self):
+        for later, earlier, p, beyond in ((17, 3, 0.0026, True), (16, 4, 0.0118, False)):
+            for tested in (matrix.sign_test(later, earlier), matrix.sign_test(earlier, later)):
+                with self.subTest(later=later, earlier=earlier):
+                    self.assertEqual(round(float(tested), 4), p)
+                    self.assertEqual(tested <= matrix.ALPHA, beyond)
+
+    def test_the_three_rates_of_logos_chat_349_are_within_chance(self):
+        for later, earlier, p, exact in (
+            (8, 5, 0.581, Fraction(595, 1024)),
+            (3, 7, 0.344, Fraction(11, 32)),
+            (4, 6, 0.754, Fraction(193, 256)),
+        ):
+            with self.subTest(later=later, earlier=earlier):
+                tested = matrix.sign_test(later, earlier)
+                self.assertEqual(tested, exact)
+                self.assertEqual(round(float(tested), 3), p)
+
+    def test_as_many_seeds_each_way_or_none_either_way_is_1(self):
+        self.assertEqual(matrix.sign_test(5, 5), 1)
+        self.assertEqual(matrix.sign_test(0, 0), 1)
+        self.assertIsInstance(matrix.sign_test(0, 0), Fraction)
+
+
+class Result(unittest.TestCase):
+    """The result of a scenario's cells and the verdict over a group's, one rule of their order a
+    test."""
 
     def test_every_cell_as_at_the_base_is_the_same(self):
-        said, counts = verdict(side(SPLIT, WHOLE, STALLED), side(SPLIT, WHOLE, STALLED))
+        said = result(side(SPLIT, WHOLE, STALLED), side(SPLIT, WHOLE, STALLED))
 
-        self.assertEqual(said, "same")
-        self.assertEqual((counts["cells"], counts["compared"], counts["same"]), (3, 3, 3))
+        self.assertEqual(
+            said,
+            {
+                "scenario": SCENARIO,
+                "rate": "1%",
+                "seeds": [0, 1, 2],
+                "later": 0,
+                "earlier": 0,
+                "zero": 3,
+                "p": 1.0,
+                "result": "same",
+            },
+        )
 
-    def test_cells_better_and_none_worse_are_better(self):
-        said, counts = verdict(side(LATER, WHOLE, SPLIT), side(SPLIT, WHOLE, SPLIT))
+    def test_seeds_that_forked_earlier_beyond_chance_are_earlier_and_later_later(self):
+        base = side(*[SPLIT] * 20)
+        for head, said in (
+            (side(*[SOONER] * 17, *[LATER] * 3), "earlier"),
+            (side(*[LATER] * 17, *[SOONER] * 3), "later"),
+        ):
+            with self.subTest(said=said):
+                one = result(head, base)
+                self.assertEqual(one["result"], said)
+                self.assertEqual(round(one["p"], 4), 0.0026)
+                self.assertEqual(one["later"] + one["earlier"], 20)
 
-        self.assertEqual((said, counts["better"], counts["same"]), ("better", 1, 2))
+    def test_seeds_apart_within_chance_are_within(self):
+        for head, base, p in (
+            (side(*[SOONER] * 16, *[LATER] * 4), side(*[SPLIT] * 20), 0.0118),
+            (side(SOONER, SOONER, SOONER), side(SPLIT, SPLIT, SPLIT), 0.25),
+        ):
+            with self.subTest(p=p):
+                one = result(head, base)
+                self.assertEqual((one["result"], round(one["p"], 4)), ("within", p))
 
-    def test_two_cells_worse_and_none_better_are_worse(self):
-        said, counts = verdict(side(SOONER, SOONER, SPLIT), side(SPLIT, SPLIT, SPLIT))
+    def test_a_cell_that_moved_at_the_same_first_fork_counts_on_neither_side(self):
+        one = result(side(DREW, SLOWER, SOONER), side(SPLIT, SPLIT, SPLIT))
 
-        self.assertEqual((said, counts["worse"]), ("worse", 2))
+        self.assertEqual([one[key] for key in ("later", "earlier", "zero")], [0, 1, 2])
+        self.assertEqual(one["result"], "within")
+        self.assertEqual(result(side(DREW, SLOWER), side(SPLIT, SPLIT))["result"], "within")
 
-    def test_one_cell_worse_and_none_better_is_a_hint(self):
-        said, counts = verdict(side(SOONER, SPLIT, SPLIT), side(SPLIT, SPLIT, SPLIT))
+    def test_a_run_that_drew_other_ids_moved_and_its_epochs_count(self):
+        drew_sooner = dict(SOONER, conversation=DREW["conversation"])
+        made = matrix.matrix(side(*[drew_sooner] * 8), side(*[SPLIT] * 8))
 
-        self.assertEqual((said, counts["worse"]), ("hint", 1))
-
-    def test_cells_better_and_cells_worse_are_mixed(self):
-        said, counts = verdict(side(LATER, SOONER, SPLIT), side(SPLIT, SPLIT, SPLIT))
-
-        self.assertEqual((said, counts["better"], counts["worse"]), ("mixed", 1, 1))
-
-    def test_cells_that_differ_by_their_draws_alone_are_re_rolled(self):
-        said, counts = verdict(side(DREW, DREW, SPLIT), side(SPLIT, SPLIT, SPLIT))
-
-        self.assertEqual((said, counts["re-rolled"], counts["same"]), ("re-rolled", 2, 1))
+        self.assertEqual({cell["change"] for cell in made["cells"]}, {"moved"})
+        self.assertEqual({cell["d"] for cell in made["cells"]}, {-6})
+        self.assertEqual(made["verdict"], "earlier")
 
     def test_a_head_whose_jobs_built_no_run_and_one_could_not_build_is_unbuilt(self):
         base = side(SPLIT, SPLIT)
-        self.assertEqual(verdict(side(UNBUILT, UNBUILT), base)[0], "unbuilt")
-        self.assertEqual(verdict(side(UNBUILT, None), base)[0], "unbuilt")
+        self.assertEqual(result(side(UNBUILT, UNBUILT), base)["result"], "unbuilt")
+        self.assertEqual(result(side(UNBUILT, None), base)["result"], "unbuilt")
+        self.assertEqual(result(side(UNBUILT, UNBUILT), side(UNBUILT))["result"], "unbuilt")
 
     def test_a_head_one_of_whose_jobs_could_not_build_has_no_outcome_in_that_cell(self):
         made = matrix.matrix(side(UNBUILT, SOONER), side(SPLIT, SPLIT))
 
         self.assertEqual(made["verdict"], "no-outcome")
-        self.assertEqual((made["counts"]["no-outcome"], made["counts"]["worse"]), (1, 1))
+        self.assertEqual((made["counts"]["no-outcome"], made["counts"]["moved"]), (1, 1))
         self.assertEqual(made["head"], {"runs": 1, "unbuilt": 1})
         self.assertEqual(
             [cell["unbuilt"] for cell in made["cells"]],
             [{"head": True, "base": False}, {"head": False, "base": False}],
         )
+        (one,) = made["groups"][0]["results"]
+        self.assertEqual([one[key] for key in ("later", "earlier", "zero", "p")], [0, 1, 0, 1.0])
 
     def test_a_cell_with_no_run_at_the_head_or_one_that_read_no_result_has_no_outcome(self):
         for head in (side(SPLIT, None), side(SPLIT, CRASHED)):
             with self.subTest(head=head):
-                said, counts = verdict(head, side(SPLIT, SPLIT))
+                made = matrix.matrix(head, side(SPLIT, SPLIT))
+                counts = made["counts"]
                 self.assertEqual(
-                    (said, counts["no-outcome"], counts["compared"]), ("no-outcome", 1, 1)
+                    (made["verdict"], counts["no-outcome"], counts["compared"]),
+                    ("no-outcome", 1, 1),
                 )
 
-    def test_a_changed_cell_counts_as_the_same(self):
-        said, counts = verdict(side(SLOWER, SPLIT), side(SPLIT, SPLIT))
-
-        self.assertEqual(said, "same")
-        self.assertEqual((counts["changed"], counts["same"], counts["compared"]), (1, 1, 2))
-
-    def test_a_re_rolled_cell_leaves_the_verdict_to_the_cells_that_moved_beside_it(self):
-        base = side(SPLIT, SPLIT, SPLIT)
-        for head, said in (
-            (side(DREW, SOONER, SPLIT), "hint"),
-            (side(DREW, SOONER, SOONER), "worse"),
-            (side(DREW, LATER, SPLIT), "better"),
-            (side(DREW, SLOWER, SPLIT), "re-rolled"),
-        ):
-            with self.subTest(said=said):
-                self.assertEqual(verdict(head, base)[0], said)
-
-    def test_with_a_base_that_did_not_build_no_cell_has_a_change_and_the_heads_stand(self):
-        made = matrix.matrix(side(SOONER, SPLIT), side(UNBUILT, UNBUILT))
-
-        self.assertEqual(made["verdict"], "no-base")
-        self.assertEqual([cell["change"] for cell in made["cells"]], [None, None])
-        self.assertEqual([cell["epochs"]["head"] for cell in made["cells"]], [12, 18])
-        self.assertEqual(made["base"], {"runs": 0, "unbuilt": 2})
-
-    def test_a_cell_the_base_did_not_build_has_no_change_and_the_others_decide(self):
+    def test_a_cell_with_no_outcome_at_the_base_is_left_out_of_the_sign_test(self):
         made = matrix.matrix(side(SOONER, SOONER), side(UNBUILT, SPLIT))
 
-        self.assertEqual(made["verdict"], "hint")
-        self.assertEqual([cell["change"] for cell in made["cells"]], [None, "worse"])
+        self.assertEqual(made["verdict"], "within")
+        self.assertEqual([cell["change"] for cell in made["cells"]], [None, "moved"])
         self.assertEqual(made["cells"][0]["unbuilt"], {"head": False, "base": True})
+        (one,) = made["groups"][0]["results"]
+        self.assertEqual(
+            [one[key] for key in ("seeds", "later", "earlier", "zero")], [[0, 1], 0, 1, 0]
+        )
 
-    def test_with_no_base_or_a_base_with_no_outcome_no_cell_has_a_change(self):
-        for base in (None, Side({}), side(CRASHED, CRASHED)):
+    def test_a_cell_with_no_outcome_at_the_head_is_said_before_one_at_the_base(self):
+        for base in (side(UNBUILT, SPLIT), side(UNBUILT, UNBUILT)):
             with self.subTest(base=base):
-                said, counts = verdict(side(SPLIT, SPLIT), base)
-                self.assertEqual((said, counts["compared"]), ("no-base", 0))
+                made = matrix.matrix(side(None, SOONER), base)
+                self.assertEqual(made["verdict"], "no-outcome")
 
-    def test_what_went_wrong_at_the_head_is_said_before_what_is_missing_at_the_base(self):
-        unbuilt = side(UNBUILT, UNBUILT)
-        self.assertEqual(verdict(side(UNBUILT, UNBUILT), unbuilt)[0], "unbuilt")
-        self.assertEqual(verdict(side(SPLIT, None), unbuilt)[0], "no-outcome")
+    def test_a_base_that_did_not_build_or_has_no_outcome_is_no_base_and_the_heads_stand(self):
+        for base in (side(UNBUILT, UNBUILT), Side({}), side(CRASHED, CRASHED)):
+            with self.subTest(base=base):
+                made = matrix.matrix(side(SOONER, SPLIT), base)
+                self.assertEqual((made["verdict"], made["counts"]["compared"]), ("no-base", 0))
+                self.assertEqual([cell["change"] for cell in made["cells"]], [None, None])
+                self.assertEqual([cell["epochs"]["head"] for cell in made["cells"]], [12, 18])
+        made = matrix.matrix(side(SPLIT), side(UNBUILT))
+        self.assertEqual(made["base"], {"runs": 0, "unbuilt": 1})
+
+    def test_with_no_base_a_head_has_no_verdict_but_what_went_wrong_at_it(self):
+        for head, said in (
+            (side(SPLIT, SPLIT), None),
+            (side(SPLIT, CRASHED), "no-outcome"),
+            (side(UNBUILT, UNBUILT), "unbuilt"),
+        ):
+            with self.subTest(said=said):
+                self.assertEqual(result(head, None)["result"], said)
 
     def test_a_head_with_no_run_and_no_base_has_no_outcome(self):
-        said, counts = verdict(Side({}), None)
+        made = matrix.matrix(Side({}), None)
 
-        self.assertEqual((said, counts["cells"]), ("no-outcome", 0))
-
-    def test_each_group_s_cells_have_the_verdict_of_the_same_rule_over_them_alone(self):
-        def both(groupv2: tuple, groupv3: tuple) -> Side:
-            return Side(
-                {
-                    (name.format(1), seed): Run(seed + 1, 0.01, dict(one, seed=seed))
-                    for name, outcomes in ((GOAL, groupv2), (GROUPV3, groupv3))
-                    for seed, one in enumerate(outcomes)
-                }
-            )
-
-        base = both((SPLIT, SPLIT), (SPLIT, SPLIT))
-
-        made = matrix.matrix(both((LATER, SPLIT), (SOONER, SOONER)), base)
-
-        self.assertEqual(made["verdict"], "mixed")
         self.assertEqual(
-            [(one["group"], one["verdict"]) for one in made["groups"]],
-            [("v2", "better"), ("v3", "worse")],
+            (made["verdict"], made["counts"]["cells"], made["groups"]), ("no-outcome", 0, [])
         )
+
+    def test_a_group_s_verdict_is_the_worst_of_its_rates_and_the_matrix_s_of_its_groups(self):
+        names = (GOAL.format(1), GOAL.format(5), GROUPV3.format(1))
+        base = sides(**{name: (SPLIT,) * 8 for name in names})
+        some_sooner = (SOONER, *[SPLIT] * 7)
+        for runs, results, verdicts, worst in (
+            (
+                ((SOONER,) * 8, (SPLIT,) * 8, some_sooner),
+                ["earlier", "same", "within"],
+                ["earlier", "within"],
+                "earlier",
+            ),
+            (
+                ((SPLIT,) * 8, some_sooner, (LATER,) * 8),
+                ["same", "within", "later"],
+                ["within", "later"],
+                "later",
+            ),
+        ):
+            with self.subTest(results=results):
+                made = matrix.matrix(sides(**dict(zip(names, runs))), base)
+                self.assertEqual(
+                    [one["result"] for group in made["groups"] for one in group["results"]],
+                    results,
+                )
+                self.assertEqual([group["verdict"] for group in made["groups"]], verdicts)
+                self.assertEqual(made["verdict"], worst)
+
+    def test_the_worst_result_is_what_went_wrong_at_the_head_then_what_moved_then_the_base(self):
         self.assertEqual(
-            [(one["counts"]["better"], one["counts"]["worse"]) for one in made["groups"]],
-            [(1, 0), (0, 2)],
+            matrix.WORST,
+            ("unbuilt", "no-outcome", "earlier", "later", "within", "no-base", "same"),
         )
-        alone = matrix.matrix(side(SPLIT), side(SPLIT))["groups"]
-        self.assertEqual([(one["group"], one["verdict"]) for one in alone], [("v2", "same")])
+        some_sooner = (SOONER, *[SPLIT] * 7)
+        for at_1, at_5, base_at_5, worst in (
+            ((CRASHED, *[SPLIT] * 7), (SOONER,) * 8, (SPLIT,) * 8, "no-outcome"),
+            ((LATER,) * 8, (SOONER,) * 8, (SPLIT,) * 8, "earlier"),
+            ((LATER,) * 8, some_sooner, (SPLIT,) * 8, "later"),
+            (some_sooner, (SPLIT,) * 8, (SPLIT,) * 7, "within"),
+            ((SPLIT,) * 8, (SPLIT,) * 8, (), "no-base"),
+        ):
+            with self.subTest(worst=worst):
+                head = sides(**{GOAL.format(1): at_1, GOAL.format(5): at_5})
+                base = sides(**{GOAL.format(1): (SPLIT,) * 8, GOAL.format(5): base_at_5})
+                self.assertEqual(matrix.matrix(head, base)["verdict"], worst)
 
 
 class Cells(unittest.TestCase):
-    def test_a_cell_holds_both_outcomes_its_change_and_each_sides_epochs_and_ending(self):
+    def test_a_cell_holds_both_outcomes_its_change_each_sides_epochs_and_ending_and_d(self):
         (cell,) = matrix.matrix(side(SOONER), side(SPLIT))["cells"]
 
         self.assertEqual(
@@ -197,33 +287,26 @@ class Cells(unittest.TestCase):
                 "head": SOONER,
                 "base": SPLIT,
                 "unbuilt": {"head": False, "base": False},
-                "change": "worse",
+                "change": "moved",
                 "epochs": {"head": 12, "base": 18},
                 "ended": {"head": "split", "base": "split"},
-                "moved": {"part": "epochs", "head": 12, "base": 18},
+                "d": -6,
             },
         )
 
-    def test_a_cell_better_or_worse_says_the_part_of_the_standing_that_moved(self):
+    def test_d_is_the_head_s_epochs_without_a_fork_less_the_base_s(self):
         behind = dict(WHOLE, ended="behind", members_off_trunk=1)
-        for was, now, moved in (
-            (WHOLE, behind, {"part": "ended", "head": "behind", "base": "whole"}),
-            (
-                SPLIT,
-                dict(SPLIT, lines_off_trunk=8),
-                {"part": "lines_off_trunk", "head": 8, "base": 7},
-            ),
-            (
-                SPLIT,
-                dict(SPLIT, members_off_trunk=17),
-                {"part": "members_off_trunk", "head": 17, "base": 18},
-            ),
-            (SPLIT, SLOWER, None),
-            (SPLIT, DREW, None),
+        for was, now, change, d in (
+            (SPLIT, LATER, "moved", 2),
+            (WHOLE, SPLIT, "moved", -32),
+            (SPLIT, STALLED, "moved", -14),
+            (WHOLE, behind, "moved", 0),
+            (SPLIT, DREW, "moved", 0),
+            (SPLIT, SPLIT, "same", 0),
         ):
-            with self.subTest(moved=moved):
+            with self.subTest(now=now, was=was):
                 (cell,) = matrix.matrix(side(now), side(was))["cells"]
-                self.assertEqual(cell["moved"], moved)
+                self.assertEqual((cell["change"], cell["d"]), (change, d))
 
     def test_the_epochs_without_a_fork_are_the_first_splits_or_else_the_trunks(self):
         cells = matrix.matrix(side(SPLIT, WHOLE, STALLED))["cells"]
@@ -235,7 +318,7 @@ class Cells(unittest.TestCase):
         cell = matrix.matrix(side(SPLIT, None), side(SPLIT, WHOLE))["cells"][1]
 
         self.assertEqual((cell["seed"], cell["run"], cell["head"]), (1, 2, None))
-        self.assertEqual((cell["change"], cell["ended"]["head"]), (None, None))
+        self.assertEqual((cell["change"], cell["ended"]["head"], cell["d"]), (None, None, None))
         self.assertEqual(cell["epochs"], {"head": None, "base": 50})
         self.assertEqual(cell["unbuilt"], {"head": False, "base": False})
 
@@ -391,26 +474,36 @@ class Read(Scratch):
         self.assertEqual((one.number, one.loss), (2, 0.05))
         self.assertEqual((one.outcome["first_fork"], one.outcome["ended"]), (3, "split"))
 
-    def test_a_head_beside_a_base_that_split_later_once_and_drew_other_ids_once_is_a_hint(self):
+    def test_a_head_beside_a_base_that_split_later_once_and_drew_other_ids_once_is_within(self):
         base = self.uploaded("base")
         self.fork(base, "0.1", 1, 48)
         self.edit(base, "5", 1, conversation="7c3e9a01b2")
 
         made = matrix.matrix(matrix.read(UPLOADED), matrix.read(base))
 
-        self.assertEqual(made["verdict"], "hint")
+        self.assertEqual(made["verdict"], "within")
         self.assertEqual(
-            [(cell["seed"], cell["change"], cell["epochs"]["head"]) for cell in made["cells"]],
             [
-                (0, "same", 50),
-                (1, "worse", 46),
-                (0, "same", 18),
-                (1, "same", 9),
-                (0, "same", 8),
-                (1, "re-rolled", 3),
+                (cell["seed"], cell["change"], cell["epochs"]["head"], cell["d"])
+                for cell in made["cells"]
+            ],
+            [
+                (0, "same", 50, 0),
+                (1, "moved", 46, -2),
+                (0, "same", 18, 0),
+                (1, "same", 9, 0),
+                (0, "same", 8, 0),
+                (1, "moved", 3, 0),
             ],
         )
         self.assertEqual(made["cells"][1]["epochs"], {"head": 46, "base": 48})
+        self.assertEqual(
+            [
+                (one["rate"], one["result"], one["later"], one["earlier"], one["zero"])
+                for one in made["groups"][0]["results"]
+            ],
+            [("0.1%", "within", 0, 1, 1), ("1%", "same", 0, 0, 2), ("5%", "within", 0, 0, 2)],
+        )
         self.assertEqual(made["head"], {"unbuilt": False, "runs": 6})
 
     def unbuilt(self, side: Path, rate: str, number: int) -> None:

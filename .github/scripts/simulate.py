@@ -67,21 +67,16 @@ MEASURED = (
 HELD = (*MEASURED, "tools/sim/expected/", ".github/workflows/ci.yml")
 # What a matrix of `tools/sim matrix` holds.
 MATRIX = {"head", "base", "cells", "counts", "verdict", "groups", "summary"}
-# What a cell's run at the head can be against the base's at the same seed, and those of them
-# where it moved.
-CHANGES = ("same", "changed", "better", "worse", "re-rolled")
-MOVED = ("better", "worse", "changed")
-# What a group's runs at the head can come to against the base's, each as a group's line words it,
-# in the order the line says them: what went wrong at the head before what moved, as the verdict
-# has it, and the runs the base has no outcome for last.
-STANDINGS = {
+# What a group's runs at the head came to against the base's, each result of `tools/sim matrix` as
+# a group's line words it.
+RESULTS = {
+    "same": "nothing moved",
+    "within": "moved, within chance",
+    "earlier": "forks earlier",
+    "later": "forks later",
+    "unbuilt": "does not build",
     "no-outcome": "no outcome",
-    "worse": "worse",
-    "better": "better",
-    "changed": "changed",
-    "re-rolled": "re-rolled",
-    "same": "same",
-    "uncompared": "not compared",
+    "no-base": "nothing to compare at the base",
 }
 
 _SHA = re.compile(r"[0-9a-f]{40}")
@@ -89,18 +84,18 @@ _PR = re.compile(r"[1-9][0-9]*")
 _CHECK_RUN = re.compile(r"[1-9][0-9]*")
 # logos-chat in GitHub's API, where the comment and the check are.
 ON_LOGOS_CHAT = "repos/logos-messaging/logos-chat"
-# The check's conclusion of each verdict: success where the head's runs stand higher and none
-# lower, failure where two or more stand lower and none higher, and neutral where they say neither.
+# The check's conclusion of each verdict: failure where the head's runs fork earlier beyond
+# chance, success where they fork later, and neutral otherwise, as for a matrix without a base,
+# which has no verdict.
 CONCLUSIONS = {
-    "better": "success",
-    "worse": "failure",
+    "earlier": "failure",
+    "later": "success",
+    "within": "neutral",
     "same": "neutral",
-    "hint": "neutral",
-    "mixed": "neutral",
-    "re-rolled": "neutral",
     "no-base": "neutral",
     "unbuilt": "neutral",
     "no-outcome": "neutral",
+    None: "neutral",
 }
 # The verdicts that fail the check once it is required: what went wrong at the head.
 _REQUIRED = ("unbuilt", "no-outcome")
@@ -109,14 +104,10 @@ _URL = re.compile(r"https?://[^\s()<>]+")
 # What the verdict line says of a revision chat-sim does not build at.
 _UNBUILT = "chat-sim does not build against this commit"
 
-# The title of each verdict but `no-base`, from the counts of the matrix's cells.
+# The title of each verdict that says no more than the counts of the matrix's cells.
 _TITLES = {
-    "same": "same as its base, {c[compared]} of {c[cells]} runs",
-    "better": "better in {c[better]} of {c[cells]} runs",
-    "worse": "worse in {c[worse]} of {c[cells]} runs",
-    "hint": "worse in 1 of {c[cells]} runs, a hint",
-    "mixed": "mixed: {c[better]} better, {c[worse]} worse of {c[cells]}",
-    "re-rolled": "the draws changed, no comparison",
+    "same": "nothing moved in {c[cells]} runs",
+    "within": "moved, within chance",
     "unbuilt": "does not build against this commit",
     "no-outcome": "no outcome in {c[no-outcome]} of {c[cells]} runs",
 }
@@ -126,18 +117,17 @@ _ENDED = (
 )
 # Of the members a run seated, those `compare` counts off the trunk at the end.
 _OFF_TRUNK = "behind, on another line, or never joined"
-# The mark of each of `STANDINGS` that leads a group's line of the comment on a pull request: a
+# The mark of each of `RESULTS` that leads a group's line of the comment on a pull request: a
 # missing run, at the head or at the base, is black.
 _MARKS = {
-    "no-outcome": "⚫",
-    "worse": "🔴",
-    "better": "🟢",
-    "changed": "🟡",
-    "re-rolled": "🔁",
     "same": "⚪",
-    "uncompared": "⚫",
+    "within": "🟡",
+    "earlier": "🔴",
+    "later": "🟢",
+    "unbuilt": "⚫",
+    "no-outcome": "⚫",
+    "no-base": "⚫",
 }
-_OFF = {"lines_off_trunk": "line", "members_off_trunk": "member"}
 _MAIN_FOOT = (
     f"A row: the runs of a group at a rate of loss, a seed each, by how each ended ({_ENDED}); "
     "how many epochs the group stayed one group, from the lowest seed to the highest (50 is the "
@@ -174,12 +164,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "comment",
         help="write the comment on what the run jobs came to",
         description="Writes the comment in Markdown. For pr and main it is drawn from --matrix: "
-        "for pr a line that says nothing moved, or else a line for each group by how its runs "
-        "compare, then links to the trees of the runs on the report's page, to the report, "
-        "kept while the pull request is open, to the graph over main and to the run; for main a "
-        "row a group's rate with how its runs ended and forked. For long it is a row for each "
-        "scenario from the outcomes.json the run jobs uploaded under RUNS and the compare.txt "
-        "written beside it, and the output of each compare. With --out it is written there.",
+        "for pr a line that says nothing moved, or else a line for each group with its verdict "
+        "and what its runs at each rate came to, then links to the trees of the runs on the "
+        "report's page, to the report, kept while the pull request is open, to the graph over "
+        "main and to the run; for main a row a group's rate with how its runs ended and forked. "
+        "For long it is a row for each scenario from the outcomes.json the run jobs uploaded "
+        "under RUNS and the compare.txt written beside it, and the output of each compare. With "
+        "--out it is written there.",
     )
     comment.add_argument(
         "runs",
@@ -265,7 +256,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Prints, as JSON for GitHub's API, the update of a check run on logos-chat "
         "once the run jobs came to --matrix: completed, with the conclusion of its verdict and "
         "its title, --comment as its summary, and --report-url as its details, or --run-url "
-        "without it. better is a success, worse a failure, and every other verdict neutral; "
+        "without it. earlier is a failure, later a success, and every other verdict neutral; "
         "with --required true, unbuilt and no-outcome are failures too.",
     )
     check.add_argument(
@@ -388,22 +379,30 @@ def jobs(suite: str, revision: str, base: str, swept: Sequence[Tuple[str, int]])
 
 
 def title(matrix: dict) -> str:
-    """The verdict of each group of `matrix` in a few words, after the group's name: how many of
-    its runs moved, and which way. A verdict every group has, of a head chat-sim does not build at
-    or of no base to compare with, is said once."""
-    if matrix["verdict"] in ("unbuilt", "no-base"):
+    """The verdict of each group of `matrix` in a few words, after the group's name: whether its
+    runs moved, and which way. A verdict of a head chat-sim does not build at, or of runs with
+    nothing to compare, is said once."""
+    if matrix["verdict"] == "unbuilt" or not compares(matrix):
         return _title(matrix, matrix)
     return "; ".join(f"{GROUPS[one['group']]} {_title(matrix, one)}" for one in matrix["groups"])
 
 
 def _title(matrix: dict, judged: dict) -> str:
-    """The verdict of `judged`, the matrix or one of its groups, in a few words."""
+    """The verdict of `judged`, the matrix or one of its groups, in a few words: of a group that
+    forks earlier or later, at its first rate that does."""
     counts, verdict = judged["counts"], judged["verdict"]
-    if verdict != "no-base":
+    if verdict in _TITLES:
         return _TITLES[verdict].format(c=counts)
+    if verdict in ("earlier", "later"):
+        one = next(one for one in judged["results"] if one["result"] == verdict)
+        tested = f"{one['later']} later, {one['earlier']} earlier (p {_p(one['p'])})"
+        return f"forks {verdict} at {_rate(one['rate'])}: {tested}"
     if matrix["base"] is None:
         return "no base, no comparison"
-    if matrix["base"]["unbuilt"]:
+    cells = matrix["cells"]
+    if judged is not matrix:
+        cells = [cell for cell in cells if cell["group"] == judged["group"]]
+    if any(cell["unbuilt"]["base"] for cell in cells):
         return "does not build at the base, no comparison"
     return "no outcome at the base, no comparison"
 
@@ -422,33 +421,43 @@ def compares(matrix: dict) -> bool:
     return matrix["base"] is not None and matrix["counts"]["compared"] > 0
 
 
-def moved(cell: dict) -> bool:
-    """Whether the head's run of `cell` came out otherwise than the base's at the same seed, from
-    the same draws: better, worse, or changed."""
-    return cell["change"] in MOVED
+def told(matrix: dict, result: dict) -> str:
+    """What a group's line says of one of its scenarios, by its rate and its `result` in
+    `matrix`: of one whose runs all came out as at the base, the seeds they ran; of one whose runs
+    moved, how many first forked later, earlier and at the same epoch, and the sign test's p; after
+    either, how many runs the base gave no outcome in; of any other, why there is nothing to
+    compare."""
+    return f"{_rate(result['rate'])}: {_told(matrix, result)}"
 
 
-def tally(matrix: dict, group: str) -> dict:
-    """The runs of `group` in `matrix` by how they compare: how many there are, how many of each
-    of `STANDINGS`, and how many moved."""
-    cells = [cell for cell in matrix["cells"] if cell["group"] == group]
-    shifted = [cell for cell in cells if moved(cell)]
-    return {
-        "cells": len(cells),
-        **{change: sum(cell["change"] == change for cell in cells) for change in CHANGES},
-        "no-outcome": sum(cell["head"] is None for cell in cells),
-        "uncompared": sum(cell["head"] is not None and cell["change"] is None for cell in cells),
-        "moved": len(shifted),
-    }
+def _told(matrix: dict, result: dict) -> str:
+    said = result["result"]
+    cells = [cell for cell in matrix["cells"] if cell["scenario"] == result["scenario"]]
+    if said == "same":
+        return f"nothing moved in {_seeds(result['seeds'])}{_base_gap(cells)}"
+    if said in ("within", "earlier", "later"):
+        later, earlier, zero = result["later"], result["earlier"], result["zero"]
+        tested = f"{later} later, {earlier} earlier, {zero} tied (p {_p(result['p'])})"
+        return tested + _base_gap(cells)
+    if said == "no-outcome":
+        missing = sum(cell["head"] is None for cell in cells)
+        return f"no outcome in {missing} of {len(cells)} runs"
+    if said == "no-base":
+        if any(cell["unbuilt"]["base"] for cell in cells):
+            return "does not build at the base"
+        return "no outcome at the base"
+    return RESULTS[said] if said is not None else "not compared"
 
 
-def told(counts: dict) -> Tuple[List[str], List[str]]:
-    """What a group's line says of its runs from their `tally`, as two lists of `STANDINGS`: the
-    ones it leads with, what went wrong at the head and what moved, or else the first the runs
-    have; and the rest the runs have, said after them, the same last."""
-    had = [one for one in STANDINGS if counts[one]]
-    led = [one for one in had if one == "no-outcome" or one in MOVED] or had[:1]
-    return led, sorted((one for one in had if one not in led), key=lambda one: one == "same")
+def _base_gap(cells: Sequence[dict]) -> str:
+    """How many of `cells` the base gave no outcome in, which the sign test leaves out, after a
+    comma; nothing where it gave every one."""
+    missing = [cell for cell in cells if cell["base"] is None]
+    if not missing:
+        return ""
+    if any(cell["unbuilt"]["base"] for cell in missing):
+        return f", does not build at the base in {len(missing)} of {len(cells)} runs"
+    return f", no outcome at the base in {len(missing)} of {len(cells)} runs"
 
 
 def run_page(cell: dict) -> str:
@@ -458,8 +467,8 @@ def run_page(cell: dict) -> str:
 
 def concluded(matrix: dict, required: bool) -> str:
     """The check's conclusion of `matrix`: a failure where the verdict of a group's runs fails it,
-    else a success where one's succeeds, else neutral, so that one group's runs standing higher
-    cannot hide the other's standing lower."""
+    else a success where one's succeeds, else neutral, so that one group's runs forking later
+    cannot hide the other's forking earlier."""
     said = {conclusion(one["verdict"], required) for one in matrix["groups"]}
     return next((one for one in ("failure", "success") if one in said), "neutral")
 
@@ -511,22 +520,22 @@ def post_to(pages: Sequence[Sequence[dict]], login: str, pr: str) -> Tuple[str, 
 
 
 def render_pr(matrix: dict, facts: dict) -> str:
-    """The comment on a pull request. Where every run came out the same as the base's, one line
-    that says so and the links. Else a line for each group by how its runs compare, and the links.
-    A head chat-sim does not build at, or runs with nothing to compare, have the verdict line
-    alone."""
+    """The comment on a pull request. Where every run was compared and came out the same as the
+    base's, one line that says so and the links. Else a line for each group, its verdict and what
+    each of its scenarios came to, and the links. A head chat-sim does not build at has the
+    verdict line alone, and runs with nothing to compare have it and the links."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
     if not compares(matrix):
-        return _verdict_line(headline(matrix), facts) + "\n"
+        return f"**{headline(matrix)}** {ran_at(facts, _commit)}\n\n{_links(facts)}\n"
     cells, head, base = matrix["cells"], _commit(facts["revision"]), _merge_base(facts)
-    if all(cell["change"] == "same" for cell in cells):
+    if matrix["verdict"] == "same" and matrix["counts"]["compared"] == len(cells):
         groups = " and ".join(GROUPS[one["group"]] for one in matrix["groups"])
         return (
             f"{_MARKS['same']} **Nothing moved.** All {len(cells)} runs of {groups} at {head} "
             f"replayed {base} exactly. {_links(facts)}\n"
         )
-    said = [_group_line(matrix, one["group"]) for one in matrix["groups"]]
+    said = [_group_line(matrix, one) for one in matrix["groups"]]
     # A backslash breaks the line wherever the comment is rendered, the check's summary and the
     # run's summary too, where the end of a line alone does not.
     lines = [f"{line}\\" for line in said[:-1]] + said[-1:]
@@ -872,22 +881,13 @@ def _unbuilt_comment(facts: dict) -> str:
     return "".join(f"{line}\n" for line in lines)
 
 
-def _group_line(matrix: dict, group: str) -> str:
-    """The line of the comment on a pull request on the runs of `group`, as `told` orders it: the
-    mark of what it leads with, and how many runs each of those has, or of a group whose runs led
-    with the same, how many of all; and how many runs each of the rest has."""
-    counts = tally(matrix, group)
-    led, rest = told(counts)
-    if led == ["same"]:
-        said = f"same in {counts['same']} of {counts['cells']} runs"
-    else:
-        shown = [f"{STANDINGS[one]} in {counts[one]}" for one in led]
-        shown[0] += " run" if counts[led[0]] == 1 else " runs"
-        said = ", ".join(shown)
-    line = f"{_MARKS[led[0]]} **{GROUPS[group]}: {said}**"
-    if rest:
-        line += " · " + ", ".join(f"{counts[one]} {STANDINGS[one]}" for one in rest)
-    return line
+def _group_line(matrix: dict, group: dict) -> str:
+    """The line of the comment on a pull request on the runs of `group`, one of `matrix`'s: the
+    mark of its verdict and the verdict in words, then what each of its scenarios came to, by its
+    rate."""
+    verdict = group["verdict"]
+    line = f"{_MARKS[verdict]} **{GROUPS[group['group']]}: {RESULTS[verdict]}**"
+    return line + "".join(f" · {told(matrix, one)}" for one in group["results"])
 
 
 def _merge_base(facts: dict) -> str:
@@ -908,24 +908,15 @@ def _links(facts: dict) -> str:
     )
 
 
-def words(cell: dict, against: bool) -> str:
+def words(cell: dict) -> str:
     """A cell in a few words: how the head's run ended, at the epoch of its first fork or else of
     the trunk, and the lines and the members off the trunk where there are any and how many of
-    those never joined where any did, then its change, with what the base's run had of what moved
-    where it is better or worse; and with `against`, why a cell that has an outcome at the head
-    has no change."""
+    those never joined where any did; or why it has no outcome at the head."""
     if cell["head"] is None:
         return _missing(cell, "head")
     said = _ended_at(cell["epochs"]["head"], cell["ended"]["head"])
     off = _off_trunk(cell["head"])
-    if off:
-        said += f", {off}"
-    change, moved = cell["change"], cell["moved"]
-    if moved is not None:
-        return f"{said}, was {_moved(cell)}: {change}"
-    if change is not None:
-        return f"{said}, {change}"
-    return f"{said}, {_missing(cell, 'base')} at the base" if against else said
+    return f"{said}, {off}" if off else said
 
 
 def _extent(spread: dict) -> str:
@@ -981,15 +972,6 @@ def _off_trunk(outcome: dict) -> str:
     return f"{off}, {never} of them never joined" if never else off
 
 
-def _moved(cell: dict) -> str:
-    """What the base's run of a cell had of the part that moved: how it ended and where, or its
-    lines or members off the trunk."""
-    part, was = cell["moved"]["part"], cell["moved"]["base"]
-    if part in ("epochs", "ended"):
-        return _ended_at(cell["epochs"]["base"], cell["ended"]["base"])
-    return f"{was} {_OFF[part]}{'' if was == 1 else 's'} off"
-
-
 def _missing(cell: dict, side: str) -> str:
     """Why a side of a cell has no outcome."""
     return "does not build" if cell["unbuilt"][side] else "no outcome"
@@ -1013,6 +995,16 @@ def again(cell: dict, facts: dict) -> List[str]:
 
 def _rate(rate: Optional[str]) -> str:
     return "-" if rate is None else rate
+
+
+def _seeds(seeds: Sequence[int]) -> str:
+    """Seeds by the lowest and the highest of them."""
+    return f"seeds {min(seeds)} to {max(seeds)}"
+
+
+def _p(p: float) -> str:
+    """A sign test's p to two figures, and below a thousandth as that."""
+    return "< 0.001" if p < 0.001 else f"{p:.2g}"
 
 
 def came_to(now: Optional[List[dict]]) -> str:

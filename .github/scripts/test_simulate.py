@@ -440,58 +440,127 @@ class Changed(History):
 
 
 class Title(unittest.TestCase):
-    """The verdict of a matrix in a few words, from the counts of each group's cells."""
+    """The verdict of a matrix in a few words, from the counts and the results of each group's
+    cells."""
 
     @staticmethod
-    def judged(verdict: str, group: str = "v2", **counted) -> dict:
-        counts = dict.fromkeys(("better", "worse", "re-rolled", "no-outcome"), 0)
-        counts.update({"cells": 6, "compared": 6, **counted})
-        return {"group": group, "verdict": verdict, "counts": counts}
+    def judged(verdict: Optional[str], group: str = "v2", results=(), **counted) -> dict:
+        counts = {"cells": 6, "compared": 6, "same": 6, "moved": 0, "no-outcome": 0, **counted}
+        return {"group": group, "verdict": verdict, "counts": counts, "results": list(results)}
 
-    def title(self, verdict: str, base: Optional[dict] = None, **counted) -> str:
-        """The title of a matrix of GroupV2's cells alone, of `verdict` and the counts given."""
-        judged = self.judged(verdict, **counted)
-        base = {"unbuilt": False, "runs": 6} if base is None else base
-        matrix = {**judged, "groups": [judged], "base": base}
+    @staticmethod
+    def result(rate: str, said: str, later: int, earlier: int, p: float) -> dict:
+        return {"rate": rate, "result": said, "later": later, "earlier": earlier, "p": p}
+
+    def title(
+        self, verdict: str, base: Optional[dict] = None, cells=(), results=(), **counted
+    ) -> str:
+        """The title of a matrix of GroupV2's cells alone, of `verdict`, the results and the
+        counts given."""
+        judged = self.judged(verdict, results=results, **counted)
+        base = {"unbuilt": 0, "runs": 6} if base is None else base
+        matrix = {**judged, "groups": [judged], "base": base, "cells": list(cells)}
         return simulate.title(matrix)
 
     def test_each_verdict_has_the_title_of_its_check(self):
-        for verdict, counted, said in (
-            ("same", {}, "GroupV2 same as its base, 6 of 6 runs"),
-            ("same", {"compared": 5}, "GroupV2 same as its base, 5 of 6 runs"),
-            ("better", {"better": 1}, "GroupV2 better in 1 of 6 runs"),
-            ("worse", {"worse": 2}, "GroupV2 worse in 2 of 6 runs"),
-            ("hint", {"worse": 1}, "GroupV2 worse in 1 of 6 runs, a hint"),
-            ("mixed", {"better": 1, "worse": 1}, "GroupV2 mixed: 1 better, 1 worse of 6"),
-            ("re-rolled", {"re-rolled": 6}, "GroupV2 the draws changed, no comparison"),
-            ("unbuilt", {}, "does not build against this commit"),
-            ("no-outcome", {"no-outcome": 1}, "GroupV2 no outcome in 1 of 6 runs"),
+        earlier = [
+            self.result("0.5%", "within", 8, 5, 595 / 1024),
+            self.result("1%", "earlier", 2, 15, 308 / 2**17),
+            self.result("5%", "earlier", 1, 16, 36 / 2**17),
+        ]
+        later = [self.result("5%", "later", 17, 3, 2702 / 2**20)]
+        for verdict, results, counted, said in (
+            ("same", (), {}, "GroupV2 nothing moved in 6 runs"),
+            ("within", (), {"moved": 2}, "GroupV2 moved, within chance"),
+            ("earlier", earlier, {}, "GroupV2 forks earlier at 1%: 2 later, 15 earlier (p 0.0023)"),
+            ("later", later, {}, "GroupV2 forks later at 5%: 17 later, 3 earlier (p 0.0026)"),
+            ("unbuilt", (), {}, "does not build against this commit"),
+            ("no-outcome", (), {"no-outcome": 1}, "GroupV2 no outcome in 1 of 6 runs"),
         ):
-            with self.subTest(verdict=verdict, counted=counted):
-                self.assertEqual(self.title(verdict, **counted), said)
+            with self.subTest(verdict=verdict):
+                self.assertEqual(self.title(verdict, results=results, **counted), said)
+
+    def test_a_p_below_a_thousandth_is_said_as_that(self):
+        results = [self.result("1%", "earlier", 0, 20, 2 / 2**20)]
+
+        self.assertEqual(
+            self.title("earlier", results=results),
+            "GroupV2 forks earlier at 1%: 0 later, 20 earlier (p < 0.001)",
+        )
 
     def test_each_group_s_title_follows_its_name_in_the_order_of_the_groups(self):
-        groups = [self.judged("same"), self.judged("worse", "v3", worse=2, compared=6)]
-        union = self.judged("worse", worse=2, cells=12, compared=12)
-        base = {"unbuilt": False, "runs": 12}
-        matrix = {**union, "groups": groups, "base": base}
+        results = [self.result("1%", "earlier", 0, 8, 0.0078125)]
+        groups = [self.judged("same"), self.judged("earlier", "v3", results)]
+        union = self.judged("earlier", cells=12, compared=12)
+        base = {"unbuilt": 0, "runs": 12}
+        matrix = {**union, "groups": groups, "base": base, "cells": []}
 
         self.assertEqual(
             simulate.title(matrix),
-            "GroupV2 same as its base, 6 of 6 runs; GroupV3 worse in 2 of 6 runs",
+            "GroupV2 nothing moved in 6 runs; GroupV3 forks earlier at 1%: 0 later, 8 earlier "
+            "(p 0.0078)",
         )
 
     def test_no_base_says_why_there_is_no_comparison(self):
-        no_base = {"unbuilt": False, "runs": 0}
+        def cells(group: str, unbuilt: bool) -> list:
+            return [{"group": group, "unbuilt": {"head": False, "base": unbuilt}}]
+
+        nothing = {"compared": 0, "same": 0}
         self.assertEqual(
-            self.title("no-base", {"unbuilt": True, "runs": 0}),
+            self.title("no-base", {"unbuilt": 6, "runs": 0}, cells("v2", True), **nothing),
             "does not build at the base, no comparison",
         )
-        self.assertEqual(self.title("no-base", no_base), "no outcome at the base, no comparison")
         self.assertEqual(
-            simulate.title({"verdict": "no-base", "counts": {}, "groups": [], "base": None}),
+            self.title("no-base", {"unbuilt": 0, "runs": 0}, cells("v2", False), **nothing),
+            "no outcome at the base, no comparison",
+        )
+        self.assertEqual(
+            simulate.title(
+                {"verdict": None, "counts": {"compared": 0}, "groups": [], "base": None}
+            ),
             "no base, no comparison",
         )
+        groups = [self.judged("same"), self.judged("no-base", "v3", compared=4, same=4)]
+        matrix = {
+            **self.judged("no-base", cells=12, compared=10, same=10),
+            "groups": groups,
+            "base": {"unbuilt": 2, "runs": 10},
+            "cells": cells("v2", False) + cells("v3", True),
+        }
+        self.assertEqual(
+            simulate.title(matrix),
+            "GroupV2 nothing moved in 6 runs; GroupV3 does not build at the base, no comparison",
+        )
+
+
+class Told(unittest.TestCase):
+    """What a group's line says of one of its scenarios, by its rate."""
+
+    def test_a_rate_that_did_not_move_says_its_seeds_and_one_that_did_its_sign_test(self):
+        nothing = {"scenario": "a", "rate": "0.5%", "result": "same", "seeds": [0, 1, 2]}
+        tested = {"later": 8, "earlier": 5, "zero": 7, "p": 595 / 1024}
+        moved = {"scenario": "b", "rate": "1%", "result": "within", "seeds": [0], **tested}
+        none = {"cells": []}
+
+        self.assertEqual(simulate.told(none, nothing), "0.5%: nothing moved in seeds 0 to 2")
+        self.assertEqual(simulate.told(none, moved), "1%: 8 later, 5 earlier, 7 tied (p 0.58)")
+
+    def test_a_rate_says_how_many_runs_the_base_gave_no_outcome_in(self):
+        nothing = {"scenario": "a", "rate": "0.5%", "result": "same", "seeds": [0, 1, 2]}
+        cell = {"scenario": "a", "base": {}, "unbuilt": {"head": False, "base": False}}
+        lost = dict(cell, base=None)
+        for cells, said in (
+            ([cell, lost, cell], "no outcome at the base in 1 of 3 runs"),
+            (
+                [cell, lost, dict(lost, unbuilt={"head": False, "base": True})],
+                "does not build at the base in 2 of 3 runs",
+            ),
+        ):
+            with self.subTest(said=said):
+                self.assertEqual(
+                    simulate.told({"cells": cells}, nothing),
+                    f"0.5%: nothing moved in seeds 0 to 2, {said}",
+                )
 
 
 class Conclusion(unittest.TestCase):
@@ -499,15 +568,14 @@ class Conclusion(unittest.TestCase):
 
     def test_each_verdict_has_the_conclusion_of_its_check_and_its_own_once_required(self):
         table = (
+            ("earlier", "failure", "failure"),
+            ("later", "success", "success"),
+            ("within", "neutral", "neutral"),
             ("same", "neutral", "neutral"),
-            ("better", "success", "success"),
-            ("worse", "failure", "failure"),
-            ("hint", "neutral", "neutral"),
-            ("mixed", "neutral", "neutral"),
-            ("re-rolled", "neutral", "neutral"),
+            ("no-base", "neutral", "neutral"),
             ("unbuilt", "neutral", "failure"),
             ("no-outcome", "neutral", "failure"),
-            ("no-base", "neutral", "neutral"),
+            (None, "neutral", "neutral"),
         )
         self.assertEqual({verdict for verdict, *_ in table}, set(simulate.CONCLUSIONS))
         for verdict, concluded, once_required in table:
@@ -517,13 +585,13 @@ class Conclusion(unittest.TestCase):
 
     def test_a_group_that_fails_fails_the_check_and_else_one_that_succeeds_succeeds_it(self):
         for verdicts, required, concluded in (
-            (("better", "worse"), False, "failure"),
-            (("worse", "better"), False, "failure"),
-            (("better", "hint"), False, "success"),
-            (("same", "better"), False, "success"),
-            (("same", "mixed"), False, "neutral"),
-            (("better", "no-outcome"), False, "success"),
-            (("better", "no-outcome"), True, "failure"),
+            (("later", "earlier"), False, "failure"),
+            (("earlier", "later"), False, "failure"),
+            (("later", "within"), False, "success"),
+            (("same", "later"), False, "success"),
+            (("same", "within"), False, "neutral"),
+            (("later", "no-outcome"), False, "success"),
+            (("later", "no-outcome"), True, "failure"),
         ):
             with self.subTest(verdicts=verdicts, required=required):
                 groups = [{"group": g, "verdict": v} for g, v in zip(("v2", "v3"), verdicts)]
@@ -597,6 +665,19 @@ class Drawn(unittest.TestCase):
             edited(report, changed)
             file.write_text(json.dumps(report), encoding="utf-8")
         return copy
+
+    def widened(self, side: Path, rate: str, group: str = "v2") -> Path:
+        """`side` with runs of `group` at `rate` at seeds 2 to 7 too, each a copy of seed 0's at
+        its own seed: eight seeds, as many as can fork earlier or later beyond chance."""
+        scenario = HELD_GOALS[group].format(rate)
+        first = side / f"sim-revision-{scenario}-1" / scenario / "1" / "run.json"
+        report = json.loads(first.read_text(encoding="utf-8"))
+        for seed in range(2, 8):
+            number = seed + 1
+            copy = side / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
+            copy.parent.mkdir(parents=True)
+            copy.write_text(json.dumps(dict(report, seed=seed)), encoding="utf-8")
+        return side
 
     def unbuilt(self, side: Path, rate: str, seed: int) -> None:
         """The artifact of the job of a run at `rate` and `seed` as one that could not build."""
@@ -685,8 +766,7 @@ class Drawn(unittest.TestCase):
             (
                 "neutral",
                 {
-                    "title": "GroupV2 same as its base, 6 of 6 runs; GroupV3 same as its base, 6 "
-                    "of 6 runs",
+                    "title": "GroupV2 nothing moved in 6 runs; GroupV3 nothing moved in 6 runs",
                     "summary": out,
                 },
             ),
@@ -698,72 +778,64 @@ class Drawn(unittest.TestCase):
             f"merge base {commit(BASE)} exactly. [The run]({RUN_URL})\n",
         )
 
-    def test_a_pr_whose_runs_moved_says_so_by_group_and_links_their_trees(self):
+    def test_a_pr_whose_runs_moved_says_so_by_group_and_rate_and_links_their_trees(self):
         matrix = self.matrix(self.uploaded("head", **SOONER), UPLOADED)
         _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
 
         self.assertEqual(
             out,
-            "🔴 **GroupV2: worse in 2 runs** · 4 same\n"
+            "🟡 **GroupV2: moved, within chance** · 0.1%: nothing moved in seeds 0 to 1 · 1%: 0 "
+            "later, 1 earlier, 1 tied (p 1) · 5%: 0 later, 1 earlier, 1 tied (p 1)\n"
             "\n"
             f"{LINKS} · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
 
     def test_a_pr_on_both_groups_says_each_on_a_line_of_its_own_and_fails_on_either(self):
-        head = self.uploaded(
-            "head",
-            both=True,
-            **{
-                "1/1/v3": {"first_fork": 5},
-                "5/0/v3": {"first_fork": 4},
-            },
-        )
-        matrix = self.matrix(head, self.uploaded("base", both=True), self.pr_jobs())
+        sooner = {"1/0/v3": {"first_fork": 10}, "1/1/v3": {"first_fork": 5}}
+        head = self.uploaded("head", both=True, **sooner)
+        base = self.widened(self.uploaded("base", both=True), "1", "v3")
+        matrix = self.matrix(self.widened(head, "1", "v3"), base, self.pr_jobs())
         _, out, _ = self.comment("pr", matrix, "--base", BASE)
 
-        self.assertTrue(
-            out.startswith(
-                "⚪ **GroupV2: same in 6 of 6 runs**\\\n🔴 **GroupV3: worse in 2 runs** · 4 same\n\n"
-            )
+        self.assertEqual(
+            self.said(out),
+            [
+                "⚪ **GroupV2: nothing moved** · 0.1%: nothing moved in seeds 0 to 1 · 1%: nothing "
+                "moved in seeds 0 to 1 · 5%: nothing moved in seeds 0 to 1",
+                "🔴 **GroupV3: forks earlier** · 0.1%: nothing moved in seeds 0 to 1 · 1%: 0 "
+                "later, 8 earlier, 0 tied (p 0.0078) · 5%: nothing moved in seeds 0 to 1",
+            ],
         )
         checked = self.check(matrix, out)
         self.assertEqual(
             (checked["conclusion"], checked["output"]["title"]),
-            ("failure", "GroupV2 same as its base, 6 of 6 runs; GroupV3 worse in 2 of 6 runs"),
+            (
+                "failure",
+                "GroupV2 nothing moved in 6 runs; GroupV3 forks earlier at 1%: 0 later, 8 "
+                "earlier (p 0.0078)",
+            ),
         )
 
-    def test_a_pr_whose_runs_only_drew_other_ids_says_so_and_shows_no_trees(self):
+    def test_runs_that_drew_other_ids_or_moved_at_the_same_first_fork_are_ties(self):
         ids = {"0": "7c3e9a01b2", "1": "b19d47e0c5"}
-        head = self.uploaded(
-            "head",
-            **{
-                f"{rate}/{seed}": {"conversation": drawn}
-                for rate in ("0.1", "1", "5")
-                for seed, drawn in ids.items()
-            },
-        )
+        drew = {
+            f"{rate}/{seed}": {"conversation": drawn}
+            for rate in ("1", "5")
+            for seed, drawn in ids.items()
+        }
+        head = self.uploaded("head", **drew, **{"0.1/0": {"virtual_s": 6077.0}})
         matrix = self.matrix(head, UPLOADED)
         _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
 
         self.assertEqual(
             out,
-            "🔁 **GroupV2: re-rolled in 6 runs**\n"
+            "🟡 **GroupV2: moved, within chance** · 0.1%: 0 later, 0 earlier, 2 tied (p 1) · "
+            "1%: 0 later, 0 earlier, 2 tied (p 1) · 5%: 0 later, 0 earlier, 2 tied (p 1)\n"
             "\n"
             f"{LINKS} · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
 
-    def test_a_changed_run_moved_and_its_mark_leads_a_re_rolled_one_s(self):
-        head = self.uploaded(
-            "head", **{"5/1": {"conversation": "7c3e9a01b2"}, "1/0": {"virtual_s": 6077.0}}
-        )
-        matrix = self.matrix(head, UPLOADED)
-        _, out, _ = self.comment("pr", matrix, "--base", BASE, "--report-url", REPORT_URL)
-
-        self.assertEqual(
-            self.said(out), ["🟡 **GroupV2: changed in 1 run** · 1 re-rolled, 4 same"]
-        )
-
-    def test_a_run_with_no_outcome_at_the_head_leads_and_one_not_compared_follows(self):
+    def test_a_rate_with_no_outcome_at_the_head_or_at_the_base_says_so(self):
         base = self.uploaded("base", both=True)
         unbuilt_base = self.uploaded("unbuilt-base", both=True)
         self.unbuilt(unbuilt_base, "1", 1)
@@ -775,25 +847,41 @@ class Drawn(unittest.TestCase):
         later = {"1/0": {"first_fork": 4}, "5/0": {"first_fork": 49}}
         mixed = self.uploaded("mixed", both=True, **later)
         shutil.rmtree(mixed / "sim-revision-50-epochs-by-saro-waku-loss-5-2")
-        for head, against, said in (
-            (no_outcome, base, "⚫ **GroupV2: no outcome in 1 run** · 5 same"),
-            (unbuilt, base, "⚫ **GroupV2: no outcome in 1 run** · 5 same"),
-            (mixed, base, "⚫ **GroupV2: no outcome in 1 run, worse in 1, better in 1** · 3 same"),
-            (sooner, unbuilt_base, "🔴 **GroupV2: worse in 1 run** · 1 not compared, 4 same"),
-            (base, unbuilt_base, "⚪ **GroupV2: same in 5 of 6 runs** · 1 not compared"),
+        same = "nothing moved in seeds 0 to 1"
+        moved = "0 later, 1 earlier, 1 tied (p 1)"
+        missing = "no outcome in 1 of 2 runs"
+        unbuilt_at_base = "does not build at the base"
+        for head, against, verdict, rates in (
+            (no_outcome, base, "⚫ **GroupV2: no outcome**", (same, same, missing)),
+            (unbuilt, base, "⚫ **GroupV2: no outcome**", (same, missing, same)),
+            (mixed, base, "⚫ **GroupV2: no outcome**", (same, moved, missing)),
+            (
+                sooner,
+                unbuilt_base,
+                "🟡 **GroupV2: moved, within chance**",
+                (same, f"{same}, {unbuilt_at_base} in 1 of 2 runs", moved),
+            ),
+            (
+                base,
+                unbuilt_base,
+                "⚪ **GroupV2: nothing moved**",
+                (same, f"{same}, {unbuilt_at_base} in 1 of 2 runs", same),
+            ),
         ):
             with self.subTest(head=head.name, base=against.name):
                 matrix = self.matrix(head, against, self.pr_jobs())
                 _, out, _ = self.comment("pr", matrix, "--base", BASE)
-                self.assertEqual(self.said(out), [said, "⚪ **GroupV3: same in 6 of 6 runs**"])
+                said = verdict + "".join(
+                    f" · {rate}: {one}" for rate, one in zip(("0.1%", "1%", "5%"), rates)
+                )
+                groupv3 = f"⚪ **GroupV3: nothing moved** · 0.1%: {same} · 1%: {same} · 5%: {same}"
+                self.assertEqual(self.said(out), [said, groupv3])
 
-    def test_a_pr_with_nothing_to_compare_has_the_verdict_line_alone(self):
+    def test_a_pr_with_nothing_to_compare_has_the_verdict_line_and_the_links(self):
         _, out, _ = self.comment("pr", self.matrix(UPLOADED), "--report-url", REPORT_URL)
 
         self.assertEqual(
-            out,
-            f"**chat-sim: no base, no comparison** at {commit(REVISION)} · "
-            f"[the report]({REPORT_URL}) · [the run]({RUN_URL})\n",
+            out, f"**chat-sim: no base, no comparison** at {commit(REVISION)}\n\n{LINKS}\n"
         )
         base = self.root / "base"
         for rate in ("0.1", "1", "5"):
@@ -803,7 +891,7 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             out,
             f"**chat-sim: does not build at the base, no comparison** at {commit(REVISION)} "
-            f"against its merge base {commit(BASE)} · [the run]({RUN_URL})\n",
+            f"against its merge base {commit(BASE)}\n\n[The run]({RUN_URL})\n",
         )
 
     def test_without_the_report_s_page_the_comment_links_the_run_alone(self):
@@ -811,9 +899,7 @@ class Drawn(unittest.TestCase):
         _, out, _ = self.comment("pr", matrix, "--base", BASE)
 
         self.assertEqual(
-            out,
-            "🔴 **GroupV2: worse in 2 runs** · 4 same\n"
-            "\n"
+            out.split("\n\n", 1)[1],
             f"[The run]({RUN_URL}) · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
 
@@ -937,25 +1023,28 @@ class Drawn(unittest.TestCase):
             "| 18 of 51 | 1 |",
         )
 
-    def test_a_pr_worse_in_2_of_6_fails_its_check_with_the_comment_and_the_report(self):
-        head = self.uploaded(
-            "head",
-            **{"1/1": {"first_fork": 5}, "5/0": {"first_fork": 4}},
-        )
-        matrix = self.matrix(head, UPLOADED)
+    def test_a_pr_that_forks_earlier_fails_its_check_and_one_that_forks_later_succeeds(self):
+        base = self.widened(self.uploaded("base"), "1")
         given = ("--base", BASE, "--report-url", REPORT_URL)
-        _, comment, _ = self.comment("pr", matrix, *given)
-
-        self.assertEqual(
-            self.check(matrix, comment, "--report-url", REPORT_URL),
-            {
-                "status": "completed",
-                "conclusion": "failure",
-                "details_url": REPORT_URL,
-                "output": {"title": "GroupV2 worse in 2 of 6 runs", "summary": comment},
-            },
-        )
-        self.assertEqual(self.check(matrix, comment)["details_url"], RUN_URL)
+        for at, concluded, title in (
+            ((10, 5), "failure", "GroupV2 forks earlier at 1%: 0 later, 8 earlier (p 0.0078)"),
+            ((30, 30), "success", "GroupV2 forks later at 1%: 8 later, 0 earlier (p 0.0078)"),
+        ):
+            with self.subTest(concluded=concluded):
+                moved = {f"1/{seed}": {"first_fork": one} for seed, one in enumerate(at)}
+                head = self.uploaded(f"head-{concluded}", **moved)
+                matrix = self.matrix(self.widened(head, "1"), base)
+                _, comment, _ = self.comment("pr", matrix, *given)
+                self.assertEqual(
+                    self.check(matrix, comment, "--report-url", REPORT_URL),
+                    {
+                        "status": "completed",
+                        "conclusion": concluded,
+                        "details_url": REPORT_URL,
+                        "output": {"title": title, "summary": comment},
+                    },
+                )
+                self.assertEqual(self.check(matrix, comment)["details_url"], RUN_URL)
 
     def test_a_head_chat_sim_does_not_build_at_is_neutral_until_the_check_is_required(self):
         head = self.root / "head"
@@ -1087,7 +1176,7 @@ class Comment(Fixture):
             self.swept(self.runs, "grow-waku-loss-0.1") / "outcomes.json",
             [outcome(0), outcome(1, "split at epoch 9"), outcome(2, "split at epoch 4")],
         )
-        self.compared("grow-waku-loss-0.1", "1 of 3 runs came out as expected: 2 worse")
+        self.compared("grow-waku-loss-0.1", "1 of 3 runs came out as expected")
         status, out, _ = self.comment(*self.with_base, "--pr", "316")
         self.assertEqual(status, 0)
         self.assertIn(
@@ -1103,7 +1192,7 @@ class Comment(Fixture):
             [
                 "3",
                 "whole, split at epoch 9, split at epoch 4",
-                "1 of 3 runs came out as expected: 2 worse",
+                "1 of 3 runs came out as expected",
             ],
         )
         self.assertEqual(rows["50-epochs"], ["1", "whole", "no outcome at the base"])

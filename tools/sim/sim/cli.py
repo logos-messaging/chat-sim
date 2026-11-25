@@ -89,10 +89,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="pair a revision's runs with its base's, and say what moved",
         description="Reads the runs in one process the jobs at a revision uploaded under HEAD, "
         "and those at its base under --base, pairs them by scenario and seed, and writes as "
-        "JSON a cell for each pair with its change, the verdict over the cells, and without a "
-        "base each scenario's summary. A run --asked asks of each side is a cell whether or not "
-        "a side has it. Exits 0 when it wrote the matrix, and 2 when a run or --asked cannot be "
-        "read.",
+        "JSON a cell for each pair with its change and how far its first fork moved, what each "
+        "group's runs at each rate came to by a sign test on its seeds, the verdict over the "
+        "groups, and without a base each scenario's summary. A run --asked asks of each side is "
+        "a cell whether or not a side has it. Exits 0 when it wrote the matrix, and 2 when a run "
+        "or --asked cannot be read.",
     )
     paired.add_argument(
         "head", metavar="HEAD", type=Path, help="what the jobs at the revision uploaded"

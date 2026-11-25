@@ -73,10 +73,19 @@ def reported(outcome: dict) -> dict:
     return outcome
 
 
-def unjoined(held: dict) -> dict:
-    """`held`, a point, as one of an earlier measurement holds it, whose outcomes are `reported`
-    and whose outcomes and summaries do not count the members that never joined."""
+def unpaired(held: dict) -> dict:
+    """`held`, a point, as one from before the cells held `d` holds it, whose cells hold `moved`,
+    `null` in a point, in its place."""
     for cell in held["cells"]:
+        del cell["d"]
+        cell["moved"] = None
+    return held
+
+
+def unjoined(held: dict) -> dict:
+    """`held`, a point, as one of an earlier measurement holds it, `unpaired`, whose outcomes are
+    `reported` and whose outcomes and summaries do not count the members that never joined."""
+    for cell in unpaired(held)["cells"]:
         for side in ("head", "base"):
             if cell.get(side) is not None:
                 del reported(cell[side])["never_joined"]
@@ -1033,7 +1042,7 @@ class PullRequest(LogosChat):
             (out / scenarios[1]).read_bytes(), (SCENARIOS / f"{GOAL.format(1)}.json").read_bytes()
         )
         matrix = pages.read_matrix(out / "matrix.json")
-        self.assertEqual(matrix["verdict"], "hint")
+        self.assertEqual(matrix["verdict"], "within")
         self.assertEqual(
             self.meta(),
             {
@@ -1056,11 +1065,17 @@ class PullRequest(LogosChat):
         out = self.site / "logos-chat" / "pr-316"
         self.assertFalse((out / "base").exists())
         self.assertIsNone(self.meta()["base"])
-        self.assertEqual(pages.read_matrix(out / "matrix.json")["verdict"], "no-base")
+        self.assertIsNone(pages.read_matrix(out / "matrix.json")["verdict"])
 
     def test_a_matrix_not_as_tools_sim_writes_one_is_refused(self):
         path = self.matrix(self.uploaded(), self.uploaded())
         matrix = json.loads(path.read_text(encoding="utf-8"))
+        (group,) = matrix["groups"]
+
+        def results(**changed) -> dict:
+            result = dict(group["results"][0], **changed)
+            return dict(matrix, groups=[dict(group, results=[result])])
+
         for said, written in (
             ("base_point is not a field of it", dict(matrix, base_point=None)),
             ("spread is not a field of it", dict(matrix, spread=None)),
@@ -1068,6 +1083,17 @@ class PullRequest(LogosChat):
                 "cells[0].below is not a field of cells[0]",
                 dict(matrix, cells=[dict(matrix["cells"][0], below=None)]),
             ),
+            (
+                "cells[0].moved is not a field of cells[0]",
+                dict(matrix, cells=[dict(matrix["cells"][0], moved=None)]),
+            ),
+            ("verdict 'hint' is none of a matrix", dict(matrix, verdict="hint")),
+            (
+                "groups[0].results[0].result 'worse' is none of a matrix",
+                results(result="worse"),
+            ),
+            ("groups[0].results[0].seeds is not a list of seeds", results(seeds=[0, "1"])),
+            ("groups[0].results[0].p is not of its kind", results(p="0.58")),
             (
                 "cells[0].group 'v1' is none of a scenario's",
                 dict(matrix, cells=[dict(matrix["cells"][0], group="v1")]),
@@ -2098,7 +2124,13 @@ class Pages(LogosChat):
         parsed = self.stands_alone(out)
         self.assertEqual(parsed.h1, ["logos-chat #316"])
         self.assertIn(f"Ran at {REVISION[:7]} against its merge base {BASE[:7]}.", parsed.text)
-        self.assertEqual(self.verdicts(out), ["GroupV2 ▼ worse in 2 · 4 same"])
+        self.assertEqual(
+            self.verdicts(out),
+            [
+                "GroupV2 moved, within chance · 0.1%: nothing moved in seeds 0 to 1 · 1%: 0 "
+                "later, 1 earlier, 1 tied (p 1) · 5%: 0 later, 1 earlier, 1 tied (p 1)"
+            ],
+        )
         # The comment links the trees by it.
         self.assertIn("runs", parsed.ids)
         for link in (
@@ -2131,8 +2163,8 @@ class Pages(LogosChat):
                 ("fork", "whole at 50"),
                 ("fork", "first fork 46"),
                 ("fork", "first fork 18"),
-                ("fork worse", "▼ worse first fork 5, base 9"),
-                ("fork worse", "▼ worse first fork 4, base 8"),
+                ("fork moved", "moved first fork 5, base 9"),
+                ("fork moved", "moved first fork 4, base 8"),
                 ("fork", "first fork 3"),
             ],
         )
@@ -2142,7 +2174,7 @@ class Pages(LogosChat):
                     self.assertIsNotNone(svg.find(f".//{SVG}g[@class='tree {side} sketch']"))
                 self.stands_alone(out / simulate.run_page(cell))
 
-    def test_a_group_s_verdict_leads_with_a_run_with_no_outcome_at_the_head_then_what_moved(
+    def test_a_group_s_verdict_is_its_worst_rate_s_and_each_run_says_how_it_moved_or_why_not(
         self,
     ):
         base = self.uploaded()
@@ -2161,8 +2193,9 @@ class Pages(LogosChat):
         self.assertEqual(
             self.verdicts(out),
             [
-                "GroupV2 no outcome in 1 ▼ worse in 1 ▲ better in 1 changed in 1 · 1 re-rolled, "
-                "1 not compared"
+                "GroupV2 no outcome · 0.1%: 0 later, 0 earlier, 1 tied (p 1), does not build "
+                "at the base in 1 of 2 runs · 1%: no outcome in 1 of 2 runs · 5%: 0 later, 1 "
+                "earlier, 1 tied (p 1)"
             ],
         )
 
@@ -2171,11 +2204,11 @@ class Pages(LogosChat):
             [(kind, said) for kind, _, said, _ in forks],
             [
                 ("fork unbuilt", "unbuilt whole at 50 · does not build at the base"),
-                ("fork changed", "changed first fork 46, base 46"),
+                ("fork moved", "moved first fork 46, base 46"),
                 ("fork unbuilt", "unbuilt does not build at the head"),
-                ("fork better", "▲ better first fork 30, base 9"),
-                ("fork worse", "▼ worse first fork 4, base 8"),
-                ("fork rerolled", "re-rolled other ids, not compared"),
+                ("fork moved", "moved first fork 30, base 9"),
+                ("fork moved", "moved first fork 4, base 8"),
+                ("fork moved", "moved first fork 3, base 3"),
             ],
         )
         notes = [
@@ -2184,11 +2217,11 @@ class Pages(LogosChat):
         ]
         self.assertEqual(notes[0], ["does not build at the base"])
         self.assertEqual(notes[2], ["does not build at the head"])
-        self.assertEqual(notes[5], ["the base drew other ids: not drawn side by side"])
+        self.assertEqual(notes[5], [])
         both = ["tree head sketch", "tree base sketch"]
         self.assertEqual(
             [self.trees(svg) for *_, svg in forks],
-            [["tree head sketch"], both, ["tree base sketch"], both, both, ["tree head sketch"]],
+            [["tree head sketch"], both, ["tree base sketch"], both, both, both],
         )
         matrix = pages.read_matrix(out / "matrix.json")
         ran = [
@@ -2200,13 +2233,15 @@ class Pages(LogosChat):
             [
                 "not compared The head ended whole at epoch 50. chat-sim does not build at the "
                 "base, so the two are not compared.",
-                "changed The head first forked at epoch 46, and the base first forked at epoch "
-                "46. The runs differ, but neither is better or worse.",
+                "moved The head first forked at epoch 46, and the base first forked at epoch 46. "
+                "The runs differ, but not in the epoch of the first fork, so the run counts "
+                "neither earlier nor later.",
                 "unbuilt chat-sim does not build at the head, so nothing ran.",
-                "▲ better The head first forked at epoch 30, 21 epochs later than the base's 9.",
-                "▼ worse The head first forked at epoch 4, 4 epochs earlier than the base's 8.",
-                "re-rolled The head's run drew other ids than the base's, so the two are not "
-                "compared.",
+                "moved The head first forked at epoch 30, 21 epochs later than the base's 9.",
+                "moved The head first forked at epoch 4, 4 epochs earlier than the base's 8.",
+                "moved The head first forked at epoch 3, and the base first forked at epoch 3. "
+                "The runs differ, but not in the epoch of the first fork, so the run counts "
+                "neither earlier nor later.",
             ],
         )
         unbuilt = self.stands_alone(out / f"head/{GOAL.format(1)}/1")
@@ -2253,32 +2288,15 @@ class Pages(LogosChat):
             [title for title, _, _ in self.lines(tree, "head")], [title for title, _, _ in drawn]
         )
 
-    def test_the_base_of_a_run_that_drew_other_ids_is_neither_drawn_nor_counted_in_the_widths(
-        self,
-    ):
+    def test_the_base_of_a_run_that_drew_other_ids_is_drawn_and_counted_in_the_widths(self):
         trunk = dict(GROW["lines"][0], members=[f"peer{n}" for n in range(30)])
         base = self.uploaded(**{"5/1": {"grow": dict(GROW, lines=[trunk, *GROW["lines"][1:]])}})
         head = self.uploaded(**{"5/1": {"grow": GROW, "conversation": "7c3e9a01b2"}})
         out = self.pr(head, self.matrix(head, base), base)
 
         self.stands_alone(out)
-        self.assertEqual(self.key(out)[2], "1, 10, 11 members")
-        self.assertEqual(self.trees(self.forks(out)[5][3]), ["tree head"])
-
-    def test_a_run_that_moved_with_no_part_to_say_leaves_which_way_to_its_chip(self):
-        base = self.uploaded()
-        matrix = self.matrix(self.moved(), base)
-        written = json.loads(matrix.read_text(encoding="utf-8"))
-        worse = next(cell for cell in written["cells"] if cell["change"] == "worse")
-        worse["moved"] = None
-        matrix.write_text(json.dumps(written), encoding="utf-8")
-        out = self.pr(self.moved(), matrix, base)
-
-        page = self.drawn(out / simulate.run_page(worse))
-        self.assertEqual(
-            Parsed(page.split('<p class="ran">', 1)[1].split("</p>", 1)[0]).text,
-            "▼ worse The head first forked at epoch 5, and the base first forked at epoch 9.",
-        )
+        self.assertEqual(self.key(out)[2], "1, 10, 30 members")
+        self.assertEqual(self.trees(self.forks(out)[5][3]), ["tree head", "tree base"])
 
     def test_a_page_whose_trees_have_no_member_on_any_line_draws_each_line_thin(self):
         grown = {"5/0": {"grow": EMPTY}}
@@ -2323,7 +2341,7 @@ class Pages(LogosChat):
         page = self.drawn(run)
         ran = Parsed(page.split('<p class="ran">', 1)[1].split("</p>", 1)[0]).text
         self.assertEqual(
-            ran, "▼ worse The head first forked at epoch 4, 4 epochs earlier than the base's 8."
+            ran, "moved The head first forked at epoch 4, 4 epochs earlier than the base's 8."
         )
         tree = self.charts(run)["GroupV2 5%, seed 0: the head's tree over the base's"]
         self.assertEqual([title for title, _, _ in self.lines(tree, "base")], GROWN)
@@ -2358,14 +2376,20 @@ class Pages(LogosChat):
 
         self.stands_alone(out)
         self.assertEqual(
-            self.verdicts(out), ["GroupV2 same in 6 of 6 runs", "GroupV3 ▼ worse in 2 · 4 same"]
+            self.verdicts(out),
+            [
+                "GroupV2 nothing moved · 0.1%: nothing moved in seeds 0 to 1 · 1%: nothing moved "
+                "in seeds 0 to 1 · 5%: nothing moved in seeds 0 to 1",
+                "GroupV3 moved, within chance · 0.1%: nothing moved in seeds 0 to 1 · 1%: 0 "
+                "later, 1 earlier, 1 tied (p 1) · 5%: 0 later, 1 earlier, 1 tied (p 1)",
+            ],
         )
         self.assertEqual(re.findall(r"<h2>(.*?)</h2>", self.drawn(out)), ["GroupV2", "GroupV3"])
         self.assertEqual({kind for kind, *_ in self.forks(out, "GroupV2")}, {"fork"})
         v3 = HELD_GOALS["v3"]
         self.assertEqual(
             [(kind, href) for kind, href, *_ in self.forks(out, "GroupV3") if kind != "fork"],
-            [("fork worse", f"head/{v3.format(1)}/2/"), ("fork worse", f"head/{v3.format(5)}/1/")],
+            [("fork moved", f"head/{v3.format(1)}/2/"), ("fork moved", f"head/{v3.format(5)}/1/")],
         )
         self.assertEqual(
             self.stands_alone(out / f"head/{v3.format(1)}/2").h1, ["GroupV3 · 1% loss · seed 1"]
@@ -2478,7 +2502,9 @@ class Pages(LogosChat):
     def test_without_a_base_the_head_s_trees_stand_alone(self):
         alone = self.pr(self.moved(), self.matrix(self.moved()), None)
         self.stands_alone(alone)
-        self.assertEqual(self.verdicts(alone), ["GroupV2 not compared in 6"])
+        self.assertEqual(
+            self.verdicts(alone), ["GroupV2 not compared · 6 runs, no base to compare with"]
+        )
         self.assertEqual(self.key(alone), ["the head on top", "never joined"])
         self.assertEqual(
             re.findall(r'<text class="note"[^>]*>(head|base)</text>', self.drawn(alone)),
@@ -2634,7 +2660,7 @@ class Pages(LogosChat):
         self,
     ):
         self.point()
-        path, written = self.at() / "point.json", self.read()
+        path, written = self.at() / "point.json", unpaired(self.read())
         drawn = self.stands_alone(self.at()).text
         for cell in written["cells"]:
             reported(cell["head"])
