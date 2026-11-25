@@ -4,19 +4,21 @@
 simulate.yml runs chat-sim at a logos-chat revision it is handed, and at a base revision too when
 it is handed one, in one of three suites. `pr` and `main` run the goal, a group grown toward epoch
 50 by up to three members of any branch a round, on GroupV2 and on GroupV3 at rates of loss: `pr`
-seeds 0 to 2 of the three lossy rates, a job a run, at the revision and at the base; `main` seeds 0
-to 19 of the four rates, two jobs of ten a rate, and no base. `long` runs the two scenarios of
-fifty epochs and every other one `tools/sim/expected` holds but the goal's, a job a scenario a
-side. `plan` checks what it was handed and prints the run jobs. `comment` writes the comment in
-Markdown: for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, each group's
-apart, for `pr` with links to the trees of the runs on the pull request's page and to the graph
-over main, and for `long` a row for each scenario with what `tools/sim compare` said of its runs
-against the base's, or against what `tools/sim/expected` holds when there is no base. `measurement`
-prints the chat-sim commit a run measures, and `changed` whether a commit changes a path chat-sim's
-own CI holds its runs to against its merge base with another. `running` writes the update that
-moves a check run on logos-chat to in progress while the runs go, and `check` the one that
-completes it with the groups' verdicts; and `post` says where the comment goes on a logos-chat pull
-request, an edit of the App's comment there or a new one, and writes it for GitHub's API.
+seeds 0 to 2 of the three lossy rates, a job a run, at the revision and at the base, and of a group
+a run of which came out otherwise at the two, seeds 3 to 19 of each of its rates as well, six a
+job; `main` seeds 0 to 19 of the four rates, two jobs of ten a rate, and no base. `long` runs the
+two scenarios of fifty epochs and every other one `tools/sim/expected` holds but the goal's, a job
+a scenario a side. `plan` checks what it was handed and prints the run jobs, and `widen` the run
+jobs of seeds 3 to 19 from the matrix of seeds 0 to 2. `comment` writes the comment in Markdown:
+for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, each group's apart, for
+`pr` with links to the trees of the runs on the pull request's page and to the graph over main, and
+for `long` a row for each scenario with what `tools/sim compare` said of its runs against the
+base's, or against what `tools/sim/expected` holds when there is no base. `measurement` prints the
+chat-sim commit a run measures, and `changed` whether a commit changes a path chat-sim's own CI
+holds its runs to against its merge base with another. `running` writes the update that moves a
+check run on logos-chat to in progress while the runs go, and `check` the one that completes it
+with the groups' verdicts; and `post` says where the comment goes on a logos-chat pull request, an
+edit of the App's comment there or a new one, and writes it for GitHub's API.
 """
 
 from __future__ import annotations
@@ -38,9 +40,10 @@ GOALS = {"v2": "grow-waku-loss-{}", "v3": "grow-waku-loss-{}-groupv3"}
 GROUPS = {"v2": "GroupV2", "v3": "GroupV3"}
 # GroupV3 forks at each of `pr`'s rates on seeds 0 to 2, where at 0.1% two of them stay whole.
 RATES = {"pr": ("0.5", "1", "5"), "main": ("0", "0.5", "1", "5")}
-# How many seeds of each rate a suite runs, from seed 0, and how many of them a job does.
+# How many seeds of each rate a suite runs, from seed 0, and how many of them a job does. `widen`
+# is the rest of main's seeds of each rate of a `pr` group whose runs moved, at both sides.
 SEEDS = {"pr": 3, "main": 20}
-A_JOB = {"pr": 1, "main": 10}
+A_JOB = {"pr": 1, "main": 10, "widen": 6}
 FIFTY_EPOCHS = ("50-epochs", "50-epochs-waku")
 SUITES = ("pr", "main", "long")
 LOGOS_CHAT = "https://github.com/logos-messaging/logos-chat"
@@ -160,6 +163,31 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "given with --pr, and only then",
     )
     plan.set_defaults(command=_plan)
+    widened = commands.add_parser(
+        "widen",
+        help="print the run jobs of the rest of the seeds of each group of pr whose runs moved",
+        description="Prints, as lines for $GITHUB_OUTPUT, the run jobs that follow those of "
+        "--asked as a JSON array, none where no run moved: of each group a run of which in "
+        "--matrix came out otherwise at the revision than at the base, seeds 3 to 19 of each of "
+        "pr's rates, at both, six a job; then the jobs of --asked and those together.",
+    )
+    widened.add_argument(
+        "--matrix",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help="the matrix tools/sim matrix wrote of the runs of --asked",
+    )
+    widened.add_argument(
+        "--asked",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help="the run jobs as a JSON array, as plan prints them",
+    )
+    widened.add_argument("--revision", required=True, help="the logos-chat commit the runs are at")
+    widened.add_argument("--base", required=True, help="the logos-chat commit to compare with")
+    widened.set_defaults(command=_widen)
     comment = commands.add_parser(
         "comment",
         help="write the comment on what the run jobs came to",
@@ -355,27 +383,45 @@ def changed(tree: Path, since: str) -> bool:
     return diff.returncode == 1
 
 
-def jobs(suite: str, revision: str, base: str, swept: Sequence[Tuple[str, int]]) -> List[dict]:
-    """The run jobs, each runs `from` to `from` + `runs` - 1 of a side's sweep of a scenario: a
-    run a job for `pr`, ten for `main`, and the whole sweep for `long`."""
+def jobs(
+    suite: str, revision: str, base: str, swept: Sequence[Tuple[str, int]], first: int = 1
+) -> List[dict]:
+    """The run jobs, each runs `from` to `from` + `runs` - 1 of a side's sweep of a scenario, of
+    runs `first` to the last `swept` gives it: a run a job for `pr`, ten for `main`, six for
+    `widen`, and the whole sweep for `long`."""
     sides = [("revision", "head", revision)] + ([("base", "base", base)] if base else [])
     found = []
     for side, said, sha in sides:
-        for name, runs in swept:
-            size = A_JOB.get(suite, runs)
-            for first in range(1, runs + 1, size):
-                count = min(size, runs - first + 1)
+        for name, last in swept:
+            size = A_JOB.get(suite, last - first + 1)
+            for start in range(first, last + 1, size):
+                count = min(size, last - start + 1)
                 found.append(
                     {
                         "side": side,
                         "revision": sha,
                         "scenario": name,
-                        "from": first,
+                        "from": start,
                         "runs": count,
-                        "name": f"{said} {sha[:7]}: {_part(suite, name, first, count)}",
+                        "name": f"{said} {sha[:7]}: {_part(suite, name, start, count)}",
                     }
                 )
     return found
+
+
+def widen(matrix: dict, revision: str, base: str) -> List[dict]:
+    """The run jobs that follow those of a pull request's first seeds, which came to `matrix`: of
+    each group a cell of which has an outcome at both sides and the two differ, the rest of main's
+    seeds of each of `pr`'s rates, at `revision` and at `base`; none where no cell does. Any field
+    counts, as nothing moved only where every outcome is the same."""
+    moved = {cell["group"] for cell in matrix["cells"] if cell["change"] == "moved"}
+    swept = [
+        (goal.format(rate), SEEDS["main"])
+        for group, goal in GOALS.items()
+        if group in moved
+        for rate in RATES["pr"]
+    ]
+    return jobs("widen", revision, base, swept, SEEDS["pr"] + 1)
 
 
 def title(matrix: dict) -> str:
@@ -427,10 +473,11 @@ def told(matrix: dict, result: dict) -> str:
     moved, how many first forked later, earlier and at the same epoch, and the sign test's p; after
     either, how many runs the base gave no outcome in; of any other, why there is nothing to
     compare."""
-    return f"{_rate(result['rate'])}: {_told(matrix, result)}"
+    return f"{_rate(result['rate'])}: {result_words(matrix, result)}"
 
 
-def _told(matrix: dict, result: dict) -> str:
+def result_words(matrix: dict, result: dict) -> str:
+    """What `told` says of a scenario after its rate."""
     said = result["result"]
     cells = [cell for cell in matrix["cells"] if cell["scenario"] == result["scenario"]]
     if said == "same":
@@ -673,6 +720,20 @@ def _plan(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     return 0
 
 
+def _widen(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    for flag, sha in (("--revision", args.revision), ("--base", args.base)):
+        if _SHA.fullmatch(sha) is None:
+            parser.error(f"{flag}: {sha!r} is not a commit's 40 hex digits")
+    asked = _asked(parser, args.asked)
+    matrix = _matrix(args.matrix)
+    if matrix is None:
+        parser.error(f"--matrix: {args.matrix} is not a matrix tools/sim matrix writes")
+    more = widen(matrix, args.revision, args.base)
+    print(f"more={json.dumps(more)}")
+    print(f"asked={json.dumps(asked + more)}")
+    return 0
+
+
 def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     _check_handed(parser, args)
     if args.report_url is not None and _URL.fullmatch(args.report_url) is None:
@@ -734,17 +795,7 @@ def _running(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         parser.error(f"--revision: {args.revision!r} is not a commit's 40 hex digits")
     if args.base and _SHA.fullmatch(args.base) is None:
         parser.error(f"--base: {args.base!r} is not a commit's 40 hex digits")
-    try:
-        asked = json.loads(_read(parser, "--asked", args.asked))
-    except ValueError as error:
-        parser.error(f"--asked: {args.asked}: {error}")
-    if not isinstance(asked, list) or not all(
-        isinstance(job, dict)
-        and job.get("side") in ("revision", "base")
-        and _count(job.get("runs"))
-        for job in asked
-    ):
-        parser.error(f"--asked: {args.asked}: not the run jobs plan prints")
+    asked = _asked(parser, args.asked)
     facts = {
         "revision": args.revision,
         "base": args.base,
@@ -793,6 +844,22 @@ def _post(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     print(f"method={method}")
     print(f"endpoint={endpoint}")
     return 0
+
+
+def _asked(parser: argparse.ArgumentParser, file: Path) -> List[dict]:
+    """The run jobs `file` holds as plan prints them, each with its side and how many runs."""
+    try:
+        asked = json.loads(_read(parser, "--asked", file))
+    except ValueError as error:
+        parser.error(f"--asked: {file}: {error}")
+    if not isinstance(asked, list) or not all(
+        isinstance(job, dict)
+        and job.get("side") in ("revision", "base")
+        and _count(job.get("runs"))
+        for job in asked
+    ):
+        parser.error(f"--asked: {file}: not the run jobs plan prints")
+    return asked
 
 
 def _count(value: object) -> bool:

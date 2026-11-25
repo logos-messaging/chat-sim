@@ -1,0 +1,112 @@
+name: Sweep
+# The run jobs of simulate.yml, which calls it once for the runs it plans
+# and, for a pull request whose runs moved, again for the seeds it widens to:
+# a job each of the run jobs it is handed, each runs FROM to FROM + RUNS - 1
+# of a scenario's sweep at a logos-chat revision, and uploads their text as
+# the artifact sim-<side>-<scenario>-<from>.
+
+on:
+  workflow_call:
+    inputs:
+      runs:
+        description: The run jobs as a JSON array, as simulate.py prints them
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+# A caller's env does not reach a workflow it calls.
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  run:
+    name: Run at ${{ matrix.run.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ${{ fromJSON(inputs.runs) }}
+    env:
+      REVISION: ${{ matrix.run.revision }}
+      SCENARIO: ${{ matrix.run.scenario }}
+      FROM: ${{ matrix.run.from }}
+      RUNS: ${{ matrix.run.runs }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: logos-co/setup-nix-cache-action@v1
+      # Both pins, which ci.yml's Lint holds to one revision: the flake's input,
+      # whose lock gives the toolchain, and Cargo.toml's git dependencies, which
+      # cargo locks again on the build.
+      - name: Pin logos-chat at the revision
+        run: |
+          pinned=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
+          sed -i "s/$pinned/$REVISION/g" flake.nix Cargo.toml
+          nix flake lock
+      # The dev shell's toolchain on PATH, for rust-cache's key as well.
+      - uses: nicknovitski/nix-develop@v1
+      # The build of every dependency from an earlier run, at any revision of
+      # logos-chat, so that only its crates and chat-sim's build again.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: harness-run
+      # Its output is kept as build.log, for the report of a revision chat-sim
+      # does not build at.
+      - name: Build harness-run
+        id: build
+        shell: bash
+        run: |
+          cargo build --release -p harness --bin harness-run 2>&1 | tee "$RUNNER_TEMP/build.log"
+          flake=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
+          cargo=$(grep -o 'logos-chat?rev=[0-9a-f]*' Cargo.lock | sort -u)
+          echo "flake.lock pins logos-chat at $flake, Cargo.lock at: $cargo" \
+            | tee -a "$RUNNER_TEMP/build.log"
+          [ "$flake" = "$REVISION" ] && [ "$cargo" = "logos-chat?rev=$REVISION" ]
+      # A revision chat-sim does not build at runs nothing: each run the job was
+      # to do says so in the directory the sweep would have given it, for the
+      # comment, beside the build's log, for the report.
+      - name: Mark the runs unbuilt
+        if: ${{ failure() && steps.build.outcome == 'failure' }}
+        run: |
+          last=$((FROM + RUNS - 1))
+          for ((number = FROM; number <= last; number++)); do
+            out="$RUNNER_TEMP/sim/$SCENARIO/$(printf '%0*d' "${#last}" "$number")"
+            mkdir -p "$out"
+            echo "chat-sim does not build at $REVISION" > "$out/unbuilt"
+            # CARGO_TERM_COLOR puts colour codes in the log; the page shows it as text.
+            sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' "$RUNNER_TEMP/build.log" > "$out/build.log"
+          done
+      # Runs FROM to FROM + RUNS - 1 of the scenario's sweep, each with the
+      # seeds it has in a sweep from run 1, and writes their outcomes for
+      # compare. A sweep that does not go as its scenario expects fails the job
+      # once the outcomes are written.
+      - name: Run the scenario
+        run: |
+          status=0
+          out="$RUNNER_TEMP/sim/$SCENARIO"
+          python3 tools/sim sweep "tools/sim/scenarios/$SCENARIO.json" --from "$FROM" \
+            --runs "$RUNS" --one-process target/release/harness-run --out "$out" || status=1
+          python3 tools/sim compare --write "$out/outcomes.json" "$out" || status=1
+          exit "$status"
+      # The sweep's files and its runs', without each run's group.log,
+      # plan.json, result.json, runner.out and runner.stderr, in the directory
+      # named for the scenario, or the build's log beside each unbuilt marker.
+      # Each job's under a name of its own: two jobs of one scenario each wrote
+      # a sweep.json.
+      - name: Upload the runs' text
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sim-${{ matrix.run.side }}-${{ matrix.run.scenario }}-${{ matrix.run.from }}
+          path: |
+            ${{ runner.temp }}/sim/*/sweep.txt
+            ${{ runner.temp }}/sim/*/sweep.json
+            ${{ runner.temp }}/sim/*/outcomes.json
+            ${{ runner.temp }}/sim/*/*/unbuilt
+            ${{ runner.temp }}/sim/*/*/build.log
+            ${{ runner.temp }}/sim/*/*/run.txt
+            ${{ runner.temp }}/sim/*/*/run.json
+            ${{ runner.temp }}/sim/*/*/report.txt
+            ${{ runner.temp }}/sim/*/*/report.json
+            ${{ runner.temp }}/sim/*/*/expect.json

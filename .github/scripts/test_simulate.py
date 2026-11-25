@@ -240,6 +240,105 @@ class Jobs(unittest.TestCase):
         self.assertEqual(jobs[2]["name"], "base 89abcde: 50-epochs")
 
 
+class Widen(unittest.TestCase):
+    """The run jobs of the rest of the seeds of each group of a pull request whose runs moved."""
+
+    @staticmethod
+    def matrix(*cells: "tuple[str, Optional[str]]") -> dict:
+        """A matrix of cells each of its group and its change, and what else a matrix holds."""
+        matrix = dict.fromkeys(simulate.MATRIX)
+        matrix["cells"] = [{"group": group, "change": change} for group, change in cells]
+        return matrix
+
+    def widen(self, matrix: object, asked: object, *extra: str) -> "tuple[int, str, str]":
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        given = []
+        for name, value in (("--matrix", matrix), ("--asked", asked)):
+            file = Path(directory.name) / f"{name[2:]}.json"
+            file.write_text(json.dumps(value), encoding="utf-8")
+            given += [name, str(file)]
+        return run("widen", *given, *extra)
+
+    def test_a_group_a_run_of_which_moved_runs_seeds_3_to_19_of_each_rate_six_a_job_at_both(self):
+        moved = self.matrix(("v2", "same"), ("v2", None), ("v3", "same"), ("v3", "moved"))
+        jobs = simulate.widen(moved, REVISION, BASE)
+
+        self.assertEqual(len(jobs), 18)
+        self.assertEqual(
+            {(job["side"], job["revision"]) for job in jobs[:9]}, {("revision", REVISION)}
+        )
+        self.assertEqual({(job["side"], job["revision"]) for job in jobs[9:]}, {("base", BASE)})
+        self.assertEqual(
+            [(job["scenario"], job["from"], job["runs"]) for job in jobs[:9]],
+            [
+                (simulate.GOALS["v3"].format(rate), first, runs)
+                for rate in ("0.5", "1", "5")
+                for first, runs in ((4, 6), (10, 6), (16, 5))
+            ],
+        )
+        self.assertEqual(
+            [job["name"] for job in jobs[:3]],
+            [
+                "head 0123456: GroupV3 0.5% seeds 3 to 8",
+                "head 0123456: GroupV3 0.5% seeds 9 to 14",
+                "head 0123456: GroupV3 0.5% seeds 15 to 19",
+            ],
+        )
+        self.assertEqual(jobs[17]["name"], "base 89abcde: GroupV3 5% seeds 15 to 19")
+
+    def test_both_groups_moving_widens_each_groupv2_first(self):
+        jobs = simulate.widen(self.matrix(("v3", "moved"), ("v2", "moved")), REVISION, BASE)
+
+        self.assertEqual(len(jobs), 36)
+        self.assertEqual(
+            [job["name"] for job in jobs[8:10]],
+            ["head 0123456: GroupV2 5% seeds 15 to 19", "head 0123456: GroupV3 0.5% seeds 3 to 8"],
+        )
+
+    def test_nothing_widens_where_no_cell_has_an_outcome_at_both_sides_that_differs(self):
+        for cells in ((), (("v2", "same"), ("v3", "same")), (("v2", None), ("v3", None))):
+            with self.subTest(cells=cells):
+                self.assertEqual(simulate.widen(self.matrix(*cells), REVISION, BASE), [])
+
+    def test_each_job_uploads_under_a_name_none_of_the_first_seeds_jobs_has(self):
+        first = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
+        more = simulate.widen(self.matrix(("v2", "moved"), ("v3", "moved")), REVISION, BASE)
+
+        def named(jobs: Sequence[dict]) -> set:
+            return {(job["side"], job["scenario"], job["from"]) for job in jobs}
+
+        self.assertEqual(len(named(first + more)), len(first + more))
+
+    def test_prints_the_jobs_that_follow_and_every_job_for_github_output(self):
+        asked = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
+        given = ("--revision", REVISION, "--base", BASE)
+        for cells in ((("v3", "moved"),), (("v3", "same"),)):
+            with self.subTest(cells=cells):
+                matrix = self.matrix(*cells)
+                status, out, err = self.widen(matrix, asked, *given)
+                self.assertEqual(status, 0, err)
+                more = simulate.widen(matrix, REVISION, BASE)
+                self.assertEqual(
+                    out.splitlines(),
+                    [f"more={json.dumps(more)}", f"asked={json.dumps(asked + more)}"],
+                )
+
+    def test_refuses_a_revision_not_a_commit_jobs_not_as_the_plan_prints_them_and_no_matrix(self):
+        asked = simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
+        moved = self.matrix(("v3", "moved"))
+        for matrix, given, extra, said in (
+            (moved, asked, ("--revision", REVISION[:7], "--base", BASE), "--revision: '0123456'"),
+            (moved, asked, ("--revision", REVISION, "--base", "main"), "--base: 'main'"),
+            (moved, {"runs": 6}, ("--revision", REVISION, "--base", BASE), "not the run jobs"),
+            ({"cells": []}, asked, ("--revision", REVISION, "--base", BASE), "not a matrix"),
+        ):
+            with self.subTest(said=said):
+                status, out, err = self.widen(matrix, given, *extra)
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn(said, err)
+
+
 class Plan(Fixture):
     def setUp(self):
         super().setUp()
@@ -666,13 +765,16 @@ class Drawn(unittest.TestCase):
             file.write_text(json.dumps(report), encoding="utf-8")
         return copy
 
-    def widened(self, side: Path, rate: str, group: str = "v2") -> Path:
-        """`side` with runs of `group` at `rate` at seeds 2 to 7 too, each a copy of seed 0's at
-        its own seed: eight seeds, as many as can fork earlier or later beyond chance."""
+    def widened(
+        self, side: Path, rate: str, group: str = "v2", seeds: Sequence[int] = range(2, 8)
+    ) -> Path:
+        """`side` with runs of `group` at `rate` at `seeds` too, each a copy of seed 0's at its own
+        seed: by default seeds 2 to 7, eight seeds, as many as can fork earlier or later beyond
+        chance."""
         scenario = HELD_GOALS[group].format(rate)
         first = side / f"sim-revision-{scenario}-1" / scenario / "1" / "run.json"
         report = json.loads(first.read_text(encoding="utf-8"))
-        for seed in range(2, 8):
+        for seed in seeds:
             number = seed + 1
             copy = side / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
             copy.parent.mkdir(parents=True)
@@ -813,6 +915,58 @@ class Drawn(unittest.TestCase):
                 "failure",
                 "GroupV2 nothing moved in 6 runs; GroupV3 forks earlier at 1%: 0 later, 8 "
                 "earlier (p 0.0078)",
+            ),
+        )
+
+    def test_a_pr_whose_runs_moved_is_judged_on_the_seeds_of_both_stages_of_its_moved_group(self):
+        head = self.uploaded("head", both=True, **{"1/1/v3": {"first_fork": 5}})
+        base = self.uploaded("base", both=True)
+        first = self.pr_jobs()
+        asked = self.root / "asked.json"
+        write(asked, first)
+        given = ("--asked", str(asked), "--revision", REVISION, "--base", BASE)
+        with mock.patch.multiple(simulate, **HELD_SUITES):
+            status, out, err = run("widen", "--matrix", str(self.matrix(head, base, first)), *given)
+        self.assertEqual(status, 0, err)
+        more, every = (json.loads(line.split("=", 1)[1]) for line in out.splitlines())
+        self.assertEqual(every, first + more)
+        self.assertEqual(
+            {(job["side"], job["scenario"], job["from"]) for job in more},
+            {
+                (side, HELD_GOALS["v3"].format(rate), start)
+                for side in ("revision", "base")
+                for rate in ("0.1", "1", "5")
+                for start in (3, 9, 15)
+            },
+        )
+        for side in (head, base):
+            for rate in ("0.1", "1", "5"):
+                self.widened(side, rate, "v3", range(2, 20))
+        for seed in range(2, 10):
+            scenario, number = HELD_GOALS["v3"].format("1"), seed + 1
+            file = head / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
+            report = json.loads(file.read_text(encoding="utf-8"))
+            edited(report, {"first_fork": 10})
+            file.write_text(json.dumps(report), encoding="utf-8")
+        matrix = self.matrix(head, base, every)
+        _, out, _ = self.comment("pr", matrix, "--base", BASE)
+
+        same = "nothing moved in seeds 0 to 1"
+        self.assertEqual(
+            self.said(out),
+            [
+                f"⚪ **GroupV2: nothing moved** · 0.1%: {same} · 1%: {same} · 5%: {same}",
+                "🔴 **GroupV3: forks earlier** · 0.1%: nothing moved in seeds 0 to 19 · 1%: 0 "
+                "later, 9 earlier, 11 tied (p 0.0039) · 5%: nothing moved in seeds 0 to 19",
+            ],
+        )
+        checked = self.check(matrix, out)
+        self.assertEqual(
+            (checked["conclusion"], checked["output"]["title"]),
+            (
+                "failure",
+                "GroupV2 nothing moved in 6 runs; GroupV3 forks earlier at 1%: 0 later, 9 "
+                "earlier (p 0.0039)",
             ),
         )
 
@@ -1387,8 +1541,14 @@ class Workflow(unittest.TestCase):
         parts = re.split(r"(?m)^  (\w+):\n", workflow.split("\njobs:\n", 1)[1])
         self.jobs = dict(zip(parts[1::2], parts[2::2]))
 
+    def condition(self, name: str) -> str:
+        """The if of the job `name`, folded over the lines under `if: >-`."""
+        return re.search(r"\n    if: >-\n((?:      .*\n)+)", self.jobs[name])[1]
+
     def test_only_the_plan_and_post_jobs_mint_a_token_and_each_keeps_it_to_its_steps(self):
-        self.assertEqual(list(self.jobs), ["plan", "run", "comment", "publish", "post"])
+        self.assertEqual(
+            list(self.jobs), ["plan", "run", "pair", "more", "comment", "publish", "post"]
+        )
         minting = [name for name, job in self.jobs.items() if "create-github-app-token@" in job]
         keyed = [name for name, job in self.jobs.items() if "secrets." in job]
         self.assertEqual((minting, keyed), (["plan", "post"], ["plan", "post"]))
@@ -1401,9 +1561,51 @@ class Workflow(unittest.TestCase):
                 }
                 self.assertEqual(used, {"GH_TOKEN: ${{ steps.token.outputs.token }}"})
 
+    def test_a_pr_run_s_seeds_run_in_two_stages_each_a_call_of_sweep_yml(self):
+        for name, runs in (("run", "needs.plan.outputs.runs"), ("more", "needs.pair.outputs.more")):
+            with self.subTest(job=name):
+                self.assertIn(
+                    "\n    uses: ./.github/workflows/sweep.yml\n    with:\n"
+                    f"      runs: ${{{{ {runs} }}}}\n",
+                    self.jobs[name],
+                )
+        self.assertIn("\n    needs: plan\n", self.jobs["run"])
+
+    def test_pair_plans_the_second_stage_from_the_first_s_runs_whatever_they_came_to(self):
+        pair, condition = self.jobs["pair"], self.condition("pair")
+
+        self.assertIn("\n    needs: [plan, run]\n", pair)
+        for held in (
+            "!cancelled() && needs.plan.result == 'success'",
+            "needs.plan.outputs.suite == 'pr' && needs.plan.outputs.base != ''",
+        ):
+            self.assertIn(held, condition)
+        self.assertIn(
+            "\n      more: ${{ steps.widen.outputs.more }}\n"
+            "      asked: ${{ steps.widen.outputs.asked }}\n",
+            pair,
+        )
+        self.assertIn('--asked "$RUNNER_TEMP/asked.json" --out "$RUNNER_TEMP/matrix.json"', pair)
+        self.assertIn("python3 .github/scripts/simulate.py widen ", pair)
+        self.assertIn('\n            >> "$GITHUB_OUTPUT"\n', pair)
+
+    def test_more_is_skipped_where_no_group_s_runs_moved_and_runs_after_a_failed_run_job(self):
+        condition = self.condition("more")
+
+        self.assertIn("\n    needs: pair\n", self.jobs["more"])
+        self.assertIn("!cancelled() && needs.pair.result == 'success'", condition)
+        self.assertIn("needs.pair.outputs.more != '[]'", condition)
+
+    def test_the_comment_pairs_the_runs_of_both_stages_or_of_the_first_without_pair(self):
+        comment = self.jobs["comment"]
+
+        self.assertIn("\n    needs: [plan, run, pair, more]\n", comment)
+        self.assertIn("\n    if: ${{ !cancelled() && needs.plan.result == 'success' }}\n", comment)
+        self.assertIn("ASKED: ${{ needs.pair.outputs.asked || needs.plan.outputs.runs }}", comment)
+        self.assertIn('printf \'%s\\n\' "$ASKED" > "$RUNNER_TEMP/asked.json"', comment)
+
     def test_the_comment_is_posted_after_publish_and_the_check_completed_whatever_it_came_to(self):
-        post = self.jobs["post"]
-        condition = post.split("\n    if: >-\n", 1)[1].split("\n    runs-on: ", 1)[0]
+        post, condition = self.jobs["post"], self.condition("post")
 
         self.assertIn("\n    needs: [plan, comment, publish]\n", post)
         self.assertIn("!cancelled() && needs.comment.result == 'success'", condition)
@@ -1416,6 +1618,28 @@ class Workflow(unittest.TestCase):
 
         self.assertIn("\n      - uses: actions/checkout@v4\n\n", before)
         self.assertIn("\n            --scenarios tools/sim/scenarios \\\n", step)
+
+
+class SweepWorkflow(unittest.TestCase):
+    """sweep.yml as it is written: the run jobs simulate.yml calls it for."""
+
+    def setUp(self):
+        self.sweep = (ROOT / ".github" / "workflows" / "sweep.yml").read_text(encoding="utf-8")
+
+    def test_is_called_with_the_run_jobs_and_runs_a_job_each_of_its_own_env(self):
+        self.assertIn(
+            "\non:\n  workflow_call:\n    inputs:\n      runs:\n", self.sweep.split("\njobs:\n")[0]
+        )
+        self.assertIn("\n        run: ${{ fromJSON(inputs.runs) }}\n", self.sweep)
+        self.assertIn("\nenv:\n  CARGO_TERM_COLOR: always\n", self.sweep)
+        self.assertNotIn("secrets.", self.sweep)
+
+    def test_each_job_uploads_under_its_side_scenario_and_first_run(self):
+        self.assertIn(
+            "\n          name: sim-${{ matrix.run.side }}-${{ matrix.run.scenario }}-"
+            "${{ matrix.run.from }}\n",
+            self.sweep,
+        )
 
 
 class CiWorkflow(unittest.TestCase):

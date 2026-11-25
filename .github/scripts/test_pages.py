@@ -2009,6 +2009,18 @@ class Pages(LogosChat):
         self.assertEqual(status, 0, err)
         return self.site / "logos-chat" / "pr-316"
 
+    def seeded(self, side: Path, rate: str, seeds: Sequence[int], **edits: dict) -> Path:
+        """`side` with runs of GroupV2 at `rate` at `seeds` too, each a copy of seed 0's at its own
+        seed with its text, and the fields `edits` gives a run changed, by its rate and seed."""
+        first = self.run_json(side, f"{rate}/0")
+        for seed in seeds:
+            copy = self.run_json(side, f"{rate}/{seed}")
+            shutil.copytree(first.parent, copy.parent)
+            report = dict(json.loads(first.read_text(encoding="utf-8")), seed=seed)
+            edited(report, edits.get(f"{rate}/{seed}", {}))
+            copy.write_text(json.dumps(report), encoding="utf-8")
+        return side
+
     def nothing(self) -> Path:
         """An empty directory of its own, as a side whose jobs uploaded nothing."""
         self.made += 1
@@ -2173,6 +2185,62 @@ class Pages(LogosChat):
                 for side in ("head", "base"):
                     self.assertIsNotNone(svg.find(f".//{SVG}g[@class='tree {side} sketch']"))
                 self.stands_alone(out / simulate.run_page(cell))
+
+    def test_a_rate_that_ran_more_seeds_has_trees_of_seeds_0_to_2_and_a_strip_of_every_seed(self):
+        moved = {"1/3": {"first_fork": 10}, "1/4": {"first_fork": 30}}
+        moved["1/5"] = {"conversation": "7c3e9a01b2"}
+        head = self.seeded(self.uploaded(), "1", range(2, 8), **moved)
+        base = self.seeded(self.uploaded(), "1", range(2, 8))
+        self.unbuilt(base, "1/6")
+        out = self.pr(head, self.matrix(head, base), base)
+
+        self.stands_alone(out)
+        page = self.drawn(out)
+        self.assertEqual(
+            re.findall(r'<div class="seed"><b>(.*?)</b>', page), ["seed 0", "seed 1", "seed 2"]
+        )
+        self.assertEqual(
+            [href for _, href, _, _ in self.forks(out)],
+            [
+                f"head/{GOAL.format(rate)}/{run}/"
+                for rate, runs in (("0.1", (1, 2)), ("1", (1, 2, 3)), ("5", (1, 2)))
+                for run in runs
+            ],
+        )
+        strip = (
+            r'<div class="strip"><div class="rate"><div class="said">(.*?)</div></div>'
+            r'<div><div class="ds">(.*?)</div><div class="said">(.*?)</div></div></div>'
+        )
+        ((seeds, ds, said),) = re.findall(strip, page)
+        self.assertEqual(seeds, "seeds 0 to 7")
+        tested = "1 later, 1 earlier, 5 tied (p 1), does not build at the base in 1 of 8 runs"
+        self.assertEqual(said, tested)
+        self.assertEqual(self.verdicts(out)[0].split(" · ")[2], f"1%: {tested}")
+        d = r'<a class="([^"]*)" href="([^"]*)" title="([^"]*)"><span>([0-9]+)</span>([^<]*)</a>'
+        self.assertEqual(
+            [(kind, href, seed, shown) for kind, href, _, seed, shown in re.findall(d, ds)],
+            [
+                ("d", f"head/{GOAL.format(1)}/1/", "0", "0"),
+                ("d", f"head/{GOAL.format(1)}/2/", "1", "0"),
+                ("d", f"head/{GOAL.format(1)}/3/", "2", "0"),
+                ("d moved earlier", f"head/{GOAL.format(1)}/4/", "3", "-8"),
+                ("d moved later", f"head/{GOAL.format(1)}/5/", "4", "+12"),
+                ("d moved", f"head/{GOAL.format(1)}/6/", "5", "0"),
+                ("d none", f"head/{GOAL.format(1)}/7/", "6", "-"),
+                ("d", f"head/{GOAL.format(1)}/8/", "7", "0"),
+            ],
+        )
+        self.assertEqual(
+            [html.unescape(title) for _, _, title, _, _ in re.findall(d, ds)][3::3],
+            [
+                "The head first forked at epoch 10, 8 epochs earlier than the base's 18.",
+                "The head first forked at epoch 18. chat-sim does not build at the base, so the "
+                "two are not compared.",
+            ],
+        )
+        self.assertIn("A strip under a row holds every seed of the rate", page)
+        for run in range(4, 9):
+            self.stands_alone(out / f"head/{GOAL.format(1)}/{run}")
 
     def test_a_group_s_verdict_is_its_worst_rate_s_and_each_run_says_how_it_moved_or_why_not(
         self,

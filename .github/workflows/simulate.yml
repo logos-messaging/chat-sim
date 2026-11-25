@@ -8,16 +8,19 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # members of any branch a round (tools/sim/scenarios/grow-waku-loss-*.json), on
 # GroupV2 and, in the -groupv3 files, on GroupV3, at rates of loss. pr, for a
 # logos-chat pull request, runs seeds 0 to 2 of each group at 0.5, 1 and 5%, a
-# job a run, at the revision and at the base it is handed. main runs seeds 0 to
-# 19 of each group at no loss and at those three, two jobs of ten a group's
-# rate, and no base. tools/sim matrix pairs each run with the base's of its
-# scenario and seed, judges each rate of each group by a sign test on how far
-# the first fork moved in its seeds, and says the verdict of each group; the
-# comment is drawn from what it wrote, kept as the artifact matrix, and for pr
-# says of each group what its runs at each rate came to. long runs the two
-# scenarios of fifty epochs and every other one tools/sim/expected holds but the
-# goal's on either group, as many runs as it holds, a job a scenario a side, and
-# holds them to the base's runs, or without a base to what is held.
+# job a run, at the revision and at the base it is handed; the pair job then
+# finds each group a run of which came out otherwise at the two, and the more
+# job runs seeds 3 to 19 of each of its rates as well, at both, six a job. The
+# run jobs of both are sweep.yml's. main runs seeds 0 to 19 of each group at
+# no loss and at those three, two jobs of ten a group's rate, and no base.
+# tools/sim matrix pairs each run with the base's of its scenario and seed,
+# judges each rate of each group by a sign test on how far the first fork moved
+# in its seeds, and says the verdict of each group; the comment is drawn from
+# what it wrote, kept as the artifact matrix, and for pr says of each group what
+# its runs at each rate came to. long runs the two scenarios of fifty epochs and
+# every other one tools/sim/expected holds but the goal's on either group, as
+# many runs as it holds, a job a scenario a side, and holds them to the base's
+# runs, or without a base to what is held.
 # The publish job keeps a main run on the Pages site as a point of main,
 # logos-chat/main/<sha>/<measurement>/, with the point's page, and draws the
 # graph over main, logos-chat/index.html, from every point again; it keeps a pr
@@ -86,9 +89,6 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.suite }}-${{ inputs.pr || inputs.revision }}
   cancel-in-progress: true
-
-env:
-  CARGO_TERM_COLOR: always
 
 jobs:
   plan:
@@ -169,102 +169,72 @@ jobs:
           gh api --silent -X PATCH "repos/logos-messaging/logos-chat/check-runs/$CHECK_RUN" \
             --input "$RUNNER_TEMP/check.json"
 
+  # The run jobs, in sweep.yml, which more calls as well.
   run:
-    name: Run at ${{ matrix.run.name }}
+    name: Run
     needs: plan
+    uses: ./.github/workflows/sweep.yml
+    with:
+      runs: ${{ needs.plan.outputs.runs }}
+
+  # Runs when a run job fails as well, as the comment does: a run with no
+  # outcome is a cell with none.
+  pair:
+    name: Pair seeds 0 to 2, and plan seeds 3 to 19 of each group whose runs moved
+    needs: [plan, run]
+    if: >-
+      ${{ !cancelled() && needs.plan.result == 'success' &&
+      needs.plan.outputs.suite == 'pr' && needs.plan.outputs.base != '' }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        run: ${{ fromJSON(needs.plan.outputs.runs) }}
+    outputs:
+      more: ${{ steps.widen.outputs.more }}
+      asked: ${{ steps.widen.outputs.asked }}
     env:
-      REVISION: ${{ matrix.run.revision }}
-      SCENARIO: ${{ matrix.run.scenario }}
-      FROM: ${{ matrix.run.from }}
-      RUNS: ${{ matrix.run.runs }}
+      REVISION: ${{ needs.plan.outputs.revision }}
+      BASE: ${{ needs.plan.outputs.base }}
+      RUNS: ${{ needs.plan.outputs.runs }}
     steps:
       - uses: actions/checkout@v4
-      - uses: logos-co/setup-nix-cache-action@v1
-      # Both pins, which ci.yml's Lint holds to one revision: the flake's input,
-      # whose lock gives the toolchain, and Cargo.toml's git dependencies, which
-      # cargo locks again on the build.
-      - name: Pin logos-chat at the revision
-        run: |
-          pinned=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
-          sed -i "s/$pinned/$REVISION/g" flake.nix Cargo.toml
-          nix flake lock
-      # The dev shell's toolchain on PATH, for rust-cache's key as well.
-      - uses: nicknovitski/nix-develop@v1
-      # The build of every dependency from an earlier run, at any revision of
-      # logos-chat, so that only its crates and chat-sim's build again.
-      - uses: Swatinem/rust-cache@v2
+      - name: Download the runs at the revision
+        uses: actions/download-artifact@v8
         with:
-          shared-key: harness-run
-      # Its output is kept as build.log, for the report of a revision chat-sim
-      # does not build at.
-      - name: Build harness-run
-        id: build
-        shell: bash
-        run: |
-          cargo build --release -p harness --bin harness-run 2>&1 | tee "$RUNNER_TEMP/build.log"
-          flake=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
-          cargo=$(grep -o 'logos-chat?rev=[0-9a-f]*' Cargo.lock | sort -u)
-          echo "flake.lock pins logos-chat at $flake, Cargo.lock at: $cargo" \
-            | tee -a "$RUNNER_TEMP/build.log"
-          [ "$flake" = "$REVISION" ] && [ "$cargo" = "logos-chat?rev=$REVISION" ]
-      # A revision chat-sim does not build at runs nothing: each run the job was
-      # to do says so in the directory the sweep would have given it, for the
-      # comment, beside the build's log, for the report.
-      - name: Mark the runs unbuilt
-        if: ${{ failure() && steps.build.outcome == 'failure' }}
-        run: |
-          last=$((FROM + RUNS - 1))
-          for ((number = FROM; number <= last; number++)); do
-            out="$RUNNER_TEMP/sim/$SCENARIO/$(printf '%0*d' "${#last}" "$number")"
-            mkdir -p "$out"
-            echo "chat-sim does not build at $REVISION" > "$out/unbuilt"
-            # CARGO_TERM_COLOR puts colour codes in the log; the page shows it as text.
-            sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' "$RUNNER_TEMP/build.log" > "$out/build.log"
-          done
-      # Runs FROM to FROM + RUNS - 1 of the scenario's sweep, each with the
-      # seeds it has in a sweep from run 1, and writes their outcomes for
-      # compare. A sweep that does not go as its scenario expects fails the job
-      # once the outcomes are written.
-      - name: Run the scenario
-        run: |
-          status=0
-          out="$RUNNER_TEMP/sim/$SCENARIO"
-          python3 tools/sim sweep "tools/sim/scenarios/$SCENARIO.json" --from "$FROM" \
-            --runs "$RUNS" --one-process target/release/harness-run --out "$out" || status=1
-          python3 tools/sim compare --write "$out/outcomes.json" "$out" || status=1
-          exit "$status"
-      # The sweep's files and its runs', without each run's group.log,
-      # plan.json, result.json, runner.out and runner.stderr, in the directory
-      # named for the scenario, or the build's log beside each unbuilt marker.
-      # Each job's under a name of its own: two jobs of one scenario each wrote
-      # a sweep.json.
-      - name: Upload the runs' text
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
+          pattern: sim-revision-*
+          path: ${{ runner.temp }}/revision
+      - name: Download the runs at the base
+        uses: actions/download-artifact@v8
         with:
-          name: sim-${{ matrix.run.side }}-${{ matrix.run.scenario }}-${{ matrix.run.from }}
-          path: |
-            ${{ runner.temp }}/sim/*/sweep.txt
-            ${{ runner.temp }}/sim/*/sweep.json
-            ${{ runner.temp }}/sim/*/outcomes.json
-            ${{ runner.temp }}/sim/*/*/unbuilt
-            ${{ runner.temp }}/sim/*/*/build.log
-            ${{ runner.temp }}/sim/*/*/run.txt
-            ${{ runner.temp }}/sim/*/*/run.json
-            ${{ runner.temp }}/sim/*/*/report.txt
-            ${{ runner.temp }}/sim/*/*/report.json
-            ${{ runner.temp }}/sim/*/*/expect.json
+          pattern: sim-base-*
+          path: ${{ runner.temp }}/base
+      - name: Pair the runs, and plan the rest of the seeds of each group whose runs moved
+        id: widen
+        run: |
+          mkdir -p "$RUNNER_TEMP/revision" "$RUNNER_TEMP/base"
+          printf '%s\n' "$RUNS" > "$RUNNER_TEMP/asked.json"
+          python3 tools/sim matrix "$RUNNER_TEMP/revision" --base "$RUNNER_TEMP/base" \
+            --asked "$RUNNER_TEMP/asked.json" --out "$RUNNER_TEMP/matrix.json"
+          python3 .github/scripts/simulate.py widen --matrix "$RUNNER_TEMP/matrix.json" \
+            --asked "$RUNNER_TEMP/asked.json" --revision "$REVISION" --base "$BASE" \
+            >> "$GITHUB_OUTPUT"
+
+  # Skipped where no group's runs moved: a matrix of no job fails, and a
+  # job's if is read before its matrix. It runs after a failed run job as
+  # well, as pair does.
+  more:
+    name: Run more
+    needs: pair
+    if: >-
+      ${{ !cancelled() && needs.pair.result == 'success' &&
+      needs.pair.outputs.more != '[]' }}
+    uses: ./.github/workflows/sweep.yml
+    with:
+      runs: ${{ needs.pair.outputs.more }}
 
   comment:
     name: Write the comment
-    needs: [plan, run]
+    needs: [plan, run, pair, more]
     # Runs when a run job fails as well: the comment says which runs have no
-    # outcome.
+    # outcome. It runs when pair and more are skipped too, for main and long,
+    # and where no group's runs moved.
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
 
@@ -281,7 +251,8 @@ jobs:
       REVISION: ${{ needs.plan.outputs.revision }}
       BASE: ${{ needs.plan.outputs.base }}
       PR: ${{ needs.plan.outputs.pr }}
-      RUNS: ${{ needs.plan.outputs.runs }}
+      # The run jobs of both stages, or without pair those the plan printed.
+      ASKED: ${{ needs.pair.outputs.asked || needs.plan.outputs.runs }}
       SCENARIOS: ${{ needs.plan.outputs.scenarios }}
       MEASUREMENT: ${{ needs.plan.outputs.measurement }}
     steps:
@@ -300,13 +271,14 @@ jobs:
         with:
           pattern: sim-base-*
           path: ${{ runner.temp }}/base
-      # Every run the plan asked for is a cell, so that one whose job uploaded
-      # nothing has no outcome; a side whose jobs uploaded nothing has no runs.
+      # Every run a run job was asked for, of both stages, is a cell, so that
+      # one whose job uploaded nothing has no outcome; a side whose jobs
+      # uploaded nothing has no runs.
       - name: Pair the runs, and say what moved
         if: ${{ needs.plan.outputs.suite != 'long' }}
         run: |
           mkdir -p "$RUNNER_TEMP/revision" "$RUNNER_TEMP/base"
-          printf '%s\n' "$RUNS" > "$RUNNER_TEMP/asked.json"
+          printf '%s\n' "$ASKED" > "$RUNNER_TEMP/asked.json"
           base=()
           if [ -n "$BASE" ]; then
             base=(--base "$RUNNER_TEMP/base")
