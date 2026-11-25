@@ -1,6 +1,5 @@
 """The command line: `sim run SCENARIO`, `sim sweep SCENARIO --runs K [--from N]`,
-`sim compare EXPECTED OUT` and `sim matrix HEAD [--base BASE | --base-point FILE] [--spread FILE]
-[--asked FILE]`.
+`sim compare EXPECTED OUT` and `sim matrix HEAD [--base BASE] [--asked FILE]`.
 """
 
 from __future__ import annotations
@@ -89,32 +88,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "matrix",
         help="pair a revision's runs with its base's, and say what moved",
         description="Reads the runs in one process the jobs at a revision uploaded under HEAD, "
-        "and those at its base under --base or the point of main in --base-point, pairs them "
-        "by scenario and seed, and writes as JSON a cell for each pair with its change, the "
-        "verdict over the cells, and without a base each scenario's summary. A run --asked "
-        "asks of each side is a cell whether or not a side has it. With --spread, each cell "
-        "says whether the head's epochs are below the lowest of that point's runs of its "
-        "scenario. Exits 0 when it wrote the matrix, and 2 when a run, a point or --asked "
-        "cannot be read.",
+        "and those at its base under --base, pairs them by scenario and seed, and writes as "
+        "JSON a cell for each pair with its change, the verdict over the cells, and without a "
+        "base each scenario's summary. A run --asked asks of each side is a cell whether or not "
+        "a side has it. Exits 0 when it wrote the matrix, and 2 when a run or --asked cannot be "
+        "read.",
     )
     paired.add_argument(
         "head", metavar="HEAD", type=Path, help="what the jobs at the revision uploaded"
     )
-    based = paired.add_mutually_exclusive_group()
-    based.add_argument(
-        "--base", metavar="DIR", type=Path, help="what the jobs at the base uploaded"
-    )
-    based.add_argument(
-        "--base-point",
-        metavar="FILE",
-        type=Path,
-        help="the point.json of main's point at the base, whose runs stand in for the base's",
-    )
     paired.add_argument(
-        "--spread",
-        metavar="FILE",
-        type=Path,
-        help="the point.json of main's point whose runs the head's are placed among",
+        "--base", metavar="DIR", type=Path, help="what the jobs at the base uploaded"
     )
     paired.add_argument(
         "--asked",
@@ -222,16 +206,10 @@ def _matrix(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         if directory is not None and not directory.is_dir():
             parser.error(f"{flag}: no such directory: {directory}")
     try:
-        base = None
-        if args.base is not None:
-            base = matrix.read(args.base)
-        elif args.base_point is not None:
-            base = matrix.point(args.base_point)
         written = matrix.matrix(
             matrix.read(args.head),
-            base,
+            None if args.base is None else matrix.read(args.base),
             () if args.asked is None else matrix.asked(args.asked),
-            None if args.spread is None else matrix.point(args.spread),
         )
     except compare.Unreadable as refused:
         parser.error(str(refused))

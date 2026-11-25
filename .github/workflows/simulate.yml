@@ -8,20 +8,15 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # members of any branch a round (tools/sim/scenarios/grow-waku-loss-*.json), on
 # GroupV2 and, in the -groupv3 files, on GroupV3, at rates of loss. pr, for a
 # logos-chat pull request, runs seeds 0 to 2 of each group at 0.5, 1 and 5%, a
-# job a run, at the revision and at the base it is handed; when gh-pages holds
-# main's point at the base at the current measurement, with an outcome at each
-# of those runs, its runs, main's first three seeds, stand in for the base's and
-# no job runs at the base. main runs seeds 0 to 19 of each group at no loss and
-# at those three, two jobs of ten a group's rate, and no base. tools/sim matrix
-# pairs each run with the base's of its scenario and seed and says the verdict
-# of each group, and for pr places the head's runs among main's twenty seeds of
-# the point at the base, or of the nearest before it; the comment is drawn from
-# what it wrote, kept as the artifact matrix, and for pr says of each group how
-# many of its runs moved and whether those stand within that point's runs, with
-# a picture of the runs that moved. long runs the two scenarios of fifty epochs
-# and every other one tools/sim/expected holds but the goal's on either group,
-# as many runs as it holds, a job a scenario a side, and holds them to the
-# base's runs, or without a base to what is held.
+# job a run, at the revision and at the base it is handed. main runs seeds 0 to
+# 19 of each group at no loss and at those three, two jobs of ten a group's
+# rate, and no base. tools/sim matrix pairs each run with the base's of its
+# scenario and seed and says the verdict of each group; the comment is drawn
+# from what it wrote, kept as the artifact matrix, and for pr says of each group
+# how many of its runs moved, with a picture of the runs that moved. long runs
+# the two scenarios of fifty epochs and every other one tools/sim/expected holds
+# but the goal's on either group, as many runs as it holds, a job a scenario a
+# side, and holds them to the base's runs, or without a base to what is held.
 # The publish job keeps a main run on the Pages site as a point of main,
 # logos-chat/main/<sha>/<measurement>/, with the point's page, and draws the
 # graph over main, logos-chat/index.html, from every point again; it keeps a pr
@@ -107,11 +102,6 @@ jobs:
       check_run: ${{ steps.plan.outputs.check_run }}
       runs: ${{ steps.plan.outputs.runs }}
       scenarios: ${{ steps.plan.outputs.scenarios }}
-      # Where on gh-pages main's point is that stands in for the base's runs,
-      # and the one the head's runs are placed among: the same, or else the one
-      # at the base or the nearest before it that can be read.
-      point: ${{ steps.plan.outputs.point }}
-      spread: ${{ steps.plan.outputs.point || steps.spread.outputs.spread }}
       measurement: ${{ steps.measured.outputs.measurement }}
     # Read by the script from the environment, never written into it: what the
     # workflow is handed is text whoever started it chose. The jobs after this
@@ -123,10 +113,9 @@ jobs:
       PR: ${{ inputs.pr }}
       CHECK_RUN: ${{ inputs.check_run }}
     steps:
-      # The whole history, for the commit the runs measure, and gh-pages's tree,
-      # for the points of main. It is every branch's, gh-pages and the text it
-      # publishes among them, so the clone leaves out what the files hold but
-      # the checkout's. git fetches a point.json when the job reads it.
+      # The whole history, for the commit the runs measure. It is every
+      # branch's, gh-pages and the text it publishes among them, so the clone
+      # leaves out what the files hold but the checkout's.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -134,35 +123,12 @@ jobs:
       - name: Name the chat-sim commit the runs measure
         id: measured
         run: python3 .github/scripts/simulate.py measurement >> "$GITHUB_OUTPUT"
-      - name: List the points of main on gh-pages
-        run: git ls-tree -r --name-only origin/gh-pages -- logos-chat/main > "$RUNNER_TEMP/points"
       - name: Check what the workflow was handed, and plan its runs
         id: plan
-        env:
-          MEASUREMENT: ${{ steps.measured.outputs.measurement }}
         run: |
           python3 .github/scripts/simulate.py plan --suite "$SUITE" --revision "$REVISION" \
             --base "$BASE" --pr "$PR" --check-run "$CHECK_RUN" --expected tools/sim/expected \
-            --measurement "$MEASUREMENT" --points "$RUNNER_TEMP/points" --pages origin/gh-pages \
             >> "$GITHUB_OUTPUT"
-      # The base's hundred newest commits, itself first, from logos-chat's public
-      # API, which the job's own token reads. The plan has checked the base.
-      - name: Ask logos-chat for the base's history
-        if: ${{ steps.plan.outputs.suite == 'pr' && steps.plan.outputs.base != '' && steps.plan.outputs.point == '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api "repos/logos-messaging/logos-chat/commits?sha=$BASE&per_page=100" \
-            > "$RUNNER_TEMP/history.json"
-      - name: Find main's point nearest before the base
-        id: spread
-        if: ${{ steps.plan.outputs.suite == 'pr' && steps.plan.outputs.base != '' && steps.plan.outputs.point == '' }}
-        env:
-          MEASUREMENT: ${{ steps.measured.outputs.measurement }}
-        run: |
-          python3 .github/scripts/simulate.py spread --measurement "$MEASUREMENT" \
-            --points "$RUNNER_TEMP/points" --history "$RUNNER_TEMP/history.json" \
-            --pages origin/gh-pages >> "$GITHUB_OUTPUT"
       # The check run moves to in progress last: a step after it that failed
       # would leave it in progress with no post job to complete it. A step's
       # if cannot read a secret, so this step reads whether it is set.
@@ -319,8 +285,6 @@ jobs:
       PR: ${{ needs.plan.outputs.pr }}
       RUNS: ${{ needs.plan.outputs.runs }}
       SCENARIOS: ${{ needs.plan.outputs.scenarios }}
-      POINT: ${{ needs.plan.outputs.point }}
-      SPREAD: ${{ needs.plan.outputs.spread }}
       MEASUREMENT: ${{ needs.plan.outputs.measurement }}
     steps:
       - uses: actions/checkout@v4
@@ -333,44 +297,23 @@ jobs:
           pattern: sim-revision-*
           path: ${{ runner.temp }}/revision
       - name: Download the runs at the base
-        if: ${{ needs.plan.outputs.base != '' && needs.plan.outputs.point == '' }}
+        if: ${{ needs.plan.outputs.base != '' }}
         uses: actions/download-artifact@v8
         with:
           pattern: sim-base-*
           path: ${{ runner.temp }}/base
-      # The points of main the plan chose, from the gh-pages branch, which the
-      # job's own token reads: Pages serves the branch minutes late.
-      - name: Read main's points the plan chose
-        if: ${{ needs.plan.outputs.spread != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          raw=(-H "Accept: application/vnd.github.raw+json")
-          gh api "${raw[@]}" "repos/$GITHUB_REPOSITORY/contents/$SPREAD?ref=gh-pages" \
-            > "$RUNNER_TEMP/spread.json"
-          if [ -n "$POINT" ]; then
-            gh api "${raw[@]}" "repos/$GITHUB_REPOSITORY/contents/$POINT?ref=gh-pages" \
-              > "$RUNNER_TEMP/point.json"
-          fi
       # Every run the plan asked for is a cell, so that one whose job uploaded
       # nothing has no outcome; a side whose jobs uploaded nothing has no runs.
-      # Main's point at the base, where the plan found one, is the base's side.
       - name: Pair the runs, and say what moved
         if: ${{ needs.plan.outputs.suite != 'long' }}
         run: |
           mkdir -p "$RUNNER_TEMP/revision" "$RUNNER_TEMP/base"
           printf '%s\n' "$RUNS" > "$RUNNER_TEMP/asked.json"
           base=()
-          if [ -n "$POINT" ]; then
-            base=(--base-point "$RUNNER_TEMP/point.json")
-          elif [ -n "$BASE" ]; then
+          if [ -n "$BASE" ]; then
             base=(--base "$RUNNER_TEMP/base")
           fi
-          spread=()
-          if [ -n "$SPREAD" ]; then
-            spread=(--spread "$RUNNER_TEMP/spread.json")
-          fi
-          python3 tools/sim matrix "$RUNNER_TEMP/revision" "${base[@]}" "${spread[@]}" \
+          python3 tools/sim matrix "$RUNNER_TEMP/revision" "${base[@]}" \
             --asked "$RUNNER_TEMP/asked.json" --out "$RUNNER_TEMP/matrix.json"
       - name: Upload the matrix
         if: ${{ needs.plan.outputs.suite != 'long' }}
@@ -546,7 +489,7 @@ jobs:
           pattern: sim-revision-*
           path: ${{ runner.temp }}/revision
       - name: Download the runs at the base
-        if: ${{ needs.plan.outputs.base != '' && needs.plan.outputs.point == '' }}
+        if: ${{ needs.plan.outputs.base != '' }}
         uses: actions/download-artifact@v8
         with:
           pattern: sim-base-*
@@ -596,8 +539,6 @@ jobs:
       - name: Draw the graph over main from every point
         if: ${{ needs.plan.outputs.suite != 'pr' }}
         run: python3 .github/scripts/pages.py trend site
-      # Where main's point stood in for the base, no run at the base was
-      # downloaded: the point's own directory holds its runs' text.
       - name: Write the pull request's run
         if: ${{ needs.plan.outputs.suite == 'pr' }}
         run: |

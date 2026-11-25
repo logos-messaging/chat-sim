@@ -1,10 +1,8 @@
 import contextlib
-import dataclasses
 import io
 import json
 import shutil
 import unittest
-from collections import Counter
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -22,17 +20,6 @@ GROUPV3 = "50-epochs-by-saro-waku-loss-{}-groupv3"
 # What the jobs of the pr suite uploaded at a revision: seeds 0 and 1 of three rates, as the
 # probe at logos-chat fa5282a3 ran them, each `run.json` cut to what the matrix reads.
 UPLOADED = FIXTURES / "matrix"
-# The point of main the probe's twenty seeds of each of the four rates at logos-chat fa5282a3
-# make, cut to what the matrix reads. Its seeds 0 and 1 of the three lossy rates are UPLOADED's.
-POINT = FIXTURES / "point.json"
-FA5282A = "fa5282a34405b6975424174858d85e4f261d420a"
-PROBED = {
-    "logos_chat": FA5282A,
-    "measurement": "f9ae59c296c7485f7dc21f3b7e6c87584fd7b211",
-    "run_url": "https://github.com/logos-messaging/chat-sim/actions/runs/42460360938",
-}
-# The six runs the pr suite asks of each side.
-ASKED = [(GOAL.format(rate), number) for rate in ("0.1", "1", "5") for number in (1, 2)]
 
 # The run of SPLIT, split at epoch 18 at 1% and seed 0, as it could come out at another revision.
 LATER = dict(SPLIT, verdict="split at epoch 20")
@@ -52,16 +39,6 @@ def side(*outcomes: object) -> Side:
         for seed, one in enumerate(outcomes)
         if one is not None
     }
-    return Side(runs)
-
-
-def edited(side: Side, **cells: dict) -> Side:
-    """`side` with the fields `cells` gives a run's outcome changed, by its rate and seed."""
-    runs = dict(side.runs)
-    for at, changed in cells.items():
-        rate, seed = at.split("/")
-        key = (GOAL.format(rate), int(seed))
-        runs[key] = dataclasses.replace(runs[key], outcome=dict(runs[key].outcome, **changed))
     return Side(runs)
 
 
@@ -223,7 +200,6 @@ class Cells(unittest.TestCase):
                 "epochs": {"head": 12, "base": 18},
                 "ended": {"head": "split", "base": "split"},
                 "moved": {"part": "epochs", "head": 12, "base": 18},
-                "below": None,
             },
         )
 
@@ -377,169 +353,6 @@ class Summary(unittest.TestCase):
         self.assertIsNone(matrix.matrix(side(SPLIT), side(SPLIT))["summary"])
 
 
-class BasePoint(Scratch):
-    """Main's point at the base, whose runs stand in for the base's."""
-
-    def point_with(self, **cells: dict) -> Path:
-        """A copy of POINT with the fields `cells` gives a cell changed, by its rate and seed."""
-        held = json.loads(POINT.read_text(encoding="utf-8"))
-        for at, changed in cells.items():
-            rate, seed = at.split("/")
-            (cell,) = (
-                one
-                for one in held["cells"]
-                if (one["scenario"], one["seed"]) == (GOAL.format(rate), int(seed))
-            )
-            cell.update(changed)
-        file = self.scratch / "point.json"
-        file.write_text(json.dumps(held), encoding="utf-8")
-        return file
-
-    def test_the_cells_and_the_verdict_are_those_against_the_base_s_own_runs(self):
-        head = edited(
-            matrix.read(UPLOADED),
-            **{"1/1": {"verdict": "split at epoch 5"}, "5/1": {"conversation": "7c3e9a01b2"}},
-        )
-
-        against_runs = matrix.matrix(head, matrix.read(UPLOADED), ASKED)
-        made = matrix.matrix(head, matrix.point(POINT), ASKED)
-
-        self.assertEqual(made["cells"], against_runs["cells"])
-        self.assertEqual((made["verdict"], made["counts"]), ("hint", against_runs["counts"]))
-        self.assertEqual(
-            [cell["change"] for cell in made["cells"]],
-            ["same", "same", "same", "worse", "same", "re-rolled"],
-        )
-        self.assertEqual(made["base"], {"runs": 6, "unbuilt": 0})
-        self.assertEqual((made["base_point"], against_runs["base_point"]), (PROBED, None))
-        self.assertIsNone(made["summary"])
-
-    def test_the_point_s_runs_make_no_cell_of_their_own(self):
-        name = GOAL.format("1")
-        head = Side({(name, 0): matrix.read(UPLOADED).runs[(name, 0)]})
-
-        made = matrix.matrix(head, matrix.point(POINT))
-
-        self.assertEqual([(cell["scenario"], cell["seed"]) for cell in made["cells"]], [(name, 0)])
-        self.assertEqual(made["base"], {"runs": 1, "unbuilt": 0})
-        self.assertEqual(made["cells"][0]["change"], "same")
-
-    def test_a_cell_the_point_has_no_outcome_for_has_none_at_the_base(self):
-        point = self.point_with(
-            **{
-                "1/0": {"head": None},
-                "5/0": {"head": None, "unbuilt": {"head": True}},
-            }
-        )
-
-        made = matrix.matrix(matrix.read(UPLOADED), matrix.point(point), ASKED)
-
-        self.assertEqual((made["verdict"], made["counts"]["compared"]), ("same", 4))
-        self.assertEqual(made["base"], {"runs": 4, "unbuilt": 1})
-        for cell, unbuilt in ((made["cells"][2], False), (made["cells"][4], True)):
-            self.assertEqual((cell["base"], cell["change"]), (None, None))
-            self.assertEqual(cell["unbuilt"]["base"], unbuilt)
-
-    def test_a_point_it_cannot_read_is_refused(self):
-        held = json.loads(POINT.read_text(encoding="utf-8"))
-        cell = held["cells"][0]
-        for said, point in (
-            ("not a point of main", dict(held, run_url="javascript:alert(1)")),
-            ("not a point of main", dict(held, measurement="f9ae59c")),
-            ("not a point of main", {k: v for k, v in held.items() if k != "summary"}),
-            ("cells[0] is not a cell of a point", dict(held, cells=[dict(cell, seed="0")])),
-            *(
-                ("cells[0] is not a cell of a point", dict(held, cells=[dict(cell, head=head)]))
-                for head in (
-                    dict(cell["head"], drawn="def2b1dd40"),
-                    dict(cell["head"], verdict=5),
-                    dict(cell["head"], ended="exploded"),
-                    dict(cell["head"], conversation="<script>"),
-                    dict(cell["head"], at_tip=True),
-                )
-            ),
-            (
-                f"cells[1] is a second cell of {GOAL.format(0)} at seed 0",
-                dict(held, cells=[cell, cell]),
-            ),
-            *(
-                ("summary[0] is not a scenario's summary", dict(held, summary=[summary]))
-                for summary in (
-                    {key: value for key, value in held["summary"][0].items() if key != "runs"},
-                    {key: value for key, value in held["summary"][0].items() if key != "group"},
-                    dict(held["summary"][0], whole="20"),
-                    dict(held["summary"][0], epochs={"lowest": 50.0, "median": 50, "highest": 50}),
-                    dict(held["summary"][0], epochs={"lowest": 50, "median": 50}),
-                )
-            ),
-        ):
-            with self.subTest(said=said):
-                file = self.scratch / "point.json"
-                file.write_text(json.dumps(point), encoding="utf-8")
-                with self.assertRaises(compare.Unreadable) as refused:
-                    matrix.point(file)
-                self.assertIn(f"{file}: {said}", str(refused.exception))
-
-
-class Spread(unittest.TestCase):
-    """Main's point whose runs the head's are placed among."""
-
-    def test_it_holds_the_point_and_at_the_cells_scenarios_its_summary_and_each_run(self):
-        made = matrix.matrix(
-            matrix.read(UPLOADED), matrix.read(UPLOADED), spread=matrix.point(POINT)
-        )
-
-        spread = made["spread"]
-        self.assertEqual({key: spread[key] for key in PROBED}, PROBED)
-        self.assertEqual(
-            [(one["rate"], one["runs"], one["whole"], one["epochs"]) for one in spread["summary"]],
-            [
-                ("0.1%", 20, 2, {"lowest": 18, "median": 38.5, "highest": 50}),
-                ("1%", 20, 0, {"lowest": 3, "median": 12.5, "highest": 23}),
-                ("5%", 20, 0, {"lowest": 3, "median": 6, "highest": 18}),
-            ],
-        )
-        self.assertEqual(len(spread["seeds"]), 60)
-        self.assertEqual(
-            spread["seeds"][:2],
-            [
-                {"scenario": GOAL.format("0.1"), "seed": 0, "epochs": 50, "ended": "whole"},
-                {"scenario": GOAL.format("0.1"), "seed": 1, "epochs": 46, "ended": "split"},
-            ],
-        )
-        at_five = [one for one in spread["seeds"] if one["scenario"] == GOAL.format(5)]
-        self.assertEqual(Counter(one["ended"] for one in at_five), {"split": 19, "stalled": 1})
-        self.assertEqual(min(one["epochs"] for one in at_five), 3)
-
-    def test_it_holds_the_scenarios_of_the_cells_alone(self):
-        spread = matrix.matrix(side(SPLIT), spread=matrix.point(POINT))["spread"]
-
-        self.assertEqual([one["scenario"] for one in spread["summary"]], [SCENARIO])
-        self.assertEqual({one["scenario"] for one in spread["seeds"]}, {SCENARIO})
-        self.assertEqual([one["seed"] for one in spread["seeds"]], list(range(20)))
-
-    def test_a_cell_says_whether_the_head_s_epochs_are_below_the_lowest_of_main_s(self):
-        lowest, under = (dict(SPLIT, verdict=f"split at epoch {n}") for n in (3, 2))
-
-        made = matrix.matrix(side(SPLIT, lowest, under, CRASHED), spread=matrix.point(POINT))
-
-        self.assertEqual([cell["below"] for cell in made["cells"]], [False, False, True, None])
-        self.assertEqual({cell["below"] for cell in matrix.matrix(side(under))["cells"]}, {None})
-        self.assertIsNone(matrix.matrix(side(under))["spread"])
-
-    def test_it_counts_the_re_rolled_cells_whose_epochs_are_below_the_lowest_of_main_s(self):
-        under = dict(SPLIT, verdict="split at epoch 2")
-        drew = dict(under, conversation="7c3e9a01b2")
-        base = side(SPLIT, SPLIT)
-
-        made = matrix.matrix(side(drew, under), base, spread=matrix.point(POINT))
-
-        self.assertEqual([cell["change"] for cell in made["cells"]], ["re-rolled", "worse"])
-        self.assertEqual([cell["below"] for cell in made["cells"]], [True, True])
-        self.assertEqual(made["counts"]["below"], 1)
-        self.assertEqual(matrix.matrix(side(drew, under), base)["counts"]["below"], 0)
-
-
 class Read(Scratch):
     """The matrix of what the jobs uploaded, laid out as `actions/download-artifact` writes each
     artifact into a directory of its own."""
@@ -667,31 +480,6 @@ class CommandLine(Scratch):
         status, printed, _ = self.sim(str(UPLOADED), "--out", str(file))
         self.assertEqual((status, printed), (0, ""))
         self.assertEqual(json.loads(file.read_text("utf-8")), matrix.matrix(matrix.read(UPLOADED)))
-
-    def test_it_takes_the_base_from_main_s_point_and_the_spread_from_a_point(self):
-        written = matrix.matrix(
-            matrix.read(UPLOADED), matrix.point(POINT), spread=matrix.point(POINT)
-        )
-
-        status, printed, _ = self.sim(
-            str(UPLOADED), "--base-point", str(POINT), "--spread", str(POINT)
-        )
-
-        self.assertEqual((status, json.loads(printed)), (0, written))
-        self.assertEqual(written["base_point"], PROBED)
-
-    def test_it_refuses_a_point_beside_a_base_and_a_point_it_cannot_read(self):
-        status, printed, complained = self.sim(
-            str(UPLOADED), "--base", str(UPLOADED), "--base-point", str(POINT)
-        )
-        self.assertEqual((status, printed), (2, ""))
-        self.assertIn("argument --base-point: not allowed with argument --base", complained)
-        nowhere = self.scratch / "point.json"
-        for flag in ("--base-point", "--spread"):
-            with self.subTest(flag=flag):
-                status, printed, complained = self.sim(str(UPLOADED), flag, str(nowhere))
-                self.assertEqual((status, printed), (2, ""))
-                self.assertIn(f"{nowhere}: No such file or directory", complained)
 
     def test_it_makes_a_cell_of_each_run_asked_of_each_side_whether_or_not_a_side_has_it(self):
         head = self.scratch / "head"

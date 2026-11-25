@@ -148,24 +148,18 @@ _VERDICTS = (
     "same",
 )
 _SIDE = {"runs": (int,), "unbuilt": (int,)}
-_COUNTS = {field: (int,) for field in ("cells", "compared", *_CHANGES, "below", "no-outcome")}
+_COUNTS = {field: (int,) for field in ("cells", "compared", *_CHANGES, "no-outcome")}
 _MATRIX = {
     "head": _SIDE,
     "base": (dict, _NONE),
-    "base_point": (dict, _NONE),
     "cells": (list,),
     "counts": _COUNTS,
     "verdict": (str,),
     "groups": (list,),
     "summary": (list, _NONE),
-    "spread": (dict, _NONE),
 }
 # The counts and the verdict of a group's cells.
 _GROUP = {"group": (str,), "counts": _COUNTS, "verdict": (str,)}
-# The point of main a matrix names: the one that stood in for the base's runs, and its spread.
-_NAMED = {"logos_chat": (str,), "measurement": (str,), "run_url": (str,)}
-_SPREAD = {**_NAMED, "summary": (list,), "seeds": (list,)}
-_SEED = {"scenario": (str,), "seed": (int,), "epochs": (int, _NONE), "ended": (str, _NONE)}
 _CELL = {
     "scenario": (str,),
     "group": (str,),
@@ -180,14 +174,10 @@ _CELL = {
     "epochs": {"head": (int, _NONE), "base": (int, _NONE)},
     "ended": {"head": (str, _NONE), "base": (str, _NONE)},
     "moved": (dict, _NONE),
-    "below": (bool, _NONE),
 }
-# A point keeps a cell of main's matrix but whether it is below a spread, which only a pull
-# request's matrix has.
-_POINT_CELL = {field: kind for field, kind in _CELL.items() if field != "below"}
 # A point need not name the group of a cell or a scenario: the points that do not ran GroupV2's
 # alone.
-_UNGROUPED_CELL = {field: kind for field, kind in _POINT_CELL.items() if field != "group"}
+_UNGROUPED_CELL = {field: kind for field, kind in _CELL.items() if field != "group"}
 _OUTCOME = {
     "seed": (int,),
     "network_seed": (int, _NONE),
@@ -402,8 +392,8 @@ details.text>summary{font-size:13px;color:var(--muted)}
 .rates td,.runs td.n{white-space:nowrap}
 """
 # The trees of a pull request's runs, on its report page, its runs' pages and the picture of the
-# runs that moved: the head's in the blue of the rates and the base's muted, a sketch dashed, on
-# the band where main's seeds first forked, with the ring of the members that never joined.
+# runs that moved: the head's in the blue of the rates and the base's muted, a sketch dashed, with
+# the ring of the members that never joined.
 _TREES = """
 .tree path{fill:none;stroke-linejoin:round;stroke-linecap:round}
 .tree.head path{stroke:var(--rate-2)}
@@ -411,7 +401,6 @@ _TREES = """
 .tree.base path{stroke:var(--muted)}
 .tree.base circle{fill:var(--muted)}
 .tree.sketch path{stroke-dasharray:3 3}
-.spread{fill:var(--neutral-bg)}
 .epoch{stroke:var(--grid)}
 .strong{font-weight:600}
 .ring rect{fill:var(--bg);stroke:var(--line)}
@@ -544,9 +533,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "and run.json, or build.log of a job that could not build chat-sim, and the point's "
         "page, index.html. What was there is replaced, unless it is the point of a run of a "
         f"higher number. Then removes the runs' text of each point past the newest {WINDOW}, by "
-        "run number, and draws again the page of each point that loses it or has none, and the "
-        "report of each pull request such a point stood in for. A matrix that read no run at "
-        "the revision, built or not, is refused.",
+        "run number, and draws again the page of each point that loses it or has none. A matrix "
+        "that read no run at the revision, built or not, is refused.",
     )
     _add_ran(point, runs="the run jobs uploaded")
     point.add_argument(
@@ -851,7 +839,7 @@ def write_point(
             "measurement": before["measurement"],
             "rerolled": rerolled(before, matrix),
         },
-        "cells": [{field: cell[field] for field in _POINT_CELL} for cell in matrix["cells"]],
+        "cells": matrix["cells"],
         "summary": matrix["summary"],
     }
     _replace(out, copies)
@@ -1033,21 +1021,11 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
     run: what each group's runs came to against the base's, a line a group; what the scenarios test
     and how, from the copies of their files `out` keeps; then of each group each scenario's file,
     linked to its copy where `out` keeps one, and each run's tree, a row a rate and a column a seed,
-    the head's over the base's on the band where main's seeds of its rate first forked, each linked
-    to the run's page. Where chat-sim did not build at the head, the build's log takes the place of
-    the scenarios and the runs. Where main's point stood in for the base's runs, the point's page,
-    or its point.json until it has one, is linked, and the base's trees are drawn from the point's
-    runs while the point keeps their text, else sketched from how they came out."""
-    head, base, point = meta["revision"], meta["base"], matrix["base_point"]
+    the head's over the base's, each linked to the run's page. Where chat-sim did not build at the
+    head, the build's log takes the place of the scenarios and the runs."""
+    head, base = meta["revision"], meta["base"]
     facts = {"revision": head, "base": base or "", "chat_sim": meta["chat_sim"]}
-    page = None
-    if point is not None:
-        at = f"../main/{point['logos_chat']}/{point['measurement']}/"
-        there = _point_at(out.parent.parent, point["logos_chat"], point["measurement"])
-        page = at if (there / "index.html").is_file() else at + "point.json"
-    # As the comment has it: a head that did not build was held to no point.
-    stood = None if matrix["verdict"] == "unbuilt" else point
-    verdict = simulate.ran_at(facts, stood, _code, lambda words, _: _link(page, words))
+    verdict = simulate.ran_at(facts, _code)
     said = [
         f"head {_commit(LOGOS_CHAT_URL, head)}",
         "no base" if base is None else f"merge base {_commit(LOGOS_CHAT_URL, base)}",
@@ -1096,19 +1074,11 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
             f'<p class="reading">A tree is one run, left to right by epoch from 0 to {_TOP}, the '
             "goal. The top line is the trunk. Each line below left the line it drops from at that "
             "epoch and stops at its dot. The thicker a line, the more members it ended with. The "
-            "ring counts the members that never joined."
-        )
-        if matrix["spread"] is not None:
-            body += (
-                f" The grey band is where main's seeds at {_code(matrix['spread']['logos_chat'])} "
-                "first forked: a head inside it is within main's spread."
-            )
-        body += (
-            " Hover a line for its numbers, or open a run for its labels and the command that "
-            "runs it again.</p>\n</section>\n"
+            "ring counts the members that never joined. Hover a line for its numbers, or open a "
+            "run for its labels and the command that runs it again.</p>\n</section>\n"
         )
         for cell in matrix["cells"]:
-            draw_run(out, matrix, meta, cell, drawn[_run_href(cell)], page)
+            draw_run(out, matrix, meta, cell, drawn[_run_href(cell)])
     body += (
         f'<p class="muted">What the page shows: the guide\'s '
         f'{_link("../../guide/reports/#the-pages-of-logos-chats-runs", "Reports")}.</p>\n'
@@ -1124,14 +1094,12 @@ def draw_run(
     meta: dict,
     cell: dict,
     trees: Tuple[Optional[dict], Optional[dict]],
-    page: Optional[str],
 ) -> None:
     """Writes the page of `cell`'s run of the pull request kept in `out`, index.html in its
     directory under `head/`: what the head's run came to against the base's, in a sentence; both
     sides' trees, `trees` their lineages, large on one axis of epochs, each line labelled, with
     who fell behind and the members of each; the command that runs it again; and each side's
-    text the site keeps. `page` is the page of main's point that stood in for the base's runs,
-    from the report page, or `None`."""
+    text the site keeps."""
     head, base = meta["revision"], meta["base"]
     facts = {"revision": head, "base": base or "", "chat_sim": meta["chat_sim"]}
     named = _job(cell)
@@ -1156,15 +1124,7 @@ def draw_run(
         _files(run, "") or '<p class="muted">The run left no text.</p>\n'
     )
     based = _base_run(out, matrix, cell)
-    if matrix["base_point"] is not None:
-        stood = _link(up + page, matrix["base_point"]["logos_chat"][:7], code=True)
-        body += f'<p class="side">main\'s point at {stood}</p>\n'
-        if based is None:
-            body += (
-                f'<p class="muted">The site keeps the runs\' text of the newest {WINDOW} points, '
-                "and no longer this one's.</p>\n"
-            )
-    elif base is not None:
+    if base is not None:
         body += f'<p class="side">the base {_code(base)}</p>\n'
     if based is not None:
         body += _files(based[0], up + based[1]) or '<p class="muted">The run left no text.</p>\n'
@@ -1177,8 +1137,7 @@ def draw_run(
 def draw_moved(out: Path, matrix: dict, meta: dict) -> None:
     """Writes the picture of the runs of the pull request kept in `out` that moved against the
     base's, for its comment, as `simulate.moved_image` names it, light and dark: each run's head
-    tree over its base's on the band where main's seeds of its rate first forked, three a row.
-    Nothing where no run was compared or none moved."""
+    tree over its base's, three a row. Nothing where no run was compared or none moved."""
     cells = [cell for cell in matrix["cells"] if simulate.moved(cell)]
     if not simulate.compares(matrix) or not cells:
         return
@@ -1634,24 +1593,10 @@ def read_matrix(path: Path) -> dict:
                 raise Unreadable(f"{where}.verdict {one['verdict']!r} is none of a matrix")
         if (matrix["summary"] is None) != (matrix["base"] is not None):
             raise Unreadable("summary is there without a base, and only without one")
-        if matrix["base_point"] is not None:
-            if matrix["base"] is None:
-                raise Unreadable("base_point is there without a base")
-            _shaped(matrix["base_point"], _NAMED, "base_point")
-            _named(matrix["base_point"], "base_point")
         for number, cell in enumerate(matrix["cells"]):
             _cell(cell, f"cells[{number}]", alone=matrix["base"] is None)
         for number, one in enumerate(matrix["summary"] or ()):
             _summary(one, f"summary[{number}]")
-        if matrix["spread"] is not None:
-            spread = matrix["spread"]
-            _shaped(spread, _SPREAD, "spread")
-            _named(spread, "spread")
-            # A pull request's matrix holds main's point as it was, of any shape a point had.
-            for number, one in enumerate(spread["summary"]):
-                _summary(one, f"spread.summary[{number}]", _held_summary(one))
-            for number, one in enumerate(spread["seeds"]):
-                _seed(one, f"spread.seeds[{number}]")
     except Unreadable as refused:
         raise Unreadable(f"{path}: {refused}") from None
     return matrix
@@ -1676,7 +1621,7 @@ def read_point(path: Path) -> dict:
             _shaped(point["previous"], _PREVIOUS, "previous")
             _commits(point["previous"], "logos_chat", "measurement", where="previous.")
         for number, cell in enumerate(point["cells"]):
-            shape = _POINT_CELL if "group" in cell else _UNGROUPED_CELL
+            shape = _CELL if "group" in cell else _UNGROUPED_CELL
             _cell(cell, f"cells[{number}]", alone=True, shape=shape)
         for number, one in enumerate(point["summary"]):
             _summary(one, f"summary[{number}]", _held_summary(one))
@@ -1831,17 +1776,6 @@ def _point(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     for directory, one in kept:
         if directory in drawn:
             draw_point(directory, one)
-    # A pull request's page links the page and the runs' text of main's point that stood in for
-    # its base, where the point has them.
-    for directory in sorted((args.site / LOGOS_CHAT).glob("pr-*")):
-        try:
-            ran = read_matrix(directory / "matrix.json")
-            meta = read_pr_meta(directory / "meta.json")
-        except Unreadable:
-            continue
-        at = ran["base_point"]
-        if at and _point_at(args.site, at["logos_chat"], at["measurement"]) in drawn:
-            draw_pr(directory, ran, meta)
     return 0
 
 
@@ -2207,8 +2141,8 @@ def _outcome(outcome: object, where: str, shape: dict = _OUTCOME) -> None:
 
 
 def _held_outcome(outcome: object) -> dict:
-    """The shape of an outcome a point, a pull request's matrix or a long run holds: one from
-    before the outcomes counted the members that never joined has no such count."""
+    """The shape of an outcome a point or a long run holds: one from before the outcomes counted
+    the members that never joined has no such count."""
     if not isinstance(outcome, dict) or "never_joined" in outcome:
         return _OUTCOME
     return _UNJOINED_OUTCOME
@@ -2244,14 +2178,6 @@ def group(held: dict) -> str:
     return held.get("group", "v2")
 
 
-def _named(point: dict, where: str) -> None:
-    """Refuses a point a matrix names unless its commits and the address of its run are of their
-    form."""
-    _commits(point, "logos_chat", "measurement", where=f"{where}.")
-    if _URL.fullmatch(point["run_url"]) is None:
-        raise Unreadable(f"{where}.run_url is not an http(s) address")
-
-
 def _long_scenario(one: object, where: str) -> None:
     """Refuses a scenario of a long run unless it is one `write_long` writes: its runs from 1,
     each of its seed with its outcome where it has one, and compare's verdict where it ran."""
@@ -2274,14 +2200,6 @@ def _long_scenario(one: object, where: str) -> None:
             )
             if run["outcome"]["seed"] != run["seed"]:
                 raise Unreadable(f"{where}.runs[{number}].outcome is not of the run's seed")
-
-
-def _seed(one: object, where: str) -> None:
-    _shaped(one, _SEED, where)
-    if _SCENARIO.fullmatch(one["scenario"]) is None:
-        raise Unreadable(f"{where}.scenario {one['scenario']!r} is not the name of a scenario")
-    if one["ended"] not in (None, *_ENDINGS):
-        raise Unreadable(f"{where}.ended is not how a run ended")
 
 
 def _commits(held: dict, *fields: str, where: str = "") -> None:
@@ -2798,8 +2716,7 @@ def _heat_legend(*extra: Tuple[str, str]) -> str:
 def _verdicts(matrix: dict) -> str:
     """What each group's runs came to against the base's, a line a group, as the comment's line
     on them has it: the chip of each of what `simulate.told` leads with and how many runs it has,
-    or of the same and how many of all; beside main's spread, whether those that moved first
-    forked within main's seeds; then how many runs each of the rest has."""
+    or of the same and how many of all; then how many runs each of the rest has."""
     listed = ""
     for key, called in simulate.GROUPS.items():
         counted = simulate.tally(matrix, key)
@@ -2813,9 +2730,6 @@ def _verdicts(matrix: dict) -> str:
             for one in led:
                 shown = f"{_ARROWS.get(one, '')}{simulate.STANDINGS[one]} in {counted[one]}"
                 said.append(_chip(_MISSING.get(one, one), shown))
-        if counted["moved"] and counted["seeds"]:
-            where = f"{counted['beyond']} beyond" if counted["beyond"] else "all within"
-            said.append(f"<span>{where} main's {counted['seeds']} seeds</span>")
         if rest:
             told = ", ".join(f"{counted[one]} {simulate.STANDINGS[one]}" for one in rest)
             said.append(f'<span class="muted">· {told}</span>')
@@ -2831,8 +2745,8 @@ def _chip(change: str, said: Optional[str] = None) -> str:
 
 def _forks_key(matrix: dict, most: int, width: Callable[[int], float]) -> str:
     """The legend of the trees: the head's over the base's, how wide `width` draws a line of so
-    many members up to `most`, the ring of those that never joined, main's band where the matrix
-    has a spread, and the outline of a run that moved where one did."""
+    many members up to `most`, the ring of those that never joined, and the outline of a run that
+    moved where one did."""
 
     def tree(side: str) -> str:
         return (
@@ -2858,12 +2772,6 @@ def _forks_key(matrix: dict, most: int, width: Callable[[int], float]) -> str:
         keys.append((drawn, f"{', '.join(map(str, shown))} member{'' if most == 1 else 's'}"))
     ring = f'<svg width="34" height="16" viewBox="0 0 34 16" aria-hidden="true">{_ring(1, 8, "n")}'
     keys.append((ring + "</svg>", "never joined"))
-    if matrix["spread"] is not None:
-        band = (
-            '<svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">'
-            '<rect class="spread" x="0" y="0" width="22" height="10" rx="2"/></svg>'
-        )
-        keys.append((band, "where main's seeds first forked"))
     if any(simulate.moved(cell) for cell in matrix["cells"]):
         keys.append(('<span class="outlined">outline</span>', "moved"))
     return _legend(*keys)
@@ -2873,8 +2781,7 @@ def _forks(
     matrix: dict, cells: Sequence[dict], trees: Dict[str, tuple], width: Callable[[int], float]
 ) -> str:
     """The trees of a group's `cells`, `trees` their lineages by run, a row a rate and a column a
-    seed: each row as tall as its most lines, headed by its rate and, beside main's spread,
-    main's band in a few words."""
+    seed: each row as tall as its most lines, headed by its rate."""
     pitch, pad, between = 7, 7, 8
     rows = _by_rate(cells)
     seeds = sorted({seed for _, by_seed in rows for seed in by_seed})
@@ -2887,18 +2794,14 @@ def _forks(
     drawn = [f'<div><div class="rate"></div>{heads}</div>\n']
     for _, by_seed in rows:
         first = next(iter(by_seed.values()))
-        mains = simulate.seeds_of(matrix, first["scenario"])
         count = max(
             max(_rows_of(trees[_run_href(cell)][0]), _rows_of(trees[_run_href(cell)][1]))
             for cell in by_seed.values()
         )
-        # The band's words under the base's label need three rows.
-        if mains:
-            count = max(count, 3)
         tall = pad + (count - 1) * pitch + pad
         tops = (pad, tall + between + pad)
         height = tall * 2 + between if based else tall
-        row = [_rate_head(matrix, first, mains, tops, height)]
+        row = [_rate_head(matrix, first, tops, height)]
         for seed in seeds:
             if seed not in by_seed:
                 row.append('<div class="vacant"></div>')
@@ -2909,27 +2812,12 @@ def _forks(
     return f'<div class="wide"><div class="forks">\n{"".join(drawn)}</div></div>\n'
 
 
-def _rate_head(
-    matrix: dict, cell: dict, mains: Sequence[int], tops: Tuple[float, float], height: float
-) -> str:
-    """The head of a row of trees, `cell` one of its runs: its rate, the head's label and the
-    base's beside their trees, and main's band of the rate, `mains`, in a few words, with its
-    median as its title."""
+def _rate_head(matrix: dict, cell: dict, tops: Tuple[float, float], height: float) -> str:
+    """The head of a row of trees, `cell` one of its runs: its rate, and the head's label and the
+    base's beside their trees."""
     drawn = f'<text class="note" x="0" y="{tops[0] + 4}">head</text>'
     if matrix["base"] is not None:
         drawn += f'<text class="note" x="0" y="{tops[1] + 4}">base</text>'
-    if mains:
-        middle = len(mains) // 2
-        median = mains[middle] if len(mains) % 2 else (mains[middle - 1] + mains[middle]) / 2
-        said = (
-            f"main's {len(mains)} seeds at {matrix['spread']['logos_chat'][:7]}: first fork "
-            f"{mains[0]} to {mains[-1]}, median {_number(median)}"
-        )
-        drawn += (
-            f"<g><title>{_e(said)}</title>"
-            f'<rect class="spread" x="0" y="{height - 10}" width="18" height="9" rx="2"/>'
-            f'<text class="note" x="24" y="{height - 2}">main {mains[0]} to {mains[-1]}</text></g>'
-        )
     return (
         f'<div class="rate"><div class="said"><b>{_e(_loss(cell))}</b></div>'
         f'<svg width="116" height="{height}" viewBox="0 0 116 {height}">{drawn}</svg></div>'
@@ -2945,9 +2833,8 @@ def _fork(
     height: float,
 ) -> str:
     """A run's place in its row, a link to its page: what moved in a few words, over the head's
-    tree and the base's, `trees` their lineages, at `tops`, on the band where main's seeds of its
-    rate first forked, each with its ring; outlined in its change's colour where it moved, dashed
-    where it was re-rolled or a side did not build."""
+    tree and the base's, `trees` their lineages, at `tops`, each with its ring; outlined in its
+    change's colour where it moved, dashed where it was re-rolled or a side did not build."""
     x = _along(4, 264)
     kind = "fork"
     if simulate.moved(cell) or cell["change"] == "re-rolled":
@@ -2956,7 +2843,6 @@ def _fork(
         kind += " unbuilt"
     drawn = [
         _svg(306, height, _job(cell)),
-        _band(simulate.seeds_of(matrix, cell["scenario"]), x, 0, height),
         _epoch_lines(x, 0, height),
     ]
     sides = [("head", trees[0], tops[0])]
@@ -3025,8 +2911,7 @@ def _against(cell: dict, strong: str) -> str:
 
 def _run_said(matrix: dict, cell: dict) -> Tuple[str, str]:
     """What the page of `cell`'s run says first: the chip of its change, and a sentence of how the
-    head's run came out against the base's and, where it moved or was re-rolled, against main's
-    seeds of its rate."""
+    head's run came out against the base's."""
     change = cell["change"]
     if cell["head"] is None:
         if cell["unbuilt"]["head"]:
@@ -3046,12 +2931,6 @@ def _run_said(matrix: dict, cell: dict) -> Tuple[str, str]:
     said = _moved_said(cell)
     if change == "re-rolled":
         said = "The head's run drew other ids than the base's, so the two are not compared."
-    within, mains = simulate.within(matrix, cell), simulate.seeds_of(matrix, cell["scenario"])
-    if within is not None:
-        said += (
-            f" Main's {len(mains)} seeds first fork at {mains[0]} to {mains[-1]}: "
-            f"{'within' if within else 'beyond'} their spread."
-        )
     return _chip(change), said
 
 
@@ -3097,20 +2976,13 @@ def _run_trees(
 ) -> str:
     """Both sides' runs of `cell` large on one axis of epochs, the head's over the base's, `trees`
     their lineages: each line labelled with its members, its epochs and the line it left, a mark
-    where the run first forked, who fell behind and when, and the members of each, on the band
-    where main's seeds of its rate first forked. Its text is placed by an estimate of its width,
-    since no browser measures it here."""
+    where the run first forked, who fell behind and when, and the members of each. Its text is
+    placed by an estimate of its width, since no browser measures it here."""
     wide, left, right, pitch = 1118, 92, 852, 28
     x = _along(left, right)
-    mains = simulate.seeds_of(matrix, cell["scenario"])
     width = _widths(_most(trees), 2, 9)
     goal = f'<text class="note" x="{x(_TOP) + 14:.1f}" y="14">the goal</text>'
     front = [_epoch_ticks(x, 14), goal]
-    if mains:
-        front.append(
-            f'<text class="note" x="{x(mains[0]) + 6:.1f}" y="36">main\'s {len(mains)} seeds '
-            f"first fork in here, {mains[0]} to {mains[-1]}</text>"
-        )
     y = 34
     sides = [("head", meta["revision"], trees[0])]
     if matrix["base"] is not None:
@@ -3154,7 +3026,7 @@ def _run_trees(
         front.append(_members(cell, side, lineage, left, below))
         y = below + 8
     height = y + 10
-    back = [_band(mains, x, 22, height), _epoch_lines(x, 20, height)]
+    back = [_epoch_lines(x, 20, height)]
     label = f"{_job(cell)}: the head's tree over the base's"
     return _svg(wide, height, label) + "".join(back + front) + "</svg>\n"
 
@@ -3244,14 +3116,13 @@ def _picture(
 ) -> str:
     """The picture of the runs that moved, `cells`, `trees` their lineages, a standalone SVG in the
     dark theme's colours or the light's: a panel a run, three a row, each with the run's name, its
-    change against the base's, main's band in a few words, and the head's tree over the base's on
-    that band, each with its ring. Its text is placed by an estimate of its width, since no browser
-    measures it here."""
+    change against the base's, and the head's tree over the base's, each with its ring. Its text is
+    placed by an estimate of its width, since no browser measures it here."""
     panel, gap, pitch, pad, between = 286, 14, 7, 7, 8
     columns = min(len(cells), 3)
     drawn_trees = [tree for both in trees for tree in both]
     tall = pad + (max(map(_rows_of, drawn_trees)) - 1) * pitch + pad
-    top = 88 if any(simulate.seeds_of(matrix, cell["scenario"]) for cell in cells) else 70
+    top = 70
     high = top + tall * 2 + between + 10
     lines = math.ceil(len(cells) / columns)
     wide, height = columns * panel + (columns - 1) * gap, lines * high + (lines - 1) * gap
@@ -3268,7 +3139,6 @@ def _picture(
         f"<style>{_themed(_TREES + _PICTURE, dark)}</style>",
     ]
     for number, (cell, both) in enumerate(zip(cells, trees)):
-        mains = simulate.seeds_of(matrix, cell["scenario"])
         shown = _ARROWS.get(cell["change"], "") + cell["change"]
         chip = round(16 + _width(shown) * 1.08)
         drawn.append(
@@ -3281,14 +3151,8 @@ def _picture(
             f'<text x="20" y="44">{shown}</text></g>'
             f'<text class="note" x="{20 + chip}" y="44">{_against(cell, strong)}</text>'
         )
-        if mains:
-            drawn.append(
-                '<rect class="spread" x="12" y="56" width="22" height="9" rx="2"/>'
-                f'<text class="note" x="40" y="64">main\'s {len(mains)} seeds: first fork '
-                f"{mains[0]} to {mains[-1]}</text>"
-            )
         bottom = top + tall * 2 + between
-        drawn.append(_band(mains, x, top, bottom) + _epoch_lines(x, top, bottom))
+        drawn.append(_epoch_lines(x, top, bottom))
         drawn.append(_epoch_ticks(x, top - 6))
         for side, lineage, y in (
             ("head", both[0], top + pad),
@@ -3323,18 +3187,12 @@ def _trees(out: Path, matrix: dict, cell: dict) -> Tuple[Optional[dict], Optiona
 
 
 def _base_run(out: Path, matrix: dict, cell: dict) -> Optional[Tuple[Path, str]]:
-    """Where the base's run of `cell` of the pull request kept in `out` keeps its text, and its
-    address from the report page: under `base/` where the base ran itself, or in main's point
-    that stood in for it while the point keeps that text; `None` without either."""
+    """Where the base's run of `cell` of the pull request kept in `out` keeps its text, under
+    `base/`, and its address from the report page; `None` without a base."""
     if matrix["base"] is None:
         return None
-    run, point = _run_href(cell), matrix["base_point"]
-    if point is None:
-        return out / "base" / run, f"base/{run}"
-    there = _point_at(out.parent.parent, point["logos_chat"], point["measurement"]) / run
-    if not any((there / name).is_file() for name in TEXTS):
-        return None
-    return there, f"../main/{point['logos_chat']}/{point['measurement']}/{run}"
+    run = _run_href(cell)
+    return out / "base" / run, f"base/{run}"
 
 
 def _lineage(report: Optional[dict]) -> Optional[dict]:
@@ -3489,18 +3347,6 @@ def _ring(x: float, y: float, count: object) -> str:
 
 def _ring_width(count: object) -> int:
     return 20 + 6 * len(str(count))
-
-
-def _band(seeds: Sequence[int], x: Callable[[float], float], top: float, bottom: float) -> str:
-    """The band where main's `seeds`, the lowest first, first forked, from `top` to `bottom`, or
-    nothing without them."""
-    if not seeds:
-        return ""
-    wide = max(x(seeds[-1]) - x(seeds[0]), 1.5)
-    return (
-        f'<rect class="spread" x="{x(seeds[0]):.1f}" y="{top}" width="{wide:.1f}" '
-        f'height="{bottom - top}"/>'
-    )
 
 
 def _epoch_lines(x: Callable[[float], float], top: float, bottom: float) -> str:
