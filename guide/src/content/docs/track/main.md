@@ -18,7 +18,7 @@ The page has three sections:
 
 | Section | Shows |
 |---|---|
-| Now | the newest commit that has an outcome: for each group and rate of loss, the median epochs before the first fork, and a meter toward the goal of 50 |
+| Now | the newest commit that has an outcome: for each group and rate of loss, the median epochs before the first fork, and under it the tree of the rate's run nearest that median, which links the run's page |
 | Over main's commits | one panel per rate of loss at which a run forked: the median as a line, the middle half of the runs as a band, and a marker on each commit where a run moved |
 | What changed | one row per commit, the newest first: each group's verdict against the commit before |
 

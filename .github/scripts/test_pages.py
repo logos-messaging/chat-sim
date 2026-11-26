@@ -1361,6 +1361,18 @@ class Trend(LogosChat):
         """Each cell of the newest commit's numbers: its median and what is under it."""
         return re.findall(r"<td><b>([^<]*)</b>.*?<small>([^<]*)</small></td>", self.section("now"))
 
+    def typical(self) -> List[Tuple[Optional[str], str, ElementTree.Element]]:
+        """Each tree of Now, in the order of its cells: the page it links, or `None`, what its
+        hover says, and the tree."""
+        found = re.findall(
+            r'<(a|span) class="typical"(?: href="([^"]*)")? title="([^"]*)">(<svg.*?</svg>)</\1>',
+            self.section("now"),
+        )
+        return [
+            (href or None, html.unescape(hover), ElementTree.fromstring(svg))
+            for _, href, hover, svg in found
+        ]
+
     def panels(
         self, page: Optional[str] = None, name: str = "commits"
     ) -> Dict[str, ElementTree.Element]:
@@ -1441,11 +1453,51 @@ class Trend(LogosChat):
     def test_now_holds_each_rate_s_median_at_the_newest_commit_and_how_many_runs_gave_it(self):
         self.history()
         self.trend()
-        self.assertEqual(self.now(), [("48", "2 runs"), ("11.5", "2 runs"), ("5.5", "2 runs")])
+        drawn = "2 runs · seed 0 drawn"
+        self.assertEqual(self.now(), [("48", drawn), ("11.5", drawn), ("5.5", drawn)])
         heads = Parsed(self.section("now")).rows[0]
         self.assertEqual(heads, ["", "0.1% loss", "1% loss", "5% loss"])
         self.assertIn(f"main/{sha(3)}/{MOVED}/", Parsed(self.section("now")).links)
         self.assertNotIn("has no outcome", Parsed(self.section("now")).text)
+
+    def test_now_draws_under_each_number_the_tree_of_the_run_nearest_it_linked_to_its_page(self):
+        # At 5% seeds 0 to 2 first fork at 8, 3 and 4, so the median is seed 2's, which has a
+        # tree's lines as seed 0 does.
+        runs = self.uploaded(**{"5/0": {"grow": GROW}})
+        self.point(runs=self.seeded(runs, "5", [2], **{"5/2": {"first_fork": 4}}))
+        self.trend()
+        self.assertEqual(self.now()[2], ("4", "3 runs · seed 2 drawn"))
+        # A row is its group's, whose hue its trees take.
+        self.assertIn('<tr class="v2">', self.section("now"))
+        still, _, nearest = self.typical()
+        href, hover, tree = nearest
+        self.assertEqual(href, f"main/{REVISION}/{MEASUREMENT}/{GOAL.format(5)}/3/")
+        self.assertTrue((self.site / "logos-chat" / href / "index.html").is_file())
+        self.assertTrue(hover.startswith("GroupV2 5%, seed 2: split at 4, 2 lines and "), hover)
+        self.assertEqual(tree.get("aria-label"), "The tree of GroupV2 5%, seed 2")
+        self.assertEqual(self.trees(tree), ["tree head"])
+        self.assertEqual(
+            [title for title, _, _ in self.lines(tree, "head")],
+            [GROWN[0], GROWN[1], "line 1, off the trunk: 1 member, epochs 4 to 8"],
+        )
+        # Of two runs as far from their median, the lower seed, here one whose lines no point keeps.
+        self.assertEqual(still[0], f"main/{REVISION}/{MEASUREMENT}/{GOAL.format('0.1')}/1/")
+        self.assertEqual(self.trees(still[2]), ["tree head sketch"])
+        caption = Parsed(self.section("now")).text
+        for said in (
+            "Under it, the tree of the run nearest that median, by epoch from 0 to the goal's line",
+            "A tree opens its run's page.",
+            "A dashed tree is of a run whose lines the site does not keep",
+        ):
+            self.assertIn(said, caption)
+
+        # As of a point whose runs have no page: the trees stay, and open none.
+        for page in self.at().glob("*/*/index.html"):
+            page.unlink()
+        self.trend()
+        self.assertEqual([href for href, _, _ in self.typical()], [None] * 3)
+        self.assertEqual(self.trees(self.typical()[2][2]), ["tree head"])
+        self.assertNotIn("A tree opens its run's page.", Parsed(self.section("now")).text)
 
     def test_now_says_how_many_members_an_epoch_of_each_group_joins_where_runs_did_not_fork(self):
         self.point()
@@ -1464,7 +1516,7 @@ class Trend(LogosChat):
     def test_a_rate_no_run_of_which_forked_says_so_and_has_no_panel(self):
         self.point(runs=self.uploaded(**{"0.1/1": {"first_fork": None, "behind": []}}))
         self.trend()
-        self.assertEqual(self.now()[0], ("50", "no fork in 2 of 2 runs"))
+        self.assertEqual(self.now()[0], ("50", "no fork in 2 of 2 runs · seed 0 drawn"))
         self.assertEqual(list(self.panels()), ["1% loss", "5% loss"])
         self.assertIn("At 0.1% loss no run of these commits forked.", self.section("commits"))
 
@@ -1700,7 +1752,7 @@ class Trend(LogosChat):
         newest = f"The newest run, at main {sha(2)[:7]} on 2026-11-09 00:02 UTC, has no"
         self.assertIn(newest, now.text)
         self.assertIn(f"main/{sha(2)}/{MEASUREMENT}/", now.links)
-        self.assertEqual(self.now()[0], ("48", "2 runs"))
+        self.assertEqual(self.now()[0], ("48", "2 runs · seed 0 drawn"))
         newest, first = self.rows()
         self.assertEqual(newest[1:4], [sha(2)[:7], "none", "no run had an outcome"])
         self.assertEqual(first[3], "the first commit this test ran on")

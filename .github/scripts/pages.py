@@ -419,9 +419,9 @@ _OVER = """
 .now .name{font-weight:600;white-space:nowrap;vertical-align:middle}
 .dot{display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:50%;
 background:var(--hue)}
-.meter{display:block;margin:4px 0}
-.meter .track{fill:var(--neutral-bg)}
-.meter .reached{fill:var(--hue)}
+.typical{display:block;width:150px;margin:5px 0 3px;border-radius:4px}
+.typical svg{display:block}
+a.typical:hover{background:var(--box)}
 .since{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:1rem 0 0}
 .trend .band{fill:var(--hue);opacity:.14}
 .trend .goal{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:5 4}
@@ -1562,8 +1562,9 @@ def draw_long(directory: Path, long: dict) -> None:
 def write_trend(site: Path) -> None:
     """Writes `logos-chat/index.html` of `site`, the graph over logos-chat's main, from each point
     `points` reads: of the commits `history` gives, the newest's epochs before the first fork of
-    each group at each rate of loss, the same over the commits as a panel a rate, and what each
-    commit changed against the commit before it, the newest first. Under them it links the points
+    each group at each rate of loss with the tree of the rate's run nearest it, the same over the
+    commits as a panel a rate, and what each commit changed against the commit before it, the
+    newest first. Under them it links the points
     before, which it lists in `logos-chat/earlier/index.html`, and the long run of the highest
     run number. It writes the page of each commit's change that moved a run, as `draw_change`
     does, and removes the page of any other change.
@@ -1584,14 +1585,14 @@ def write_trend(site: Path) -> None:
             page.unlink()
             page.parent.rmdir()
     if ran:
-        body += _now(commits, ran) + _over_commits(ran) + _what_changed(commits)
+        body += _now(site, commits, ran) + _over_commits(ran) + _what_changed(commits)
     else:
         body += "<p>No point of main has had an outcome yet.</p>\n"
     body += _foot(site, commits, earlier)
     draw_earlier(site, commits, earlier)
     out = site / LOGOS_CHAT / "index.html"
     out.parent.mkdir(parents=True, exist_ok=True)
-    style = _CHARTS + _REPORT + _GRID + _OVER
+    style = _CHARTS + _REPORT + _TREES + _GRID + _OVER
     out.write_text(_page("chat-sim: over main", body, style), encoding="utf-8")
 
 
@@ -2679,12 +2680,28 @@ def _rate(held: dict) -> object:
     return group(held), (held["scenario"] if held["loss"] is None else held["loss"])
 
 
-def _now(commits: Sequence[dict], ran: Sequence[dict]) -> str:
+def _now(site: Path, commits: Sequence[dict], ran: Sequence[dict]) -> str:
     """The first section: of the newest commit that ran, each group's epochs before the first
-    fork at each rate of loss, as a number and a meter toward the goal, and what its runs came to
-    against the first commit's."""
+    fork at each rate of loss, as a number over the tree of the rate's run nearest it, from the
+    lines the point keeps and a link to the run's page where `site` has one, and what its runs
+    came to against the first commit's."""
     newest, point = ran[-1], ran[-1]["point"]
     spreads, losses = _spreads(point), _losses(point)
+    at = f"main/{point['logos_chat']}/{point['measurement']}/"
+    directory = _point_at(site, point["logos_chat"], point["measurement"])
+    measured = [cell for cell in point["cells"] if cell["epochs"]["head"] is not None]
+    typical = {
+        rate: min(
+            (cell for cell in measured if _rate(cell) == rate),
+            key=lambda cell: (abs(cell["epochs"]["head"] - one["median"]), cell["seed"]),
+        )
+        for rate, one in spreads.items()
+    }
+    trees = {
+        rate: (_kept(point, cell), _run_page(directory, cell, at))
+        for rate, cell in typical.items()
+    }
+    width = _widths(_most([lineage for lineage, _ in trees.values()]), 1.2, 3.4)
     rows = ""
     for key, called in _held_groups(point):
         cells = ""
@@ -2696,16 +2713,17 @@ def _now(commits: Sequence[dict], ran: Sequence[dict]) -> str:
             runs = _plural(one["runs"], "run")
             if one["unforked"] == one["runs"]:
                 runs = f"no fork in {one['runs']} of {runs}"
+            cell = typical[(key, loss)]
             cells += (
-                f"<td><b>{_number(one['median'])}</b>{_meter(one['median'])}"
-                f"<small>{runs}</small></td>"
+                f"<td><b>{_number(one['median'])}</b>"
+                f"{_typical(cell, *trees[(key, loss)], width)}"
+                f"<small>{runs} · seed {cell['seed']} drawn</small></td>"
             )
         rows += (
             f'<tr class="{key}"><td class="name"><span class="dot"></span>{_e(called)}</td>'
             f"{cells}</tr>\n"
         )
     heads = "".join(f"<th>{_e(said)}</th>" for _, said in losses)
-    at = f"main/{point['logos_chat']}/{point['measurement']}/"
     drawn = (
         '<section id="now">\n<h2>Now</h2>\n'
         f'<p class="facts">main {_commit(LOGOS_CHAT_URL, point["logos_chat"])} · '
@@ -2735,13 +2753,44 @@ def _now(commits: Sequence[dict], ran: Sequence[dict]) -> str:
             f"{_commit(LOGOS_CHAT_URL, first['logos_chat'])} on {_e(first['time'][:10])}: "
             f"{chips}</p>\n"
         )
+    tree = (
+        " Under it, the tree of the run nearest that median, by epoch from 0 to the goal's line: "
+        "the top line is the trunk, and each line below left the line it drops from at that epoch."
+    )
+    if any(page is not None for _, page in trees.values()):
+        tree += " A tree opens its run's page."
+    if any(lineage is None for lineage, _ in trees.values()):
+        tree += _SKETCHED
     return (
         drawn
         + '<p class="caption">Large: the epochs before the first fork, the median of the '
-        f"rate's runs. A run that never forks counts {_TOP}. The page tracks each group against "
-        f"its own past and does not rank the two: {_e(_seats(point))} Loss is the share of the "
-        "frames sent to a member that it never receives.</p>\n</section>\n"
+        f"rate's runs.{tree} A run that never forks counts {_TOP}. The page tracks each group "
+        f"against its own past and does not rank the two: {_e(_seats(point))} Loss is the share "
+        "of the frames sent to a member that it never receives.</p>\n</section>\n"
     )
+
+
+def _typical(
+    cell: dict, lineage: Optional[dict], page: Optional[str], width: Callable[[int], float]
+) -> str:
+    """The tree of `cell`'s run small, as Now draws it under its rate's number: `lineage` its
+    lines, or its sketch without them, to a line at the goal, with the run in a few words on
+    hover; a link to `page`, the run's, where it has one."""
+    x, pad, pitch = _along(3, 147), 6, 6
+    height = pad * 2 + (_rows_of(lineage) - 1) * pitch
+    if lineage is None:
+        tree = _sketch(cell, "head", x, pad, pitch)
+    else:
+        tree = _tree(lineage, "head", x, pad, pitch, width, 1.5)
+    drawn = (
+        _svg(150, height, f"The tree of {_job(cell)}")
+        + f'<line class="epoch" x1="{x(_TOP):.1f}" x2="{x(_TOP):.1f}" y1="0" y2="{height}"/>'
+        + f"{tree}</svg>"
+    )
+    said = _e(f"{_job(cell)}: {simulate.words(cell)}")
+    if page is None:
+        return f'<span class="typical" title="{said}">{drawn}</span>'
+    return f'<a class="typical" href="{_e(quote(page))}" title="{said}">{drawn}</a>'
 
 
 def _seats(point: dict) -> str:
@@ -4864,17 +4913,6 @@ def _legend(*items: Tuple[str, str]) -> str:
         '<p class="legend">'
         + "".join(f"<span>{key}{_e(said)}</span>" for key, said in items)
         + "</p>\n"
-    )
-
-
-def _meter(epochs: float) -> str:
-    """A bar of how far `epochs` reach toward the goal, beside the number it draws."""
-    width = 104
-    return (
-        f'<svg class="meter" width="{width}" height="6" viewBox="0 0 {width} 6" aria-hidden="true">'
-        f'<rect class="track" width="{width}" height="6" rx="3"/>'
-        f'<rect class="reached" width="{min(epochs, _TOP) / _TOP * width:.1f}" height="6" rx="3"/>'
-        "</svg>"
     )
 
 
