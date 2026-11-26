@@ -100,13 +100,25 @@ runs that moved can show `no round`.
 `logos-chat/main/<sha>/<measurement>/` is the page of a point. It names the logos-chat commit,
 the chat-sim commit that ran, the measurement and the pull requests merged since the point before
 it. The measurement is the chat-sim commit that ran, or an older one. Then the page shows a
-heatmap of the runs, how the runs of each group and rate ended, and each run.
+heatmap of the runs, how the runs of each group and rate ended, and each run as a tree.
 
-Each run has its lines, its rounds and its text. It also has the commands that make it again
+A tree reads as it does on a pull request's report
+([The report page](/chat-sim/guide/track/pull-request/#the-report-page)), and is in its group's
+colour. Each rate is a column. Its runs go from the fewest epochs without a fork at the top to
+the most, and a dashed line marks their median, the number the graph over main draws. A rate
+where no run forked is a row above the columns.
+
+A tree links the page of its run, `<scenario>/<run>/` under the point. That page draws the tree
+large, with each line labelled and the members that fell behind. It also has the run's rounds,
+its text, the commands that make it again
 ([Run it yourself](/chat-sim/guide/investigate/moved-run/#run-it-yourself)) and the command that
 downloads its log ([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)).
-[What the site keeps](/chat-sim/guide/reference/records/#what-the-site-keeps) says how long each
-stays.
+
+The site keeps the runs' pages and text of the newest eleven points
+([What the site keeps](/chat-sim/guide/reference/records/#what-the-site-keeps)). An older point
+keeps its trees, which then link no page. Under them, each rate has the commands that run a seed
+again and the command that downloads the rate's logs. A dashed tree is a run whose lines the
+point does not hold: it draws the trunk, and a mark where the run first forked.
 
 ## The long runs
 

@@ -38,6 +38,11 @@ Read the rounds of both sides from the top. The first round where the two tables
 earliest difference the rounds show. Two runs that moved can show none. The run does not say
 which adder added which member.
 
+A run of `main` has the same page, `logos-chat/main/<sha>/<measurement>/<scenario>/<run>/`, while
+its point is among the newest eleven
+([The page of a point](/chat-sim/guide/track/main/#the-page-of-a-point)). It has one side: one
+tree, one table of rounds and one block of commands.
+
 ## A change, or chance
 
 One seed that moved is not yet a finding. A head that sends one frame more shifts which frames
@@ -150,8 +155,9 @@ Each job of CI uploads its runs' logs as the artifact `logs-<side>-<scenario>-<f
 `revision` for the head and `base` for the base. `<from>` is the number of the job's first run.
 GitHub keeps the artifact 90 days. A job that could not build chat-sim uploads none.
 
-The page of a run, of a point and of a change each print the command that downloads a scenario's
-artifacts. It needs GitHub's `gh`. For the example:
+The page of a run and the page of a change print the command that downloads a scenario's
+artifacts. So does the page of a point whose runs have no page of their own. The command needs
+GitHub's `gh`. For the example:
 
 ```sh
 gh run download <run-id> --repo logos-messaging/chat-sim --dir logs --pattern 'logs-revision-grow-waku-loss-1-groupv3-[0-9]*'
