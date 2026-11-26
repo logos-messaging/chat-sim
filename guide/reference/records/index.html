@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g5ptsecz"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Records | chat-sim</title><link rel="canonical" href="https://logos-messaging.github.io/chat-sim/guide/reference/records/"/><link rel="sitemap" href="/chat-sim/guide/sitemap-index.xml"/><link rel="shortcut icon" href="/chat-sim/guide/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.4.12"/><meta name="generator" content="Starlight v0.42.4"/><meta property="og:title" content="Records"/><meta property="og:type" content="article"/><meta property="og:url" content="https://logos-messaging.github.io/chat-sim/guide/reference/records/"/><meta property="og:locale" content="en"/><meta property="og:description" content="Each record logos-chat writes on the log target libchat::mls_trace, with its fields, at the revision chat-sim pins; and the files a run leaves."/><meta property="og:site_name" content="chat-sim"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="Each record logos-chat writes on the log target libchat::mls_trace, with its fields, at the revision chat-sim pins; and the files a run leaves."/><script>
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-g5ptsecz"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Records and files | chat-sim</title><link rel="canonical" href="https://logos-messaging.github.io/chat-sim/guide/reference/records/"/><link rel="sitemap" href="/chat-sim/guide/sitemap-index.xml"/><link rel="shortcut icon" href="/chat-sim/guide/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v7.4.12"/><meta name="generator" content="Starlight v0.42.4"/><meta property="og:title" content="Records and files"/><meta property="og:type" content="article"/><meta property="og:url" content="https://logos-messaging.github.io/chat-sim/guide/reference/records/"/><meta property="og:locale" content="en"/><meta property="og:description" content="The files a run leaves, what the site keeps of them and for how long, and each record logos-chat writes into a run's log at the revision chat-sim pins."/><meta property="og:site_name" content="chat-sim"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="The files a run leaves, what the site keeps of them and for how long, and each record logos-chat writes into a run's log at the revision chat-sim pins."/><script>
 	window.StarlightThemeProvider = (() => {
 		const storedTheme =
 			typeof localStorage !== 'undefined' && localStorage.getItem('starlight-theme');
@@ -40,7 +40,7 @@
 	})();
 </script><script type="module" src="/chat-sim/guide/_astro/Search.astro_astro_type_script_index_0_lang.CojpdN8Z.js"></script></div><div class="sl-hidden md:sl-flex print:hidden right-group astro-by6fddyj"><div class="sl-flex social-icons astro-by6fddyj"><a href="https://github.com/logos-messaging/chat-sim" rel="me" class="sl-flex astro-n2mnl6yq"><span class="sr-only astro-n2mnl6yq">chat-sim</span><svg aria-hidden="true" class="astro-n2mnl6yq astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-2z5xp7gb"><span class="sr-only astro-2z5xp7gb">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-2z5xp7gb astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-2z5xp7gb"><option value="dark" class="astro-2z5xp7gb">Dark</option><option value="light" class="astro-2z5xp7gb">Light</option><option value="auto" selected class="astro-2z5xp7gb">Auto</option></select><svg aria-hidden="true" class="icon caret astro-2z5xp7gb astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
 	StarlightThemeProvider.updatePickers();
-</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-yntsjkba" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-r2osgdlg"><svg aria-hidden="true" class="open-menu astro-r2osgdlg astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-r2osgdlg astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-r2osgdlg">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-yntsjkba"><div class="sidebar-content sl-flex astro-yntsjkba"><sl-sidebar-state-persist data-hash="0bpr5mh" class="astro-ipdry5cl"><script aria-hidden="true">
+</script><script type="module">var e=`starlight-theme`,t=e=>e===`auto`||e===`dark`||e===`light`?e:`auto`,n=()=>t(typeof localStorage<`u`&&localStorage.getItem(e));function r(t){typeof localStorage<`u`&&localStorage.setItem(e,t===`light`||t===`dark`?t:``)}var i=()=>matchMedia(`(prefers-color-scheme: light)`).matches?`light`:`dark`;function a(e){StarlightThemeProvider.updatePickers(e),document.documentElement.dataset.theme=e===`auto`?i():e,r(e)}matchMedia(`(prefers-color-scheme: light)`).addEventListener(`change`,()=>{n()===`auto`&&a(`auto`)});var o=class extends HTMLElement{constructor(){super(),a(n()),this.querySelector(`select`)?.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&a(t(e.currentTarget.value))})}};customElements.define(`starlight-theme-select`,o);</script><script type="module">var e=class extends HTMLElement{constructor(){super();let e=this.querySelector(`select`);e&&(e.addEventListener(`change`,e=>{e.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=e.currentTarget.value)}),window.addEventListener(`pageshow`,t=>{if(!t.persisted)return;let n=e.querySelector(`option[selected]`)?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}};customElements.define(`starlight-lang-select`,e);</script></div></div></header><nav class="sidebar print:hidden astro-yntsjkba" aria-label="Main"><button popovertarget="starlight__sidebar" class="sl-menu-button sl-flex md:sl-hidden print:hidden astro-r2osgdlg"><svg aria-hidden="true" class="open-menu astro-r2osgdlg astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M3 8h18a1 1 0 1 0 0-2H3a1 1 0 0 0 0 2Zm18 8H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Zm0-5H3a1 1 0 0 0 0 2h18a1 1 0 0 0 0-2Z"/></svg><svg aria-hidden="true" class="close-menu astro-r2osgdlg astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="m13.41 12 6.3-6.29a1.004 1.004 0 1 0-1.42-1.42L12 10.59l-6.29-6.3a1.004 1.004 0 0 0-1.42 1.42l6.3 6.29-6.3 6.29a1 1 0 0 0 0 1.42.998.998 0 0 0 1.42 0l6.29-6.3 6.29 6.3a.999.999 0 0 0 1.42 0 1 1 0 0 0 0-1.42L13.41 12Z"/></svg><span class="sr-only astro-r2osgdlg">Menu</span></button><script type="module">var e=class extends HTMLElement{constructor(){super();let e=matchMedia(`(min-width: 50em)`),t=()=>{this.popover=e.matches?null:`auto`};t(),e.addEventListener(`change`,()=>t()),this.addEventListener(`toggle`,({newState:e})=>this.trapFocus(e===`open`))}trapFocus(e){document.querySelectorAll(`.main-frame, .sl-skip-link`).forEach(t=>{t.toggleAttribute(`inert`,e)})}};customElements.define(`sl-sidebar-pane`,e);</script><sl-sidebar-pane popover id="starlight__sidebar" class="sidebar-pane astro-yntsjkba"><div class="sidebar-content sl-flex astro-yntsjkba"><sl-sidebar-state-persist data-hash="0nz7sg7" class="astro-ipdry5cl"><script aria-hidden="true">
 		(() => {
 			try {
 				if (!matchMedia('(min-width: 50em)').matches) return;
@@ -63,7 +63,7 @@
 				);
 			} catch {}
 		})();
-	</script><ul class="top-level astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/" class="large astro-rmhv4bp6"><span class="astro-rmhv4bp6">Introduction</span></a></li><li class="astro-rmhv4bp6"><details open class="astro-rmhv4bp6"><summary class="astro-rmhv4bp6"><span class="group-label astro-rmhv4bp6"><span class="large astro-rmhv4bp6">Understand</span></span><svg aria-hidden="true" class="caret astro-rmhv4bp6 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/understand/how-a-run-works/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">How a run works</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/understand/scenarios/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">The scenarios</span></a></li></ul></details></li><li class="astro-rmhv4bp6"><details open class="astro-rmhv4bp6"><summary class="astro-rmhv4bp6"><span class="group-label astro-rmhv4bp6"><span class="large astro-rmhv4bp6">Track</span></span><svg aria-hidden="true" class="caret astro-rmhv4bp6 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/track/pull-request/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Your pull request&#39;s result</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/track/main/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">logos-chat main over time</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/reports/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">chat-sim&#39;s own reports</span></a></li><li class="astro-rmhv4bp6"><a href="https://logos-messaging.github.io/chat-sim/logos-chat/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Over main</span></a></li></ul></details></li><li class="astro-rmhv4bp6"><details open class="astro-rmhv4bp6"><summary class="astro-rmhv4bp6"><span class="group-label astro-rmhv4bp6"><span class="large astro-rmhv4bp6">Investigate</span></span><svg aria-hidden="true" class="caret astro-rmhv4bp6 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/investigate/moved-run/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">From a moved run to your machine</span></a></li></ul></details></li><li class="astro-rmhv4bp6"><details open class="astro-rmhv4bp6"><summary class="astro-rmhv4bp6"><span class="group-label astro-rmhv4bp6"><span class="large astro-rmhv4bp6">Reference</span></span><svg aria-hidden="true" class="caret astro-rmhv4bp6 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/reference/scenario-format/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Scenario format</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/reference/commands/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Commands</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/reference/records/" aria-current="page" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Records</span></a></li></ul></details></li></ul><script aria-hidden="true">
+	</script><ul class="top-level astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/" class="large astro-rmhv4bp6"><span class="astro-rmhv4bp6">Introduction</span></a></li><li class="astro-rmhv4bp6"><details open class="astro-rmhv4bp6"><summary class="astro-rmhv4bp6"><span class="group-label astro-rmhv4bp6"><span class="large astro-rmhv4bp6">Track</span></span><svg aria-hidden="true" class="caret astro-rmhv4bp6 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="0"></sl-sidebar-restore><ul class="astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/track/pull-request/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Your pull request&#39;s result</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/track/main/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">logos-chat main over time</span></a></li><li class="astro-rmhv4bp6"><a href="https://logos-messaging.github.io/chat-sim/logos-chat/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Over main</span></a></li></ul></details></li><li class="astro-rmhv4bp6"><details open class="astro-rmhv4bp6"><summary class="astro-rmhv4bp6"><span class="group-label astro-rmhv4bp6"><span class="large astro-rmhv4bp6">Investigate</span></span><svg aria-hidden="true" class="caret astro-rmhv4bp6 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="1"></sl-sidebar-restore><ul class="astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/investigate/moved-run/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">From a moved run to your machine</span></a></li></ul></details></li><li class="astro-rmhv4bp6"><details open class="astro-rmhv4bp6"><summary class="astro-rmhv4bp6"><span class="group-label astro-rmhv4bp6"><span class="large astro-rmhv4bp6">Understand</span></span><svg aria-hidden="true" class="caret astro-rmhv4bp6 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="2"></sl-sidebar-restore><ul class="astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/understand/how-a-run-works/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">How a run works</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/understand/scenarios/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">The scenarios</span></a></li></ul></details></li><li class="astro-rmhv4bp6"><details open class="astro-rmhv4bp6"><summary class="astro-rmhv4bp6"><span class="group-label astro-rmhv4bp6"><span class="large astro-rmhv4bp6">Reference</span></span><svg aria-hidden="true" class="caret astro-rmhv4bp6 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></summary><sl-sidebar-restore data-index="3"></sl-sidebar-restore><ul class="astro-rmhv4bp6"><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/reference/scenario-format/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Scenario format</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/reference/commands/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Commands</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/reference/records/" aria-current="page" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">Records and files</span></a></li><li class="astro-rmhv4bp6"><a href="/chat-sim/guide/reports/" class="astro-rmhv4bp6"><span class="astro-rmhv4bp6">chat-sim&#39;s own reports</span></a></li></ul></details></li></ul><script aria-hidden="true">
 		(() => {
 			const scroller = document.getElementById('starlight__sidebar');
 			if (!window._starlightScrollRestore || !scroller) return;
@@ -72,117 +72,7 @@
 		})();
 	</script></sl-sidebar-state-persist><div class="md:sl-hidden"><div class="mobile-preferences sl-flex astro-p4azlveh"><div class="social-icons astro-p4azlveh"><a href="https://github.com/logos-messaging/chat-sim" rel="me" class="sl-flex astro-n2mnl6yq"><span class="sr-only astro-n2mnl6yq">chat-sim</span><svg aria-hidden="true" class="astro-n2mnl6yq astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a></div><starlight-theme-select><label style="--sl-select-width: 6.25em" class="astro-2z5xp7gb"><span class="sr-only astro-2z5xp7gb">Select theme</span><svg aria-hidden="true" class="icon label-icon astro-2z5xp7gb astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M21 14h-1V7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v7H3a1 1 0 0 0-1 1v2a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-2a1 1 0 0 0-1-1ZM6 7a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7H6V7Zm14 10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1h16v1Z"/></svg><select autocomplete="off" class="astro-2z5xp7gb"><option value="dark" class="astro-2z5xp7gb">Dark</option><option value="light" class="astro-2z5xp7gb">Light</option><option value="auto" selected class="astro-2z5xp7gb">Auto</option></select><svg aria-hidden="true" class="icon caret astro-2z5xp7gb astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg></label></starlight-theme-select><script>
 	StarlightThemeProvider.updatePickers();
-</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-yntsjkba"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-lrzkfocr"><aside class="right-sidebar-container print:hidden astro-lrzkfocr"><div class="right-sidebar astro-lrzkfocr"><div class="lg:sl-hidden astro-qok35upx"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-66cqc7ze"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-66cqc7ze"><details id="starlight__mobile-toc" class="astro-66cqc7ze"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-66cqc7ze"><span class="toggle sl-flex astro-66cqc7ze">On this page<svg aria-hidden="true" class="caret astro-66cqc7ze astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-66cqc7ze"></span></summary><div class="dropdown astro-66cqc7ze"><ul class="isMobile astro-jugkfwgx" style="--depth: 0;"><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#_top" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">Overview</span></a></li><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#what-a-run-leaves" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">What a run leaves</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/chat-sim/guide/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-qok35upx"><div class="sl-container astro-qok35upx"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-jugkfwgx" style="--depth: 0;"><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#_top" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">Overview</span></a></li><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#what-a-run-leaves" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">What a run leaves</span></a></li></ul></nav></starlight-toc><script type="module" src="/chat-sim/guide/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-lrzkfocr"><main data-pagefind-body class="astro-g5ptsecz" lang="en" dir="ltr"><div class="content-panel astro-a7po4psb"><div class="sl-container astro-a7po4psb"><h1 id="_top" class="astro-bebwqqxs">Records</h1></div></div><div class="content-panel astro-a7po4psb"><div class="sl-container astro-a7po4psb"><div class="sl-markdown-content"><p>A record is one log line at <code dir="auto">trace</code> on the target <code dir="auto">libchat::mls_trace</code>: a name, then <code dir="auto">key=value</code>
-words. Every record but <code dir="auto">run</code> is written in the span of the op that wrote it, a GroupV2 op
-(<code dir="auto">groupv2.new</code>, <code dir="auto">groupv2.new_from_welcome</code>, <code dir="auto">groupv2.send_content</code>, <code dir="auto">groupv2.handle_frame</code>,
-<code dir="auto">groupv2.wakeup</code>, <code dir="auto">groupv2.add_member</code> or <code dir="auto">groupv2.remove_member</code>) or a GroupV3 one (<code dir="auto">groupv3.new</code>,
-<code dir="auto">groupv3.new_from_welcome</code>, <code dir="auto">groupv3.send_content</code>, <code dir="auto">groupv3.handle_frame</code>, <code dir="auto">groupv3.wakeup</code> or
-<code dir="auto">groupv3.add_member</code>), and takes <code dir="auto">signer</code> and <code dir="auto">convo</code> from it. The span’s own <code dir="auto">epoch</code> is the one the
-op began at. This page is what logos-chat writes at the revision chat-sim pins in <code dir="auto">Cargo.toml</code>.</p>
-<div class="expressive-code"><link rel="stylesheet" href="/chat-sim/guide/_astro/ec.w36nc.css"><script type="module" src="/chat-sim/guide/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text" class="wrap" style="--ecMaxLine:231ch"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178"><div></div></button></div></figure></div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<table><thead><tr><th>Record</th><th>Written when</th><th>Fields</th></tr></thead><tbody><tr><td><code dir="auto">run</code></td><td>a chat core is built for an installation</td><td><code dir="auto">signer</code> <code dir="auto">participant</code></td></tr><tr><td><code dir="auto">epoch</code></td><td>the core comes to hold the conversation, by creating or joining it, and each time its epoch moves on</td><td><code dir="auto">signer</code> <code dir="auto">convo</code> from the span, <code dir="auto">epoch</code> <code dir="auto">state</code> <code dir="auto">members</code> <code dir="auto">signers</code></td></tr><tr><td><code dir="auto">left</code></td><td>a commit removed this installation</td><td><code dir="auto">signer</code> <code dir="auto">convo</code> from the span, <code dir="auto">epoch</code></td></tr><tr><td><code dir="auto">sent</code></td><td>it published a post of its own</td><td><code dir="auto">signer</code> <code dir="auto">convo</code> from the span, <code dir="auto">frame</code> <code dir="auto">epoch</code></td></tr><tr><td><code dir="auto">received</code></td><td>it read another member’s post</td><td><code dir="auto">signer</code> <code dir="auto">convo</code> from the span, <code dir="auto">frame</code> <code dir="auto">from</code> <code dir="auto">epoch</code></td></tr><tr><td><code dir="auto">unreadable</code></td><td>a frame of the group reached it and could not be read: a post, a vote or any other encrypted frame</td><td><code dir="auto">signer</code> <code dir="auto">convo</code> from the span, <code dir="auto">frame</code> <code dir="auto">epoch</code> <code dir="auto">why</code></td></tr></tbody></table>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<table><thead><tr><th>Field</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">signer</code></td><td>the first 4 bytes of the installation’s public signing key, in hex: what the report calls the installation</td></tr><tr><td><code dir="auto">participant</code></td><td>the first 4 bytes of the account id, in hex; an id shorter than that is written whole, as <code dir="auto">706178</code> is</td></tr><tr><td><code dir="auto">convo</code></td><td>the conversation id, with a byte outside <code dir="auto">[0-9A-Za-z_-]</code> written <code dir="auto">%xx</code></td></tr><tr><td><code dir="auto">epoch</code></td><td>the MLS epoch: the one held, in <code dir="auto">epoch</code>; the one the removing commit made, in <code dir="auto">left</code>; the one the frame was sent at, as its header names it, in <code dir="auto">sent</code>, <code dir="auto">received</code> and <code dir="auto">unreadable</code></td></tr><tr><td><code dir="auto">state</code></td><td>8 bytes of BLAKE2b over a fixed prefix and the epoch authenticator, in hex</td></tr><tr><td><code dir="auto">members</code></td><td>how many members <code dir="auto">signers</code> holds</td></tr><tr><td><code dir="auto">signers</code></td><td>the members as <code dir="auto">signer:participant</code> pairs, comma-separated</td></tr><tr><td><code dir="auto">frame</code></td><td>32 bytes of BLAKE2b over a fixed prefix and the frame’s bytes, in hex: the same at the sender and every reader</td></tr><tr><td><code dir="auto">from</code></td><td>the sender’s <code dir="auto">signer</code></td></tr><tr><td><code dir="auto">why</code></td><td><code dir="auto">epoch</code> (of another epoch than the one held), <code dir="auto">decrypt</code> (of the epoch held, and failed to decrypt), or <code dir="auto">sender</code> (decrypted, and the sender’s account could not be checked)</td></tr></tbody></table>
-<p><code dir="auto">sent</code> and <code dir="auto">received</code> are for posts alone. A frame that is no MLS message of the group, such as a
-welcome, writes nothing, and nor does an installation’s own frame coming back to it. A post that
-reaches an installation a second time is <code dir="auto">unreadable</code> (<code dir="auto">decrypt</code>) then: the key that opened it is
-spent.</p>
-<p><code dir="auto">run</code>, <code dir="auto">epoch</code> and <code dir="auto">left</code> decide the verdict; the others say what became of each post. In the
-logos-chat tree the records are written in
-<code dir="auto">core/conversations/src/conversation/mls_trace/record.rs</code>, from <code dir="auto">core.rs</code> (<code dir="auto">run</code>),
-<code dir="auto">conversation/group_v2/trace.rs</code> and <code dir="auto">conversation/group_v3/trace.rs</code> (the rest).</p>
-<p><code dir="auto">forks</code> reads two things this revision does not write: <code dir="auto">commit</code> and <code dir="auto">by</code> on an <code dir="auto">epoch</code> record, the
-commit applied to reach the epoch and the installation that committed it, and a <code dir="auto">delivery</code> record on
-the target <code dir="auto">chat_module::report</code>, the state of an app’s delivery service.</p>
-<div class="sl-heading-wrapper level-h2"><h2 id="what-a-run-leaves">What a run leaves</h2><a class="sl-anchor-link" href="#what-a-run-leaves"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “What a run leaves”</span></a></div>
+</script></div></div></div></sl-sidebar-pane></nav><div class="main-frame astro-yntsjkba"><script type="module">var e=document.getElementById(`starlight__sidebar`),t=e?.querySelector(`sl-sidebar-state-persist`),n=`sl-sidebar-state`,r=()=>{let r=[],i=t?.dataset.hash||``;try{let e=sessionStorage.getItem(n),t=JSON.parse(e||`{}`);Array.isArray(t.open)&&t.hash===i&&(r=t.open)}catch{}return{hash:i,open:r,scroll:e?.scrollTop||0}},i=e=>{try{sessionStorage.setItem(n,JSON.stringify(e))}catch{}},a=()=>i(r()),o=(e,t)=>{let n=r();n.open[t]=e,i(n)};t?.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`summary`)?.closest(`details`);if(!t)return;let n=t.querySelector(`sl-sidebar-restore`),r=parseInt(n?.dataset.index||``);isNaN(r)||o(!t.open,r)}),addEventListener(`visibilitychange`,()=>{document.visibilityState===`hidden`&&a()});</script><div class="lg:sl-flex astro-lrzkfocr"><aside class="right-sidebar-container print:hidden astro-lrzkfocr"><div class="right-sidebar astro-lrzkfocr"><div class="lg:sl-hidden astro-qok35upx"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-66cqc7ze"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-66cqc7ze"><details id="starlight__mobile-toc" class="astro-66cqc7ze"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-66cqc7ze"><span class="toggle sl-flex astro-66cqc7ze">On this page<svg aria-hidden="true" class="caret astro-66cqc7ze astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-66cqc7ze"></span></summary><div class="dropdown astro-66cqc7ze"><ul class="isMobile astro-jugkfwgx" style="--depth: 0;"><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#_top" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">Overview</span></a></li><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#what-a-run-leaves" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">What a run leaves</span></a></li><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#what-the-site-keeps" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">What the site keeps</span></a></li><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#the-records" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">The records</span></a></li></ul></div></details></nav></mobile-starlight-toc><script type="module" src="/chat-sim/guide/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.C3fM4Kra.js"></script></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-qok35upx"><div class="sl-container astro-qok35upx"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-jugkfwgx" style="--depth: 0;"><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#_top" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">Overview</span></a></li><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#what-a-run-leaves" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">What a run leaves</span></a></li><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#what-the-site-keeps" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">What the site keeps</span></a></li><li style="--depth: 0;" class="astro-jugkfwgx"><a href="#the-records" style="--depth: 0;" class="astro-jugkfwgx"><span style="--depth: 0;" class="astro-jugkfwgx">The records</span></a></li></ul></nav></starlight-toc><script type="module" src="/chat-sim/guide/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BpJaGz7G.js"></script></div></div></div></aside><div class="main-pane astro-lrzkfocr"><main data-pagefind-body class="astro-g5ptsecz" lang="en" dir="ltr"><div class="content-panel astro-a7po4psb"><div class="sl-container astro-a7po4psb"><h1 id="_top" class="astro-bebwqqxs">Records and files</h1></div></div><div class="content-panel astro-a7po4psb"><div class="sl-container astro-a7po4psb"><div class="sl-markdown-content"><div class="sl-heading-wrapper level-h2"><h2 id="what-a-run-leaves">What a run leaves</h2><a class="sl-anchor-link" href="#what-a-run-leaves"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “What a run leaves”</span></a></div>
 <p><code dir="auto">tools/sim run</code> and each run of a sweep write a directory of their own:</p>
 
 
@@ -221,15 +111,42 @@ the target <code dir="auto">chat_module::report</code>, the state of an app’s 
 
 
 
-<table><thead><tr><th>File</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">plan.json</code></td><td>the plan the runner was given, written from the scenario</td></tr><tr><td><code dir="auto">group.log</code></td><td>every member’s trace records, stamped with the virtual clock</td></tr><tr><td><code dir="auto">result.json</code></td><td>what the runner measured: each member, batch and post, and of a grow its lineage and rounds</td></tr><tr><td><code dir="auto">runner.out</code>, <code dir="auto">runner.stderr</code></td><td>what the runner printed</td></tr><tr><td><code dir="auto">run.json</code></td><td>what the run came to, for scripts</td></tr><tr><td><code dir="auto">run.txt</code></td><td>the same, as tables to read</td></tr><tr><td><code dir="auto">report.txt</code>, <code dir="auto">report.json</code>, <code dir="auto">expect.json</code></td><td>of a run that is not a grow, the fork report of <code dir="auto">group.log</code> and what it was held to</td></tr></tbody></table>
-<p>A sweep also writes <code dir="auto">sweep.txt</code> and <code dir="auto">sweep.json</code>, a row a run.
+<table><thead><tr><th>File</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">run.txt</code></td><td>the run’s outcome, as tables to read</td></tr><tr><td><code dir="auto">run.json</code></td><td>the same and more, for scripts</td></tr><tr><td><code dir="auto">group.log</code></td><td>every member’s trace records, stamped with the virtual clock</td></tr><tr><td><code dir="auto">plan.json</code></td><td>the plan the runner was given, written from the scenario</td></tr><tr><td><code dir="auto">result.json</code></td><td>what the runner measured: each member, batch and post, and of a grow its lineage and rounds</td></tr><tr><td><code dir="auto">runner.out</code>, <code dir="auto">runner.stderr</code></td><td>what the runner printed</td></tr><tr><td><code dir="auto">report.txt</code>, <code dir="auto">report.json</code>, <code dir="auto">expect.json</code></td><td>for a run that is not a grow: what <code dir="auto">tools/forks</code> reports of <code dir="auto">group.log</code>, and the expectation it was checked against</td></tr></tbody></table>
+<p>A sweep also writes <code dir="auto">sweep.txt</code> and <code dir="auto">sweep.json</code>, with one row per run.
 <a href="https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#what-a-run-in-one-process-writes"><code dir="auto">tools/sim/README.md</code></a>
 gives every field of <code dir="auto">run.json</code>, and
 <a href="https://github.com/logos-messaging/chat-sim/blob/master/crates/harness/README.md#what-a-run-leaves"><code dir="auto">crates/harness/README.md</code></a>
 those of <code dir="auto">result.json</code>.</p>
-<p>The site keeps <code dir="auto">run.txt</code>, <code dir="auto">run.json</code> and <code dir="auto">report.txt</code> of each run it publishes, or <code dir="auto">build.log</code> where
-chat-sim did not build, and never a <code dir="auto">group.log</code>: that is in the workflow run’s artifacts
-(<a href="/chat-sim/guide/investigate/moved-run/#into-the-log">Into the log</a>). Beside them it keeps:</p>
+<div class="sl-heading-wrapper level-h2"><h2 id="what-the-site-keeps">What the site keeps</h2><a class="sl-anchor-link" href="#what-the-site-keeps"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “What the site keeps”</span></a></div>
+<p>chat-sim’s site keeps a run’s text and no log. A run’s text is its <code dir="auto">run.txt</code> and <code dir="auto">run.json</code>, with
+<code dir="auto">report.txt</code> when it has one, or <code dir="auto">build.log</code> when chat-sim did not build.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Runs of</th><th>The site keeps their text</th></tr></thead><tbody><tr><td>a pull request</td><td>while the pull request is open</td></tr><tr><td>a point of <code dir="auto">main</code></td><td>while the point is among the newest eleven</td></tr><tr><td>a long run</td><td>while it is among the newest fifteen</td></tr></tbody></table>
+<p>An older point keeps its <code dir="auto">point.json</code>. Its page is drawn again from that alone, so its commands
+stay.</p>
+<p>A run’s log, <code dir="auto">group.log</code>, is an artifact of its workflow run, which GitHub keeps 90 days
+(<a href="/chat-sim/guide/investigate/moved-run/#into-the-log">Into the log</a>).</p>
+<p>Beside the runs’ text, the site keeps these files for scripts:</p>
 
 
 
@@ -259,4 +176,120 @@ chat-sim did not build, and never a <code dir="auto">group.log</code>: that is i
 
 
 
-<table><thead><tr><th>File</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">logos-chat/pr-N/matrix.json</code></td><td>the matrix of a pull request’s newest run, as <code dir="auto">tools/sim matrix</code> writes it</td></tr><tr><td><code dir="auto">logos-chat/pr-N/meta.json</code></td><td>what ran: the pull request, the head and the base, chat-sim’s commit and the measurement, the workflow run, and when</td></tr><tr><td><code dir="auto">logos-chat/pr-N/scenarios/</code></td><td>a copy of each scenario file the run ran</td></tr><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/point.json</code></td><td>a point of main: what ran, the pull requests merged since the point it follows, each run’s cell, and each rate’s summary</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/long.json</code></td><td>a long run: what ran, and of each scenario what <code dir="auto">compare</code> said and each run’s outcome</td></tr></tbody></table></div><script type="module" src="/chat-sim/guide/_astro/MarkdownContent.astro_astro_type_script_index_0_lang.bgIgy5_y.js"></script><script type="module">for(let e of document.querySelectorAll(`.sl-markdown-content img`)){let t=Object.assign(document.createElement(`a`),{href:e.src,target:`_blank`});e.replaceWith(t),t.append(e)}</script><footer class="sl-flex astro-ddtxxk7k"><div class="meta sl-flex astro-ddtxxk7k"></div><div class="pagination-links print:hidden astro-b5raizh3" dir="ltr"><a href="/chat-sim/guide/reference/commands/" rel="prev" class="astro-b5raizh3"><svg aria-hidden="true" class="astro-b5raizh3 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-b5raizh3">Previous<br class="astro-b5raizh3"><span class="link-title astro-b5raizh3">Commands</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>
+<table><thead><tr><th>File</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">logos-chat/pr-N/matrix.json</code></td><td>the matrix of a pull request’s newest run, as <code dir="auto">tools/sim matrix</code> writes it</td></tr><tr><td><code dir="auto">logos-chat/pr-N/meta.json</code></td><td>what ran: the pull request, the head and the base, the chat-sim commit that ran and the measurement, the workflow run, and when</td></tr><tr><td><code dir="auto">logos-chat/pr-N/scenarios/</code></td><td>a copy of each scenario file that ran</td></tr><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/point.json</code></td><td>a point of main: what ran, the pull requests merged since the point before it, each run’s outcome, and each rate’s summary</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/long.json</code></td><td>a long run: what ran, and for each scenario what <code dir="auto">compare</code> said and each run’s outcome</td></tr></tbody></table>
+<div class="sl-heading-wrapper level-h2"><h2 id="the-records">The records</h2><a class="sl-anchor-link" href="#the-records"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “The records”</span></a></div>
+<p>A record is one line of <code dir="auto">group.log</code>, at <code dir="auto">trace</code> on the target <code dir="auto">libchat::mls_trace</code>: a name, then
+<code dir="auto">key=value</code> words. This is what logos-chat writes at the revision chat-sim pins in <code dir="auto">Cargo.toml</code>.</p>
+<div class="expressive-code"><link rel="stylesheet" href="/chat-sim/guide/_astro/ec.w36nc.css"><script type="module" src="/chat-sim/guide/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text" class="wrap" style="--ecMaxLine:231ch"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178"><div></div></button></div></figure></div>
+<p>Every record but <code dir="auto">run</code> is written in the span of the group’s op that wrote it, and takes <code dir="auto">signer</code>
+and <code dir="auto">convo</code> from the span. The span’s <code dir="auto">user_id</code> is the member’s name. The span’s own <code dir="auto">epoch</code> is
+the one the op began at, not the record’s: in the line above, a <code dir="auto">wakeup</code> that began at epoch 0
+moved the group to epoch 1.</p>
+<p>The ops are <code dir="auto">new</code>, <code dir="auto">new_from_welcome</code>, <code dir="auto">send_content</code>, <code dir="auto">handle_frame</code>, <code dir="auto">wakeup</code> and <code dir="auto">add_member</code>,
+each as <code dir="auto">groupv2.</code> and as <code dir="auto">groupv3.</code>, and <code dir="auto">groupv2.remove_member</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Record</th><th>Written when</th><th>Fields</th></tr></thead><tbody><tr><td><code dir="auto">run</code></td><td>logos-chat’s core is built for an installation</td><td><code dir="auto">signer</code> <code dir="auto">participant</code></td></tr><tr><td><code dir="auto">epoch</code></td><td>the installation first holds the conversation, by creating or joining it, and each time its epoch moves on</td><td><code dir="auto">epoch</code> <code dir="auto">state</code> <code dir="auto">members</code> <code dir="auto">signers</code></td></tr><tr><td><code dir="auto">left</code></td><td>a commit removed this installation</td><td><code dir="auto">epoch</code></td></tr><tr><td><code dir="auto">sent</code></td><td>it published a post of its own</td><td><code dir="auto">frame</code> <code dir="auto">epoch</code></td></tr><tr><td><code dir="auto">received</code></td><td>it read another member’s post</td><td><code dir="auto">frame</code> <code dir="auto">from</code> <code dir="auto">epoch</code></td></tr><tr><td><code dir="auto">unreadable</code></td><td>a frame of the group reached it and could not be read: a post, a vote or any other encrypted frame</td><td><code dir="auto">frame</code> <code dir="auto">epoch</code> <code dir="auto">why</code></td></tr></tbody></table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Field</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">signer</code></td><td>the first 4 bytes of the installation’s public signing key, in hex: what the report calls the installation</td></tr><tr><td><code dir="auto">participant</code></td><td>the first 4 bytes of the account id, in hex; an id shorter than that is written whole, as <code dir="auto">706178</code> is</td></tr><tr><td><code dir="auto">convo</code></td><td>the conversation id, with a byte outside <code dir="auto">[0-9A-Za-z_-]</code> written <code dir="auto">%xx</code></td></tr><tr><td><code dir="auto">epoch</code></td><td>the MLS epoch. In an <code dir="auto">epoch</code> record it is the one held. In <code dir="auto">left</code> it is the one the removing commit made. In <code dir="auto">sent</code>, <code dir="auto">received</code> and <code dir="auto">unreadable</code> it is the one the frame was sent at, as its header names it</td></tr><tr><td><code dir="auto">state</code></td><td>8 bytes of BLAKE2b over a fixed prefix and the epoch authenticator, in hex</td></tr><tr><td><code dir="auto">members</code></td><td>how many members <code dir="auto">signers</code> holds</td></tr><tr><td><code dir="auto">signers</code></td><td>the members as <code dir="auto">signer:participant</code> pairs, comma-separated</td></tr><tr><td><code dir="auto">frame</code></td><td>32 bytes of BLAKE2b over a fixed prefix and the frame’s bytes, in hex: the same at the sender and every reader</td></tr><tr><td><code dir="auto">from</code></td><td>the sender’s <code dir="auto">signer</code></td></tr><tr><td><code dir="auto">why</code></td><td><code dir="auto">epoch</code> (of another epoch than the one held), <code dir="auto">decrypt</code> (of the epoch held, and failed to decrypt), or <code dir="auto">sender</code> (decrypted, and the sender’s account could not be checked)</td></tr></tbody></table>
+<p><code dir="auto">run</code>, <code dir="auto">epoch</code> and <code dir="auto">left</code> decide the verdict <code dir="auto">tools/forks</code> gives. The others say what became of
+each post:</p>
+<ul>
+<li><code dir="auto">sent</code> and <code dir="auto">received</code> are for posts alone.</li>
+<li>A frame that is no MLS message of the group, such as a welcome, writes nothing. Nor does an
+installation’s own frame coming back to it.</li>
+<li>A post that reaches an installation a second time is <code dir="auto">unreadable</code> (<code dir="auto">decrypt</code>) then: the key that
+opened it is spent.</li>
+</ul>
+<p>In the logos-chat tree the records are written in
+<code dir="auto">core/conversations/src/conversation/mls_trace/record.rs</code>, from <code dir="auto">core.rs</code> (<code dir="auto">run</code>),
+<code dir="auto">conversation/group_v2/trace.rs</code> and <code dir="auto">conversation/group_v3/trace.rs</code> (the rest).</p>
+<p><code dir="auto">tools/forks</code> reads two things this revision does not write: <code dir="auto">commit</code> and <code dir="auto">by</code> on an <code dir="auto">epoch</code>
+record, and a <code dir="auto">delivery</code> record
+(<a href="https://github.com/logos-messaging/chat-sim/blob/master/tools/forks/README.md#the-lines-it-reads"><code dir="auto">tools/forks/README.md</code></a>).</p></div><script type="module" src="/chat-sim/guide/_astro/MarkdownContent.astro_astro_type_script_index_0_lang.bgIgy5_y.js"></script><script type="module">for(let e of document.querySelectorAll(`.sl-markdown-content img`)){let t=Object.assign(document.createElement(`a`),{href:e.src,target:`_blank`});e.replaceWith(t),t.append(e)}</script><footer class="sl-flex astro-ddtxxk7k"><div class="meta sl-flex astro-ddtxxk7k"></div><div class="pagination-links print:hidden astro-b5raizh3" dir="ltr"><a href="/chat-sim/guide/reference/commands/" rel="prev" class="astro-b5raizh3"><svg aria-hidden="true" class="astro-b5raizh3 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17 11H9.41l3.3-3.29a1.004 1.004 0 1 0-1.42-1.42l-5 5a1 1 0 0 0-.21.33 1 1 0 0 0 0 .76 1 1 0 0 0 .21.33l5 5a1.002 1.002 0 0 0 1.639-.325 1 1 0 0 0-.219-1.095L9.41 13H17a1 1 0 0 0 0-2Z"/></svg><span class="astro-b5raizh3">Previous<br class="astro-b5raizh3"><span class="link-title astro-b5raizh3">Commands</span></span></a><a href="/chat-sim/guide/reports/" rel="next" class="astro-b5raizh3"><svg aria-hidden="true" class="astro-b5raizh3 astro-hkc32dio" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.5rem;"><path d="M17.92 11.62a1.001 1.001 0 0 0-.21-.33l-5-5a1.003 1.003 0 1 0-1.42 1.42l3.3 3.29H7a1 1 0 0 0 0 2h7.59l-3.3 3.29a1.002 1.002 0 0 0 .325 1.639 1 1 0 0 0 1.095-.219l5-5a1 1 0 0 0 .21-.33 1 1 0 0 0 0-.76Z"/></svg><span class="astro-b5raizh3">Next<br class="astro-b5raizh3"><span class="link-title astro-b5raizh3">chat-sim&#39;s own reports</span></span></a></div></footer></div></div></main></div></div></div></div></body></html>
