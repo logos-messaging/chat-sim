@@ -166,7 +166,7 @@ gap:2px 12px;margin:6px 0 4px;font-size:13px}
 <p class="lead">How many epochs a growing group of logos-chat clients lasts before it first forks. <b>The goal is 50.</b></p>
 <section id="now">
 <h2>Now</h2>
-<p class="facts">main <a href="https://github.com/logos-messaging/logos-chat/commit/92cfdde86bdb692f6e5e6e30f61f02ec71093260"><code>92cfdde</code></a> · <a href="https://github.com/logos-messaging/logos-chat/pull/367">#367</a> feat: add debug events · 2026-11-26 06:33 UTC · <a href="main/92cfdde86bdb692f6e5e6e30f61f02ec71093260/16c561465d2d6a34768da42f873b5d0ac9e94425/">its runs</a></p>
+<p class="facts">main <a href="https://github.com/logos-messaging/logos-chat/commit/661ee71523b08ea6ed7ebcee08ce186731833fb8"><code>661ee71</code></a> · <a href="https://github.com/logos-messaging/logos-chat/pull/369">#369</a> feat(group-v3): report sync changes to the app and fix fork edge cases · 2026-11-26 17:32 UTC · <a href="main/661ee71523b08ea6ed7ebcee08ce186731833fb8/16c561465d2d6a34768da42f873b5d0ac9e94425/">its runs</a></p>
 <table class="now">
 <thead><tr><th></th><th>no loss</th><th>0.5% loss</th><th>1% loss</th><th>5% loss</th></tr></thead>
 <tbody>
@@ -197,18 +197,19 @@ gap:2px 12px;margin:6px 0 4px;font-size:13px}
 <line class="grid" x1="30" x2="256" y1="10.0" y2="10.0"/>
 <text class="axis small" x="24" y="14.0" text-anchor="end">50</text>
 <line class="goal" x1="30" x2="256" y1="10.0" y2="10.0"/>
-<text class="axis small" x="256.0" y="205" text-anchor="middle">#367</text>
-<text class="axis small" x="191.4" y="205" text-anchor="middle">#364</text>
-<text class="axis small" x="126.9" y="205" text-anchor="middle">#349</text>
-<text class="axis small" x="62.3" y="205" text-anchor="middle">#357</text>
+<text class="axis small" x="256.0" y="205" text-anchor="middle">#369</text>
+<text class="axis small" x="199.5" y="205" text-anchor="middle">#370</text>
+<text class="axis small" x="143.0" y="205" text-anchor="middle">#360</text>
+<text class="axis small" x="86.5" y="205" text-anchor="middle">#359</text>
+<text class="axis small" x="30.0" y="205" text-anchor="middle">#355</text>
 <g class="v2">
-<polygon class="band" points="30.0,139.6 62.3,139.6 94.6,139.6 126.9,139.6 159.1,139.6 191.4,139.6 223.7,139.6 256.0,139.6 256.0,172.0 223.7,172.0 191.4,172.0 159.1,172.0 126.9,172.0 94.6,172.0 62.3,172.0 30.0,172.0"/>
-<path class="series" d="M30.0 159.4 L62.3 159.4 L94.6 159.4 L126.9 159.4 L159.1 159.4 L191.4 159.4 L223.7 159.4 L256.0 159.4"/>
+<polygon class="band" points="30.0,139.6 58.2,139.6 86.5,139.6 114.8,139.6 143.0,139.6 171.2,139.6 199.5,139.6 227.8,139.6 256.0,139.6 256.0,172.0 227.8,172.0 199.5,172.0 171.2,172.0 143.0,172.0 114.8,172.0 86.5,172.0 58.2,172.0 30.0,172.0"/>
+<path class="series" d="M30.0 159.4 L58.2 159.4 L86.5 159.4 L114.8 159.4 L143.0 159.4 L171.2 159.4 L199.5 159.4 L227.8 159.4 L256.0 159.4"/>
 </g>
 <g class="v3">
-<polygon class="band" points="30.0,88.3 62.3,88.3 94.6,88.3 126.9,66.7 159.1,66.7 191.4,66.7 223.7,66.7 256.0,66.7 256.0,123.4 223.7,123.4 191.4,123.4 159.1,123.4 126.9,123.4 94.6,125.2 62.3,125.2 30.0,125.2"/>
-<path class="series" d="M30.0 105.4 L62.3 105.4 L94.6 105.4 L126.9 98.2 L159.1 98.2 L191.4 98.2 L223.7 98.2 L256.0 98.2"/>
-<circle class="marker" cx="126.9" cy="98.2" r="4"/>
+<polygon class="band" points="30.0,88.3 58.2,88.3 86.5,88.3 114.8,66.7 143.0,66.7 171.2,66.7 199.5,66.7 227.8,66.7 256.0,66.7 256.0,123.4 227.8,123.4 199.5,123.4 171.2,123.4 143.0,123.4 114.8,123.4 86.5,125.2 58.2,125.2 30.0,125.2"/>
+<path class="series" d="M30.0 105.4 L58.2 105.4 L86.5 105.4 L114.8 98.2 L143.0 98.2 L171.2 98.2 L199.5 98.2 L227.8 98.2 L256.0 98.2"/>
+<circle class="marker" cx="114.8" cy="98.2" r="4"/>
 </g>
 <g class="v3">
 <rect class="key" x="266.0" y="96.7" width="10" height="3" rx="1.5"/>
@@ -220,28 +221,31 @@ gap:2px 12px;margin:6px 0 4px;font-size:13px}
 </g>
 <g><title>main 66fefb9 · #355 · 2026-11-20 12:25 UTC
 GroupV2: median 8.5, the middle half 5 to 14, 20 runs
-GroupV3: median 23.5, the middle half 18 to 28.25, 20 runs</title><rect class="hit" x="13.9" y="10" width="32.3" height="180"/></g>
+GroupV3: median 23.5, the middle half 18 to 28.25, 20 runs</title><rect class="hit" x="15.9" y="10" width="28.2" height="180"/></g>
 <g><title>main ce916b8 · #357 · 2026-11-21 01:44 UTC
 GroupV2: median 8.5, the middle half 5 to 14, 20 runs
-GroupV3: median 23.5, the middle half 18 to 28.25, 20 runs</title><rect class="hit" x="46.1" y="10" width="32.3" height="180"/></g>
+GroupV3: median 23.5, the middle half 18 to 28.25, 20 runs</title><rect class="hit" x="44.1" y="10" width="28.2" height="180"/></g>
 <g><title>main 90c4128 · #359 · 2026-11-24 10:52 UTC
 GroupV2: median 8.5, the middle half 5 to 14, 20 runs
-GroupV3: median 23.5, the middle half 18 to 28.25, 20 runs</title><rect class="hit" x="78.4" y="10" width="32.3" height="180"/></g>
+GroupV3: median 23.5, the middle half 18 to 28.25, 20 runs</title><rect class="hit" x="72.4" y="10" width="28.2" height="180"/></g>
 <g><title>main e1d76cf · #349 · 2026-11-24 15:57 UTC
 GroupV2: median 8.5, the middle half 5 to 14, 20 runs
-GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="110.7" y="10" width="32.3" height="180"/></g>
+GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="100.6" y="10" width="28.2" height="180"/></g>
 <g><title>main 3ab70ec · #360 · 2026-11-24 17:29 UTC
 GroupV2: median 8.5, the middle half 5 to 14, 20 runs
-GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="143.0" y="10" width="32.3" height="180"/></g>
+GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="128.9" y="10" width="28.2" height="180"/></g>
 <g><title>main 8b9cd8e · #364 · 2026-11-25 06:48 UTC
 GroupV2: median 8.5, the middle half 5 to 14, 20 runs
-GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="175.3" y="10" width="32.3" height="180"/></g>
+GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="157.1" y="10" width="28.2" height="180"/></g>
 <g><title>main c7c0c1b · #370 · 2026-11-25 15:21 UTC
 GroupV2: median 8.5, the middle half 5 to 14, 20 runs
-GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="207.6" y="10" width="32.3" height="180"/></g>
+GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="185.4" y="10" width="28.2" height="180"/></g>
 <g><title>main 92cfdde · #367 · 2026-11-26 06:33 UTC
 GroupV2: median 8.5, the middle half 5 to 14, 20 runs
-GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="239.9" y="10" width="32.3" height="180"/></g>
+GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="213.6" y="10" width="28.2" height="180"/></g>
+<g><title>main 661ee71 · #369 · 2026-11-26 17:32 UTC
+GroupV2: median 8.5, the middle half 5 to 14, 20 runs
+GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class="hit" x="241.9" y="10" width="28.2" height="180"/></g>
 </svg>
 </div>
 <div class="panel">
@@ -260,18 +264,19 @@ GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class=
 <line class="grid" x1="30" x2="256" y1="10.0" y2="10.0"/>
 <text class="axis small" x="24" y="14.0" text-anchor="end">50</text>
 <line class="goal" x1="30" x2="256" y1="10.0" y2="10.0"/>
-<text class="axis small" x="256.0" y="205" text-anchor="middle">#367</text>
-<text class="axis small" x="191.4" y="205" text-anchor="middle">#364</text>
-<text class="axis small" x="126.9" y="205" text-anchor="middle">#349</text>
-<text class="axis small" x="62.3" y="205" text-anchor="middle">#357</text>
+<text class="axis small" x="256.0" y="205" text-anchor="middle">#369</text>
+<text class="axis small" x="199.5" y="205" text-anchor="middle">#370</text>
+<text class="axis small" x="143.0" y="205" text-anchor="middle">#360</text>
+<text class="axis small" x="86.5" y="205" text-anchor="middle">#359</text>
+<text class="axis small" x="30.0" y="205" text-anchor="middle">#355</text>
 <g class="v2">
-<polygon class="band" points="30.0,150.4 62.3,150.4 94.6,150.4 126.9,150.4 159.1,150.4 191.4,150.4 223.7,150.4 256.0,150.4 256.0,172.0 223.7,172.0 191.4,172.0 159.1,172.0 126.9,172.0 94.6,172.0 62.3,172.0 30.0,172.0"/>
-<path class="series" d="M30.0 164.8 L62.3 164.8 L94.6 164.8 L126.9 164.8 L159.1 164.8 L191.4 164.8 L223.7 164.8 L256.0 164.8"/>
+<polygon class="band" points="30.0,150.4 58.2,150.4 86.5,150.4 114.8,150.4 143.0,150.4 171.2,150.4 199.5,150.4 227.8,150.4 256.0,150.4 256.0,172.0 227.8,172.0 199.5,172.0 171.2,172.0 143.0,172.0 114.8,172.0 86.5,172.0 58.2,172.0 30.0,172.0"/>
+<path class="series" d="M30.0 164.8 L58.2 164.8 L86.5 164.8 L114.8 164.8 L143.0 164.8 L171.2 164.8 L199.5 164.8 L227.8 164.8 L256.0 164.8"/>
 </g>
 <g class="v3">
-<polygon class="band" points="30.0,116.2 62.3,116.2 94.6,116.2 126.9,127.9 159.1,127.9 191.4,127.9 223.7,127.9 256.0,127.9 256.0,157.6 223.7,157.6 191.4,157.6 159.1,157.6 126.9,157.6 94.6,152.2 62.3,152.2 30.0,152.2"/>
-<path class="series" d="M30.0 139.6 L62.3 139.6 L94.6 139.6 L126.9 145.0 L159.1 145.0 L191.4 145.0 L223.7 145.0 L256.0 145.0"/>
-<circle class="marker" cx="126.9" cy="145.0" r="4"/>
+<polygon class="band" points="30.0,116.2 58.2,116.2 86.5,116.2 114.8,127.9 143.0,127.9 171.2,127.9 199.5,127.9 227.8,127.9 256.0,127.9 256.0,157.6 227.8,157.6 199.5,157.6 171.2,157.6 143.0,157.6 114.8,157.6 86.5,152.2 58.2,152.2 30.0,152.2"/>
+<path class="series" d="M30.0 139.6 L58.2 139.6 L86.5 139.6 L114.8 145.0 L143.0 145.0 L171.2 145.0 L199.5 145.0 L227.8 145.0 L256.0 145.0"/>
+<circle class="marker" cx="114.8" cy="145.0" r="4"/>
 </g>
 <g class="v3">
 <rect class="key" x="266.0" y="143.5" width="10" height="3" rx="1.5"/>
@@ -283,28 +288,31 @@ GroupV3: median 25.5, the middle half 18.5 to 34.25, 20 runs</title><rect class=
 </g>
 <g><title>main 66fefb9 · #355 · 2026-11-20 12:25 UTC
 GroupV2: median 7, the middle half 5 to 11, 20 runs
-GroupV3: median 14, the middle half 10.5 to 20.5, 20 runs</title><rect class="hit" x="13.9" y="10" width="32.3" height="180"/></g>
+GroupV3: median 14, the middle half 10.5 to 20.5, 20 runs</title><rect class="hit" x="15.9" y="10" width="28.2" height="180"/></g>
 <g><title>main ce916b8 · #357 · 2026-11-21 01:44 UTC
 GroupV2: median 7, the middle half 5 to 11, 20 runs
-GroupV3: median 14, the middle half 10.5 to 20.5, 20 runs</title><rect class="hit" x="46.1" y="10" width="32.3" height="180"/></g>
+GroupV3: median 14, the middle half 10.5 to 20.5, 20 runs</title><rect class="hit" x="44.1" y="10" width="28.2" height="180"/></g>
 <g><title>main 90c4128 · #359 · 2026-11-24 10:52 UTC
 GroupV2: median 7, the middle half 5 to 11, 20 runs
-GroupV3: median 14, the middle half 10.5 to 20.5, 20 runs</title><rect class="hit" x="78.4" y="10" width="32.3" height="180"/></g>
+GroupV3: median 14, the middle half 10.5 to 20.5, 20 runs</title><rect class="hit" x="72.4" y="10" width="28.2" height="180"/></g>
 <g><title>main e1d76cf · #349 · 2026-11-24 15:57 UTC
 GroupV2: median 7, the middle half 5 to 11, 20 runs
-GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="110.7" y="10" width="32.3" height="180"/></g>
+GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="100.6" y="10" width="28.2" height="180"/></g>
 <g><title>main 3ab70ec · #360 · 2026-11-24 17:29 UTC
 GroupV2: median 7, the middle half 5 to 11, 20 runs
-GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="143.0" y="10" width="32.3" height="180"/></g>
+GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="128.9" y="10" width="28.2" height="180"/></g>
 <g><title>main 8b9cd8e · #364 · 2026-11-25 06:48 UTC
 GroupV2: median 7, the middle half 5 to 11, 20 runs
-GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="175.3" y="10" width="32.3" height="180"/></g>
+GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="157.1" y="10" width="28.2" height="180"/></g>
 <g><title>main c7c0c1b · #370 · 2026-11-25 15:21 UTC
 GroupV2: median 7, the middle half 5 to 11, 20 runs
-GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="207.6" y="10" width="32.3" height="180"/></g>
+GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="185.4" y="10" width="28.2" height="180"/></g>
 <g><title>main 92cfdde · #367 · 2026-11-26 06:33 UTC
 GroupV2: median 7, the middle half 5 to 11, 20 runs
-GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="239.9" y="10" width="32.3" height="180"/></g>
+GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="213.6" y="10" width="28.2" height="180"/></g>
+<g><title>main 661ee71 · #369 · 2026-11-26 17:32 UTC
+GroupV2: median 7, the middle half 5 to 11, 20 runs
+GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hit" x="241.9" y="10" width="28.2" height="180"/></g>
 </svg>
 </div>
 <div class="panel">
@@ -323,18 +331,19 @@ GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hi
 <line class="grid" x1="30" x2="256" y1="10.0" y2="10.0"/>
 <text class="axis small" x="24" y="14.0" text-anchor="end">50</text>
 <line class="goal" x1="30" x2="256" y1="10.0" y2="10.0"/>
-<text class="axis small" x="256.0" y="205" text-anchor="middle">#367</text>
-<text class="axis small" x="191.4" y="205" text-anchor="middle">#364</text>
-<text class="axis small" x="126.9" y="205" text-anchor="middle">#349</text>
-<text class="axis small" x="62.3" y="205" text-anchor="middle">#357</text>
+<text class="axis small" x="256.0" y="205" text-anchor="middle">#369</text>
+<text class="axis small" x="199.5" y="205" text-anchor="middle">#370</text>
+<text class="axis small" x="143.0" y="205" text-anchor="middle">#360</text>
+<text class="axis small" x="86.5" y="205" text-anchor="middle">#359</text>
+<text class="axis small" x="30.0" y="205" text-anchor="middle">#355</text>
 <g class="v2">
-<polygon class="band" points="30.0,172.0 62.3,172.0 94.6,172.0 126.9,172.0 159.1,172.0 191.4,172.0 223.7,172.0 256.0,172.0 256.0,175.6 223.7,175.6 191.4,175.6 159.1,175.6 126.9,175.6 94.6,175.6 62.3,175.6 30.0,175.6"/>
-<path class="series" d="M30.0 175.6 L62.3 175.6 L94.6 175.6 L126.9 175.6 L159.1 175.6 L191.4 175.6 L223.7 175.6 L256.0 175.6"/>
+<polygon class="band" points="30.0,172.0 58.2,172.0 86.5,172.0 114.8,172.0 143.0,172.0 171.2,172.0 199.5,172.0 227.8,172.0 256.0,172.0 256.0,175.6 227.8,175.6 199.5,175.6 171.2,175.6 143.0,175.6 114.8,175.6 86.5,175.6 58.2,175.6 30.0,175.6"/>
+<path class="series" d="M30.0 175.6 L58.2 175.6 L86.5 175.6 L114.8 175.6 L143.0 175.6 L171.2 175.6 L199.5 175.6 L227.8 175.6 L256.0 175.6"/>
 </g>
 <g class="v3">
-<polygon class="band" points="30.0,143.2 62.3,143.2 94.6,143.2 126.9,145.9 159.1,145.9 191.4,145.9 223.7,145.9 256.0,145.9 256.0,165.7 223.7,165.7 191.4,165.7 159.1,165.7 126.9,165.7 94.6,164.8 62.3,164.8 30.0,164.8"/>
-<path class="series" d="M30.0 154.0 L62.3 154.0 L94.6 154.0 L126.9 159.4 L159.1 159.4 L191.4 159.4 L223.7 159.4 L256.0 159.4"/>
-<circle class="marker" cx="126.9" cy="159.4" r="4"/>
+<polygon class="band" points="30.0,143.2 58.2,143.2 86.5,143.2 114.8,145.9 143.0,145.9 171.2,145.9 199.5,145.9 227.8,145.9 256.0,145.9 256.0,165.7 227.8,165.7 199.5,165.7 171.2,165.7 143.0,165.7 114.8,165.7 86.5,164.8 58.2,164.8 30.0,164.8"/>
+<path class="series" d="M30.0 154.0 L58.2 154.0 L86.5 154.0 L114.8 159.4 L143.0 159.4 L171.2 159.4 L199.5 159.4 L227.8 159.4 L256.0 159.4"/>
+<circle class="marker" cx="114.8" cy="159.4" r="4"/>
 </g>
 <g class="v3">
 <rect class="key" x="266.0" y="157.9" width="10" height="3" rx="1.5"/>
@@ -346,28 +355,31 @@ GroupV3: median 12.5, the middle half 9 to 17.25, 20 runs</title><rect class="hi
 </g>
 <g><title>main 66fefb9 · #355 · 2026-11-20 12:25 UTC
 GroupV2: median 4, the middle half 4 to 5, 20 runs
-GroupV3: median 10, the middle half 7 to 13, 20 runs</title><rect class="hit" x="13.9" y="10" width="32.3" height="180"/></g>
+GroupV3: median 10, the middle half 7 to 13, 20 runs</title><rect class="hit" x="15.9" y="10" width="28.2" height="180"/></g>
 <g><title>main ce916b8 · #357 · 2026-11-21 01:44 UTC
 GroupV2: median 4, the middle half 4 to 5, 20 runs
-GroupV3: median 10, the middle half 7 to 13, 20 runs</title><rect class="hit" x="46.1" y="10" width="32.3" height="180"/></g>
+GroupV3: median 10, the middle half 7 to 13, 20 runs</title><rect class="hit" x="44.1" y="10" width="28.2" height="180"/></g>
 <g><title>main 90c4128 · #359 · 2026-11-24 10:52 UTC
 GroupV2: median 4, the middle half 4 to 5, 20 runs
-GroupV3: median 10, the middle half 7 to 13, 20 runs</title><rect class="hit" x="78.4" y="10" width="32.3" height="180"/></g>
+GroupV3: median 10, the middle half 7 to 13, 20 runs</title><rect class="hit" x="72.4" y="10" width="28.2" height="180"/></g>
 <g><title>main e1d76cf · #349 · 2026-11-24 15:57 UTC
 GroupV2: median 4, the middle half 4 to 5, 20 runs
-GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="110.7" y="10" width="32.3" height="180"/></g>
+GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="100.6" y="10" width="28.2" height="180"/></g>
 <g><title>main 3ab70ec · #360 · 2026-11-24 17:29 UTC
 GroupV2: median 4, the middle half 4 to 5, 20 runs
-GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="143.0" y="10" width="32.3" height="180"/></g>
+GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="128.9" y="10" width="28.2" height="180"/></g>
 <g><title>main 8b9cd8e · #364 · 2026-11-25 06:48 UTC
 GroupV2: median 4, the middle half 4 to 5, 20 runs
-GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="175.3" y="10" width="32.3" height="180"/></g>
+GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="157.1" y="10" width="28.2" height="180"/></g>
 <g><title>main c7c0c1b · #370 · 2026-11-25 15:21 UTC
 GroupV2: median 4, the middle half 4 to 5, 20 runs
-GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="207.6" y="10" width="32.3" height="180"/></g>
+GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="185.4" y="10" width="28.2" height="180"/></g>
 <g><title>main 92cfdde · #367 · 2026-11-26 06:33 UTC
 GroupV2: median 4, the middle half 4 to 5, 20 runs
-GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="239.9" y="10" width="32.3" height="180"/></g>
+GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="213.6" y="10" width="28.2" height="180"/></g>
+<g><title>main 661ee71 · #369 · 2026-11-26 17:32 UTC
+GroupV2: median 4, the middle half 4 to 5, 20 runs
+GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="hit" x="241.9" y="10" width="28.2" height="180"/></g>
 </svg>
 </div>
 </div>
@@ -377,6 +389,7 @@ GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="
 <div class="wide"><table class="rates">
 <thead><tr><th>commit</th><th class="n">GroupV2 0.5% loss</th><th class="n">GroupV2 1% loss</th><th class="n">GroupV2 5% loss</th><th class="n">GroupV3 0.5% loss</th><th class="n">GroupV3 1% loss</th><th class="n">GroupV3 5% loss</th></tr></thead>
 <tbody>
+<tr><td><code>661ee71</code></td><td class="n">8.5</td><td class="n">7</td><td class="n">4</td><td class="n">25.5</td><td class="n">12.5</td><td class="n">8.5</td></tr>
 <tr><td><code>92cfdde</code></td><td class="n">8.5</td><td class="n">7</td><td class="n">4</td><td class="n">25.5</td><td class="n">12.5</td><td class="n">8.5</td></tr>
 <tr><td><code>c7c0c1b</code></td><td class="n">8.5</td><td class="n">7</td><td class="n">4</td><td class="n">25.5</td><td class="n">12.5</td><td class="n">8.5</td></tr>
 <tr><td><code>8b9cd8e</code></td><td class="n">8.5</td><td class="n">7</td><td class="n">4</td><td class="n">25.5</td><td class="n">12.5</td><td class="n">8.5</td></tr>
@@ -396,6 +409,7 @@ GroupV3: median 8.5, the middle half 6.75 to 12.25, 20 runs</title><rect class="
 <div class="wide"><table class="changes">
 <thead><tr><th>Measured (UTC)</th><th>Commit</th><th>Pull request</th><th>GroupV2</th><th>GroupV3</th><th></th></tr></thead>
 <tbody>
+<tr class="quiet"><td class="when">2026-11-26 17:32</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/661ee71523b08ea6ed7ebcee08ce186731833fb8"><code>661ee71</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/369">#369</a> feat(group-v3): report sync changes to the app and fix fork edge cases</td><td><span class="chip same">nothing moved</span></td><td><span class="chip same">nothing moved</span></td><td><a href="main/661ee71523b08ea6ed7ebcee08ce186731833fb8/16c561465d2d6a34768da42f873b5d0ac9e94425/">its runs</a></td></tr>
 <tr class="quiet"><td class="when">2026-11-26 06:33</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/92cfdde86bdb692f6e5e6e30f61f02ec71093260"><code>92cfdde</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/367">#367</a> feat: add debug events</td><td><span class="chip same">nothing moved</span></td><td><span class="chip same">nothing moved</span></td><td><a href="main/92cfdde86bdb692f6e5e6e30f61f02ec71093260/16c561465d2d6a34768da42f873b5d0ac9e94425/">its runs</a></td></tr>
 <tr class="quiet"><td class="when">2026-11-25 15:21</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/c7c0c1ba50566ecbcbef12958ee9795bdb22db09"><code>c7c0c1b</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/370">#370</a> fix(group-v3): accept a Welcome after being removed from the group</td><td><span class="chip same">nothing moved</span></td><td><span class="chip same">nothing moved</span></td><td><a href="main/c7c0c1ba50566ecbcbef12958ee9795bdb22db09/16c561465d2d6a34768da42f873b5d0ac9e94425/">its runs</a></td></tr>
 <tr class="quiet"><td class="when">2026-11-24 21:08</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/8b9cd8efa7f413be073c222b76746e7add669e17"><code>8b9cd8e</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/364">#364</a> chore: add logging to store query failures</td><td><span class="chip same">nothing moved</span></td><td><span class="chip same">nothing moved</span></td><td><a href="main/8b9cd8efa7f413be073c222b76746e7add669e17/16c561465d2d6a34768da42f873b5d0ac9e94425/">its runs</a></td></tr>
