@@ -4,7 +4,7 @@
   "unbuilt": 0
  },
  "base": {
-  "runs": 18,
+  "runs": 17,
   "unbuilt": 0
  },
  "cells": [
@@ -903,38 +903,21 @@
     "came_to": "5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 19 never joined",
     "stopped": null
    },
-   "base": {
-    "seed": 0,
-    "network_seed": 1,
-    "conversation": "15a00cfb038295fd6463c4f58a947f42",
-    "members_digest": "e488a3e2806f41ee",
-    "verdict": null,
-    "at_tip": null,
-    "seated": 40,
-    "virtual_s": 3068.6,
-    "trunk_epoch": 19,
-    "first_fork": 12,
-    "ended": "split",
-    "lines_off_trunk": 4,
-    "members_off_trunk": 26,
-    "never_joined": 19,
-    "came_to": "5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 19 never joined",
-    "stopped": null
-   },
+   "base": null,
    "unbuilt": {
     "head": false,
     "base": false
    },
-   "change": "same",
+   "change": null,
    "epochs": {
     "head": 12,
-    "base": 12
+    "base": null
    },
    "ended": {
     "head": "split",
-    "base": "split"
+    "base": null
    },
-   "d": 0
+   "d": null
   },
   {
    "scenario": "grow-waku-loss-5-groupv3",
@@ -1055,8 +1038,8 @@
  ],
  "counts": {
   "cells": 18,
-  "compared": 18,
-  "same": 18,
+  "compared": 17,
+  "same": 17,
   "moved": 0,
   "no-outcome": 0
  },
@@ -1121,8 +1104,8 @@
    "group": "v3",
    "counts": {
     "cells": 9,
-    "compared": 9,
-    "same": 9,
+    "compared": 8,
+    "same": 8,
     "moved": 0,
     "no-outcome": 0
    },
@@ -1166,7 +1149,7 @@
      ],
      "later": 0,
      "earlier": 0,
-     "zero": 3,
+     "zero": 2,
      "p": 1.0,
      "result": "same"
     }
