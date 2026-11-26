@@ -631,6 +631,25 @@ class LogosChat(unittest.TestCase):
             if path.is_file()
         )
 
+    def lines(self, svg: ElementTree.Element, side: str) -> List[Tuple[str, str, str]]:
+        """Each line of `side`'s tree in `svg`, its top row first: its title, its path and how wide
+        it is drawn."""
+        tree = svg.find(f".//{SVG}g[@class='tree {side}']")
+        drawn = sorted(tree.findall(f"{SVG}g"), key=lambda line: float(line[2].get("cy")))
+        return [(line[0].text, line[1].get("d"), line[1].get("stroke-width")) for line in drawn]
+
+    def trees(self, svg: ElementTree.Element) -> List[str]:
+        """The class of each tree in `svg`, the head's first."""
+        return [one.get("class") for one in svg.iter(f"{SVG}g") if "tree" in one.get("class", "")]
+
+    def rings(self, svg: ElementTree.Element) -> List[Tuple[str, str]]:
+        """Each ring in `svg`: its title and its number."""
+        return [
+            (ring.find(f"{SVG}title").text, ring.find(f"{SVG}text").text)
+            for ring in svg.iter(f"{SVG}g")
+            if ring.get("class") == "ring"
+        ]
+
 
 class Point(LogosChat):
     def test_a_point_holds_the_cells_and_the_summary_of_its_matrix_and_what_ran(self):
@@ -1361,6 +1380,20 @@ class Trend(LogosChat):
     def series(self, svg: ElementTree.Element, group: str) -> ElementTree.Element:
         return next(one for one in svg.iter(f"{SVG}g") if one.get("class") == group)
 
+    def pair_trees(self, page: str) -> Dict[str, List[Tuple[str, ElementTree.Element]]]:
+        """The seeds a fold of Open a pair draws as trees on `page`, the page of a change, by the
+        fold's rate and in its order: what each says over its trees, and its trees."""
+        tile = r'<div class="fork"><div class="said">(.*?)</div>(<svg.*?</svg>)</div>'
+        return {
+            rate: [
+                (Parsed(said).text, ElementTree.fromstring(svg))
+                for said, svg in re.findall(tile, fold)
+            ]
+            for rate, fold in re.findall(
+                r"<details[^>]*>\n<summary>([^ <]*) <span(.*?)</details>", page, re.S
+            )
+        }
+
     def since(self) -> str:
         """The line under the newest commit's numbers, on what moved since the first commit."""
         return Parsed(self.page().split('<p class="since">', 1)[1].split("</p>", 1)[0]).text
@@ -1742,7 +1775,7 @@ class Trend(LogosChat):
             }
             self.assertEqual(marked, {"v2": 0, "v3": 1})
         page = self.change(sha(2)).read_text(encoding="utf-8")
-        self.assertEqual(re.findall(r'<section class="chart" id="(\w+)">', page), ["v3"])
+        self.assertEqual(re.findall(r'<section class="chart v3" id="(\w+)">', page), ["v3"])
 
     def test_the_page_of_a_change_goes_with_the_test_its_commit_ran(self):
         self.history(2)
@@ -1904,18 +1937,92 @@ class Trend(LogosChat):
             if not link.startswith("http") and "/guide/" not in link:
                 self.assertTrue((self.change(sha(2)).parent / link.split("#")[0]).exists(), link)
 
-    def test_the_page_of_a_change_whose_runs_text_is_gone_links_none_and_names_no_round(self):
-        self.history(2)
-        for directory in (self.at(sha(1)), self.at(sha(2))):
-            for kept in directory.glob("*/*/*"):
-                if kept.name in pages.TEXTS:
-                    kept.unlink()
+    def test_the_page_of_a_change_draws_each_seed_s_two_runs_as_trees_that_open_their_pages(
+        self,
+    ):
+        # 1% seed 1 with a tree's lines at both commits, its first fork at 8 and then at 5.
+        base = self.uploaded(**{"1/1": {"grow": GROW}})
+        head = self.uploaded(**{"1/1": {"grow": GROW, "first_fork": 5}})
+        self.point(sha(1), minute=1, run_number=1, runs=base)
+        self.point(sha(2), minute=2, run_number=2, runs=head, commits=self.commits())
         self.trend()
-        parsed = Parsed(self.change(sha(2)).read_text(encoding="utf-8"))
+        page = self.change(sha(2)).read_text(encoding="utf-8")
+        parsed = Parsed(page)
+        # The group's hue is the run after's.
+        self.assertIn('<section class="chart v2" id="v2">', page)
+        folds = self.pair_trees(page)
+        self.assertEqual(list(folds), ["0.1%", "1%", "5%"])
+        self.assertEqual(
+            {rate: [said for said, _ in tiles] for rate, tiles in folds.items()},
+            {
+                "0.1%": [
+                    "seed 0 whole at 50 → 50 the same outcome",
+                    "seed 1 first fork 46 → 46 the same outcome",
+                ],
+                # The seed whose first fork moved earliest first.
+                "1%": [
+                    "seed 1 first fork 8 → 5 3 earlier",
+                    "seed 0 first fork 18 → 18 the same outcome",
+                ],
+                "5%": [
+                    "seed 0 first fork 8 → 8 the same outcome",
+                    "seed 1 first fork 3 → 3 the same outcome",
+                ],
+            },
+        )
+        _, moved = folds["1%"][0]
+        self.assertEqual(
+            moved.get("aria-label"),
+            "GroupV2 1%, seed 1: the tree of its run after over that of its run before",
+        )
+        self.assertEqual(self.trees(moved), ["tree head", "tree base"])
+        after = [GROWN[0], GROWN[1], "line 1, off the trunk: 1 member, epochs 5 to 8"]
+        self.assertEqual([title for title, _, _ in self.lines(moved, "head")], after)
+        self.assertEqual([title for title, _, _ in self.lines(moved, "base")], GROWN)
+        self.assertEqual(self.rings(moved), [("2 never joined", "2")] * 2)
+        # Each of the two trees opens its own run's page.
+        run = f"{GOAL.format('1')}/2/"
+        opened = [one.get("href") for one in moved.iter(f"{SVG}a")]
+        self.assertEqual(opened, [f"../{run}", f"../../../{sha(1)}/{MEASUREMENT}/{run}"])
+        for link in opened:
+            self.assertTrue((self.change(sha(2)).parent / link / "index.html").is_file(), link)
+        # A run whose lines its point does not keep is a sketch, and opens its page as well.
+        _, still = folds["1%"][1]
+        self.assertEqual(self.trees(still), ["tree head sketch", "tree base sketch"])
+        self.assertEqual(len(list(still.iter(f"{SVG}a"))), 2)
+        for said in (
+            "A tile is one seed, from the seed whose first fork moved earliest to the one whose "
+            "moved latest: the tree of its run after over the tree of its run before",
+            "A tree opens its run's page, while the site keeps one.",
+            "A dashed tree is of a run whose lines the site does not keep",
+        ):
+            self.assertIn(said, parsed.text)
+
+    def test_the_page_of_a_change_whose_runs_text_is_gone_links_none_and_names_no_round(self):
+        kept = {"1/1": {"grow": GROW}}
+        self.point(sha(1), minute=1, run_number=1, runs=self.uploaded(**kept))
+        moved = self.uploaded(**{"1/1": {"grow": GROW, "first_fork": 5}})
+        self.point(sha(2), minute=2, run_number=2, runs=moved, commits=self.commits())
+        # As past the window: the runs' text and their pages gone.
+        for directory in (self.at(sha(1)), self.at(sha(2))):
+            for held in directory.glob("*/*/*"):
+                if held.name in (*pages.TEXTS, "index.html"):
+                    held.unlink()
+        self.trend()
+        page = self.change(sha(2)).read_text(encoding="utf-8")
+        parsed = Parsed(page)
         rows = [row for row in parsed.rows if len(row) == 8 and row[0] != "Seed"]
         self.assertEqual(len(rows), 6)
         self.assertEqual({tuple(row[5:]) for row in rows}, {("-", "-", "-")})
         self.assertIn("gh run download 42 ", parsed.text)
+        # The trees are the points' own lines, and open no page.
+        folds = self.pair_trees(page)
+        self.assertEqual([len(tiles) for tiles in folds.values()], [2, 2, 2])
+        said, moved = folds["1%"][0]
+        self.assertEqual(said, "seed 1 first fork 8 → 5 3 earlier")
+        self.assertEqual([title for title, _, _ in self.lines(moved, "base")], GROWN)
+        self.assertNotIn("<a href", "".join(re.findall(r"<svg.*?</svg>", page, re.S)))
+        self.assertNotIn("A tree opens its run's page", parsed.text)
 
 
 GROW = {
@@ -2313,25 +2420,6 @@ class Pages(LogosChat):
                 ElementTree.fromstring(svg),
             )
             for _, href, hover, said, svg in re.findall(tile, drawn)
-        ]
-
-    def lines(self, svg: ElementTree.Element, side: str) -> List[Tuple[str, str, str]]:
-        """Each line of `side`'s tree in `svg`, its top row first: its title, its path and how wide
-        it is drawn."""
-        tree = svg.find(f".//{SVG}g[@class='tree {side}']")
-        drawn = sorted(tree.findall(f"{SVG}g"), key=lambda line: float(line[2].get("cy")))
-        return [(line[0].text, line[1].get("d"), line[1].get("stroke-width")) for line in drawn]
-
-    def trees(self, svg: ElementTree.Element) -> List[str]:
-        """The class of each tree in `svg`, the head's first."""
-        return [one.get("class") for one in svg.iter(f"{SVG}g") if "tree" in one.get("class", "")]
-
-    def rings(self, svg: ElementTree.Element) -> List[Tuple[str, str]]:
-        """Each ring in `svg`: its title and its number."""
-        return [
-            (ring.find(f"{SVG}title").text, ring.find(f"{SVG}text").text)
-            for ring in svg.iter(f"{SVG}g")
-            if ring.get("class") == "ring"
         ]
 
     def stands_alone(self, directory: Path) -> Parsed:

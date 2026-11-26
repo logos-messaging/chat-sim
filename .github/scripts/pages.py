@@ -148,6 +148,11 @@ _READING = (
     "thicker a line, the more members it ended with. The ring counts the members that never "
     "joined."
 )
+# What a dashed tree is, where a page draws one.
+_SKETCHED = (
+    " A dashed tree is of a run whose lines the site does not keep: its trunk, and a mark where "
+    "it first forked."
+)
 # What a run's large tree counts as seated, under it.
 _SEATED = (
     '<p class="reading">seated counts every member added, the creator included, and not '
@@ -434,6 +439,7 @@ gap:2px 12px;margin:6px 0 4px;font-size:13px}
 .tally .earlier{fill:var(--bad)}
 .tally .tied{fill:var(--line)}
 .tally .later{fill:var(--good)}
+details .forks{margin:.5rem 0 1rem}
 .pairs{font-size:14px}
 .pairs th,.pairs td{padding:.15rem 1.25rem .15rem 0;white-space:nowrap}
 .dumb .before{fill:var(--bg);stroke:var(--hue);stroke-width:2}
@@ -532,7 +538,8 @@ font-variant-numeric:tabular-nums;color:var(--fg);text-decoration:none}
 .chart .forks svg{display:block;max-width:none}
 .fork{padding:6px 8px 8px;border:1px solid var(--line);border-radius:6px;color:var(--fg);
 text-decoration:none}
-.fork:hover{border-color:var(--link)}
+a.fork:hover{border-color:var(--link)}
+.fork a:hover .hit{fill:var(--link);fill-opacity:.08}
 .fork.moved{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
 .fork.unbuilt{border-color:var(--none);border-style:dashed}
 .said{display:flex;align-items:center;gap:6px;height:20px;margin:0 0 2px;font-size:12px;
@@ -1593,8 +1600,9 @@ def draw_change(site: Path, commit: dict) -> Path:
     the directory of the step's point, and returns it: what each group's runs came to against
     those of the commit before it, as a pull request's page says it; of each group a run of
     which moved, a chart a rate of each seed's epochs before the first fork at both commits; and
-    of each seed the round its two runs part in and each run's text, while the site keeps it,
-    with the commands that download both runs' logs."""
+    of each seed its two runs as trees, from the lines their points keep, each a link to its
+    run's page where the site has one, the round the two part in and each run's text, while the
+    site keeps it, with the commands that download both runs' logs."""
     step = commit["step"]
     now, was, matrix = step["now"], step["was"], step["matrix"]
     out = _point_at(site, now["logos_chat"], now["measurement"])
@@ -1616,6 +1624,17 @@ def draw_change(site: Path, commit: dict) -> Path:
     )
     ran = {(_rate(cell), cell["seed"]): cell for cell in now["cells"]}
     based = {(_rate(cell), cell["seed"]): cell for cell in was["cells"]}
+    # Of each seed compared, its run after and its run before: the lineage and the page of each.
+    trees = {
+        pair: (
+            (_kept(now, ran[pair]), _run_page(out, ran[pair], "../")),
+            (_kept(was, based[pair]), _run_page(before, based[pair], there)),
+        )
+        for pair in (
+            (_rate(cell), cell["seed"]) for cell in matrix["cells"] if cell["change"] is not None
+        )
+    }
+    width = _widths(_most([lineage for both in trees.values() for lineage, _ in both]), 1.2, 4.6)
     for key, called in simulate.GROUPS.items():
         judged = _judged(matrix, key)
         if judged is None or not judged["counts"]["moved"]:
@@ -1635,14 +1654,25 @@ def draw_change(site: Path, commit: dict) -> Path:
             pairs += (
                 f"<details{' open' if moved and not opened else ''}>\n<summary>{_e(said)} "
                 f'<span class="muted">{_plural(len(cells), "seed")}</span></summary>\n'
+                + _pair_trees(cells, trees, width)
                 + _pairs(cells, ran, based, out, before)
                 + _pair_logs(cells[0], ran, based, now["run_url"], was["run_url"])
                 + "</details>\n"
             )
             opened = opened or moved
         unmoved = f" At {_e(' and '.join(still))} no seed's first fork moved." if still else ""
+        drawn = [one for pair, both in trees.items() if pair[0][0] == key for one in both]
+        tiles = (
+            "A tile is one seed, from the seed whose first fork moved earliest to the one whose "
+            "moved latest: the tree of its run after over the tree of its run before, and over "
+            f"them the epochs before its first fork at both. {_READING}"
+        )
+        if any(page is not None for _, page in drawn):
+            tiles += " A tree opens its run's page, while the site keeps one."
+        if any(lineage is None for lineage, _ in drawn):
+            tiles += _SKETCHED
         body += (
-            f'<section class="chart" id="{key}">\n<h2>{_e(called)}, seed by seed</h2>\n'
+            f'<section class="chart {key}" id="{key}">\n<h2>{_e(called)}, seed by seed</h2>\n'
             + _legend(
                 (_before_key(key), f"before, at {was['logos_chat'][:7]}"),
                 (_after_key(key), f"after, at {now['logos_chat'][:7]}"),
@@ -1652,6 +1682,7 @@ def draw_change(site: Path, commit: dict) -> Path:
             "first fork moved earliest to the one whose moved latest. Further right is later, "
             f"which is better. A dot alone is a tied seed.{unmoved}</p>\n"
             f"<h3>Open a pair</h3>\n{pairs}"
+            f'<p class="caption">{tiles}</p>\n'
             '<p class="caption">A round is one step of the test: the members the seed draws '
             "each add one. The two runs of a seed have the same rounds up to the one named. A "
             "run's rounds and its outcome are two records of it: two runs of the same outcome "
@@ -1672,7 +1703,8 @@ def draw_change(site: Path, commit: dict) -> Path:
     page = out / "change" / "index.html"
     page.parent.mkdir(parents=True, exist_ok=True)
     named = f"chat-sim: logos-chat main {now['logos_chat'][:7]} against {was['logos_chat'][:7]}"
-    page.write_text(_page(named, body, _CHARTS + _REPORT + _GRID + _OVER), encoding="utf-8")
+    style = _CHARTS + _REPORT + _TREES + _GRID + _OVER
+    page.write_text(_page(named, body, style), encoding="utf-8")
     return page
 
 
@@ -3334,6 +3366,64 @@ def _pairs(
     )
 
 
+def _pair_trees(
+    cells: Sequence[dict],
+    trees: Dict[tuple, Sequence[Tuple[Optional[dict], Optional[str]]]],
+    width: Callable[[int], float],
+) -> str:
+    """The seeds of one rate as trees, three a row, from the seed whose first fork moved earliest
+    to the one whose moved latest: of each, where its two runs first forked and how far that
+    moved, over the tree of its run after and that of its run before. `trees` holds of each
+    seed's two runs, by its rate and its seed, the lineage and the address of the run's page,
+    which the tree links where there is one. A row is as tall as its most lines."""
+    pitch, pad, between = 7, 7, 8
+    x = _along(4, 264)
+    ordered = sorted(cells, key=lambda cell: (cell["d"], cell["seed"]))
+    rows = ""
+    for first in range(0, len(ordered), 3):
+        row = [(cell, trees[(_rate(cell), cell["seed"])]) for cell in ordered[first : first + 3]]
+        count = max(_rows_of(lineage) for _, both in row for lineage, _ in both)
+        tall = pad + (count - 1) * pitch + pad
+        tops, height = (pad, tall + between + pad), tall * 2 + between
+        tiles = _row_head("", ("after", "before"), tops, height)
+        for cell, both in row:
+            label = f"{_job(cell)}: the tree of its run after over that of its run before"
+            drawn = _svg(306, height, label) + _epoch_lines(x, 0, height)
+            for side, top, (lineage, page) in zip(("head", "base"), tops, both):
+                tree = _small(cell, side, lineage, x, top, pitch, width, 272)
+                if page is not None:
+                    tree = (
+                        f'<a href="{_e(quote(page))}"><rect class="hit" x="0" y="{top - pad}" '
+                        f'width="306" height="{tall}"/>{tree}</a>'
+                    )
+                drawn += tree
+            d = cell["d"]
+            chip = _chip("later" if d > 0 else "earlier" if d < 0 else "same", _moved_by(cell))
+            tiles += (
+                f'<div class="fork"><div class="said"><b>seed {cell["seed"]}</b> '
+                f"<span>{_pair_forked(cell)}</span> {chip}</div>{drawn}</svg></div>"
+            )
+        rows += f"<div>{tiles}</div>\n"
+    return f'<div class="wide"><div class="forks">\n{rows}</div></div>\n'
+
+
+def _pair_forked(cell: dict) -> str:
+    """Where a seed's run before first forked, or how and where its trunk ended, and then its run
+    after: its epoch alone where it ended as the run before did."""
+    before, after = _first_fork(cell, "base", "{}"), _first_fork(cell, "head", "<b>{}</b>")
+    if cell["ended"]["base"] == cell["ended"]["head"]:
+        after = f"<b>{cell['epochs']['head']}</b>"
+    return f"{before} → {after}"
+
+
+def _run_page(directory: Path, cell: dict, href: str) -> Optional[str]:
+    """The address of the page of `cell`'s run of the point in `directory`, from `href`, the
+    point's; `None` where the run has no page."""
+    if (_run_dir(directory, cell) / "index.html").is_file():
+        return href + _run_href(cell)
+    return None
+
+
 def _pair_logs(
     cell: dict, ran: Dict[tuple, dict], based: Dict[tuple, dict], now_url: str, was_url: str
 ) -> str:
@@ -3552,7 +3642,8 @@ def _forks(
         tall = pad + (count - 1) * pitch + pad
         tops = (pad, tall + between + pad)
         height = tall * 2 + between if based else tall
-        row = [_rate_head(matrix, first, tops, height)]
+        sides = ("head", "base") if based else ("head",)
+        row = [_row_head(f"<b>{_e(_loss(first))}</b>", sides, tops, height)]
         for seed in seeds:
             if seed not in by_seed:
                 row.append('<div class="vacant"></div>')
@@ -3606,14 +3697,14 @@ def _d(matrix: dict, cell: dict) -> str:
     )
 
 
-def _rate_head(matrix: dict, cell: dict, tops: Tuple[float, float], height: float) -> str:
-    """The head of a row of trees, `cell` one of its runs: its rate, and the head's label and the
-    base's beside their trees."""
-    drawn = f'<text class="note" x="0" y="{tops[0] + 4}">head</text>'
-    if matrix["base"] is not None:
-        drawn += f'<text class="note" x="0" y="{tops[1] + 4}">base</text>'
+def _row_head(said: str, sides: Sequence[str], tops: Tuple[float, float], height: float) -> str:
+    """The head of a row of trees: `said`, what the row is, and what each of `sides` is called,
+    beside its tree at `tops`."""
+    drawn = "".join(
+        f'<text class="note" x="0" y="{top + 4}">{side}</text>' for side, top in zip(sides, tops)
+    )
     return (
-        f'<div class="rate"><div class="said"><b>{_e(_loss(cell))}</b></div>'
+        f'<div class="rate"><div class="said">{said}</div>'
         f'<svg width="116" height="{height}" viewBox="0 0 116 {height}">{drawn}</svg></div>'
     )
 
@@ -4376,10 +4467,7 @@ def _forest(point: dict, linked: bool) -> str:
     said += "."
     sketched = (cell for cell in point["cells"] if lineages[_run_href(cell)] is None)
     if any(cell["head"] is not None for cell in sketched):
-        said += (
-            " A dashed tree is of a run whose lines the site does not keep: its trunk, and a mark "
-            "where it first forked."
-        )
+        said += _SKETCHED
     return f'<p class="reading">{said}</p>\n' + _legend(*_lines_key(most, width)) + drawn
 
 

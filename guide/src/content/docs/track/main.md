@@ -86,9 +86,11 @@ A commit where a run moved has a page that compares it with the commit before,
 - **Seed by seed.** For each group with a run that moved, one panel per rate at which a seed's
   first fork moved, with one row per seed. A ring marks the seed's epochs before the first fork
   at the commit before, and a dot marks them at the commit.
-- **Open a pair.** One row per seed, with its epochs at both commits, how far its first fork
-  moved, the round where its two runs first differ, and each run's text. Under the rows are the
-  commands that download both commits' logs.
+- **Open a pair.** One fold per rate. It draws each seed as two trees, the run after over the
+  run before, from the seed whose first fork moved earliest to the one whose moved latest. A tree
+  links its run's page while the site keeps one. Under the trees is one row per seed, with its
+  epochs at both commits, how far its first fork moved, the round where its two runs first
+  differ, and each run's text. Under the rows are the commands that download both commits' logs.
 
 The round where two runs first differ is the first round whose row differs between them
 ([The run's page](/chat-sim/guide/investigate/moved-run/#the-runs-page) shows the rows). The rounds
