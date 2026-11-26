@@ -1156,7 +1156,8 @@ class PullRequest(LogosChat):
             for run in (1, 2)
         ]
         scenarios = [f"scenarios/{GOAL.format(rate)}.json" for rate in ("0.1", "1", "5")]
-        kept = ["index.html", "matrix.json", "meta.json", *texts, *drawn, *scenarios]
+        pictures = ["trees-v2.svg", "trees-v2-dark.svg"]
+        kept = ["index.html", "matrix.json", "meta.json", *texts, *drawn, *scenarios, *pictures]
         self.assertEqual(self.files(out), sorted(kept))
         self.assertEqual(
             (out / "head" / GOAL.format(1) / "2" / "run.json").read_bytes(),
@@ -2474,6 +2475,25 @@ class Pages(LogosChat):
             for _, href, hover, said, svg in re.findall(tile, drawn)
         ]
 
+    def picture(self, directory: Path, group: str, dark: bool = False) -> ElementTree.Element:
+        """The picture of `group`'s trees the run in `directory` keeps, parsed as XML."""
+        return ElementTree.parse(directory / simulate.picture(group, dark)).getroot()
+
+    def cards(
+        self, picture: ElementTree.Element
+    ) -> List[Tuple[str, str, List[str], ElementTree.Element]]:
+        """Each card of `picture`, by its row and then its column: where it is, the class of its
+        frame, its words but its axis's and its rings', and the card."""
+        return [
+            (
+                card.get("transform"),
+                card.find(f"{SVG}rect").get("class"),
+                [one.text for one in card.findall(f"{SVG}text") if "axis" not in one.get("class")],
+                card,
+            )
+            for card in picture.findall(f"{SVG}g")
+        ]
+
     def stands_alone(self, directory: Path) -> Parsed:
         """The page of `directory`, held to what every page is: it parses as HTML and its SVGs as
         XML, it runs no script and loads nothing, its colours are its style block's alone, and
@@ -2884,6 +2904,78 @@ class Pages(LogosChat):
         self.assertEqual(
             self.stands_alone(out / f"head/{v3.format(1)}/2").h1, ["GroupV3 · 1% loss · seed 1"]
         )
+        # The comment shows a picture of the group whose runs moved, and none of the other.
+        self.assertEqual(
+            sorted(file.name for file in out.glob("*.svg")), ["trees-v3-dark.svg", "trees-v3.svg"]
+        )
+
+    def test_a_group_whose_runs_moved_keeps_the_picture_of_the_trees_of_its_seeds_0_to_2(self):
+        base = self.seeded(self.uploaded(groupv3=True), "1", range(2, 5))
+        self.unbuilt(base, "v3/5/1")
+        moved = {"v3/1/1": {"first_fork": 5}, "v3/5/0": {"grow": GROW}}
+        head = self.seeded(
+            self.uploaded(groupv3=True, **moved), "1", range(2, 5), **{"1/2": {"first_fork": 10}}
+        )
+        out = self.pr(head, self.matrix(head, base), base)
+
+        # A row a rate and a card a seed, of seeds 0 to 2 alone: the page draws the others.
+        v2 = self.picture(out, "v2")
+        self.assertEqual(
+            (v2.get("width"), v2.get("height"), v2.get("aria-label")),
+            ("848", "326", "The trees of GroupV2's runs"),
+        )
+        self.assertEqual(
+            [(where, kind, said[0]) for where, kind, said, _ in self.cards(v2)],
+            [
+                ("translate(0 0)", "card", "GroupV2 · 0.1% loss · seed 0"),
+                ("translate(286 0)", "card", "GroupV2 · 0.1% loss · seed 1"),
+                ("translate(0 112)", "card", "GroupV2 · 1% loss · seed 0"),
+                ("translate(286 112)", "card", "GroupV2 · 1% loss · seed 1"),
+                ("translate(572 112)", "card moved", "GroupV2 · 1% loss · seed 2"),
+                ("translate(0 224)", "card", "GroupV2 · 5% loss · seed 0"),
+                ("translate(286 224)", "card", "GroupV2 · 5% loss · seed 1"),
+            ],
+        )
+        # A card says what the run's place on the page says, over the head's tree and the base's.
+        v3 = self.picture(out, "v3")
+        self.assertEqual(v3.get("width"), "562")
+        cards = self.cards(v3)
+        unbuilt = "does not build at the base"
+        self.assertEqual(
+            [(kind, said[1:]) for _, kind, said, _ in cards],
+            [
+                ("card", ["whole at 50", "head", "base"]),
+                ("card", ["first fork 46", "head", "base"]),
+                ("card", ["first fork 18", "head", "base"]),
+                ("card moved", ["moved · first fork 5, base 9", "head", "base"]),
+                ("card", ["first fork 8", "head", "base"]),
+                ("card", [f"first fork 3 · {unbuilt}", "head", "base", unbuilt]),
+            ],
+        )
+        *_, grown, without = (card for *_, card in cards)
+        self.assertEqual(self.trees(grown), ["tree head", "tree base sketch"])
+        self.assertEqual([said for said, _, _ in self.lines(grown, "head")], GROWN)
+        self.assertEqual(self.rings(grown), [("2 never joined", "2")] * 2)
+        self.assertEqual(self.trees(without), ["tree head sketch"])
+        # A picture reads no page's style and loads nothing: each sets its theme's colours, and
+        # the two are one picture but for them.
+        light, dark = (
+            (out / simulate.picture("v3", theme)).read_text(encoding="utf-8")
+            for theme in (False, True)
+        )
+        colours = r":root\{[^}]*\}"
+        for picture, theme in ((light, 0), (dark, 1)):
+            with self.subTest(dark=bool(theme)):
+                self.assertEqual(
+                    re.search(colours, picture)[0],
+                    ":root{%s}" % ";".join(f"--{k}:{v[theme]}" for k, v in pages._COLOURS.items()),
+                )
+                self.assertLessEqual(
+                    set(re.findall(r"var\(--([a-z0-9-]+)\)", picture)), set(pages._COLOURS)
+                )
+                self.assertIsNone(re.search(r"href=|url\(|@import|<script|<image", picture))
+                self.assertIsNone(re.search(r' (style|fill|stroke|color)="', picture))
+        self.assertEqual(re.sub(colours, "", light), re.sub(colours, "", dark))
 
     def test_the_report_says_what_its_scenarios_test_and_how_and_links_each_one_s_file(self):
         base, head = self.uploaded(groupv3=True), self.uploaded(groupv3=True)

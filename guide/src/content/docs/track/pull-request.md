@@ -15,13 +15,16 @@ and its merge base with `main`. chat-sim compares the two and tells you in three
 chat-sim simulates a group that grows, many times over, and compares when the group first
 [forks](/chat-sim/guide/understand/how-a-run-works/#a-fork) at the head and at the base. Each
 simulation is a **run**. The comment has one line for each kind of group, GroupV2 and GroupV3
-([The two groups](/chat-sim/guide/understand/how-a-run-works/#the-two-groups)), then the links:
+([The two groups](/chat-sim/guide/understand/how-a-run-works/#the-two-groups)), then a picture of
+each group that moved, then the links:
 
 ```text
 ⚪ GroupV2: nothing moved · 0.5%: nothing moved in seeds 0 to 2 · 1%: nothing moved in seeds 0 to 2 · 5%: nothing moved in seeds 0 to 2
 🔴 GroupV3: forks earlier · 0.5%: nothing moved in seeds 0 to 19 · 1%: 0 later, 9 earlier, 11 tied (p 0.0039) · 5%: 2 later, 3 earlier, 15 tied (p 1)
 
-The trees · the report, kept while the pull request is open · the graph over main · the run · 89abcde against its merge base fedcba9
+(the picture of GroupV3's trees)
+
+GroupV3's seeds 0 to 2: the head's tree over the base's, a run that moved outlined. The trees · the report, kept while the pull request is open · the graph over main · the run · 89abcde against its merge base fedcba9
 ```
 
 The GroupV3 line reads:
@@ -45,10 +48,19 @@ The GroupV3 line reads:
   epochs, and they lean neither way. A `p` of 1 is the highest there is. At 5% loss the runs
   moved within chance.
 
-The rate of 1% loss gives the group its verdict, and [the check](#the-check) fails. The last
-line links the trees, which draw the runs of seeds 0 to 2
-([The report page](#the-report-page)), the report, the graph over main and, as `the run`, the
-workflow run that made the runs.
+The rate of 1% loss gives the group its verdict, and [the check](#the-check) fails.
+
+The picture draws GroupV3's runs of seeds 0 to 2: one row per rate and one card per seed. A card
+holds the head's tree over the base's, and an outline marks a run that moved
+([The report page](#the-report-page) says how to read a tree). GroupV2 has no picture, since
+none of its runs moved.
+
+The comment reads the picture at the commit of chat-sim's site that published the run. The site
+takes that commit off its branch within a week, and the picture loads for as long as GitHub still
+serves the commit. The report page draws the same trees while the pull request is open.
+
+The last line says what the picture draws. Then it links the trees of every run on the report,
+the report, the graph over main and, as `the run`, the workflow run that made the runs.
 
 When nothing moved in either group and every run was compared, the comment is one line:
 

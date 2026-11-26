@@ -27,6 +27,11 @@ LINKS = (
     "open · [the graph over main](https://logos-messaging.github.io/chat-sim/logos-chat/) · "
     f"[the run]({RUN_URL})"
 )
+# Where a pull request's pictures are read once they are pushed: the directory of its run on
+# gh-pages, at the commit pushed.
+PICTURES = (
+    f"https://raw.githubusercontent.com/logos-messaging/chat-sim/{CHAT_SIM}/logos-chat/pr-316/"
+)
 ROOT = Path(__file__).resolve().parents[2]
 # What the GroupV2 jobs of HELD_SUITES' pr suite uploaded at a revision, seeds 0 and 1 of its three
 # rates, cut to what tools/sim matrix reads: 0.1% whole and split at epoch 46, 1% split at 18 and
@@ -895,6 +900,65 @@ class Drawn(unittest.TestCase):
             f"{LINKS} · {commit(REVISION)} against its merge base {commit(BASE)}\n",
         )
 
+    def test_a_pr_handed_where_its_pictures_are_shows_that_of_each_group_whose_runs_moved(self):
+        drawn = "seeds 0 to 1: the head's tree over the base's, a run that moved outlined"
+
+        def picture(group: str, called: str) -> str:
+            return (
+                '<picture><source media="(prefers-color-scheme: dark)" '
+                f'srcset="{PICTURES}trees-{group}-dark.svg"><img alt="{called}\'s {drawn}" '
+                f'src="{PICTURES}trees-{group}.svg"></picture>'
+            )
+
+        given = ("--base", BASE, "--report-url", REPORT_URL)
+        base = self.uploaded("base", both=True)
+        for name, sooner, pictures, called in (
+            ("one", {"1/1/v3": {"first_fork": 5}}, [picture("v3", "GroupV3")], "GroupV3"),
+            (
+                "both",
+                {"1/1": {"first_fork": 5}, "5/0/v3": {"first_fork": 4}},
+                [picture("v2", "GroupV2"), picture("v3", "GroupV3")],
+                "GroupV2 and GroupV3",
+            ),
+        ):
+            with self.subTest(moved=name):
+                matrix = self.matrix(self.uploaded(name, both=True, **sooner), base)
+                _, without, _ = self.comment("pr", matrix, *given)
+                _, out, _ = self.comment("pr", matrix, *given, "--pictures", PICTURES)
+                lines, links = without.split("\n\n")
+                self.assertEqual(
+                    out.split("\n\n"), [lines, *pictures, f"{called}'s {drawn}. {links}"]
+                )
+
+    def test_a_pr_none_of_whose_runs_moved_shows_no_picture(self):
+        both = (self.uploaded("head", both=True), self.uploaded("base", both=True))
+        unbuilt = self.root / "unbuilt"
+        self.unbuilt(unbuilt, "1", 0)
+        for name, matrix, given in (
+            ("nothing moved", self.matrix(*both, self.pr_jobs()), ("--base", BASE)),
+            ("no base", self.matrix(UPLOADED), ()),
+            ("unbuilt", self.matrix(unbuilt, UPLOADED), ("--base", BASE)),
+        ):
+            with self.subTest(run=name):
+                _, without, _ = self.comment("pr", matrix, *given, "--report-url", REPORT_URL)
+                _, out, _ = self.comment(
+                    "pr", matrix, *given, "--report-url", REPORT_URL, "--pictures", PICTURES
+                )
+                self.assertEqual(out, without)
+
+    def test_refuses_pictures_an_attribute_cannot_hold_the_address_of_or_of_another_suite(self):
+        matrix = self.matrix(UPLOADED)
+        refused = ("javascript:alert(1)", f"{PICTURES} x", f'{PICTURES}"', f"{PICTURES}'", "")
+        # Without its last /, a picture's address would lose the directory's name.
+        for url in (*refused, PICTURES.rstrip("/")):
+            with self.subTest(url=url):
+                status, out, err = self.comment("pr", matrix, "--pictures", url)
+                self.assertEqual((status, out), (2, ""))
+                self.assertIn("--pictures: ", err.splitlines()[-1])
+        status, out, err = self.comment("main", matrix, "--pictures", PICTURES)
+        self.assertEqual((status, out), (2, ""))
+        self.assertIn("--pictures: given for pr, and only then", err.splitlines()[-1])
+
     def test_a_pr_on_both_groups_says_each_on_a_line_of_its_own_and_fails_on_either(self):
         sooner = {"1/0/v3": {"first_fork": 10}, "1/1/v3": {"first_fork": 5}}
         head = self.uploaded("head", both=True, **sooner)
@@ -1613,6 +1677,32 @@ class Workflow(unittest.TestCase):
         self.assertIn("\n    needs: [plan, comment, publish]\n", post)
         self.assertIn("!cancelled() && needs.comment.result == 'success'", condition)
         self.assertNotIn("needs.publish", condition)
+
+    def test_post_writes_the_comment_again_with_its_pictures_at_the_commit_publish_pushed(self):
+        publish, post = self.jobs["publish"], self.jobs["post"]
+
+        self.assertIn("\n    outputs:\n      pushed: ${{ steps.push.outputs.pushed }}\n", publish)
+        pushing = publish.split("\n      - name: Push to gh-pages\n        id: push\n", 1)[1]
+        self.assertTrue(
+            pushing.rstrip().endswith(
+                "git -C site push origin gh-pages\n"
+                '          echo "pushed=$(git -C site rev-parse HEAD)" >> "$GITHUB_OUTPUT"'
+            )
+        )
+        before, written = post.split("\n      - name: Write the comment again, ", 1)
+        step, after = written.split("\n      - name: ", 1)
+        self.assertNotIn("comment.md", before)
+        self.assertIn("\n        if: ${{ needs.publish.outputs.pushed != '' }}\n", step)
+        # A step that fails leaves the comment as it was, for the steps that post it.
+        self.assertIn("\n        continue-on-error: true\n", step)
+        self.assertIn("PUSHED: ${{ needs.publish.outputs.pushed }}", step)
+        self.assertIn(
+            '--pictures "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$PUSHED/'
+            'logos-chat/pr-$PR/"',
+            step,
+        )
+        self.assertIn('--out "$RUNNER_TEMP/comment.md" || {', step)
+        self.assertIn('--comment "$RUNNER_TEMP/comment.md"', after)
 
     def test_publish_keeps_the_scenario_files_of_the_tree_that_ran(self):
         publish = self.jobs["publish"]

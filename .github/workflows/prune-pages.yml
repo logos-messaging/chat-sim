@@ -16,7 +16,9 @@ name: Prune Pages
 # would otherwise keep in its history the runs' text of every point of
 # logos-chat's main, about 30 MB a point, and of every long run, about 10 MB a
 # Sunday, long after the tree let it go past the newest eleven points and
-# fifteen long runs.
+# fifteen long runs. The comment on a logos-chat pull request reads its pictures
+# at the commit that published them, which the rewrite takes off the branch:
+# they load for as long as GitHub serves a commit no branch reaches.
 
 on:
   pull_request:

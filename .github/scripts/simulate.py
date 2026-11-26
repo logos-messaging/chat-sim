@@ -11,7 +11,8 @@ two scenarios of fifty epochs and every other one `tools/sim/expected` holds but
 a scenario a side. `plan` checks what it was handed and prints the run jobs, and `widen` the run
 jobs of seeds 3 to 19 from the matrix of seeds 0 to 2. `comment` writes the comment in Markdown:
 for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, each group's apart, for
-`pr` with links to the trees of the runs on the pull request's page and to the graph over main, and
+`pr` with a picture of the trees of each group whose runs moved, once handed where the pictures
+are, and links to the trees of the runs on the pull request's page and to the graph over main, and
 for `long` a row for each scenario with what `tools/sim compare` said of its runs against the
 base's, or against what `tools/sim/expected` holds when there is no base. `measurement` prints the
 chat-sim commit a run measures, and `changed` whether a commit changes a path chat-sim's own CI
@@ -103,8 +104,8 @@ CONCLUSIONS = {
 }
 # The verdicts that fail the check once it is required: what went wrong at the head.
 _REQUIRED = ("unbuilt", "no-outcome")
-# An address a Markdown link can hold as it is.
-_URL = re.compile(r"https?://[^\s()<>]+")
+# An address a Markdown link can hold as it is, and an attribute of the comment's HTML.
+_URL = re.compile(r"https?://[^\s()<>\"']+")
 # What the verdict line says of a revision chat-sim does not build at.
 _UNBUILT = "chat-sim does not build against this commit"
 
@@ -194,9 +195,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="write the comment on what the run jobs came to",
         description="Writes the comment in Markdown. For pr and main it is drawn from --matrix: "
         "for pr a line that says nothing moved, or else a line for each group with its verdict "
-        "and what its runs at each rate came to, then links to the trees of the runs on the "
-        "report's page, to the report, kept while the pull request is open, to the graph over "
-        "main and to the run; for main a row a group's rate with how its runs ended and forked. "
+        "and what its runs at each rate came to, with --pictures the picture of the trees of "
+        "each group whose runs moved, then links to the trees of the runs on the report's page, "
+        "to the report, kept while the pull request is open, to the graph over main and to the "
+        "run; for main a row a group's rate with how its runs ended and forked. "
         "For long it is a row for each scenario from the outcomes.json the run jobs uploaded "
         "under RUNS and the compare.txt written beside it, and the output of each compare. With "
         "--out it is written there.",
@@ -226,6 +228,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     comment.add_argument("--chat-sim", metavar="SHA", required=True, help="chat-sim's commit")
     comment.add_argument("--run-url", metavar="URL", required=True, help="the workflow run's page")
     comment.add_argument("--report-url", metavar="URL", help="the page of the run's report")
+    comment.add_argument(
+        "--pictures",
+        metavar="URL",
+        help="for pr, the directory the pictures of the report's trees are read at, once they "
+        "are published: its address, ending in /",
+    )
     comment.add_argument(
         "--out",
         metavar="FILE",
@@ -517,6 +525,25 @@ def run_page(cell: dict) -> str:
     return f"head/{cell['scenario']}/{cell['run']}/"
 
 
+def treed(cell: dict) -> bool:
+    """Whether `cell` is of a seed every pull request runs of each rate, seeds 0 to 2: those its
+    report draws a row of trees of, and its comment pictures."""
+    return cell["seed"] < min(RATES["pr"].values())
+
+
+def pictured(matrix: dict) -> List[str]:
+    """The groups of `matrix` a pull request's report keeps a picture of, for the comment: those a
+    run of which moved, among the runs a picture draws."""
+    moved = {cell["group"] for cell in matrix["cells"] if treed(cell) and cell["change"] == "moved"}
+    return [one["group"] for one in matrix["groups"] if one["group"] in moved]
+
+
+def picture(group: str, dark: bool) -> str:
+    """The file under a pull request's report that holds the picture of `group`'s trees, in the
+    colours of the dark theme or of the light."""
+    return f"trees-{group}{'-dark' if dark else ''}.svg"
+
+
 def concluded(matrix: dict, required: bool) -> str:
     """The check's conclusion of `matrix`: a failure where the verdict of a group's runs fails it,
     else a success where one's succeeds, else neutral, so that one group's runs forking later
@@ -574,8 +601,9 @@ def post_to(pages: Sequence[Sequence[dict]], login: str, pr: str) -> Tuple[str, 
 def render_pr(matrix: dict, facts: dict) -> str:
     """The comment on a pull request. Where every run was compared and came out the same as the
     base's, one line that says so and the links. Else a line for each group, its verdict and what
-    each of its scenarios came to, and the links. A head chat-sim does not build at has the
-    verdict line alone, and runs with nothing to compare have it and the links."""
+    each of its scenarios came to; the picture of each group whose runs moved, where `facts` says
+    where the pictures are; and the links. A head chat-sim does not build at has the verdict line
+    alone, and runs with nothing to compare have it and the links."""
     if matrix["verdict"] == "unbuilt":
         return _unbuilt_comment(facts)
     if not compares(matrix):
@@ -591,7 +619,11 @@ def render_pr(matrix: dict, facts: dict) -> str:
     # A backslash breaks the line wherever the comment is rendered, the check's summary and the
     # run's summary too, where the end of a line alone does not.
     lines = [f"{line}\\" for line in said[:-1]] + said[-1:]
-    lines += ["", f"{_links(facts)} · {head} against {base}"]
+    shown = pictured(matrix) if facts["pictures"] else []
+    for one in shown:
+        lines += ["", _picture(matrix, one, facts["pictures"])]
+    drawn = f"{_pictures_said(matrix, shown)}. " if shown else ""
+    lines += ["", f"{drawn}{_links(facts)} · {head} against {base}"]
     return "".join(f"{line}\n" for line in lines)
 
 
@@ -743,6 +775,12 @@ def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     _check_handed(parser, args)
     if args.report_url is not None and _URL.fullmatch(args.report_url) is None:
         parser.error(f"--report-url: {args.report_url!r} is not an http(s) address")
+    if args.pictures is not None and _URL.fullmatch(args.pictures) is None:
+        parser.error(f"--pictures: {args.pictures!r} is not an http(s) address")
+    if args.pictures is not None and not args.pictures.endswith("/"):
+        parser.error(f"--pictures: {args.pictures!r} is not a directory's address, ending in /")
+    if args.pictures is not None and args.suite != "pr":
+        parser.error("--pictures: given for pr, and only then")
     facts = {
         "suite": args.suite,
         "revision": args.revision,
@@ -751,6 +789,7 @@ def _comment(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         "chat_sim": args.chat_sim,
         "run_url": args.run_url,
         "report_url": args.report_url,
+        "pictures": args.pictures,
     }
     if args.suite == "long":
         if args.runs is None or args.matrix is not None:
@@ -960,6 +999,24 @@ def _group_line(matrix: dict, group: dict) -> str:
     verdict = group["verdict"]
     line = f"{_MARKS[verdict]} **{GROUPS[group['group']]}: {RESULTS[verdict]}**"
     return line + "".join(f" · {told(matrix, one)}" for one in group["results"])
+
+
+def _picture(matrix: dict, group: str, at: str) -> str:
+    """The picture of `group`'s trees as the comment on a pull request shows it, its files read
+    under `at`: the dark theme's file to a reader in the dark theme, and what it draws as the
+    words that stand for it."""
+    light, dark = (urljoin(at, picture(group, theme)) for theme in (False, True))
+    return (
+        f'<picture><source media="(prefers-color-scheme: dark)" srcset="{dark}">'
+        f'<img alt="{_pictures_said(matrix, [group])}" src="{light}"></picture>'
+    )
+
+
+def _pictures_said(matrix: dict, groups: Sequence[str]) -> str:
+    """What the pictures of `groups` draw, in words: which seeds of `matrix`, and how."""
+    named = " and ".join(GROUPS[one] for one in groups)
+    drawn = [cell["seed"] for cell in matrix["cells"] if cell["group"] in groups and treed(cell)]
+    return f"{named}'s {_seeds(drawn)}: the head's tree over the base's, a run that moved outlined"
 
 
 def _merge_base(facts: dict) -> str:

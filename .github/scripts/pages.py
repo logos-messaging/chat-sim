@@ -18,7 +18,8 @@ that each is as this script draws it. The points are in the order of their
 runs' numbers, which GitHub gives in the order the runs were started and a re-run keeps;
 `previous` names the point a new one follows. `pr` keeps the newest run of a logos-chat pull
 request in `logos-chat/pr-N/` the same way: its matrix, both sides' runs' text, its `meta.json`,
-the scenario files it ran, its report page and a page for each run. `long` keeps a run of the long
+the scenario files it ran, its report page, a page for each run and, of each group whose runs
+moved, the pictures of its trees the comment shows. `long` keeps a run of the long
 suite at a commit of main, held to what is expected, in `logos-chat/long/<sha>/<measurement>/` the
 same way: its `long.json`, each scenario's compare output, its runs' text and its page; the newest
 fifteen long runs keep their text. `trend` draws the graph over main, `logos-chat/index.html`, from
@@ -505,6 +506,17 @@ white-space:nowrap}
 color:var(--muted);white-space:nowrap}
 .median::before,.median::after{content:"";flex:1;border-top:1px dashed var(--muted)}
 """
+# The picture of a group's trees, beside `_TREES`: its text and the card of a run, outlined where
+# the run moved.
+_PICTURE = """
+text{font:11px system-ui,-apple-system,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif;
+font-variant-numeric:tabular-nums;fill:var(--fg)}
+.note,.axis{fill:var(--muted)}
+.small{font-size:10px}
+.label{font-size:12px}
+.card{fill:var(--bg);stroke:var(--line)}
+.card.moved{stroke:var(--fg);stroke-width:2}
+"""
 # The report page of a pull request's run and the page of each of its runs, beside `_TREES`: a
 # change's word always beside its colour.
 _GRID = """
@@ -668,9 +680,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "logos-chat/pr-N/ of SITE: the matrix, each run's run.txt, run.json and report.txt where "
         "it has one, or build.log of a job that could not build chat-sim, at the revision under "
         "head/ and at the base under base/, meta.json, each scenario file it ran under "
-        "scenarios/, the report page, index.html, and the page of each run, index.html in its "
-        "directory under head/. What was there is replaced, unless it is a run of a higher "
-        "number.",
+        "scenarios/, the report page, index.html, the page of each run, index.html in its "
+        "directory under head/, and of each group whose runs moved the pictures of its trees, "
+        "trees-<group>.svg and trees-<group>-dark.svg. What was there is replaced, unless it is "
+        "a run of a higher number.",
     )
     _add_ran(pr, runs="the run jobs at the revision uploaded")
     pr.add_argument("--pr", metavar="N", type=int, required=True, help="the pull request")
@@ -952,8 +965,8 @@ def write_pr(
     what was there: `matrix` as matrix.json, each run's text under `runs` in
     `head/<scenario>/<run>/` and under `base_runs` in `base/<scenario>/<run>/`, at any depth and
     each run by number, the file in `scenarios` of each scenario the matrix ran in
-    `scenarios/`, `meta`, which says what ran, as meta.json, the report page and its runs'
-    pages.
+    `scenarios/`, `meta`, which says what ran, as meta.json, the report page, its runs' pages
+    and the pictures of its trees.
 
     Returns `meta`, as `read_pr_meta` reads it back.
     """
@@ -1146,8 +1159,10 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
     and how, from the copies of their files `out` keeps; then of each group each scenario's file,
     linked to its copy where `out` keeps one, and the tree of each run of seeds 0 to 2, a row a rate
     and a column a seed, the head's over the base's, each linked to the run's page, under a rate
-    that ran more seeds a strip of them and a fold of the trees of the others. Where chat-sim did
-    not build at the head, the build's log takes the place of the scenarios and the runs."""
+    that ran more seeds a strip of them and a fold of the trees of the others; and of each group
+    whose runs moved, the picture of the trees of its seeds 0 to 2, in the light theme's colours
+    and in the dark's, for the comment. Where chat-sim did not build at the head, the build's log
+    takes the place of the scenarios and the runs."""
     head, base = meta["revision"], meta["base"]
     facts = {"revision": head, "base": base or "", "chat_sim": meta["chat_sim"]}
     verdict = simulate.ran_at(facts, _code)
@@ -1196,7 +1211,7 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
                     + _forks(matrix, cells, drawn, width)
                 )
         strips = ""
-        if not all(_treed(cell) for cell in matrix["cells"]):
+        if not all(simulate.treed(cell) for cell in matrix["cells"]):
             strips = (
                 " A strip under a row holds every seed of the rate, where a run of its group moved "
                 "and the rate ran more: of each seed, how many epochs later the head's run first "
@@ -1210,6 +1225,13 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
         )
         for cell in matrix["cells"]:
             draw_run(out, matrix, meta, cell, drawn[_run_href(cell)])
+        for key in simulate.pictured(matrix):
+            cells = [
+                cell for cell in matrix["cells"] if group(cell) == key and simulate.treed(cell)
+            ]
+            for dark in (False, True):
+                picture = _picture(matrix, cells, drawn, width, dark)
+                (out / simulate.picture(key, dark)).write_text(picture, encoding="utf-8")
     body += (
         f'<p class="muted">What the page shows: the guide\'s '
         f'{_link("../../guide/track/pull-request/#the-report-page", "The report page")}.</p>\n'
@@ -3674,7 +3696,9 @@ def _forks(
     and a column a seed: each row as tall as its most lines, headed by its rate, and followed,
     where the rate ran more, by the strip of every seed of it and the fold of the others' trees."""
     rows = _by_rate(cells)
-    seeds = sorted({seed for _, by_seed in rows for seed, cell in by_seed.items() if _treed(cell)})
+    seeds = sorted(
+        {seed for _, by_seed in rows for seed, cell in by_seed.items() if simulate.treed(cell)}
+    )
     based = matrix["base"] is not None
     ticks = (
         '<svg width="306" height="14" viewBox="0 0 306 14" aria-hidden="true">'
@@ -3684,7 +3708,7 @@ def _forks(
     drawn = [f'<div><div class="rate"></div>{heads}</div>\n']
     for _, by_seed in rows:
         first = next(iter(by_seed.values()))
-        shown = [cell for cell in by_seed.values() if _treed(cell)]
+        shown = [cell for cell in by_seed.values() if simulate.treed(cell)]
         tops, _, height = _tiers([trees[_run_href(cell)] for cell in shown], based)
         sides = ("head", "base") if based else ("head",)
         row = [_row_head(f"<b>{_e(_loss(first))}</b>", sides, tops, height)]
@@ -3697,9 +3721,57 @@ def _forks(
         drawn.append(f"<div>{''.join(row)}</div>\n")
         if len(shown) < len(by_seed):
             every = [cell for _, cell in sorted(by_seed.items())]
-            rest = [cell for cell in every if not _treed(cell)]
+            rest = [cell for cell in every if not simulate.treed(cell)]
             drawn.append(_strip(matrix, every) + _more(matrix, rest, trees, width))
     return f'<div class="wide"><div class="forks">\n{"".join(drawn)}</div></div>\n'
+
+
+def _picture(
+    matrix: dict,
+    cells: Sequence[dict],
+    trees: Dict[str, tuple],
+    width: Callable[[int], float],
+    dark: bool,
+) -> str:
+    """The trees of a group's `cells` of seeds 0 to 2 as one picture, which the comment shows,
+    `trees` their lineages by run: a row a rate and a card a seed, on each what the run's place
+    on the report page says, over the head's tree and the base's, a run that moved outlined. A
+    picture reads no page's style, so it sets its colours itself, the dark theme's or the
+    light's."""
+    card, gap, above = 276, 10, 60
+    x = _along(38, 230)
+    seeds = sorted({cell["seed"] for cell in cells})
+    drawn, y = [], 0
+    for _, by_seed in _by_rate(cells):
+        tops, _, height = _tiers([trees[_run_href(cell)] for cell in by_seed.values()], True)
+        inner = above + height + 6
+        for seed, cell in by_seed.items():
+            chip, said = _fork_words(matrix, cell, "{}")
+            moved = chip == "moved"
+            drawn += [
+                f'<g transform="translate({seeds.index(seed) * (card + gap)} {y})">',
+                f'<rect class="card{" moved" if moved else ""}" x="1" y="1" width="{card - 2}" '
+                f'height="{inner - 2}" rx="6"/>',
+                f'<text class="label strong" x="10" y="18">{_e(_run_heading(cell))}</text>',
+                f'<text class="note" x="10" y="33">{"moved · " if moved else ""}{said}</text>',
+                _epoch_lines(x, above - 4, inner - 6),
+                _epoch_ticks(x, above - 7),
+            ]
+            for side, lineage, top in zip(("head", "base"), trees[_run_href(cell)], tops):
+                drawn += [
+                    f'<text class="note small" x="10" y="{above + top + 3.5}">{side}</text>',
+                    _small(cell, side, lineage, x, above + top, 7, width, 238),
+                ]
+            drawn.append("</g>")
+        y += inner + gap
+    colours = ";".join(
+        f"--{name}:{night if dark else light}" for name, (light, night) in _COLOURS.items()
+    )
+    called = simulate.GROUPS[group(cells[0])]
+    return (
+        _svg(len(seeds) * (card + gap) - gap, y - gap, f"The trees of {called}'s runs")
+        + f"<style>:root{{{colours}}}{_TREES}{_PICTURE}</style>{''.join(drawn)}</svg>\n"
+    )
 
 
 def _tiers(
@@ -3735,12 +3807,6 @@ def _more(
         f"<details>\n<summary>seeds {cells[0]['seed']} to {cells[-1]['seed']} as trees"
         f"</summary>\n{rows}</details>\n"
     )
-
-
-def _treed(cell: dict) -> bool:
-    """Whether a pull request's report page draws `cell`'s runs as trees: seeds 0 to 2, those
-    every pull request runs of each rate."""
-    return cell["seed"] < min(simulate.RATES["pr"].values())
 
 
 def _strip(matrix: dict, cells: Sequence[dict]) -> str:
@@ -3854,17 +3920,22 @@ def _fork_said(matrix: dict, cell: dict) -> str:
     """What the head of a run's tree says: where the head's run first forked, or how its trunk
     ended; with the chip of a run that moved, what the base's had; with that of one not compared
     side by side, why."""
+    chip, said = _fork_words(matrix, cell, "<b>{}</b>")
+    return (_chip(chip) + " " if chip else "") + f"<span>{said}</span>"
+
+
+def _fork_words(matrix: dict, cell: dict, strong: str) -> Tuple[Optional[str], str]:
+    """What `_fork_said` says of a run, as the chip it has, if any, and its words, the head's
+    epoch in `strong`, a format."""
     if cell["head"] is None:
-        unbuilt = _chip("unbuilt") + " " if cell["unbuilt"]["head"] else ""
-        return f"{unbuilt}<span>{_unshown(cell, 'head')}</span>"
-    bold = "<b>{}</b>"
+        return "unbuilt" if cell["unbuilt"]["head"] else None, _unshown(cell, "head")
     if cell["change"] == "moved":
-        return _chip("moved") + f" <span>{_against(cell, bold)}</span>"
-    reach = _first_fork(cell, "head", bold)
+        return "moved", _against(cell, strong)
+    reach = _first_fork(cell, "head", strong)
     if matrix["base"] is not None and cell["base"] is None:
-        unbuilt = _chip("unbuilt") + " " if cell["unbuilt"]["base"] else ""
-        return f"{unbuilt}<span>{reach} · {_unshown(cell, 'base')}</span>"
-    return f"<span>{reach}</span>"
+        chip = "unbuilt" if cell["unbuilt"]["base"] else None
+        return chip, f"{reach} · {_unshown(cell, 'base')}"
+    return None, reach
 
 
 def _first_fork(cell: dict, side: str, strong: str) -> str:

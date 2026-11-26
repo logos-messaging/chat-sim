@@ -51,6 +51,10 @@ Beside the runs' text, the site keeps these files for scripts:
 | `logos-chat/main/<sha>/<measurement>/point.json` | a point of main: what ran, the pull requests merged since the point before it, each run's outcome, each rate's summary, and each run's lines |
 | `logos-chat/long/<sha>/<measurement>/long.json` | a long run: what ran, and for each scenario what `compare` said and each run's outcome |
 
+A pull request's report also keeps the pictures its comment shows, for each group that moved:
+`logos-chat/pr-N/trees-<group>.svg` in the light theme's colours, and `trees-<group>-dark.svg` in
+the dark theme's.
+
 In `point.json`, `lines` maps a run's directory, `<scenario>/<run>/`, to the lines of its tree,
 in the run's order. A line has the line it left as `from`, the epoch it left at as `forked_at`,
 its tip's `epoch`, and how many `members` it ended with. The trunk left no line, so its `from` and
