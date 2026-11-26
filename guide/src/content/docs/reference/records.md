@@ -34,8 +34,9 @@ chat-sim's site keeps a run's text and no log. A run's text is its `run.txt` and
 | a point of `main` | while the point is among the newest eleven |
 | a long run | while it is among the newest fifteen |
 
-An older point keeps its `point.json`. Its page is drawn again from that alone, so its commands
-stay.
+A run of a point has its page as long as its text. An older point keeps its `point.json`, and
+its page is drawn from that alone: each rate has the commands that run a seed again, and a run
+whose lines the point holds stays a tree.
 
 A run's log, `group.log`, is an artifact of its workflow run, which GitHub keeps 90 days
 ([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)).
@@ -47,8 +48,20 @@ Beside the runs' text, the site keeps these files for scripts:
 | `logos-chat/pr-N/matrix.json` | the matrix of a pull request's newest run, as `tools/sim matrix` writes it |
 | `logos-chat/pr-N/meta.json` | what ran: the pull request, the head and the base, the chat-sim commit that ran and the measurement, the workflow run, and when |
 | `logos-chat/pr-N/scenarios/` | a copy of each scenario file that ran |
-| `logos-chat/main/<sha>/<measurement>/point.json` | a point of main: what ran, the pull requests merged since the point before it, each run's outcome, and each rate's summary |
+| `logos-chat/main/<sha>/<measurement>/point.json` | a point of main: what ran, the pull requests merged since the point before it, each run's outcome, each rate's summary, and each run's lines |
 | `logos-chat/long/<sha>/<measurement>/long.json` | a long run: what ran, and for each scenario what `compare` said and each run's outcome |
+
+A pull request's report also keeps the pictures its comment shows, for each group that moved:
+`logos-chat/pr-N/trees-<group>.svg` in the light theme's colours, and `trees-<group>-dark.svg` in
+the dark theme's.
+
+In `point.json`, `lines` maps a run's directory, `<scenario>/<run>/`, to the lines of its tree,
+in the run's order. A line has the line it left as `from`, the epoch it left at as `forked_at`,
+its tip's `epoch`, and how many `members` it ended with. The trunk left no line, so its `from` and
+`forked_at` are `null`.
+
+A run whose text holds no lines, as one that did not build, has no entry. A point has no `lines`
+when the site dropped its runs' text before points held them.
 
 ## The records
 

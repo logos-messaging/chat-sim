@@ -18,7 +18,7 @@ The page has three sections:
 
 | Section | Shows |
 |---|---|
-| Now | the newest commit that has an outcome: for each group and rate of loss, the median epochs before the first fork, and a meter toward the goal of 50 |
+| Now | the newest commit that has an outcome: for each group and rate of loss, the median epochs before the first fork, and under it the tree of the rate's run nearest that median, which links the run's page |
 | Over main's commits | one panel per rate of loss at which a run forked: the median as a line, the middle half of the runs as a band, and a marker on each commit where a run moved |
 | What changed | one row per commit, the newest first: each group's verdict against the commit before |
 
@@ -86,9 +86,11 @@ A commit where a run moved has a page that compares it with the commit before,
 - **Seed by seed.** For each group with a run that moved, one panel per rate at which a seed's
   first fork moved, with one row per seed. A ring marks the seed's epochs before the first fork
   at the commit before, and a dot marks them at the commit.
-- **Open a pair.** One row per seed, with its epochs at both commits, how far its first fork
-  moved, the round where its two runs first differ, and each run's text. Under the rows are the
-  commands that download both commits' logs.
+- **Open a pair.** One fold per rate. It draws each seed as two trees, the run after over the
+  run before, from the seed whose first fork moved earliest to the one whose moved latest. A tree
+  links its run's page while the site keeps one. Under the trees is one row per seed, with its
+  epochs at both commits, how far its first fork moved, the round where its two runs first
+  differ, and each run's text. Under the rows are the commands that download both commits' logs.
 
 The round where two runs first differ is the first round whose row differs between them
 ([The run's page](/chat-sim/guide/investigate/moved-run/#the-runs-page) shows the rows). The rounds
@@ -100,13 +102,25 @@ runs that moved can show `no round`.
 `logos-chat/main/<sha>/<measurement>/` is the page of a point. It names the logos-chat commit,
 the chat-sim commit that ran, the measurement and the pull requests merged since the point before
 it. The measurement is the chat-sim commit that ran, or an older one. Then the page shows a
-heatmap of the runs, how the runs of each group and rate ended, and each run.
+heatmap of the runs, how the runs of each group and rate ended, and each run as a tree.
 
-Each run has its lines, its rounds and its text. It also has the commands that make it again
+A tree reads as it does on a pull request's report
+([The report page](/chat-sim/guide/track/pull-request/#the-report-page)), and is in its group's
+colour. Each rate is a column. Its runs go from the fewest epochs without a fork at the top to
+the most, and a dashed line marks their median, the number the graph over main draws. A rate
+where no run forked is a row above the columns.
+
+A tree links the page of its run, `<scenario>/<run>/` under the point. That page draws the tree
+large, with each line labelled and the members that fell behind. It also has the run's rounds,
+its text, the commands that make it again
 ([Run it yourself](/chat-sim/guide/investigate/moved-run/#run-it-yourself)) and the command that
 downloads its log ([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)).
-[What the site keeps](/chat-sim/guide/reference/records/#what-the-site-keeps) says how long each
-stays.
+
+The site keeps the runs' pages and text of the newest eleven points
+([What the site keeps](/chat-sim/guide/reference/records/#what-the-site-keeps)). An older point
+keeps its trees, which then link no page. Under them, each rate has the commands that run a seed
+again and the command that downloads the rate's logs. A dashed tree is a run whose lines the
+point does not hold: it draws the trunk, and a mark where the run first forked.
 
 ## The long runs
 

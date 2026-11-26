@@ -22,10 +22,12 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # many runs as it holds, a job a scenario a side, and holds them to the base's
 # runs, or without a base to what is held.
 # The publish job keeps a main run on the Pages site as a point of main,
-# logos-chat/main/<sha>/<measurement>/, with the point's page, and draws the
+# logos-chat/main/<sha>/<measurement>/, with the point's page and, while it
+# keeps the runs' text, a page for each run, and draws the
 # graph over main, logos-chat/index.html, from every point again; it keeps a pr
-# run for a pull request in logos-chat/pr-<N>/, with its report page and a page
-# for each run; and it keeps a long run handed no base and no pr, held to what
+# run for a pull request in logos-chat/pr-<N>/, with its report page, a page
+# for each run and, of each group whose runs moved, the pictures of its trees;
+# and it keeps a long run handed no base and no pr, held to what
 # is expected, in logos-chat/long/<sha>/<measurement>/, with each scenario's
 # compare and its page, and draws the graph over main again, which links the
 # newest. Each keeps its runs' text, and the build's log of a job that could not
@@ -40,7 +42,8 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # main: it keeps no point, and measure-main.yml does not wait on it.
 # A pr run handed a pr posts the comment on that pull request of logos-chat as
 # the App chat-sim, editing the App's oldest comment there or writing one. The
-# post job does so after the publish job. A pr run handed check_run, the id of a
+# post job does so after the publish job, and where that job pushed, the
+# comment shows those pictures. A pr run handed check_run, the id of a
 # check run the App made on logos-chat, moves it to in progress once the runs
 # are planned, with this run as its details, and completes it with the groups'
 # verdicts once the comment is posted, with the report page as its details, or
@@ -408,6 +411,11 @@ jobs:
     permissions:
       contents: write          # push to the gh-pages branch
 
+    # For the post job: the commit pushed to gh-pages, or nothing where gh-pages
+    # held the run.
+    outputs:
+      pushed: ${{ steps.push.outputs.pushed }}
+
     # Serialize with the other jobs that publish to gh-pages, queued as they are.
     concurrency:
       group: gh-pages-publish
@@ -523,6 +531,7 @@ jobs:
             --run-number "$GITHUB_RUN_NUMBER" --time "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
       - name: Push to gh-pages
+        id: push
         run: |
           said="the point of logos-chat main $REVISION at $MEASUREMENT"
           if [ "$SUITE" = pr ]; then
@@ -539,6 +548,7 @@ jobs:
           git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git -C site commit -qm "Publish $said"
           git -C site push origin gh-pages
+          echo "pushed=$(git -C site rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   post:
     name: Post the comment and complete the check
@@ -572,6 +582,35 @@ jobs:
         with:
           name: matrix
           path: ${{ runner.temp }}
+      # The comment job wrote the comment before publish pushed the pictures of
+      # the runs' trees, so here it is written again with them. They are read
+      # at the commit pushed, from the host that serves a repository's files as
+      # they are: each run's pictures have an address of their own, and wait on
+      # no build of the Pages site. Without a push the comment stays as it was,
+      # and so it does where this step fails: the comment and the check wait on
+      # no picture.
+      - name: Write the comment again, with the pictures of the runs' trees
+        if: ${{ needs.publish.outputs.pushed != '' }}
+        continue-on-error: true
+        env:
+          REVISION: ${{ needs.plan.outputs.revision }}
+          BASE: ${{ needs.plan.outputs.base }}
+          REPORT_URL: ${{ needs.comment.outputs.report }}
+          PUSHED: ${{ needs.publish.outputs.pushed }}
+        run: |
+          given=()
+          if [ -n "$REPORT_URL" ]; then
+            given+=(--report-url "$REPORT_URL")
+          fi
+          python3 .github/scripts/simulate.py comment --matrix "$RUNNER_TEMP/matrix.json" \
+            --suite pr --revision "$REVISION" --base "$BASE" --pr "$PR" "${given[@]}" \
+            --expected tools/sim/expected --chat-sim "$GITHUB_SHA" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --pictures "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$PUSHED/logos-chat/pr-$PR/" \
+            --out "$RUNNER_TEMP/comment.md" || {
+            echo "::error::The comment could not be written again, so it is posted without the pictures of the runs' trees."
+            exit 1
+          }
       # The comment on the pull request, and the check run, through a token of
       # this job's own. A step's if cannot read a secret, so this step reads
       # whether it is set.
