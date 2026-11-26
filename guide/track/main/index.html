@@ -102,7 +102,7 @@ run again until a person has looked into it.</p>
 
 
 
-<table><thead><tr><th>Section</th><th>Shows</th></tr></thead><tbody><tr><td>Now</td><td>the newest commit that has an outcome: for each group and rate of loss, the median epochs before the first fork, and a meter toward the goal of 50</td></tr><tr><td>Over main’s commits</td><td>one panel per rate of loss at which a run forked: the median as a line, the middle half of the runs as a band, and a marker on each commit where a run moved</td></tr><tr><td>What changed</td><td>one row per commit, the newest first: each group’s verdict against the commit before</td></tr></tbody></table>
+<table><thead><tr><th>Section</th><th>Shows</th></tr></thead><tbody><tr><td>Now</td><td>the newest commit that has an outcome: for each group and rate of loss, the median epochs before the first fork, and under it the tree of the rate’s run nearest that median, which links the run’s page</td></tr><tr><td>Over main’s commits</td><td>one panel per rate of loss at which a run forked: the median as a line, the middle half of the runs as a band, and a marker on each commit where a run moved</td></tr><tr><td>What changed</td><td>one row per commit, the newest first: each group’s verdict against the commit before</td></tr></tbody></table>
 <p>The epochs before the first fork are the number a run is measured by. The page of a point calls
 them its epochs without a fork
 (<a href="/chat-sim/guide/understand/how-a-run-works/#a-runs-outcome">A run’s outcome</a>).</p>
@@ -173,9 +173,11 @@ and <code dir="auto">main</code> changed together.</p>
 <li><strong>Seed by seed.</strong> For each group with a run that moved, one panel per rate at which a seed’s
 first fork moved, with one row per seed. A ring marks the seed’s epochs before the first fork
 at the commit before, and a dot marks them at the commit.</li>
-<li><strong>Open a pair.</strong> One row per seed, with its epochs at both commits, how far its first fork
-moved, the round where its two runs first differ, and each run’s text. Under the rows are the
-commands that download both commits’ logs.</li>
+<li><strong>Open a pair.</strong> One fold per rate. It draws each seed as two trees, the run after over the
+run before, from the seed whose first fork moved earliest to the one whose moved latest. A tree
+links its run’s page while the site keeps one. Under the trees is one row per seed, with its
+epochs at both commits, how far its first fork moved, the round where its two runs first
+differ, and each run’s text. Under the rows are the commands that download both commits’ logs.</li>
 </ul>
 <p>The round where two runs first differ is the first round whose row differs between them
 (<a href="/chat-sim/guide/investigate/moved-run/#the-runs-page">The run’s page</a> shows the rows). The rounds
@@ -185,12 +187,22 @@ runs that moved can show <code dir="auto">no round</code>.</p>
 <p><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/</code> is the page of a point. It names the logos-chat commit,
 the chat-sim commit that ran, the measurement and the pull requests merged since the point before
 it. The measurement is the chat-sim commit that ran, or an older one. Then the page shows a
-heatmap of the runs, how the runs of each group and rate ended, and each run.</p>
-<p>Each run has its lines, its rounds and its text. It also has the commands that make it again
+heatmap of the runs, how the runs of each group and rate ended, and each run as a tree.</p>
+<p>A tree reads as it does on a pull request’s report
+(<a href="/chat-sim/guide/track/pull-request/#the-report-page">The report page</a>), and is in its group’s
+colour. Each rate is a column. Its runs go from the fewest epochs without a fork at the top to
+the most, and a dashed line marks their median, the number the graph over main draws. A rate
+where no run forked is a row above the columns.</p>
+<p>A tree links the page of its run, <code dir="auto">&#x3C;scenario>/&#x3C;run>/</code> under the point. That page draws the tree
+large, with each line labelled and the members that fell behind. It also has the run’s rounds,
+its text, the commands that make it again
 (<a href="/chat-sim/guide/investigate/moved-run/#run-it-yourself">Run it yourself</a>) and the command that
-downloads its log (<a href="/chat-sim/guide/investigate/moved-run/#into-the-log">Into the log</a>).
-<a href="/chat-sim/guide/reference/records/#what-the-site-keeps">What the site keeps</a> says how long each
-stays.</p>
+downloads its log (<a href="/chat-sim/guide/investigate/moved-run/#into-the-log">Into the log</a>).</p>
+<p>The site keeps the runs’ pages and text of the newest eleven points
+(<a href="/chat-sim/guide/reference/records/#what-the-site-keeps">What the site keeps</a>). An older point
+keeps its trees, which then link no page. Under them, each rate has the commands that run a seed
+again and the command that downloads the rate’s logs. A dashed tree is a run whose lines the
+point does not hold: it draws the trunk, and a mark where the run first forked.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="the-long-runs">The long runs</h2><a class="sl-anchor-link" href="#the-long-runs"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “The long runs”</span></a></div>
 <p>Once each Sunday, in UTC, chat-sim runs every scenario that a point does not run, but <code dir="auto">three</code>, at
 <code dir="auto">main</code>’s tip (<a href="/chat-sim/guide/understand/scenarios/">The scenarios</a> says which). The page of a long run,

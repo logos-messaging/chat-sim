@@ -99,6 +99,10 @@ build.</li>
 <p>Read the rounds of both sides from the top. The first round where the two tables differ is the
 earliest difference the rounds show. Two runs that moved can show none. The run does not say
 which adder added which member.</p>
+<p>A run of <code dir="auto">main</code> has the same page, <code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/&#x3C;scenario>/&#x3C;run>/</code>, while
+its point is among the newest eleven
+(<a href="/chat-sim/guide/track/main/#the-page-of-a-point">The page of a point</a>). It has one side: one
+tree, one table of rounds and one block of commands.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="a-change-or-chance">A change, or chance</h2><a class="sl-anchor-link" href="#a-change-or-chance"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “A change, or chance”</span></a></div>
 <p>One seed that moved is not yet a finding. A head that sends one frame more shifts which frames
 every member loses after it. That alone can move a run (<a href="/chat-sim/guide/understand/how-a-run-works/#the-same-run-and-when-it-is-not">The same run, and when it is
@@ -193,8 +197,9 @@ site.</p>
 <p>Each job of CI uploads its runs’ logs as the artifact <code dir="auto">logs-&#x3C;side>-&#x3C;scenario>-&#x3C;from></code>. The side is
 <code dir="auto">revision</code> for the head and <code dir="auto">base</code> for the base. <code dir="auto">&#x3C;from></code> is the number of the job’s first run.
 GitHub keeps the artifact 90 days. A job that could not build chat-sim uploads none.</p>
-<p>The page of a run, of a point and of a change each print the command that downloads a scenario’s
-artifacts. It needs GitHub’s <code dir="auto">gh</code>. For the example:</p>
+<p>The page of a run and the page of a change print the command that downloads a scenario’s
+artifacts. So does the page of a point whose runs have no page of their own. The command needs
+GitHub’s <code dir="auto">gh</code>. For the example:</p>
 <div class="expressive-code"><figure class="frame is-terminal not-content"><figcaption class="header"><span class="title"></span><span class="sr-only">Terminal window</span></figcaption><pre data-language="sh" class="wrap" style="--ecMaxLine:125ch"><code><div class="ec-line"><div class="code"><span style="--0:#82AAFF;--1:#3B61B0">gh</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">run</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">download</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">&#x3C;run-id></span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--repo</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">logos-messaging/chat-sim</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--dir</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#ECC48D;--1:#3B61B0">logs</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#82AAFF;--1:#3B61B0">--pattern</span><span style="--0:#D6DEEB;--1:#403F53"> </span><span style="--0:#D9F5DD;--1:#111111">'</span><span style="--0:#ECC48D;--1:#984E4D">logs-revision-grow-waku-loss-1-groupv3-[0-9]*</span><span style="--0:#D9F5DD;--1:#111111">'</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="gh run download <run-id> --repo logos-messaging/chat-sim --dir logs --pattern &#x27;logs-revision-grow-waku-loss-1-groupv3-[0-9]*&#x27;"><div></div></button></div></figure></div>
 <p>Each artifact holds the runs of one job, one directory per run, named by the run’s number. The
 example’s run 5 is in the artifact of the job that starts at run 4:

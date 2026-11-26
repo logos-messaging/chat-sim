@@ -83,9 +83,11 @@ and its merge base with <code dir="auto">main</code>. chat-sim compares the two 
 <p>chat-sim simulates a group that grows, many times over, and compares when the group first
 <a href="/chat-sim/guide/understand/how-a-run-works/#a-fork">forks</a> at the head and at the base. Each
 simulation is a <strong>run</strong>. The comment has one line for each kind of group, GroupV2 and GroupV3
-(<a href="/chat-sim/guide/understand/how-a-run-works/#the-two-groups">The two groups</a>), then the links:</p>
-<div class="expressive-code"><link rel="stylesheet" href="/chat-sim/guide/_astro/ec.w36nc.css"><script type="module" src="/chat-sim/guide/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text" class="wrap" style="--ecMaxLine:149ch"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">⚪ GroupV2: nothing moved · 0.5%: nothing moved in seeds 0 to 2 · 1%: nothing moved in seeds 0 to 2 · 5%: nothing moved in seeds 0 to 2</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">🔴 GroupV3: forks earlier · 0.5%: nothing moved in seeds 0 to 19 · 1%: 0 later, 9 earlier, 11 tied (p 0.0039) · 5%: 2 later, 3 earlier, 15 tied (p 1)</span></div></div><div class="ec-line"><div class="code">
-</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">The trees · the report, kept while the pull request is open · the graph over main · the run · 89abcde against its merge base fedcba9</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="⚪ GroupV2: nothing moved · 0.5%: nothing moved in seeds 0 to 2 · 1%: nothing moved in seeds 0 to 2 · 5%: nothing moved in seeds 0 to 2🔴 GroupV3: forks earlier · 0.5%: nothing moved in seeds 0 to 19 · 1%: 0 later, 9 earlier, 11 tied (p 0.0039) · 5%: 2 later, 3 earlier, 15 tied (p 1)The trees · the report, kept while the pull request is open · the graph over main · the run · 89abcde against its merge base fedcba9"><div></div></button></div></figure></div>
+(<a href="/chat-sim/guide/understand/how-a-run-works/#the-two-groups">The two groups</a>), then a picture of
+each group that moved, then the links:</p>
+<div class="expressive-code"><link rel="stylesheet" href="/chat-sim/guide/_astro/ec.w36nc.css"><script type="module" src="/chat-sim/guide/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text" class="wrap" style="--ecMaxLine:216ch"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">⚪ GroupV2: nothing moved · 0.5%: nothing moved in seeds 0 to 2 · 1%: nothing moved in seeds 0 to 2 · 5%: nothing moved in seeds 0 to 2</span></div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">🔴 GroupV3: forks earlier · 0.5%: nothing moved in seeds 0 to 19 · 1%: 0 later, 9 earlier, 11 tied (p 0.0039) · 5%: 2 later, 3 earlier, 15 tied (p 1)</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">(the picture of GroupV3's trees)</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">GroupV3's seeds 0 to 2: the head's tree over the base's, a run that moved outlined. The trees · the report, kept while the pull request is open · the graph over main · the run · 89abcde against its merge base fedcba9</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="⚪ GroupV2: nothing moved · 0.5%: nothing moved in seeds 0 to 2 · 1%: nothing moved in seeds 0 to 2 · 5%: nothing moved in seeds 0 to 2🔴 GroupV3: forks earlier · 0.5%: nothing moved in seeds 0 to 19 · 1%: 0 later, 9 earlier, 11 tied (p 0.0039) · 5%: 2 later, 3 earlier, 15 tied (p 1)(the picture of GroupV3&#x27;s trees)GroupV3&#x27;s seeds 0 to 2: the head&#x27;s tree over the base&#x27;s, a run that moved outlined. The trees · the report, kept while the pull request is open · the graph over main · the run · 89abcde against its merge base fedcba9"><div></div></button></div></figure></div>
 <p>The GroupV3 line reads:</p>
 <ul>
 <li><code dir="auto">🔴 GroupV3: forks earlier</code> is the group’s <strong>verdict</strong> (<a href="#the-verdict">The verdict</a>).</li>
@@ -107,10 +109,16 @@ unevenly. It is under the threshold of 0.01, so at 1% loss the head forks earlie
 epochs, and they lean neither way. A <code dir="auto">p</code> of 1 is the highest there is. At 5% loss the runs
 moved within chance.</li>
 </ul>
-<p>The rate of 1% loss gives the group its verdict, and <a href="#the-check">the check</a> fails. The last
-line links the trees, which draw the runs of seeds 0 to 2
-(<a href="#the-report-page">The report page</a>), the report, the graph over main and, as <code dir="auto">the run</code>, the
-workflow run that made the runs.</p>
+<p>The rate of 1% loss gives the group its verdict, and <a href="#the-check">the check</a> fails.</p>
+<p>The picture draws GroupV3’s runs of seeds 0 to 2: one row per rate and one card per seed. A card
+holds the head’s tree over the base’s, and an outline marks a run that moved
+(<a href="#the-report-page">The report page</a> says how to read a tree). GroupV2 has no picture, since
+none of its runs moved.</p>
+<p>The comment reads the picture at the commit of chat-sim’s site that published the run. The site
+takes that commit off its branch within a week, and the picture loads for as long as GitHub still
+serves the commit. The report page draws the same trees while the pull request is open.</p>
+<p>The last line says what the picture draws. Then it links the trees of every run on the report,
+the report, the graph over main and, as <code dir="auto">the run</code>, the workflow run that made the runs.</p>
 <p>When nothing moved in either group and every run was compared, the comment is one line:</p>
 <div class="expressive-code"><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="text" class="wrap" style="--ecMaxLine:195ch"><code><div class="ec-line"><div class="code"><span style="--0:#d6deeb;--1:#403f53">⚪ Nothing moved. All 18 runs of GroupV2 and GroupV3 at 89abcde replayed its merge base fedcba9 exactly. The trees · the report, kept while the pull request is open · the graph over main · the run</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="⚪ Nothing moved. All 18 runs of GroupV2 and GroupV3 at 89abcde replayed its merge base fedcba9 exactly. The trees · the report, kept while the pull request is open · the graph over main · the run"><div></div></button></div></figure></div>
 <p>When the base gave no outcome in some runs, the rate adds <code dir="auto">, no outcome at the base in 2 of 20 runs</code>. When chat-sim does not build at the head, the comment says so, and the report page has the
@@ -268,7 +276,8 @@ verdicts, the page says what the scenarios test. Then come the runs:</p>
 cell holds the head’s tree over the base’s, and links the run’s page.</li>
 <li><strong>The strips.</strong> A rate that ran seeds 3 to 19 has a strip under its row. For each seed of the
 rate, it says how many epochs later or earlier the head first forked than the base, and links
-the run. Under the strip are the rate’s words from the comment.</li>
+the run. Under the strip are the rate’s words from the comment, and a fold that draws seeds 3
+to 19 as trees.</li>
 </ul>
 <p>A tree is one run, drawn left to right by epoch, from 0 to 50:</p>
 <ul>

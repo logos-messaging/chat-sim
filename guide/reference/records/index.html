@@ -142,8 +142,9 @@ those of <code dir="auto">result.json</code>.</p>
 
 
 <table><thead><tr><th>Runs of</th><th>The site keeps their text</th></tr></thead><tbody><tr><td>a pull request</td><td>while the pull request is open</td></tr><tr><td>a point of <code dir="auto">main</code></td><td>while the point is among the newest eleven</td></tr><tr><td>a long run</td><td>while it is among the newest fifteen</td></tr></tbody></table>
-<p>An older point keeps its <code dir="auto">point.json</code>. Its page is drawn again from that alone, so its commands
-stay.</p>
+<p>A run of a point has its page as long as its text. An older point keeps its <code dir="auto">point.json</code>, and
+its page is drawn from that alone: each rate has the commands that run a seed again, and a run
+whose lines the point holds stays a tree.</p>
 <p>A run’s log, <code dir="auto">group.log</code>, is an artifact of its workflow run, which GitHub keeps 90 days
 (<a href="/chat-sim/guide/investigate/moved-run/#into-the-log">Into the log</a>).</p>
 <p>Beside the runs’ text, the site keeps these files for scripts:</p>
@@ -176,7 +177,16 @@ stay.</p>
 
 
 
-<table><thead><tr><th>File</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">logos-chat/pr-N/matrix.json</code></td><td>the matrix of a pull request’s newest run, as <code dir="auto">tools/sim matrix</code> writes it</td></tr><tr><td><code dir="auto">logos-chat/pr-N/meta.json</code></td><td>what ran: the pull request, the head and the base, the chat-sim commit that ran and the measurement, the workflow run, and when</td></tr><tr><td><code dir="auto">logos-chat/pr-N/scenarios/</code></td><td>a copy of each scenario file that ran</td></tr><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/point.json</code></td><td>a point of main: what ran, the pull requests merged since the point before it, each run’s outcome, and each rate’s summary</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/long.json</code></td><td>a long run: what ran, and for each scenario what <code dir="auto">compare</code> said and each run’s outcome</td></tr></tbody></table>
+<table><thead><tr><th>File</th><th>Holds</th></tr></thead><tbody><tr><td><code dir="auto">logos-chat/pr-N/matrix.json</code></td><td>the matrix of a pull request’s newest run, as <code dir="auto">tools/sim matrix</code> writes it</td></tr><tr><td><code dir="auto">logos-chat/pr-N/meta.json</code></td><td>what ran: the pull request, the head and the base, the chat-sim commit that ran and the measurement, the workflow run, and when</td></tr><tr><td><code dir="auto">logos-chat/pr-N/scenarios/</code></td><td>a copy of each scenario file that ran</td></tr><tr><td><code dir="auto">logos-chat/main/&#x3C;sha>/&#x3C;measurement>/point.json</code></td><td>a point of main: what ran, the pull requests merged since the point before it, each run’s outcome, each rate’s summary, and each run’s lines</td></tr><tr><td><code dir="auto">logos-chat/long/&#x3C;sha>/&#x3C;measurement>/long.json</code></td><td>a long run: what ran, and for each scenario what <code dir="auto">compare</code> said and each run’s outcome</td></tr></tbody></table>
+<p>A pull request’s report also keeps the pictures its comment shows, for each group that moved:
+<code dir="auto">logos-chat/pr-N/trees-&#x3C;group>.svg</code> in the light theme’s colours, and <code dir="auto">trees-&#x3C;group>-dark.svg</code> in
+the dark theme’s.</p>
+<p>In <code dir="auto">point.json</code>, <code dir="auto">lines</code> maps a run’s directory, <code dir="auto">&#x3C;scenario>/&#x3C;run>/</code>, to the lines of its tree,
+in the run’s order. A line has the line it left as <code dir="auto">from</code>, the epoch it left at as <code dir="auto">forked_at</code>,
+its tip’s <code dir="auto">epoch</code>, and how many <code dir="auto">members</code> it ended with. The trunk left no line, so its <code dir="auto">from</code> and
+<code dir="auto">forked_at</code> are <code dir="auto">null</code>.</p>
+<p>A run whose text holds no lines, as one that did not build, has no entry. A point has no <code dir="auto">lines</code>
+when the site dropped its runs’ text before points held them.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="the-records">The records</h2><a class="sl-anchor-link" href="#the-records"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “The records”</span></a></div>
 <p>A record is one line of <code dir="auto">group.log</code>, at <code dir="auto">trace</code> on the target <code dir="auto">libchat::mls_trace</code>: a name, then
 <code dir="auto">key=value</code> words. This is what logos-chat writes at the revision chat-sim pins in <code dir="auto">Cargo.toml</code>.</p>
