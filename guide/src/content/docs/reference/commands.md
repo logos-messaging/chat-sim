@@ -1,10 +1,10 @@
 ---
 title: Commands
-description: Every command of tools/sim and tools/forks, with its flags and exit status, the flake's app, and harness-run.
+description: The commands of tools/sim and tools/forks and harness-run at a glance, and where each is described in full.
 ---
 
-Every command runs from the root of a chat-sim checkout, with Python 3.9 or newer and nothing
-beyond its standard library.
+Every command runs from the root of a chat-sim checkout. The `python3` ones need Python 3.9 or
+newer and nothing beyond its standard library.
 
 ## sim
 
@@ -18,44 +18,20 @@ nix run .#groupv2-simulation -- run SCENARIO --out DIR
 
 | Command | Does |
 |---|---|
-| `run` | does the scenario once; a run that is not a grow has its log's fork report held to `expect` |
-| `sweep` | does it `K` times, one after another, a row a run; with `--from N`, runs `N` to `N+K-1` of a sweep |
-| `compare` | holds each run of a sweep in `OUT` to the outcome `EXPECTED` holds for it; with `--write`, writes the sweep's outcomes to `EXPECTED` instead |
-| `matrix` | pairs the runs under `HEAD` with those under `--base` by scenario and seed, and writes the matrix as JSON |
+| `run` | does the scenario once |
+| `sweep` | does it `K` times, one after another, and prints one row per run; with `--from N`, runs `N` to `N+K-1` of a sweep |
+| `compare` | checks each run of a sweep in `OUT` against the outcome `EXPECTED` holds for it; with `--write`, writes the sweep's outcomes to `EXPECTED` instead |
+| `matrix` | pairs the runs under `HEAD` with those under `--base` by scenario and seed, gives each group its verdict, and writes the pairs and the verdicts as JSON: the matrix. `--asked FILE` lists the sweeps each side was asked for, so that a run nobody made counts as one with no outcome |
 
 `--one-process PATH` is the runner, `harness-run`. `--out DIR` must not exist. The flake's app
-`groupv2-simulation` builds `harness-run` from the checkout and adds `--one-process` to what follows
-`--`, so it runs `run` and `sweep`. `compare` and `matrix` run with `python3`.
+`groupv2-simulation` builds `harness-run` from the checkout and adds `--one-process` to what
+follows `--`, so it runs `run` and `sweep`. `compare` and `matrix` run with `python3`.
 
-| Exit | `run`, `sweep` | `compare` | `matrix` |
-|---|---|---|---|
-| 0 | every step was done, and every run went as expected | every run came out as expected, and the sweep has a run for each outcome | it wrote the matrix |
-| 1 | a step was not done, or a report differs | a run did not, or the sweep and the file hold different numbers of runs | |
-| 2 | the command line or the scenario is refused; nothing started | the sweep or `EXPECTED` cannot be read, or a run was not in one process | a run or `--asked` cannot be read |
-| 128 + n | signal n interrupted it | | |
-
-A grow goes as expected when nothing stopped its step: it expects no outcome.
-
-### compare
-
-An outcome is what a run came to, but its wall time: its seeds, the ids it drew for the group and
-its members, the seconds of the clock, how it came out and what stopped it, and of a grow its
-trunk's epoch, its first fork, how it ended, and the lines and members off the trunk. A run is
-`same` where every field is as expected, and `moved` where any differs. A moved run prints the
-outcome expected under it, as `was`.
-
-### matrix
-
-`matrix` reads each `<scenario>/<run>/run.json` under a directory, at any depth, and an `unbuilt`
-marker for each run of a job that could not build chat-sim. A cell is a scenario and a seed. Its
-`change` is `compare`'s, where both sides have an outcome, and its `d` the head's epochs without a
-fork less the base's. Each group's rates get a result by the sign test, and each group the worst of
-its rates' ([Your pull request's result](/chat-sim/guide/track/pull-request/#the-verdict)). Without
-`--base`, a result is `unbuilt`, `no-outcome` or none, and the matrix holds each scenario's summary.
-`--asked` names a JSON list of the sweeps asked of each side, so a run neither side uploaded is a
-cell all the same.
-[`tools/sim/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#a-matrix-of-a-revisions-runs-beside-its-bases)
-gives every field.
+`run` and `sweep` exit 0 when every step was done and every run went as expected, and 1 when not.
+They exit 2 when the command line or the scenario is refused. `compare` exits 0 when every run
+matched its expected outcome and the sweep has a run for each.
+[`tools/sim/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md)
+gives every flag, exit status and field.
 
 ## forks
 
@@ -65,33 +41,25 @@ python3 tools/forks check --expect FILE PATH...
 ```
 
 A `PATH` is a log, or a directory, which stands for every `.log` file directly in it. `report`
-prints each conversation's report: its verdict, how many seats share a log, each branch with its
-epoch, state and members, and each installation with its position. `--json` also writes it as
-JSON. `check` holds one conversation's report to an expectation, and prints a line for each
-difference.
-
-| Exit | `report` | `check` |
-|---|---|---|
-| 0 | every conversation reads `whole`, and nothing is malformed | as expected |
-| 1 | anything else | a difference, or a malformed record |
-| 2 | the command line is wrong, a log cannot be read, or the JSON cannot be written | the command line is wrong, a log cannot be read, or the file is no expectation |
-
-The verdict is the first of these that holds:
+prints each conversation's verdict, its branches and where each installation stands. `check`
+compares one conversation's report with an expectation. The verdict is the first of these that
+holds:
 
 | Verdict | When |
 |---|---|
 | `split at epoch N` | epoch N is the first with two states, and both follow one state at epoch N-1 |
-| `split seen from epoch N` | epoch N is the first with two states, and the logs show no one state at N-1 they follow |
+| `split seen from epoch N` | epoch N is the first with two states, and the logs do not show one state at epoch N-1 that both follow |
 | `no live member` | no installation is live |
 | `not enough data` | no state was reported by two installations |
-| `whole as far as seen` | a later state follows from no live installation's newest |
+| `whole as far as seen` | a later epoch has a state that the logs do not link to the newest state of any live installation |
 | `whole` | every live installation is at the tip |
 | `whole, members behind` | a live installation is behind |
 
-An installation is at the `tip`, `behind`, of `lineage unknown`, `removed`, `never joined` or of
-`no data`, and live in the first three. Only `whole` is a clean bill.
+An installation is one member's client. It is live when its position is `tip`, `behind` or
+`lineage unknown`. `report` exits 0 only when every conversation reads exactly `whole`: any other
+verdict, `whole, members behind` among them, exits 1.
 [`tools/forks/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/tools/forks/README.md#how-the-verdict-is-decided)
-gives the rule in full, and the expectation's format.
+gives the rule in full, the exit statuses and the expectation's format.
 
 ## harness-run
 
@@ -100,8 +68,6 @@ cargo run --release -p harness --bin harness-run -- PLAN.json OUT_DIR
 ```
 
 It runs every member of one group in one process on a virtual clock, and writes
-`OUT_DIR/group.log` and `OUT_DIR/result.json`. It exits 0 for a run, steps that stopped included,
-and 2, with one line on standard error, when the plan cannot be read, the directory cannot be
-written, or the arguments are not those two. `tools/sim` writes the plan from the scenario.
+`OUT_DIR/group.log` and `OUT_DIR/result.json`. `tools/sim` writes the plan from the scenario.
 [`crates/harness/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/crates/harness/README.md)
 gives the plan's format and what a run leaves.

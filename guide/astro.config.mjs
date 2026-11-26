@@ -36,16 +36,16 @@ export default defineConfig({
       sidebar: [
         { label: "Introduction", link: "/" },
         {
-          label: "Understand",
-          items: [{ slug: "understand/how-a-run-works" }, { slug: "understand/scenarios" }],
-        },
-        {
           label: "Track",
-          items: [{ slug: "track/pull-request" }, { slug: "track/main" }, { slug: "reports" }, ...overMain],
+          items: [{ slug: "track/pull-request" }, { slug: "track/main" }, ...overMain],
         },
         {
           label: "Investigate",
           items: [{ slug: "investigate/moved-run" }],
+        },
+        {
+          label: "Understand",
+          items: [{ slug: "understand/how-a-run-works" }, { slug: "understand/scenarios" }],
         },
         {
           label: "Reference",
@@ -53,6 +53,7 @@ export default defineConfig({
             { slug: "reference/scenario-format" },
             { slug: "reference/commands" },
             { slug: "reference/records" },
+            { slug: "reports" },
           ],
         },
       ],

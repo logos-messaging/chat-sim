@@ -1,55 +1,7 @@
 ---
-title: Records
-description: Each record logos-chat writes on the log target libchat::mls_trace, with its fields, at the revision chat-sim pins; and the files a run leaves.
+title: Records and files
+description: The files a run leaves, what the site keeps of them and for how long, and each record logos-chat writes into a run's log at the revision chat-sim pins.
 ---
-
-A record is one log line at `trace` on the target `libchat::mls_trace`: a name, then `key=value`
-words. Every record but `run` is written in the span of the op that wrote it, a GroupV2 op
-(`groupv2.new`, `groupv2.new_from_welcome`, `groupv2.send_content`, `groupv2.handle_frame`,
-`groupv2.wakeup`, `groupv2.add_member` or `groupv2.remove_member`) or a GroupV3 one (`groupv3.new`,
-`groupv3.new_from_welcome`, `groupv3.send_content`, `groupv3.handle_frame`, `groupv3.wakeup` or
-`groupv3.add_member`), and takes `signer` and `convo` from it. The span's own `epoch` is the one the
-op began at. This page is what logos-chat writes at the revision chat-sim pins in `Cargo.toml`.
-
-```text
-2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178
-```
-
-| Record | Written when | Fields |
-|---|---|---|
-| `run` | a chat core is built for an installation | `signer` `participant` |
-| `epoch` | the core comes to hold the conversation, by creating or joining it, and each time its epoch moves on | `signer` `convo` from the span, `epoch` `state` `members` `signers` |
-| `left` | a commit removed this installation | `signer` `convo` from the span, `epoch` |
-| `sent` | it published a post of its own | `signer` `convo` from the span, `frame` `epoch` |
-| `received` | it read another member's post | `signer` `convo` from the span, `frame` `from` `epoch` |
-| `unreadable` | a frame of the group reached it and could not be read: a post, a vote or any other encrypted frame | `signer` `convo` from the span, `frame` `epoch` `why` |
-
-| Field | Holds |
-|---|---|
-| `signer` | the first 4 bytes of the installation's public signing key, in hex: what the report calls the installation |
-| `participant` | the first 4 bytes of the account id, in hex; an id shorter than that is written whole, as `706178` is |
-| `convo` | the conversation id, with a byte outside `[0-9A-Za-z_-]` written `%xx` |
-| `epoch` | the MLS epoch: the one held, in `epoch`; the one the removing commit made, in `left`; the one the frame was sent at, as its header names it, in `sent`, `received` and `unreadable` |
-| `state` | 8 bytes of BLAKE2b over a fixed prefix and the epoch authenticator, in hex |
-| `members` | how many members `signers` holds |
-| `signers` | the members as `signer:participant` pairs, comma-separated |
-| `frame` | 32 bytes of BLAKE2b over a fixed prefix and the frame's bytes, in hex: the same at the sender and every reader |
-| `from` | the sender's `signer` |
-| `why` | `epoch` (of another epoch than the one held), `decrypt` (of the epoch held, and failed to decrypt), or `sender` (decrypted, and the sender's account could not be checked) |
-
-`sent` and `received` are for posts alone. A frame that is no MLS message of the group, such as a
-welcome, writes nothing, and nor does an installation's own frame coming back to it. A post that
-reaches an installation a second time is `unreadable` (`decrypt`) then: the key that opened it is
-spent.
-
-`run`, `epoch` and `left` decide the verdict; the others say what became of each post. In the
-logos-chat tree the records are written in
-`core/conversations/src/conversation/mls_trace/record.rs`, from `core.rs` (`run`),
-`conversation/group_v2/trace.rs` and `conversation/group_v3/trace.rs` (the rest).
-
-`forks` reads two things this revision does not write: `commit` and `by` on an `epoch` record, the
-commit applied to reach the epoch and the installation that committed it, and a `delivery` record on
-the target `chat_module::report`, the state of an app's delivery service.
 
 ## What a run leaves
 
@@ -57,28 +9,99 @@ the target `chat_module::report`, the state of an app's delivery service.
 
 | File | Holds |
 |---|---|
-| `plan.json` | the plan the runner was given, written from the scenario |
+| `run.txt` | the run's outcome, as tables to read |
+| `run.json` | the same and more, for scripts |
 | `group.log` | every member's trace records, stamped with the virtual clock |
+| `plan.json` | the plan the runner was given, written from the scenario |
 | `result.json` | what the runner measured: each member, batch and post, and of a grow its lineage and rounds |
 | `runner.out`, `runner.stderr` | what the runner printed |
-| `run.json` | what the run came to, for scripts |
-| `run.txt` | the same, as tables to read |
-| `report.txt`, `report.json`, `expect.json` | of a run that is not a grow, the fork report of `group.log` and what it was held to |
+| `report.txt`, `report.json`, `expect.json` | for a run that is not a grow: what `tools/forks` reports of `group.log`, and the expectation it was checked against |
 
-A sweep also writes `sweep.txt` and `sweep.json`, a row a run.
+A sweep also writes `sweep.txt` and `sweep.json`, with one row per run.
 [`tools/sim/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/tools/sim/README.md#what-a-run-in-one-process-writes)
 gives every field of `run.json`, and
 [`crates/harness/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/crates/harness/README.md#what-a-run-leaves)
 those of `result.json`.
 
-The site keeps `run.txt`, `run.json` and `report.txt` of each run it publishes, or `build.log` where
-chat-sim did not build, and never a `group.log`: that is in the workflow run's artifacts
-([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)). Beside them it keeps:
+## What the site keeps
+
+chat-sim's site keeps a run's text and no log. A run's text is its `run.txt` and `run.json`, with
+`report.txt` when it has one, or `build.log` when chat-sim did not build.
+
+| Runs of | The site keeps their text |
+|---|---|
+| a pull request | while the pull request is open |
+| a point of `main` | while the point is among the newest eleven |
+| a long run | while it is among the newest fifteen |
+
+An older point keeps its `point.json`. Its page is drawn again from that alone, so its commands
+stay.
+
+A run's log, `group.log`, is an artifact of its workflow run, which GitHub keeps 90 days
+([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)).
+
+Beside the runs' text, the site keeps these files for scripts:
 
 | File | Holds |
 |---|---|
 | `logos-chat/pr-N/matrix.json` | the matrix of a pull request's newest run, as `tools/sim matrix` writes it |
-| `logos-chat/pr-N/meta.json` | what ran: the pull request, the head and the base, chat-sim's commit and the measurement, the workflow run, and when |
-| `logos-chat/pr-N/scenarios/` | a copy of each scenario file the run ran |
-| `logos-chat/main/<sha>/<measurement>/point.json` | a point of main: what ran, the pull requests merged since the point it follows, each run's cell, and each rate's summary |
-| `logos-chat/long/<sha>/<measurement>/long.json` | a long run: what ran, and of each scenario what `compare` said and each run's outcome |
+| `logos-chat/pr-N/meta.json` | what ran: the pull request, the head and the base, the chat-sim commit that ran and the measurement, the workflow run, and when |
+| `logos-chat/pr-N/scenarios/` | a copy of each scenario file that ran |
+| `logos-chat/main/<sha>/<measurement>/point.json` | a point of main: what ran, the pull requests merged since the point before it, each run's outcome, and each rate's summary |
+| `logos-chat/long/<sha>/<measurement>/long.json` | a long run: what ran, and for each scenario what `compare` said and each run's outcome |
+
+## The records
+
+A record is one line of `group.log`, at `trace` on the target `libchat::mls_trace`: a name, then
+`key=value` words. This is what logos-chat writes at the revision chat-sim pins in `Cargo.toml`.
+
+```text
+2026-01-01T00:00:00.500000Z TRACE groupv2.wakeup{user_id=saro signer=f95e254c convo=f190ef36ae epoch=0}: libchat::mls_trace: epoch epoch=1 state=d7dfaece05f67d08 members=3 signers=f95e254c:7361726f,671cc18a:72617961,c1f311f2:706178
+```
+
+Every record but `run` is written in the span of the group's op that wrote it, and takes `signer`
+and `convo` from the span. The span's `user_id` is the member's name. The span's own `epoch` is
+the one the op began at, not the record's: in the line above, a `wakeup` that began at epoch 0
+moved the group to epoch 1.
+
+The ops are `new`, `new_from_welcome`, `send_content`, `handle_frame`, `wakeup` and `add_member`,
+each as `groupv2.` and as `groupv3.`, and `groupv2.remove_member`.
+
+| Record | Written when | Fields |
+|---|---|---|
+| `run` | logos-chat's core is built for an installation | `signer` `participant` |
+| `epoch` | the installation first holds the conversation, by creating or joining it, and each time its epoch moves on | `epoch` `state` `members` `signers` |
+| `left` | a commit removed this installation | `epoch` |
+| `sent` | it published a post of its own | `frame` `epoch` |
+| `received` | it read another member's post | `frame` `from` `epoch` |
+| `unreadable` | a frame of the group reached it and could not be read: a post, a vote or any other encrypted frame | `frame` `epoch` `why` |
+
+| Field | Holds |
+|---|---|
+| `signer` | the first 4 bytes of the installation's public signing key, in hex: what the report calls the installation |
+| `participant` | the first 4 bytes of the account id, in hex; an id shorter than that is written whole, as `706178` is |
+| `convo` | the conversation id, with a byte outside `[0-9A-Za-z_-]` written `%xx` |
+| `epoch` | the MLS epoch. In an `epoch` record it is the one held. In `left` it is the one the removing commit made. In `sent`, `received` and `unreadable` it is the one the frame was sent at, as its header names it |
+| `state` | 8 bytes of BLAKE2b over a fixed prefix and the epoch authenticator, in hex |
+| `members` | how many members `signers` holds |
+| `signers` | the members as `signer:participant` pairs, comma-separated |
+| `frame` | 32 bytes of BLAKE2b over a fixed prefix and the frame's bytes, in hex: the same at the sender and every reader |
+| `from` | the sender's `signer` |
+| `why` | `epoch` (of another epoch than the one held), `decrypt` (of the epoch held, and failed to decrypt), or `sender` (decrypted, and the sender's account could not be checked) |
+
+`run`, `epoch` and `left` decide the verdict `tools/forks` gives. The others say what became of
+each post:
+
+- `sent` and `received` are for posts alone.
+- A frame that is no MLS message of the group, such as a welcome, writes nothing. Nor does an
+  installation's own frame coming back to it.
+- A post that reaches an installation a second time is `unreadable` (`decrypt`) then: the key that
+  opened it is spent.
+
+In the logos-chat tree the records are written in
+`core/conversations/src/conversation/mls_trace/record.rs`, from `core.rs` (`run`),
+`conversation/group_v2/trace.rs` and `conversation/group_v3/trace.rs` (the rest).
+
+`tools/forks` reads two things this revision does not write: `commit` and `by` on an `epoch`
+record, and a `delivery` record
+([`tools/forks/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/tools/forks/README.md#the-lines-it-reads)).

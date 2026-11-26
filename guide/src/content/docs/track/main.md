@@ -1,102 +1,120 @@
 ---
 title: logos-chat main over time
-description: How chat-sim measures each commit of logos-chat's main, what a point holds, how to read the graph over main and the page of a change, and the long run of each Sunday.
+description: How chat-sim measures each commit of logos-chat's main, and how to read the graph over main, the page of a change, the page of a point and the long run of each Sunday.
 ---
 
-Each push to logos-chat's `main` has its workflow start chat-sim's `main` suite at the pushed
-commit. Every hour, at 17 minutes past, chat-sim's `measure-main.yml` starts it at `main`'s tip as
-well, when the tip has no point at the current measurement, no run of it is going, and none ended at
-that measurement without its point. The suite runs the goal on both groups, seeds 0 to 2 at no loss
-and seeds 0 to 19 at 0.5, 1 and 5%, ten runs a job, and has no base. What it keeps is a **point** of
-`main`: `logos-chat/main/<sha>/<measurement>/` of the site, with its `point.json` and its page.
+Each push to logos-chat's `main` runs chat-sim at the pushed commit. It runs
+[the goal](/chat-sim/guide/understand/scenarios/#the-goal) on both kinds of group: seeds 0 to 2 at
+no loss, and seeds 0 to 19 at 0.5, 1 and 5% loss.
 
-## The measurement
-
-A point is of a logos-chat commit and a chat-sim commit, the measurement: the newest chat-sim
-commit that touches a path a run depends on. Those paths are `crates/`, `Cargo.toml`, `Cargo.lock`,
-`.cargo/`, `rust-toolchain.toml`, `flake.nix`, `flake.lock`, `tools/forks/__main__.py`,
-`tools/forks/forks/`, `tools/sim/__main__.py`, `tools/sim/sim/` and `tools/sim/scenarios/`.
-
-A chat-sim commit that touches one of them moves the measurement. `main`'s tip then gets a point
-at the new measurement within the hour, beside the one before it. A commit to the guide or to the
-pages moves nothing. Only a run of chat-sim's default branch keeps a point.
+The runs of one commit make a **point** of `main`.
+[The graph over main](/chat-sim/logos-chat/) draws the points. Every hour chat-sim also looks at
+`main`'s tip, and runs it when it has no point yet. A tip whose run ended without a point is not
+run again until a person has looked into it.
 
 ## The graph over main
 
-[Over main](/chat-sim/logos-chat/) answers three questions, in this order.
+The page has three sections:
 
 | Section | Shows |
 |---|---|
-| Now | of the newest commit, each group's epochs before the first fork at each rate of loss: the median of the rate's runs, as a number and a meter toward the goal of 50 |
-| Over main's commits | a panel a rate of loss, both groups in each: the median as a line and the middle half of the runs as a band, with a marker on each commit found to change a run of the group |
-| What changed | a row a commit, the newest first: what each group's runs came to against the commit before it, and a link to the commit's runs |
+| Now | the newest commit that has an outcome: for each group and rate of loss, the median epochs before the first fork, and a meter toward the goal of 50 |
+| Over main's commits | one panel per rate of loss at which a run forked: the median as a line, the middle half of the runs as a band, and a marker on each commit where a run moved |
+| What changed | one row per commit, the newest first: each group's verdict against the commit before |
 
-A commit of `main` is compared with the commit before it as a pull request is with its base
-([The verdict](/chat-sim/guide/track/pull-request/#the-verdict)): seed by seed, both at one
-measurement, by the same sign test, at the rates the newest commit ran. "Nothing moved" says every
-seed with an outcome at both commits came out the same. "Moved, within chance" says runs differ,
-with no lean to earlier or later beyond chance. A run the commit before has no outcome of is not
-compared, and the row says how many there are. A commit found to change a run links
-[the page of its change](#the-page-of-a-change).
+The epochs before the first fork are the number a run is measured by. The page of a point calls
+them its epochs without a fork
+([A run's outcome](/chat-sim/guide/understand/how-a-run-works/#a-runs-outcome)).
 
-Under the numbers, one line holds the newest commit to the first commit of the test. A group says
-"nothing moved" where each commit since had every run of it compared and changed none. Any other
-group is tested on each seed's epochs at the two commits, so a drift over several commits shows
-there though no single commit shows it.
+A commit gets its verdict as a pull request does
+([The verdict](/chat-sim/guide/track/pull-request/#the-verdict)). The commit before it stands in
+for the base: the runs of the two commits are paired seed by seed. A run **moved** when its
+outcome differs from the outcome of the same seed at the commit before.
 
-The page draws one test. A chat-sim commit that moves the measurement has `main`'s tip run again.
-Where every seed's first fork stays at its epoch, the page goes on and counts the change under the
-table. Where a seed's first fork moves, the page takes the test as changed: it starts again from
-that run, and lists the points before it as [the earlier points](/chat-sim/logos-chat/earlier/). A
-point with no outcome has a row and no numbers.
+- A commit where a run moved links [the page of its change](#the-page-of-a-change).
+- A run with no outcome at the commit before has none to compare with. The row says how many
+  such runs there are.
+- A point with no outcome has a row and no numbers.
+- Only the rates of loss that `main`'s newest commit ran are compared.
+- At no loss a commit runs three seeds, and three seeds cannot go beyond chance. So that rate
+  can read "moved, within chance", and never "forks earlier" or "forks later".
 
-Where `main` has a new commit by the time it runs again, chat-sim and `main` changed together, and
-no run holds one change apart from the other. That commit's row says it is not compared with the
-commit before. Where a first fork moved as well, the page starts again there, and says of the
-earlier points that it cannot tell which of the two changed the runs.
+Under the numbers of Now, one line compares the newest commit with the first commit the page
+draws. A group reads "nothing moved" when every commit since the first had each run of the group
+compared with the commit before, and changed none. Otherwise it gets the verdict of the newest
+commit's runs against the first commit's. So a drift over several commits shows there, even when
+no single commit shows it.
 
-The page tracks each group against its own past. It does not rank GroupV2 against GroupV3: an
-epoch joins more members in one than in the other, and the page says how many.
+The page tracks each group against its own past. It does not rank GroupV2 against GroupV3: one
+epoch adds a different number of members in each. Where both groups have runs that went without a
+fork, the page says how many.
+
+## The measurement
+
+chat-sim changes too, and a change to it can move a run. So each point is tied to a
+**measurement**. The measurement is a chat-sim commit. It is the newest commit, up to the one
+that ran, that changes a file a run depends on
+([CONTRIBUTING.md](https://github.com/logos-messaging/chat-sim/blob/master/CONTRIBUTING.md#the-paths-a-run-depends-on)
+lists the files). It is the `<measurement>` in a point's address. A commit to this guide changes
+no such file, so it leaves the measurement as it is.
+
+In full, a point is the runs of one logos-chat commit at one measurement. A commit is compared
+with the commit before it only at a measurement both ran at.
+
+When the measurement changes, chat-sim runs `main`'s tip again within the hour, at the new
+measurement. The tip then has two points, one at each measurement, and they show what chat-sim's
+change did.
+
+chat-sim runs only the tip again. So when `main` gets a new commit first, the old tip has no point
+at the new measurement. The page shows one of three things:
+
+| The page shows | When |
+|---|---|
+| under its sections, "chat-sim itself changed 1 time since, and each time no seed's first fork moved" | the tip ran again, and no seed's first fork differs between its two points. The graph goes on. |
+| a graph that starts again at the new point, and a link to [the earlier points](/chat-sim/logos-chat/earlier/) | the tip ran again, and a seed's first fork differs between its two points |
+| a row that reads "not compared with the commit before" | `main` got a new commit before the old tip ran again. Between the two commits, logos-chat and chat-sim both changed, and no run tells one change from the other. |
+
+When a first fork moved across such a row, the graph starts again there, and says that chat-sim
+and `main` changed together.
 
 ## The page of a change
 
-A commit found to change a run has a page, `logos-chat/main/<sha>/<measurement>/change/`, for the
-commit against the commit before it.
+A commit where a run moved has a page that compares it with the commit before,
+`logos-chat/main/<sha>/<measurement>/change/`:
 
-| Part | Shows |
-|---|---|
-| The verdicts | a line a group, in the words of a pull request's comment |
-| Seed by seed | of each group a run of which moved, a panel a rate: a row a seed, with its epochs before the first fork at the commit before as a ring and at the commit as a dot |
-| Open a pair | a row a seed: its run's number, its epochs at both commits, how far its first fork moved, the round its two runs part in, and each run's text; under them, the commands that download both commits' logs |
+- **The verdicts.** One line per group, in the words of a pull request's comment.
+- **Seed by seed.** For each group with a run that moved, one panel per rate at which a seed's
+  first fork moved, with one row per seed. A ring marks the seed's epochs before the first fork
+  at the commit before, and a dot marks them at the commit.
+- **Open a pair.** One row per seed, with its epochs at both commits, how far its first fork
+  moved, the round where its two runs first differ, and each run's text. Under the rows are the
+  commands that download both commits' logs.
 
-The round the two runs part in is the first whose adders, joiners, refused adders or virtual
-seconds differ in the two `run.json`. A run's rounds and its outcome are two records of it: two
-runs of the same outcome can part in a round, and two that differ can part in none.
-
-The site keeps each run's text while its point is among the newest eleven, and no log
-([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)). GitHub keeps a run's logs
-90 days. Where a command finds none, the page of each commit's point has the commands that run a
-run again.
+The round where two runs first differ is the first round whose row differs between them
+([The run's page](/chat-sim/guide/investigate/moved-run/#the-runs-page) shows the rows). The rounds
+are not part of a run's outcome. So two runs with the same outcome can differ in a round, and two
+runs that moved can show `no round`.
 
 ## The page of a point
 
-The page of a point names the logos-chat commit, chat-sim's commit and the measurement, the pull
-requests merged since the point it follows, and that point. A heatmap of its runs follows, then a
-row for each group's rate with how its runs ended, then a fold a rate with each run. Each run has
-its lines, its rounds, its text, the commands that run it again ([From a moved run to your
-machine](/chat-sim/guide/investigate/moved-run/#run-it-yourself)) and the command that downloads
-its log ([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)). A run whose job
-could not build chat-sim has no log.
+`logos-chat/main/<sha>/<measurement>/` is the page of a point. It names the logos-chat commit,
+the chat-sim commit that ran, the measurement and the pull requests merged since the point before
+it. The measurement is the chat-sim commit that ran, or an older one. Then the page shows a
+heatmap of the runs, how the runs of each group and rate ended, and each run.
 
-The newest eleven points keep their runs' text. An older point keeps its `point.json`, and its page
-is drawn again from it alone, so the commands stay.
+Each run has its lines, its rounds and its text. It also has the commands that make it again
+([Run it yourself](/chat-sim/guide/investigate/moved-run/#run-it-yourself)) and the command that
+downloads its log ([Into the log](/chat-sim/guide/investigate/moved-run/#into-the-log)).
+[What the site keeps](/chat-sim/guide/reference/records/#what-the-site-keeps) says how long each
+stays.
 
 ## The long runs
 
-Once each Sunday, in UTC, `measure-main.yml` starts the `long` suite at `main`'s tip. It runs the
-two scenarios of fifty epochs once each, and each other scenario `tools/sim/expected/` holds, but
-the goal at `main`'s rates, as many runs as the file holds. It holds each sweep to that file. Its
-page, `logos-chat/long/<sha>/<measurement>/`, has a row a scenario with what its runs came to and
-what `compare` said. "As expected" means the runs came out as `tools/sim/expected/` holds them, not
-that they came out well. The graph over main links the newest long run and draws none of it. The
-newest fifteen long runs keep their text.
+Once each Sunday, in UTC, chat-sim runs every scenario that a point does not run, but `three`, at
+`main`'s tip ([The scenarios](/chat-sim/guide/understand/scenarios/) says which). The page of a long run,
+`logos-chat/long/<sha>/<measurement>/`, has one row per scenario: how its runs ended, and whether
+they were as expected.
+
+"As expected" means the runs gave the outcomes that `tools/sim/expected/` records
+([CONTRIBUTING.md](https://github.com/logos-messaging/chat-sim/blob/master/CONTRIBUTING.md#what-is-expected)),
+not that they ended well. The graph over main links the newest long run and draws none of it.
