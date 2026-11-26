@@ -6,8 +6,8 @@
 <meta name="color-scheme" content="light dark">
 <title>chat-sim: logos-chat #369</title>
 <style>
-:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--band:rgba(57,135,229,.18);--rate-1:#86b6ef;--rate-2:#3987e5;--rate-3:#1c5cab;--rate-4:#0d366b;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
-@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--band:rgba(109,167,236,.22);--rate-1:#b7d3f6;--rate-2:#6da7ec;--rate-3:#2a78d6;--rate-4:#184f95;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--rate-2:#3987e5;--v2:#2a78d6;--v3:#eb6834;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--rate-2:#6da7ec;--v2:#3987e5;--v3:#d95926;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
 body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
 background:var(--bg);font:15px/1.5 system-ui,sans-serif}
 a{color:var(--link)}
@@ -43,18 +43,11 @@ font-size:12px;color:var(--muted)}
 .chart .small{font-size:10px}
 .label{fill:var(--fg)}
 .note{fill:var(--muted)}
-.band{fill:var(--band)}
-.measure{stroke:var(--muted);stroke-dasharray:3 3}
 .leader{stroke:var(--line)}
 .hit{fill:none;pointer-events:all}
-.s1{--hue:var(--rate-1)}
-.s2{--hue:var(--rate-2)}
-.s3{--hue:var(--rate-3)}
-.s4{--hue:var(--rate-4)}
 .series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .marker,.key{fill:var(--hue)}
 .marker{stroke:var(--bg);stroke-width:2}
-.marker.open{fill:var(--bg);stroke:var(--hue)}
 .cell rect{fill:var(--cell)}
 .chart .cell text{fill:currentColor;font-size:12px}
 .cell .whole{fill:currentColor}
@@ -68,10 +61,6 @@ font-size:12px;color:var(--muted)}
 .empty{--cell:var(--box);color:var(--muted)}
 .empty rect{stroke:var(--line);stroke-dasharray:3 2}
 .chart svg+.legend{margin-top:.5rem}
-.points td{white-space:nowrap;font-variant-numeric:tabular-nums}
-.points th[colspan]{text-align:center}
-.points .merged{white-space:normal;min-width:14rem}
-.points .moved{white-space:normal;font-size:13px;color:var(--muted);min-width:12rem}
 
 .facts code{font-size:13px}
 .verdict{font-size:1.1em}
@@ -105,7 +94,7 @@ details.text>summary{font-size:13px;color:var(--muted)}
 .verdicts{margin:1rem 0 0;padding:0;list-style:none;font-size:16px}
 .verdicts li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 6px}
 .verdicts li>b{min-width:5rem}
-.verdicts .muted{font-size:14px}
+.verdicts .muted{flex:1 1 20rem;font-size:14px}
 .chip{padding:1px 8px;border-radius:2em;font-size:12px;font-weight:600;white-space:nowrap;
 background:var(--neutral-bg);color:var(--muted)}
 .chip.moved,.chip.within{color:var(--fg)}
@@ -153,8 +142,8 @@ font-size:16px}
 <body>
 <p class="muted"><a href="../../">chat-sim</a> / <a href="../">logos-chat</a> / #369</p>
 <h1>logos-chat #369</h1>
-<p class="facts">head <a href="https://github.com/logos-messaging/logos-chat/commit/fc7d22125f0f90e8727fc9afdd4e5b5a57a52844"><code>fc7d221</code></a> · merge base <a href="https://github.com/logos-messaging/logos-chat/commit/c7c0c1ba50566ecbcbef12958ee9795bdb22db09"><code>c7c0c1b</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/16c561465d2d6a34768da42f873b5d0ac9e94425"><code>16c5614</code></a> · <a href="https://github.com/logos-messaging/logos-chat/pull/369">the pull request</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/45640837805">the run</a> · 2026-11-25 15:08 UTC</p>
-<p class="muted">Ran at <code>fc7d221</code> against its merge base <code>c7c0c1b</code>.</p>
+<p class="facts">head <a href="https://github.com/logos-messaging/logos-chat/commit/4c663ee4dece234247eea6e574d0d18210ec7d2c"><code>4c663ee</code></a> · merge base <a href="https://github.com/logos-messaging/logos-chat/commit/92cfdde86bdb692f6e5e6e30f61f02ec71093260"><code>92cfdde</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/749f669564cb335f9f302fcdd014d15ab36cdd08"><code>749f669</code></a> · <a href="https://github.com/logos-messaging/logos-chat/pull/369">the pull request</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/45861995931">the run</a> · 2026-11-26 16:51 UTC</p>
+<p class="muted">Ran at <code>4c663ee</code> against its merge base <code>92cfdde</code>.</p>
 <ul class="verdicts">
 <li><b>GroupV2</b> <span class="chip same">nothing moved</span> <span class="muted">· 0.5%: nothing moved in seeds 0 to 2 · 1%: nothing moved in seeds 0 to 2 · 5%: nothing moved in seeds 0 to 2</span></li>
 <li><b>GroupV3</b> <span class="chip same">nothing moved</span> <span class="muted">· 0.5%: nothing moved in seeds 0 to 2 · 1%: nothing moved in seeds 0 to 2 · 5%: nothing moved in seeds 0 to 2</span></li>

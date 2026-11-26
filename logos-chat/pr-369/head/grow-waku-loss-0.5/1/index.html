@@ -6,8 +6,8 @@
 <meta name="color-scheme" content="light dark">
 <title>chat-sim: logos-chat #369, GroupV2 0.5%, seed 0</title>
 <style>
-:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--band:rgba(57,135,229,.18);--rate-1:#86b6ef;--rate-2:#3987e5;--rate-3:#1c5cab;--rate-4:#0d366b;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
-@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--band:rgba(109,167,236,.22);--rate-1:#b7d3f6;--rate-2:#6da7ec;--rate-3:#2a78d6;--rate-4:#184f95;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--rate-2:#3987e5;--v2:#2a78d6;--v3:#eb6834;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--rate-2:#6da7ec;--v2:#3987e5;--v3:#d95926;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
 body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
 background:var(--bg);font:15px/1.5 system-ui,sans-serif}
 a{color:var(--link)}
@@ -43,18 +43,11 @@ font-size:12px;color:var(--muted)}
 .chart .small{font-size:10px}
 .label{fill:var(--fg)}
 .note{fill:var(--muted)}
-.band{fill:var(--band)}
-.measure{stroke:var(--muted);stroke-dasharray:3 3}
 .leader{stroke:var(--line)}
 .hit{fill:none;pointer-events:all}
-.s1{--hue:var(--rate-1)}
-.s2{--hue:var(--rate-2)}
-.s3{--hue:var(--rate-3)}
-.s4{--hue:var(--rate-4)}
 .series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .marker,.key{fill:var(--hue)}
 .marker{stroke:var(--bg);stroke-width:2}
-.marker.open{fill:var(--bg);stroke:var(--hue)}
 .cell rect{fill:var(--cell)}
 .chart .cell text{fill:currentColor;font-size:12px}
 .cell .whole{fill:currentColor}
@@ -68,10 +61,6 @@ font-size:12px;color:var(--muted)}
 .empty{--cell:var(--box);color:var(--muted)}
 .empty rect{stroke:var(--line);stroke-dasharray:3 2}
 .chart svg+.legend{margin-top:.5rem}
-.points td{white-space:nowrap;font-variant-numeric:tabular-nums}
-.points th[colspan]{text-align:center}
-.points .merged{white-space:normal;min-width:14rem}
-.points .moved{white-space:normal;font-size:13px;color:var(--muted);min-width:12rem}
 
 .facts code{font-size:13px}
 .verdict{font-size:1.1em}
@@ -105,7 +94,7 @@ details.text>summary{font-size:13px;color:var(--muted)}
 .verdicts{margin:1rem 0 0;padding:0;list-style:none;font-size:16px}
 .verdicts li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 6px}
 .verdicts li>b{min-width:5rem}
-.verdicts .muted{font-size:14px}
+.verdicts .muted{flex:1 1 20rem;font-size:14px}
 .chip{padding:1px 8px;border-radius:2em;font-size:12px;font-weight:600;white-space:nowrap;
 background:var(--neutral-bg);color:var(--muted)}
 .chip.moved,.chip.within{color:var(--fg)}
@@ -154,13 +143,13 @@ font-size:16px}
 <p class="muted"><a href="../../../../../">chat-sim</a> / <a href="../../../../">logos-chat</a> / <a href="../../../">#369</a> / GroupV2 0.5%, seed 0</p>
 <h1>GroupV2 · 0.5% loss · seed 0</h1>
 <p class="ran"><span class="chip same">same</span> <span>The head first forked at epoch 5, as the base&#x27;s run did.</span></p>
-<p class="facts">head <a href="https://github.com/logos-messaging/logos-chat/commit/fc7d22125f0f90e8727fc9afdd4e5b5a57a52844"><code>fc7d221</code></a> · merge base <a href="https://github.com/logos-messaging/logos-chat/commit/c7c0c1ba50566ecbcbef12958ee9795bdb22db09"><code>c7c0c1b</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/16c561465d2d6a34768da42f873b5d0ac9e94425"><code>16c5614</code></a></p>
+<p class="facts">head <a href="https://github.com/logos-messaging/logos-chat/commit/4c663ee4dece234247eea6e574d0d18210ec7d2c"><code>4c663ee</code></a> · merge base <a href="https://github.com/logos-messaging/logos-chat/commit/92cfdde86bdb692f6e5e6e30f61f02ec71093260"><code>92cfdde</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/749f669564cb335f9f302fcdd014d15ab36cdd08"><code>749f669</code></a></p>
 <div class="chart wide">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1118 560" width="1118" height="560" role="img" aria-label="GroupV2 0.5%, seed 0: the head&#x27;s tree over the base&#x27;s"><line class="epoch" x1="92.0" x2="92.0" y1="20" y2="560"/><line class="epoch" x1="244.0" x2="244.0" y1="20" y2="560"/><line class="epoch" x1="396.0" x2="396.0" y1="20" y2="560"/><line class="epoch" x1="548.0" x2="548.0" y1="20" y2="560"/><line class="epoch" x1="700.0" x2="700.0" y1="20" y2="560"/><line class="epoch" x1="852.0" x2="852.0" y1="20" y2="560"/><text class="axis small" x="92.0" y="14" text-anchor="middle">0</text><text class="axis small" x="244.0" y="14" text-anchor="middle">10</text><text class="axis small" x="396.0" y="14" text-anchor="middle">20</text><text class="axis small" x="548.0" y="14" text-anchor="middle">30</text><text class="axis small" x="700.0" y="14" text-anchor="middle">40</text><text class="axis small" x="852.0" y="14" text-anchor="middle">50</text><text class="note" x="866.0" y="14">the goal</text><text class="label strong" x="0" y="84">head</text><text class="note" x="0" y="100">fc7d221</text><line class="mark" x1="168.0" x2="168.0" y1="72" y2="58"/><text class="note" x="173.0" y="67">first fork <tspan class="label strong">5</tspan></text><g class="tree head"><g><title>line 2, off the trunk: 1 member, epoch 5</title><path d="M168.0 80.0V192.0H168.0" stroke-width="3.81"/><circle cx="168.0" cy="192.0" r="3.50"/></g><g><title>line 1, off the trunk: 1 member, epoch 6</title><path d="M183.2 80.0V164.0H183.2" stroke-width="3.81"/><circle cx="183.2" cy="164.0" r="3.50"/></g><g><title>line 3, off the trunk: 1 member, epoch 8</title><path d="M213.6 80.0V136.0H213.6" stroke-width="3.81"/><circle cx="213.6" cy="136.0" r="3.50"/></g><g><title>line 4, off the trunk: 1 member, epoch 9</title><path d="M228.8 80.0V108.0H228.8" stroke-width="3.81"/><circle cx="228.8" cy="108.0" r="3.50"/></g><g><title>trunk: 15 members, epochs 0 to 9</title><path d="M92.0 80.0H228.8" stroke-width="9.00"/><circle cx="228.8" cy="80.0" r="5.25"/></g></g><text class="note" x="177.5" y="196.0"><tspan class="label strong">1 member</tspan>, epoch 5</text><text class="note" x="192.7" y="168.0"><tspan class="label strong">1 member</tspan>, epoch 6</text><text class="note" x="223.1" y="140.0"><tspan class="label strong">1 member</tspan>, epoch 8</text><text class="note" x="238.3" y="112.0"><tspan class="label strong">1 member</tspan>, epoch 9</text><text class="note" x="240.1" y="84.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">15 members</tspan>, epochs 0 to 9</text><text class="note" x="0" y="230">fell behind</text><g class="fell"><title>peer8 fell behind at epoch 4</title><circle cx="152.8" cy="226" r="4"/><text class="note" x="160.8" y="230">peer8 at 4</text></g><g class="fell"><title>peer13 fell behind at epoch 8</title><circle cx="213.6" cy="244" r="4"/><text class="note" x="221.6" y="248">peer13 at 8</text></g><text class="note" x="0" y="276">members</text><text class="note" x="92" y="276"><tspan class="label strong">20 seated</tspan> · 15 on the trunk · 4 on 4 lines off it · </text><g class="ring"><title>1 never joined</title><rect x="345.6" y="265.0" width="26" height="14" rx="7"/><circle cx="353.1" cy="272.0" r="3"/><text x="359.6" y="275.5">1</text></g><text class="note" x="376.6" y="276">never joined</text><line class="rule" x1="0" x2="1118" y1="292" y2="292"/><text class="label strong" x="0" y="354">base</text><text class="note" x="0" y="370">c7c0c1b</text><line class="mark" x1="168.0" x2="168.0" y1="342" y2="328"/><text class="note" x="173.0" y="337">first fork <tspan class="label strong">5</tspan></text><g class="tree base"><g><title>line 2, off the trunk: 1 member, epoch 5</title><path d="M168.0 350.0V462.0H168.0" stroke-width="3.81"/><circle cx="168.0" cy="462.0" r="3.50"/></g><g><title>line 1, off the trunk: 1 member, epoch 6</title><path d="M183.2 350.0V434.0H183.2" stroke-width="3.81"/><circle cx="183.2" cy="434.0" r="3.50"/></g><g><title>line 3, off the trunk: 1 member, epoch 8</title><path d="M213.6 350.0V406.0H213.6" stroke-width="3.81"/><circle cx="213.6" cy="406.0" r="3.50"/></g><g><title>line 4, off the trunk: 1 member, epoch 9</title><path d="M228.8 350.0V378.0H228.8" stroke-width="3.81"/><circle cx="228.8" cy="378.0" r="3.50"/></g><g><title>trunk: 15 members, epochs 0 to 9</title><path d="M92.0 350.0H228.8" stroke-width="9.00"/><circle cx="228.8" cy="350.0" r="5.25"/></g></g><text class="note" x="177.5" y="466.0"><tspan class="label strong">1 member</tspan>, epoch 5</text><text class="note" x="192.7" y="438.0"><tspan class="label strong">1 member</tspan>, epoch 6</text><text class="note" x="223.1" y="410.0"><tspan class="label strong">1 member</tspan>, epoch 8</text><text class="note" x="238.3" y="382.0"><tspan class="label strong">1 member</tspan>, epoch 9</text><text class="note" x="240.1" y="354.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">15 members</tspan>, epochs 0 to 9</text><text class="note" x="0" y="500">fell behind</text><g class="fell"><title>peer8 fell behind at epoch 4</title><circle cx="152.8" cy="496" r="4"/><text class="note" x="160.8" y="500">peer8 at 4</text></g><g class="fell"><title>peer13 fell behind at epoch 8</title><circle cx="213.6" cy="514" r="4"/><text class="note" x="221.6" y="518">peer13 at 8</text></g><text class="note" x="0" y="546">members</text><text class="note" x="92" y="546"><tspan class="label strong">20 seated</tspan> · 15 on the trunk · 4 on 4 lines off it · </text><g class="ring"><title>1 never joined</title><rect x="345.6" y="535.0" width="26" height="14" rx="7"/><circle cx="353.1" cy="542.0" r="3"/><text x="359.6" y="545.5">1</text></g><text class="note" x="376.6" y="546">never joined</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1118 560" width="1118" height="560" role="img" aria-label="GroupV2 0.5%, seed 0: the head&#x27;s tree over the base&#x27;s"><line class="epoch" x1="92.0" x2="92.0" y1="20" y2="560"/><line class="epoch" x1="244.0" x2="244.0" y1="20" y2="560"/><line class="epoch" x1="396.0" x2="396.0" y1="20" y2="560"/><line class="epoch" x1="548.0" x2="548.0" y1="20" y2="560"/><line class="epoch" x1="700.0" x2="700.0" y1="20" y2="560"/><line class="epoch" x1="852.0" x2="852.0" y1="20" y2="560"/><text class="axis small" x="92.0" y="14" text-anchor="middle">0</text><text class="axis small" x="244.0" y="14" text-anchor="middle">10</text><text class="axis small" x="396.0" y="14" text-anchor="middle">20</text><text class="axis small" x="548.0" y="14" text-anchor="middle">30</text><text class="axis small" x="700.0" y="14" text-anchor="middle">40</text><text class="axis small" x="852.0" y="14" text-anchor="middle">50</text><text class="note" x="866.0" y="14">the goal</text><text class="label strong" x="0" y="84">head</text><text class="note" x="0" y="100">4c663ee</text><line class="mark" x1="168.0" x2="168.0" y1="72" y2="58"/><text class="note" x="173.0" y="67">first fork <tspan class="label strong">5</tspan></text><g class="tree head"><g><title>line 2, off the trunk: 1 member, epoch 5</title><path d="M168.0 80.0V192.0H168.0" stroke-width="3.81"/><circle cx="168.0" cy="192.0" r="3.50"/></g><g><title>line 1, off the trunk: 1 member, epoch 6</title><path d="M183.2 80.0V164.0H183.2" stroke-width="3.81"/><circle cx="183.2" cy="164.0" r="3.50"/></g><g><title>line 3, off the trunk: 1 member, epoch 8</title><path d="M213.6 80.0V136.0H213.6" stroke-width="3.81"/><circle cx="213.6" cy="136.0" r="3.50"/></g><g><title>line 4, off the trunk: 1 member, epoch 9</title><path d="M228.8 80.0V108.0H228.8" stroke-width="3.81"/><circle cx="228.8" cy="108.0" r="3.50"/></g><g><title>trunk: 15 members, epochs 0 to 9</title><path d="M92.0 80.0H228.8" stroke-width="9.00"/><circle cx="228.8" cy="80.0" r="5.25"/></g></g><text class="note" x="177.5" y="196.0"><tspan class="label strong">1 member</tspan>, epoch 5</text><text class="note" x="192.7" y="168.0"><tspan class="label strong">1 member</tspan>, epoch 6</text><text class="note" x="223.1" y="140.0"><tspan class="label strong">1 member</tspan>, epoch 8</text><text class="note" x="238.3" y="112.0"><tspan class="label strong">1 member</tspan>, epoch 9</text><text class="note" x="240.1" y="84.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">15 members</tspan>, epochs 0 to 9</text><text class="note" x="0" y="230">fell behind</text><g class="fell"><title>peer8 fell behind at epoch 4</title><circle cx="152.8" cy="226" r="4"/><text class="note" x="160.8" y="230">peer8 at 4</text></g><g class="fell"><title>peer13 fell behind at epoch 8</title><circle cx="213.6" cy="244" r="4"/><text class="note" x="221.6" y="248">peer13 at 8</text></g><text class="note" x="0" y="276">members</text><text class="note" x="92" y="276"><tspan class="label strong">20 seated</tspan> · 15 on the trunk · 4 on 4 lines off it · </text><g class="ring"><title>1 never joined</title><rect x="345.6" y="265.0" width="26" height="14" rx="7"/><circle cx="353.1" cy="272.0" r="3"/><text x="359.6" y="275.5">1</text></g><text class="note" x="376.6" y="276">never joined</text><line class="rule" x1="0" x2="1118" y1="292" y2="292"/><text class="label strong" x="0" y="354">base</text><text class="note" x="0" y="370">92cfdde</text><line class="mark" x1="168.0" x2="168.0" y1="342" y2="328"/><text class="note" x="173.0" y="337">first fork <tspan class="label strong">5</tspan></text><g class="tree base"><g><title>line 2, off the trunk: 1 member, epoch 5</title><path d="M168.0 350.0V462.0H168.0" stroke-width="3.81"/><circle cx="168.0" cy="462.0" r="3.50"/></g><g><title>line 1, off the trunk: 1 member, epoch 6</title><path d="M183.2 350.0V434.0H183.2" stroke-width="3.81"/><circle cx="183.2" cy="434.0" r="3.50"/></g><g><title>line 3, off the trunk: 1 member, epoch 8</title><path d="M213.6 350.0V406.0H213.6" stroke-width="3.81"/><circle cx="213.6" cy="406.0" r="3.50"/></g><g><title>line 4, off the trunk: 1 member, epoch 9</title><path d="M228.8 350.0V378.0H228.8" stroke-width="3.81"/><circle cx="228.8" cy="378.0" r="3.50"/></g><g><title>trunk: 15 members, epochs 0 to 9</title><path d="M92.0 350.0H228.8" stroke-width="9.00"/><circle cx="228.8" cy="350.0" r="5.25"/></g></g><text class="note" x="177.5" y="466.0"><tspan class="label strong">1 member</tspan>, epoch 5</text><text class="note" x="192.7" y="438.0"><tspan class="label strong">1 member</tspan>, epoch 6</text><text class="note" x="223.1" y="410.0"><tspan class="label strong">1 member</tspan>, epoch 8</text><text class="note" x="238.3" y="382.0"><tspan class="label strong">1 member</tspan>, epoch 9</text><text class="note" x="240.1" y="354.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">15 members</tspan>, epochs 0 to 9</text><text class="note" x="0" y="500">fell behind</text><g class="fell"><title>peer8 fell behind at epoch 4</title><circle cx="152.8" cy="496" r="4"/><text class="note" x="160.8" y="500">peer8 at 4</text></g><g class="fell"><title>peer13 fell behind at epoch 8</title><circle cx="213.6" cy="514" r="4"/><text class="note" x="221.6" y="518">peer13 at 8</text></g><text class="note" x="0" y="546">members</text><text class="note" x="92" y="546"><tspan class="label strong">20 seated</tspan> · 15 on the trunk · 4 on 4 lines off it · </text><g class="ring"><title>1 never joined</title><rect x="345.6" y="535.0" width="26" height="14" rx="7"/><circle cx="353.1" cy="542.0" r="3"/><text x="359.6" y="545.5">1</text></g><text class="note" x="376.6" y="546">never joined</text></svg>
 </div>
 <p class="reading">seated counts every member added, the creator included, and not removed: those on a line and those that never joined.</p>
 <h2>The rounds</h2>
-<p class="side">the head <code>fc7d221</code></p>
+<p class="side">the head <code>4c663ee</code></p>
 <div class="wide"><table class="rounds">
 <thead><tr><th class="n">round</th><th>adders</th><th>joiners</th><th>refused</th><th class="n">settled s</th></tr></thead>
 <tbody>
@@ -176,7 +165,7 @@ font-size:16px}
 <tr><td class="n">10</td><td>peer10</td><td>peer20</td><td>-</td><td class="n">180.000</td></tr>
 </tbody>
 </table></div>
-<p class="side">the base <code>c7c0c1b</code></p>
+<p class="side">the base <code>92cfdde</code></p>
 <div class="wide"><table class="rounds">
 <thead><tr><th class="n">round</th><th>adders</th><th>joiners</th><th>refused</th><th class="n">settled s</th></tr></thead>
 <tbody>
@@ -195,24 +184,27 @@ font-size:16px}
 <p class="caption">Each round's adders, the members they added, the adders refused the whole round, and the virtual seconds the round took. The run does not say which adder added which member.</p>
 <h2>Run it yourself</h2>
 <p class="reading">It needs Linux on x86-64, Nix with flakes, jq and python3. Run each block from a directory of its own, since each clones chat-sim.</p>
-<p class="side">the head <code>fc7d221</code></p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 16c561465d2d6a34768da42f873b5d0ac9e94425
+<p class="side">the head <code>4c663ee</code></p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 749f669564cb335f9f302fcdd014d15ab36cdd08
 pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
-sed -i &quot;s/$pinned/fc7d22125f0f90e8727fc9afdd4e5b5a57a52844/g&quot; flake.nix Cargo.toml
+sed -i &quot;s/$pinned/4c663ee4dece234247eea6e574d0d18210ec7d2c/g&quot; flake.nix Cargo.toml
 nix flake lock
 nix develop -c cargo build --release -p harness --bin harness-run
 python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-0.5.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/grow-waku-loss-0.5-seed-0</pre>
-<p class="side">the base <code>c7c0c1b</code></p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 16c561465d2d6a34768da42f873b5d0ac9e94425
+<p class="side">the base <code>92cfdde</code></p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 749f669564cb335f9f302fcdd014d15ab36cdd08
 pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
-sed -i &quot;s/$pinned/c7c0c1ba50566ecbcbef12958ee9795bdb22db09/g&quot; flake.nix Cargo.toml
+sed -i &quot;s/$pinned/92cfdde86bdb692f6e5e6e30f61f02ec71093260/g&quot; flake.nix Cargo.toml
 nix flake lock
 nix develop -c cargo build --release -p harness --bin harness-run
 python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-0.5.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/grow-waku-loss-0.5-seed-0</pre>
 <h2>The text</h2>
-<p class="side">the head <code>fc7d221</code></p>
+<p class="side">the head <code>4c663ee</code></p>
 <p class="file"><a href="run.txt">run.txt</a> · <a href="run.json">run.json</a></p>
-<p class="side">the base <code>c7c0c1b</code></p>
+<p class="side">the base <code>92cfdde</code></p>
 <p class="file"><a href="../../../base/grow-waku-loss-0.5/1/run.txt">run.txt</a> · <a href="../../../base/grow-waku-loss-0.5/1/run.json">run.json</a></p>
+<h2>The log</h2>
+<p class="reading">The site keeps no log: each job uploads its runs' as an artifact of the workflow run, which GitHub keeps 90 days. This downloads both sides', and the run's log is <code>group.log</code> under run 1 of each. What to read in it: the guide's <a href="../../../../../guide/investigate/moved-run/#into-the-log">Into the log</a>.</p>
+<pre>gh run download 45861995931 --repo logos-messaging/chat-sim --dir logs --pattern &#x27;logs-revision-grow-waku-loss-0.5-[0-9]*&#x27; --pattern &#x27;logs-base-grow-waku-loss-0.5-[0-9]*&#x27;</pre>
 </body>
 </html>
