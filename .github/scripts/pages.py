@@ -9,10 +9,11 @@ master and `pr-N` for pull request N. `index` writes the site's landing page, an
 a warning.
 
 `point` keeps a point of logos-chat's main, a run of simulate.yml's main suite: its
-`point.json`, drawn from the run's matrix, its runs' text and its page, in
+`point.json`, drawn from the run's matrix and its runs' lines, its runs' text and its page, in
 `logos-chat/main/<sha>/<measurement>/`. What was there is replaced unless a run of a higher
 number wrote it, and then only the newest eleven points keep their runs' text: the page of a
-point that loses it is drawn again from its point.json. The points are in the order of their
+point that loses it is drawn again from its point.json. A point from before a point.json held
+its runs' lines is given them while it keeps its text. The points are in the order of their
 runs' numbers, which GitHub gives in the order the runs were started and a re-run keeps;
 `previous` names the point a new one follows. `pr` keeps the newest run of a logos-chat pull
 request in `logos-chat/pr-N/` the same way: its matrix, both sides' runs' text, its `meta.json`,
@@ -262,7 +263,13 @@ _POINT = {
     "previous": (dict, _NONE),
     "cells": (list,),
     "summary": (list,),
+    "lines": (dict,),
 }
+# A point need not hold its runs' lines: the points that do not are from before a point kept them.
+_UNLINED_POINT = {field: kind for field, kind in _POINT.items() if field != "lines"}
+# What a point keeps of a line of a run: the line it left and the epoch it left at, neither of
+# the trunk, its tip's epoch, and how many members it ended with.
+_LINE = {"from", "forked_at", "epoch", "members"}
 _LONG = {
     "logos_chat": (str,),
     "measurement": (str,),
@@ -567,10 +574,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "point",
         help="keep a point of logos-chat's main",
         description="Writes the point of a run of the main suite to "
-        "logos-chat/main/SHA/MEASUREMENT/ of SITE: point.json, each run's run.txt, run.json and "
-        "report.txt where it has one, or build.log of a job that could not build chat-sim, and "
-        "the point's page, index.html. What was there is replaced, unless it is the point of a "
-        "run of a higher number. Then removes the runs' text of each point past the newest "
+        "logos-chat/main/SHA/MEASUREMENT/ of SITE: point.json, which holds the matrix's cells "
+        "and each run's lines, each run's run.txt, run.json and report.txt where it has one, or "
+        "build.log of a job that could not build chat-sim, and the point's page, index.html. "
+        "What was there is replaced, unless it is the point of a run of a higher number. Then "
+        "gives each point that holds no lines those of the runs it keeps a run.json of, removes "
+        "the runs' text of each point past the newest "
         f"{WINDOW}, by run number, and draws again the page of each point that loses it or has "
         "none. A matrix that read no run at the revision, built or not, is refused.",
     )
@@ -859,7 +868,8 @@ def write_point(
     """Writes the point of `matrix`, a matrix of a run of main, to
     `logos-chat/main/<sha>/<measurement>/` of `site`, replacing what was there: point.json, each
     run's text under `runs` at any depth in `<scenario>/<run>/`, its run by number, and the
-    point's page.
+    point's page. The point.json holds each run's lines, as `_lines` reads them, so that the
+    run's tree outlasts its text.
 
     `facts` says what ran, `merged` the pull requests of logos-chat merged since `before`, the
     point it follows, or `None`. Returns the point, as `read_point` reads it back.
@@ -880,6 +890,7 @@ def write_point(
         "summary": matrix["summary"],
     }
     _replace(out, copies)
+    point["lines"] = _lines(out, matrix["cells"])
     (out / "point.json").write_text(json.dumps(point, indent=1) + "\n", encoding="utf-8")
     point = read_point(out / "point.json")
     draw_point(out, point)
@@ -1808,6 +1819,21 @@ def prune(found: Sequence[Tuple[Path, dict]], window: int = WINDOW) -> List[Path
     return pruned
 
 
+def keep_lines(directory: Path, point: dict) -> dict:
+    """Writes into the point.json in `directory` its runs' lines, as `_lines` reads them, where
+    `point`, what it holds, has none and `directory` still keeps a run.json to read them from,
+    and returns the point as it then is: a point from before a point kept them holds them once
+    its runs' text goes."""
+    if "lines" in point:
+        return point
+    lines = _lines(directory, point["cells"])
+    if not lines:
+        return point
+    point = {**point, "lines": lines}
+    (directory / "point.json").write_text(json.dumps(point, indent=1) + "\n", encoding="utf-8")
+    return point
+
+
 def pull_requests(site: Path) -> List[int]:
     """The numbers of the logos-chat pull requests whose run `site` keeps in
     `logos-chat/pr-N/`, the lowest first."""
@@ -1897,7 +1923,7 @@ def read_point(path: Path) -> dict:
     logos-chat commit and its measurement."""
     point = _json(path)
     try:
-        _shaped(point, _POINT)
+        _shaped(point, _held_point(point))
         _commits(point, "logos_chat", "measurement", "chat_sim")
         named = (path.parent.parent.name, path.parent.name)
         if (point["logos_chat"], point["measurement"]) != named:
@@ -1914,6 +1940,12 @@ def read_point(path: Path) -> dict:
             _cell(cell, f"cells[{number}]", alone=True, shape=_held_cell(cell))
         for number, one in enumerate(point["summary"]):
             _summary(one, f"summary[{number}]", _held_summary(one))
+        runs = {_run_href(cell) for cell in point["cells"]}
+        for run, lines in point.get("lines", {}).items():
+            if run not in runs:
+                raise Unreadable(f"lines[{run!r}] is of no run of its cells")
+            if _rows(lines) is None:
+                raise Unreadable(f"lines[{run!r}] is not the lines of a run, down from one trunk")
     except Unreadable as refused:
         raise Unreadable(f"{path}: {refused}") from None
     return point
@@ -2049,7 +2081,8 @@ def _point(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         )
     except Unreadable as refused:
         parser.error(str(refused))
-    kept = [(out, point), *((at, one) for at, one in found if at != out)]
+    # Before the text goes, so that a point leaving the window leaves with its lines.
+    kept = [(out, point), *((at, keep_lines(at, one)) for at, one in found if at != out)]
     pruned = prune(kept)
     for directory in pruned:
         print(
@@ -2421,6 +2454,11 @@ def _held_cell(cell: object) -> dict:
     if not isinstance(cell, dict) or "d" in cell:
         return _CELL
     return _MOVED_CELL if "group" in cell else _UNGROUPED_CELL
+
+
+def _held_point(point: object) -> dict:
+    """The shape of a point.json: one from before the points held their runs' lines has none."""
+    return _POINT if not isinstance(point, dict) or "lines" in point else _UNLINED_POINT
 
 
 def _result(result: object, where: str) -> None:
@@ -3815,22 +3853,78 @@ def _base_run(out: Path, matrix: dict, cell: dict) -> Optional[Tuple[Path, str]]
 
 
 def _lineage(report: Optional[dict]) -> Optional[dict]:
-    """The lineage of a run's grow as `report`, its run.json, holds it, a row a line: the trunk
-    first, then the lines that left each line, the latest to leave first, each followed by those
-    that left it, so that no line's drop crosses another; who fell behind and at which epoch, who
-    was behind at the end and who never joined. `None` where a line lacks the line it left, the
-    epoch it left at, its tip's epoch or its members, or does not come down from the trunk, as in
-    a run.json of an earlier measurement."""
+    """The lineage of a run's grow as `report`, its run.json, holds it: its lines as the rows
+    `_rows` lays out, who fell behind and at which epoch, who was behind at the end and who never
+    joined. `None` where `_rows` lays out none, as of a run.json of an earlier measurement."""
+    rows = _rows(_run_lines(report))
+    if rows is None:
+        return None
+    grow = report["grow"]
+    fell = [
+        (one["name"], one["epoch"])
+        for one in _listed(grow.get("fell_behind"))
+        if isinstance(one, dict) and isinstance(one.get("name"), str) and _integer(one.get("epoch"))
+    ]
+    behind, never = _names(grow.get("behind")), _names(grow.get("never_joined"))
+    return {"rows": rows, "fell": fell, "behind": behind, "never": never}
+
+
+def _kept(point: dict, cell: dict) -> Optional[dict]:
+    """The lineage of `cell`'s run as `point` keeps it: its rows alone, which name no member.
+    `None` where the point keeps no lines of the run."""
+    lines = point.get("lines", {}).get(_run_href(cell))
+    return None if lines is None else {"rows": _rows(lines)}
+
+
+def _lines(directory: Path, cells: Sequence[dict]) -> Dict[str, List[dict]]:
+    """The lines of each run of `cells` whose run.json `directory` keeps, by the run's directory
+    there, as a point keeps them; a run whose lines `_rows` cannot lay out has none."""
+    held = {}
+    for cell in cells:
+        lines = _run_lines(_run_json(_run_dir(directory, cell) / "run.json"))
+        if _rows(lines) is not None:
+            held[_run_href(cell)] = lines
+    return held
+
+
+def _run_lines(report: Optional[dict]) -> Optional[List[dict]]:
+    """The lines of a run's grow as a point keeps them, from `report`, its run.json, in the run's
+    order: of each the fields of `_LINE`. `None` where it has no lines, each with its members."""
     grow = report.get("grow") if report is not None else None
     lines = grow.get("lines") if isinstance(grow, dict) else None
     if not isinstance(lines, list):
         return None
-    left: Dict[Optional[int], List[int]] = {}
-    for number, line in enumerate(lines):
+    held = []
+    for line in lines:
         if not isinstance(line, dict) or not isinstance(line.get("members"), list):
             return None
-        source, at, epoch = line.get("from"), line.get("forked_at"), line.get("epoch")
-        if not _integer(epoch) or (source is None) != (at is None):
+        held.append(
+            {
+                "from": line.get("from"),
+                "forked_at": line.get("forked_at"),
+                "epoch": line.get("epoch"),
+                "members": len(line["members"]),
+            }
+        )
+    return held
+
+
+def _rows(lines: object) -> Optional[List[dict]]:
+    """The rows of the tree of a run's `lines`, as a point keeps them, a row a line: the trunk
+    first, then the lines that left each line, the latest to leave first, each followed by those
+    that left it, so that no line's drop crosses another. `None` where a line is not of `_LINE`'s
+    fields, lacks the line it left, the epoch it left at or its tip's epoch, or does not come
+    down from the trunk."""
+    if not isinstance(lines, list):
+        return None
+    left: Dict[Optional[int], List[int]] = {}
+    for number, line in enumerate(lines):
+        if not isinstance(line, dict) or line.keys() != _LINE:
+            return None
+        source, at = line["from"], line["forked_at"]
+        if not (_integer(line["epoch"]) and _integer(line["members"])):
+            return None
+        if (source is None) != (at is None):
             return None
         if source is not None and not (
             _integer(source) and _integer(at) and 0 <= source < len(lines) and source != number
@@ -3842,33 +3936,15 @@ def _lineage(report: Optional[dict]) -> Optional[dict]:
     rows: List[dict] = []
 
     def visit(number: int, parent: Optional[int]) -> None:
-        line, row = lines[number], len(rows)
-        rows.append(
-            {
-                "line": number,
-                "from": line["from"],
-                "forked_at": line["forked_at"],
-                "epoch": line["epoch"],
-                "members": len(line["members"]),
-                "row": row,
-                "parent": parent,
-            }
-        )
+        row = len(rows)
+        rows.append({"line": number, **lines[number], "row": row, "parent": parent})
         for child in sorted(
             left.get(number, []), key=lambda one: (lines[one]["forked_at"], one), reverse=True
         ):
             visit(child, row)
 
     visit(left[None][0], None)
-    if len(rows) != len(lines):
-        return None
-    fell = [
-        (one["name"], one["epoch"])
-        for one in _listed(grow.get("fell_behind"))
-        if isinstance(one, dict) and isinstance(one.get("name"), str) and _integer(one.get("epoch"))
-    ]
-    behind, never = _names(grow.get("behind")), _names(grow.get("never_joined"))
-    return {"rows": rows, "fell": fell, "behind": behind, "never": never}
+    return rows if len(rows) == len(lines) else None
 
 
 def _most(lineages: Sequence[Optional[dict]]) -> int:
@@ -3983,9 +4059,10 @@ def _epoch_ticks(x: Callable[[float], float], y: float) -> str:
 
 
 def _never(cell: dict, side: str, lineage: Optional[dict]) -> Optional[int]:
-    """How many members of a side's run of `cell` never joined: as its lineage names them, else as
-    its outcome counts them, which one of an earlier measurement does not."""
-    if lineage is not None:
+    """How many members of a side's run of `cell` never joined: as its lineage names them, else,
+    without one or with one that names nobody, as its outcome counts them, which one of an earlier
+    measurement does not."""
+    if lineage is not None and "never" in lineage:
         return len(lineage["never"])
     return None if cell[side] is None else cell[side].get("never_joined")
 

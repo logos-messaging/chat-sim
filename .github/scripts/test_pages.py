@@ -638,7 +638,7 @@ class Point(LogosChat):
         self.assertEqual(
             list(written),
             ["logos_chat", "measurement", "chat_sim", "time", "run_url", "run_number"]
-            + ["merged", "previous", "cells", "summary"],
+            + ["merged", "previous", "cells", "summary", "lines"],
         )
         self.assertEqual(
             [written[field] for field in ("logos_chat", "measurement", "chat_sim", "time")],
@@ -672,6 +672,31 @@ class Point(LogosChat):
         self.assertEqual(len(self.files(self.at())), 2 + 12 * 3)
         self.assertEqual(pages.read_point(self.at() / "point.json"), written)
         self.assertEqual(pages.points(self.site), [(self.at(), written)])
+
+    def test_a_point_holds_each_run_s_lines_by_its_directory_as_its_run_json_has_them(self):
+        self.point(runs=self.uploaded(**{"1/1": {"grow": GROW}, "5/0": {"grow": LOOPED}}))
+        lines = self.read()["lines"]
+        held = [
+            {
+                "from": line["from"],
+                "forked_at": line["forked_at"],
+                "epoch": line["epoch"],
+                "members": len(line["members"]),
+            }
+            for line in GROW["lines"]
+        ]
+        self.assertEqual((lines[f"{GOAL.format(1)}/2/"], len(held)), (held, 3))
+        # Lines that do not come down from one trunk are not a tree, and are not kept.
+        self.assertNotIn(f"{GOAL.format(5)}/1/", lines)
+        self.assertLess(set(lines), {pages._run_href(cell) for cell in self.read()["cells"]})
+        self.assertEqual(pages.read_point(self.at() / "point.json"), self.read())
+
+    def test_a_point_json_from_before_a_point_held_its_runs_lines_is_read(self):
+        self.point()
+        earlier = {field: held for field, held in self.read().items() if field != "lines"}
+        write(self.at() / "point.json", json.dumps(earlier))
+        self.assertEqual(pages.read_point(self.at() / "point.json"), earlier)
+        self.assertEqual(pages.points(self.site), [(self.at(), earlier)])
 
     def test_each_run_s_text_is_kept_by_its_number_and_its_report_json_is_not(self):
         runs = self.uploaded()
@@ -741,6 +766,18 @@ class Point(LogosChat):
                 dict(written, summary=[dict(written["summary"][0], group="GroupV3")]),
             ),
             ("summary[0] is not an object", dict(written, summary=[5])),
+            ("lines is not of its kind", dict(written, lines=[])),
+            (
+                "lines['nothing/1/'] is of no run of its cells",
+                dict(written, lines={"nothing/1/": []}),
+            ),
+            (
+                f"lines['{GOAL.format(1)}/1/'] is not the lines of a run, down from one trunk",
+                dict(
+                    written,
+                    lines={f"{GOAL.format(1)}/1/": [{"from": None, "forked_at": None, "epoch": 3}]},
+                ),
+            ),
             ("cells[0] has a base", cell(base=head)),
             (
                 "cells[0].ended.head is not how a run ended",
@@ -988,6 +1025,41 @@ class Window(LogosChat):
                     self.assertEqual(len(held), 2 if number == 2 else 20)
                 self.assertIn("point.json", held)
                 pages.read_point(point / "point.json")
+
+    def test_a_point_from_before_points_held_lines_gets_them_before_its_text_goes(self):
+        runs = self.uploaded(**{"1/1": {"grow": GROW}})
+        matrix = self.matrix(runs)
+        for number in range(1, 13):
+            if number == 12:
+                # Points 1 and 2 as a chat-sim from before a point held its runs' lines wrote them.
+                for earlier in (1, 2):
+                    held = self.read(sha(earlier))
+                    del held["lines"]
+                    write(self.at(sha(earlier)) / "point.json", json.dumps(held))
+            self.point(
+                sha(number),
+                minute=number,
+                run_number=number,
+                runs=runs,
+                matrix=matrix,
+                commits=None if number == 1 else self.commits(),
+            )
+        newest = self.read(sha(12))["lines"]
+        self.assertIn(f"{GOAL.format(1)}/2/", newest)
+        # That command took point 1's text, past the newest eleven, and left point 2 its own.
+        self.assertEqual(self.files(self.at(sha(1))), ["index.html", "point.json"])
+        self.assertIn(f"{GOAL.format(1)}/2/run.json", self.files(self.at(sha(2))))
+        self.assertEqual((self.read(sha(1))["lines"], self.read(sha(2))["lines"]), (newest, newest))
+
+    def test_a_point_with_neither_its_runs_lines_nor_their_text_stays_as_it_is(self):
+        self.point(sha(1), minute=1, run_number=1)
+        held = self.read(sha(1))
+        del held["lines"]
+        write(self.at(sha(1)) / "point.json", json.dumps(held))
+        for kept in self.at(sha(1)).glob("*/*/*"):
+            kept.unlink()
+        self.point(sha(2), minute=2, run_number=2, commits=self.commits())
+        self.assertEqual(self.read(sha(1)), held)
 
     def test_a_point_json_that_is_refused_is_left_alone(self):
         refused = self.site / "logos-chat" / "main" / sha(200) / MEASUREMENT
