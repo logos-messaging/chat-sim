@@ -2555,7 +2555,9 @@ class Pages(LogosChat):
                     self.assertIsNotNone(svg.find(f".//{SVG}g[@class='tree {side} sketch']"))
                 self.stands_alone(out / simulate.run_page(cell))
 
-    def test_a_rate_that_ran_more_seeds_has_trees_of_seeds_0_to_2_and_a_strip_of_every_seed(self):
+    def test_a_rate_that_ran_more_seeds_has_a_strip_of_every_seed_and_a_fold_of_the_others_trees(
+        self,
+    ):
         moved = {"1/3": {"first_fork": 10}, "1/4": {"first_fork": 30}}
         moved["1/5"] = {"conversation": "7c3e9a01b2"}
         head = self.seeded(self.uploaded(), "1", range(2, 8), **moved)
@@ -2568,14 +2570,41 @@ class Pages(LogosChat):
         self.assertEqual(
             re.findall(r'<div class="seed"><b>(.*?)</b>', page), ["seed 0", "seed 1", "seed 2"]
         )
+        # The rate that ran more has the trees of its other seeds after its three.
         self.assertEqual(
             [href for _, href, _, _ in self.forks(out)],
             [
                 f"head/{GOAL.format(rate)}/{run}/"
-                for rate, runs in (("0.1", (1, 2)), ("1", (1, 2, 3)), ("5", (1, 2)))
+                for rate, runs in (("0.1", (1, 2)), ("1", range(1, 9)), ("5", (1, 2)))
                 for run in runs
             ],
         )
+        # They are in a fold under the rate's strip, three a row, each under its seed.
+        ((summary, fold),) = re.findall(
+            r'</div></div></div>\n<details>\n<summary>(.*?)</summary>\n(.*?)</details>', page, re.S
+        )
+        self.assertEqual(summary, "seeds 3 to 7 as trees")
+        rows = fold.strip().split("\n")
+        self.assertEqual([row.count('<a class="fork') for row in rows], [3, 2])
+        for row in rows:
+            self.assertTrue(row.startswith('<div><div class="rate"><div class="said"></div>'))
+            head = row.split("</svg></div>", 1)[0]
+            sides = re.findall(r'<text class="note"[^>]*>([^<]*)</text>', head)
+            self.assertEqual(sides, ["head", "base"])
+        folded = self.forks(out)[5:10]
+        self.assertEqual(
+            [(kind, said) for kind, _, said, _ in folded],
+            [
+                ("fork moved", "seed 3 moved first fork 10, base 18"),
+                ("fork moved", "seed 4 moved first fork 30, base 18"),
+                ("fork moved", "seed 5 moved first fork 18, base 18"),
+                ("fork unbuilt", "seed 6 unbuilt first fork 18 · does not build at the base"),
+                ("fork", "seed 7 first fork 18"),
+            ],
+        )
+        # A row of the fold is as tall as the row of the three, whose trees have as many lines.
+        heights = {svg.get("height") for _, _, _, svg in self.forks(out)[2:10]}
+        self.assertEqual(len(heights), 1)
         strip = (
             r'<div class="strip"><div class="rate"><div class="said">(.*?)</div></div>'
             r'<div><div class="ds">(.*?)</div><div class="said">(.*?)</div></div></div>'
@@ -2608,6 +2637,7 @@ class Pages(LogosChat):
             ],
         )
         self.assertIn("A strip under a row holds every seed of the rate", page)
+        self.assertIn("The fold under a strip draws the rate's other seeds", page)
         for run in range(4, 9):
             self.stands_alone(out / f"head/{GOAL.format(1)}/{run}")
 

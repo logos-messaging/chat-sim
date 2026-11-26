@@ -176,7 +176,8 @@ verdicts, the page says what the scenarios test. Then come the runs:
   cell holds the head's tree over the base's, and links the run's page.
 - **The strips.** A rate that ran seeds 3 to 19 has a strip under its row. For each seed of the
   rate, it says how many epochs later or earlier the head first forked than the base, and links
-  the run. Under the strip are the rate's words from the comment.
+  the run. Under the strip are the rate's words from the comment, and a fold that draws seeds 3
+  to 19 as trees.
 
 A tree is one run, drawn left to right by epoch, from 0 to 50:
 

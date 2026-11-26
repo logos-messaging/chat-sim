@@ -525,6 +525,9 @@ background:var(--neutral-bg);color:var(--muted)}
 .forks .seed{width:306px;padding:0 9px;font-size:12px;color:var(--muted)}
 .forks .seed b{color:var(--fg)}
 .forks .vacant{width:324px}
+.forks>details{margin:0}
+.forks>details>summary{margin-left:126px;font-size:12px;color:var(--link)}
+.forks>details>div{display:flex;align-items:flex-start;gap:10px;margin-top:10px}
 .ds{display:flex;gap:4px;margin:0 0 4px}
 .d{display:flex;flex-direction:column;align-items:center;min-width:26px;padding:1px 4px 2px;
 border:1px solid var(--line);border-radius:4px;font-size:12px;font-weight:600;
@@ -545,6 +548,8 @@ a.fork:hover{border-color:var(--link)}
 .said{display:flex;align-items:center;gap:6px;height:20px;margin:0 0 2px;font-size:12px;
 color:var(--muted);white-space:nowrap}
 .said b{color:var(--fg)}
+.fork .said{max-width:306px}
+.fork .said>span:not(.chip){min-width:0;overflow:hidden;text-overflow:ellipsis}
 .rate .said{font-size:13px}
 .outlined{padding:0 6px;border:1px solid var(--fg);border-radius:4px;
 box-shadow:0 0 0 1px var(--fg)}
@@ -1141,8 +1146,8 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
     and how, from the copies of their files `out` keeps; then of each group each scenario's file,
     linked to its copy where `out` keeps one, and the tree of each run of seeds 0 to 2, a row a rate
     and a column a seed, the head's over the base's, each linked to the run's page, under a rate
-    that ran more seeds a strip of them. Where chat-sim did not build at the head, the build's log
-    takes the place of the scenarios and the runs."""
+    that ran more seeds a strip of them and a fold of the trees of the others. Where chat-sim did
+    not build at the head, the build's log takes the place of the scenarios and the runs."""
     head, base = meta["revision"], meta["base"]
     facts = {"revision": head, "base": base or "", "chat_sim": meta["chat_sim"]}
     verdict = simulate.ran_at(facts, _code)
@@ -1171,8 +1176,7 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
             body += _build(_job(unbuilt), out / "head" / run, f"head/{run}")
     else:
         drawn = {_run_href(cell): _trees(out, matrix, cell) for cell in matrix["cells"]}
-        treed = [drawn[_run_href(cell)] for cell in matrix["cells"] if _treed(cell)]
-        most = _most([tree for both in treed for tree in both])
+        most = _most([tree for both in drawn.values() for tree in both])
         width = _widths(most, 1.2, 4.6)
         told = _told(out, matrix["cells"])
         every = _shared(list(told.values()))
@@ -1197,7 +1201,8 @@ def draw_pr(out: Path, matrix: dict, meta: dict) -> None:
                 " A strip under a row holds every seed of the rate, where a run of its group moved "
                 "and the rate ran more: of each seed, how many epochs later the head's run first "
                 "forked than the base's, the trunk's epoch standing in for a run that did not fork, "
-                "linked to the run; under them, what the seeds came to."
+                "linked to the run; under them, what the seeds came to. The fold under a strip "
+                "draws the rate's other seeds as the row above draws its three."
             )
         body += (
             f'<p class="reading">{_READING} Hover a line for its numbers, or open a run for its '
@@ -3425,25 +3430,22 @@ def _pair_trees(
     moved, over the tree of its run after and that of its run before. `trees` holds of each
     seed's two runs, by its rate and its seed, the lineage and the address of the run's page,
     which the tree links where there is one. A row is as tall as its most lines."""
-    pitch, pad, between = 7, 7, 8
     x = _along(4, 264)
     ordered = sorted(cells, key=lambda cell: (cell["d"], cell["seed"]))
     rows = ""
     for first in range(0, len(ordered), 3):
         row = [(cell, trees[(_rate(cell), cell["seed"])]) for cell in ordered[first : first + 3]]
-        count = max(_rows_of(lineage) for _, both in row for lineage, _ in both)
-        tall = pad + (count - 1) * pitch + pad
-        tops, height = (pad, tall + between + pad), tall * 2 + between
+        tops, tall, height = _tiers([[lineage for lineage, _ in both] for _, both in row], True)
         tiles = _row_head("", ("after", "before"), tops, height)
         for cell, both in row:
             label = f"{_job(cell)}: the tree of its run after over that of its run before"
             drawn = _svg(306, height, label) + _epoch_lines(x, 0, height)
             for side, top, (lineage, page) in zip(("head", "base"), tops, both):
-                tree = _small(cell, side, lineage, x, top, pitch, width, 272)
+                tree = _small(cell, side, lineage, x, top, 7, width, 272)
                 if page is not None:
                     tree = (
-                        f'<a href="{_e(quote(page))}"><rect class="hit" x="0" y="{top - pad}" '
-                        f'width="306" height="{tall}"/>{tree}</a>'
+                        f'<a href="{_e(quote(page))}"><rect class="hit" x="0" '
+                        f'y="{top - tops[0]}" width="306" height="{tall}"/>{tree}</a>'
                     )
                 drawn += tree
             d = cell["d"]
@@ -3669,9 +3671,8 @@ def _forks(
     matrix: dict, cells: Sequence[dict], trees: Dict[str, tuple], width: Callable[[int], float]
 ) -> str:
     """The trees of a group's `cells` of seeds 0 to 2, `trees` their lineages by run, a row a rate
-    and a column a seed: each row as tall as its most lines, headed by its rate, and followed by
-    the strip of every seed of the rate where it ran more."""
-    pitch, pad, between = 7, 7, 8
+    and a column a seed: each row as tall as its most lines, headed by its rate, and followed,
+    where the rate ran more, by the strip of every seed of it and the fold of the others' trees."""
     rows = _by_rate(cells)
     seeds = sorted({seed for _, by_seed in rows for seed, cell in by_seed.items() if _treed(cell)})
     based = matrix["base"] is not None
@@ -3683,14 +3684,8 @@ def _forks(
     drawn = [f'<div><div class="rate"></div>{heads}</div>\n']
     for _, by_seed in rows:
         first = next(iter(by_seed.values()))
-        count = max(
-            max(_rows_of(trees[_run_href(cell)][0]), _rows_of(trees[_run_href(cell)][1]))
-            for cell in by_seed.values()
-            if _treed(cell)
-        )
-        tall = pad + (count - 1) * pitch + pad
-        tops = (pad, tall + between + pad)
-        height = tall * 2 + between if based else tall
+        shown = [cell for cell in by_seed.values() if _treed(cell)]
+        tops, _, height = _tiers([trees[_run_href(cell)] for cell in shown], based)
         sides = ("head", "base") if based else ("head",)
         row = [_row_head(f"<b>{_e(_loss(first))}</b>", sides, tops, height)]
         for seed in seeds:
@@ -3700,9 +3695,46 @@ def _forks(
             cell = by_seed[seed]
             row.append(_fork(matrix, cell, trees[_run_href(cell)], width, tops, height))
         drawn.append(f"<div>{''.join(row)}</div>\n")
-        if not all(_treed(cell) for cell in by_seed.values()):
-            drawn.append(_strip(matrix, [cell for _, cell in sorted(by_seed.items())]))
+        if len(shown) < len(by_seed):
+            every = [cell for _, cell in sorted(by_seed.items())]
+            rest = [cell for cell in every if not _treed(cell)]
+            drawn.append(_strip(matrix, every) + _more(matrix, rest, trees, width))
     return f'<div class="wide"><div class="forks">\n{"".join(drawn)}</div></div>\n'
+
+
+def _tiers(
+    trees: Sequence[Sequence[Optional[dict]]], both: bool
+) -> Tuple[Tuple[float, float], float, float]:
+    """How a row of small trees is laid out, `trees` the lineages of each of its tiles, a tree's
+    rows 7 apart: where a tile has the trunk of its first tree and of the one under it, how tall
+    the band of one tree is, by the most lines of any, and how tall the tile's drawing, of
+    `both` trees or of the first alone."""
+    pad, pitch, between = 7, 7, 8
+    count = max(_rows_of(tree) for tile in trees for tree in tile)
+    tall = pad + (count - 1) * pitch + pad
+    return (pad, tall + between + pad), tall, tall * 2 + between if both else tall
+
+
+def _more(
+    matrix: dict, cells: Sequence[dict], trees: Dict[str, tuple], width: Callable[[int], float]
+) -> str:
+    """The fold under a strip: the trees of `cells`, the seeds of a rate past those its row
+    draws, three a row and each under its seed, drawn as the row draws its own."""
+    based = matrix["base"] is not None
+    sides = ("head", "base") if based else ("head",)
+    rows = ""
+    for first in range(0, len(cells), 3):
+        row = cells[first : first + 3]
+        tops, _, height = _tiers([trees[_run_href(cell)] for cell in row], based)
+        tiles = "".join(
+            _fork(matrix, cell, trees[_run_href(cell)], width, tops, height, seeded=True)
+            for cell in row
+        )
+        rows += f"<div>{_row_head('', sides, tops, height)}{tiles}</div>\n"
+    return (
+        f"<details>\n<summary>seeds {cells[0]['seed']} to {cells[-1]['seed']} as trees"
+        f"</summary>\n{rows}</details>\n"
+    )
 
 
 def _treed(cell: dict) -> bool:
@@ -3765,10 +3797,11 @@ def _fork(
     width: Callable[[int], float],
     tops: Tuple[float, float],
     height: float,
+    seeded: bool = False,
 ) -> str:
-    """A run's place in its row, a link to its page: what moved in a few words, over the head's
-    tree and the base's, `trees` their lineages, at `tops`, each with its ring; outlined where it
-    moved, dashed where a side did not build."""
+    """A run's place in its row, a link to its page: what moved in a few words, after its seed
+    where `seeded`, over the head's tree and the base's, `trees` their lineages, at `tops`, each
+    with its ring; outlined where it moved, dashed where a side did not build."""
     x = _along(4, 264)
     kind = "fork"
     if cell["change"] == "moved":
@@ -3784,9 +3817,12 @@ def _fork(
         sides.append(("base", trees[1], tops[1]))
     for side, lineage, top in sides:
         drawn.append(_small(cell, side, lineage, x, top, 7, width, 272))
+    said = _fork_said(matrix, cell)
+    if seeded:
+        said = f"<b>seed {cell['seed']}</b> {said}"
     return (
         f'<a class="{kind}" href="{_e(quote(simulate.run_page(cell)))}">'
-        f'<div class="said">{_fork_said(matrix, cell)}</div>{"".join(drawn)}</svg></a>'
+        f'<div class="said">{said}</div>{"".join(drawn)}</svg></a>'
     )
 
 
