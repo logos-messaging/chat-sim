@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>chat-sim: the earlier points</title>
+<style>
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--rate-2:#3987e5;--v2:#2a78d6;--v3:#eb6834;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--rate-2:#6da7ec;--v2:#3987e5;--v3:#d95926;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
+background:var(--bg);font:15px/1.5 system-ui,sans-serif}
+a{color:var(--link)}
+h1{overflow-wrap:anywhere}
+h2{margin-top:2.5rem}
+h3{margin-top:2rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:.25rem 0 1rem;padding:.75rem;overflow-x:auto;font-size:12px;line-height:1.45;
+background:var(--box);border:1px solid var(--line);border-radius:6px}
+.wide{overflow-x:auto}
+table{border-collapse:collapse}
+th,td{padding:.3rem 1.25rem .3rem 0;border-bottom:1px solid var(--line);text-align:left;
+vertical-align:top}
+summary{cursor:pointer}
+.file{margin:.75rem 0 0}
+.muted{color:var(--muted)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.none{color:var(--none)}
+
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+
+.facts code{font-size:13px}
+.verdict{font-size:1.1em}
+.side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
+details{margin:.75rem 0}
+details.run>summary{font-size:1.1em;font-weight:600}
+summary span{font-weight:normal;margin-left:.4rem}
+details.text>summary{font-size:13px;color:var(--muted)}
+.who{font-size:14px;margin:.4rem 0}
+.lines,.runs,.rates,.rounds{font-size:14px}
+.lines th,.lines td,.rounds th,.rounds td{padding:.15rem 1rem .15rem 0}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates th[colspan]{text-align:center}
+.rates td,.runs td.n{white-space:nowrap}
+
+.v2{--hue:var(--v2)}
+.v3{--hue:var(--v3)}
+.now{margin:.75rem 0 0}
+.now th{font-size:13px;color:var(--muted)}
+.now th,.now td{padding:.5rem 2.5rem .5rem 0}
+.now td b{display:block;font-size:28px;line-height:1.15;font-variant-numeric:tabular-nums}
+.now td small{display:block;font-size:12px;color:var(--muted)}
+.now .name{font-weight:600;white-space:nowrap;vertical-align:middle}
+.dot{display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:50%;
+background:var(--hue)}
+.meter{display:block;margin:4px 0}
+.meter .track{fill:var(--neutral-bg)}
+.meter .reached{fill:var(--hue)}
+.since{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:1rem 0 0}
+.trend .band{fill:var(--hue);opacity:.14}
+.trend .goal{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:5 4}
+.wash{fill:var(--muted);opacity:.18}
+.any{fill:var(--muted)}
+.results{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;max-width:52rem;
+margin:.5rem 0 1rem;font-size:13px;color:var(--muted)}
+.changes td{font-variant-numeric:tabular-nums}
+.changes .when,.changes .pr a,.changes td:last-child{white-space:nowrap}
+.changes .pr{min-width:12rem}
+.changes .quiet td{color:var(--muted)}
+.changes .rates{display:grid;grid-template-columns:repeat(3,max-content);align-items:center;
+gap:2px 12px;margin:6px 0 4px;font-size:13px}
+.tally{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.tally .earlier{fill:var(--bad)}
+.tally .tied{fill:var(--line)}
+.tally .later{fill:var(--good)}
+.pairs{font-size:14px}
+.pairs th,.pairs td{padding:.15rem 1.25rem .15rem 0;white-space:nowrap}
+.dumb .before{fill:var(--bg);stroke:var(--hue);stroke-width:2}
+.dumb .after{fill:var(--hue)}
+.dumb .link{stroke:var(--hue);stroke-width:2;stroke-linecap:round;opacity:.45}
+</style>
+</head>
+<body>
+<p class="muted"><a href="../../">chat-sim</a> / <a href="../">Over main</a></p>
+<h1>The earlier points</h1>
+<p class="lead">The points of main from before the test <a href="../">Over main</a> draws. chat-sim changed the test since, so their runs do not compare seed by seed with the runs there. Each keeps its page.</p>
+<div class="wide"><table class="changes">
+<thead><tr><th>Measured (UTC)</th><th>Commit</th><th>Pull requests merged</th><th>chat-sim</th><th class="n">Runs with an outcome</th><th></th></tr></thead>
+<tbody>
+<tr><td class="when">2026-11-20 03:58</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/66fefb994d3c0fc651773f41963f329199566f3f"><code>66fefb9</code></a></td><td class="pr"><span class="muted">none</span></td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62de7eeaddd4cb1d6e76cc4c4016e7bc8ccba1dd"><code>62de7ee</code></a></td><td class="n">160 of 160</td><td><a href="../main/66fefb994d3c0fc651773f41963f329199566f3f/62de7eeaddd4cb1d6e76cc4c4016e7bc8ccba1dd/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44667332905">the run</a></td></tr>
+<tr><td class="when">2026-11-19 23:54</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/66fefb994d3c0fc651773f41963f329199566f3f"><code>66fefb9</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/355">#355</a> feat(auth): cache generic over provider</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/845b464831706a03daa388e944c9d71f25cefe6d"><code>845b464</code></a></td><td class="n">160 of 160</td><td><a href="../main/66fefb994d3c0fc651773f41963f329199566f3f/845b464831706a03daa388e944c9d71f25cefe6d/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44636620028">the run</a></td></tr>
+<tr><td class="when">2026-11-19 23:21</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/a74ad3542eff7726e24d975e3c8bb74df64ab6cc"><code>a74ad35</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/354">#354</a> fix(core): pin sds-rs at its 128 KiB content cap</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/845b464831706a03daa388e944c9d71f25cefe6d"><code>845b464</code></a></td><td class="n">160 of 160</td><td><a href="../main/a74ad3542eff7726e24d975e3c8bb74df64ab6cc/845b464831706a03daa388e944c9d71f25cefe6d/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44631592025">the run</a></td></tr>
+<tr><td class="when">2026-11-19 22:17</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/df0700469f329321d1dbcfe78b227ab8767e537b"><code>df07004</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/353">#353</a> chore: switch to the new logos nix cache public key</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62ff08125a72c27e0bdd527a849f0a8d6180cc31"><code>62ff081</code></a></td><td class="n">80 of 80</td><td><a href="../main/df0700469f329321d1dbcfe78b227ab8767e537b/62ff08125a72c27e0bdd527a849f0a8d6180cc31/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44621393556">the run</a></td></tr>
+<tr><td class="when">2026-11-19 20:17</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/c083dcdc70659b7d0cadd1e19292f35c7afe7e9e"><code>c083dcd</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/348">#348</a> feat(client): report a delivered GroupV3 message</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62ff08125a72c27e0bdd527a849f0a8d6180cc31"><code>62ff081</code></a></td><td class="n">80 of 80</td><td><a href="../main/c083dcdc70659b7d0cadd1e19292f35c7afe7e9e/62ff08125a72c27e0bdd527a849f0a8d6180cc31/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44601370712">the run</a></td></tr>
+<tr><td class="when">2026-11-19 18:30</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/a3830314c016cb1c77fbfe12950556b0f50f0224"><code>a383031</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/347">#347</a> feat(client): report a conversation&#x27;s debug data</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62ff08125a72c27e0bdd527a849f0a8d6180cc31"><code>62ff081</code></a></td><td class="n">80 of 80</td><td><a href="../main/a3830314c016cb1c77fbfe12950556b0f50f0224/62ff08125a72c27e0bdd527a849f0a8d6180cc31/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44582190969">the run</a></td></tr>
+<tr><td class="when">2026-11-19 17:04</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/aeea534b99554c03e3ef6db4df47969cf9d5254c"><code>aeea534</code></a></td><td class="pr"><span class="muted">none</span></td><td><a href="https://github.com/logos-messaging/chat-sim/commit/62ff08125a72c27e0bdd527a849f0a8d6180cc31"><code>62ff081</code></a></td><td class="n">80 of 80</td><td><a href="../main/aeea534b99554c03e3ef6db4df47969cf9d5254c/62ff08125a72c27e0bdd527a849f0a8d6180cc31/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44565245152">the run</a></td></tr>
+<tr><td class="when">2026-11-18 19:10</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/aeea534b99554c03e3ef6db4df47969cf9d5254c"><code>aeea534</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/350">#350</a> feat(core): Auth Cache</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td class="n">80 of 80</td><td><a href="../main/aeea534b99554c03e3ef6db4df47969cf9d5254c/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44370682178">the run</a></td></tr>
+<tr><td class="when">2026-11-18 17:09</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/b41a5326b2f8ad0967a3b5368d6f95072db7577f"><code>b41a532</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/345">#345</a> feat(client): name a conversation&#x27;s type</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td class="n">80 of 80</td><td><a href="../main/b41a5326b2f8ad0967a3b5368d6f95072db7577f/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44348120879">the run</a></td></tr>
+<tr><td class="when">2026-11-18 16:21</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/5094e1cdef9aea0cadb88b5179de996486534a71"><code>5094e1c</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/342">#342</a> fix(core): list a GroupV3 member&#x27;s pending invites<br><a href="https://github.com/logos-messaging/logos-chat/pull/340">#340</a> feat(core): trace a GroupV3 group in its log</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td class="n">80 of 80</td><td><a href="../main/5094e1cdef9aea0cadb88b5179de996486534a71/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44338813775">the run</a></td></tr>
+<tr><td class="when">2026-11-18 15:26</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/50ce37d5c28372ddef7fe714e75fa5b9112968ca"><code>50ce37d</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/343">#343</a> fix(core): check a GroupV3 key package&#x27;s init key length</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td class="n">80 of 80</td><td><a href="../main/50ce37d5c28372ddef7fe714e75fa5b9112968ca/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44326420921">the run</a></td></tr>
+<tr><td class="when">2026-11-18 14:39</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/19ab1b59a9c3d6230a0c92db61d25ee776c1c3f4"><code>19ab1b5</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/344">#344</a> fix(core): log a wakeup&#x27;s cached conversations at trace</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td class="n">80 of 80</td><td><a href="../main/19ab1b59a9c3d6230a0c92db61d25ee776c1c3f4/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44317741148">the run</a></td></tr>
+<tr><td class="when">2026-11-18 03:37</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/3b019188c6ebbda0690fc1737438b005238043ce"><code>3b01918</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/326">#326</a> feat(group-v3): report a group&#x27;s sync state from its beacons</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td class="n">80 of 80</td><td><a href="../main/3b019188c6ebbda0690fc1737438b005238043ce/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44227334621">the run</a></td></tr>
+<tr><td class="when">2026-11-17 22:00</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/ec106de2586fa6426a537c145b74f67ff2084672"><code>ec106de</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/341">#341</a> feat(core): let a GroupV3 member that is behind catch up</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td class="n">80 of 80</td><td><a href="../main/ec106de2586fa6426a537c145b74f67ff2084672/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44177806420">the run</a></td></tr>
+<tr><td class="when">2026-11-17 21:26</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/9ccc06b5e307283102aba9f540e63eaab89d042b"><code>9ccc06b</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/329">#329</a> feat: add fork detection header field</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td class="n">80 of 80</td><td><a href="../main/9ccc06b5e307283102aba9f540e63eaab89d042b/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44173192192">the run</a></td></tr>
+<tr><td class="when">2026-11-17 20:06</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/329408b136d6a78298dbbf40dc4d3dd6cbfaa98c"><code>329408b</code></a></td><td class="pr"><span class="muted">none</span></td><td><a href="https://github.com/logos-messaging/chat-sim/commit/07fb9d99c901668b0792c10884c1c81cf52e2a0f"><code>07fb9d9</code></a></td><td class="n">80 of 80</td><td><a href="../main/329408b136d6a78298dbbf40dc4d3dd6cbfaa98c/07fb9d99c901668b0792c10884c1c81cf52e2a0f/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44157462715">the run</a></td></tr>
+<tr><td class="when">2026-11-17 18:46</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/329408b136d6a78298dbbf40dc4d3dd6cbfaa98c"><code>329408b</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/325">#325</a> feat(group-v3): rank fork branches by vouched beacon signers</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td class="n">0 of 80</td><td><a href="../main/329408b136d6a78298dbbf40dc4d3dd6cbfaa98c/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44150575482">the run</a></td></tr>
+<tr><td class="when">2026-11-17 18:46</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/7961f6214c1ee43d59085073103ff9b85b1f6c39"><code>7961f62</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/320">#320</a> feat(group-v3): re-add a forked member by private external message</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td class="n">0 of 80</td><td><a href="../main/7961f6214c1ee43d59085073103ff9b85b1f6c39/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44150505833">the run</a></td></tr>
+<tr><td class="when">2026-11-17 18:42</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/8e333c750ececeee0ca1bd169815839ce52e4d2e"><code>8e333c7</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/319">#319</a> feat(group-v3): add the key channel for private external messages</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td class="n">0 of 80</td><td><a href="../main/8e333c750ececeee0ca1bd169815839ce52e4d2e/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44149358236">the run</a></td></tr>
+<tr><td class="when">2026-11-17 16:44</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/988d867a4ea681b54c81be2c903d6b8e295ae51f"><code>988d867</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/339">#339</a> feat: update GV3 framing structure</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td class="n">0 of 80</td><td><a href="../main/988d867a4ea681b54c81be2c903d6b8e295ae51f/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44128280842">the run</a></td></tr>
+<tr><td class="when">2026-11-17 15:28</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/2e9ecbb6459eb7ad6cfefb9f17d45e5ec729b170"><code>2e9ecbb</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/336">#336</a> feat(delivery): fetch a lost message from a connected store peer</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td class="n">0 of 80</td><td><a href="../main/2e9ecbb6459eb7ad6cfefb9f17d45e5ec729b170/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44113778994">the run</a></td></tr>
+<tr><td class="when">2026-11-17 15:11</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/ec7afa6fe02f007e784edf860b425b491ea1e1e4"><code>ec7afa6</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/335">#335</a> feat(core): accept a delivery id reported after publish</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td class="n">0 of 80</td><td><a href="../main/ec7afa6fe02f007e784edf860b425b491ea1e1e4/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44110545406">the run</a></td></tr>
+<tr><td class="when">2026-11-17 01:25</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/1c99aea58f6ade0bd1bfc20426f8317f8fb5380d"><code>1c99aea</code></a></td><td class="pr"><span class="muted">none</span></td><td><a href="https://github.com/logos-messaging/chat-sim/commit/9f2ae61167c33c2269eb5a1630f3750663c6e1f9"><code>9f2ae61</code></a></td><td class="n">80 of 80</td><td><a href="../main/1c99aea58f6ade0bd1bfc20426f8317f8fb5380d/9f2ae61167c33c2269eb5a1630f3750663c6e1f9/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43989511995">the run</a></td></tr>
+<tr><td class="when">2026-11-16 22:39</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/1c99aea58f6ade0bd1bfc20426f8317f8fb5380d"><code>1c99aea</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/334">#334</a> feat(client): create GroupV3 groups by default</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td class="n">0 of 80</td><td><a href="../main/1c99aea58f6ade0bd1bfc20426f8317f8fb5380d/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43971373678">the run</a></td></tr>
+<tr><td class="when">2026-11-16 22:08</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/d29d9809d0262c48009cf0eaaa2b163945dd08d8"><code>d29d980</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/332">#332</a> ci: run chat-sim on every pull request, and on main</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td class="n">0 of 80</td><td><a href="../main/d29d9809d0262c48009cf0eaaa2b163945dd08d8/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43966164564">the run</a></td></tr>
+<tr><td class="when">2026-11-16 20:25</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/96172d212c2be583ce3660c74669b44e1b18922c"><code>96172d2</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/338">#338</a> feat(core): finalize the lowest-fingerprint deferred commit</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td class="n">0 of 80</td><td><a href="../main/96172d212c2be583ce3660c74669b44e1b18922c/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43948753440">the run</a></td></tr>
+<tr><td class="when">2026-11-12 20:28</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/f2fd9ee192061f7c1dce33fe626c335462177cb7"><code>f2fd9ee</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/331">#331</a> feat(core): fetch what SDS reports a GroupV3 member missing<br><a href="https://github.com/logos-messaging/logos-chat/pull/333">#333</a> chore(deps): bump rusqlite to 0.42.0 for RUSTSEC-2026-0502</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td class="n">0 of 80</td><td><a href="../main/f2fd9ee192061f7c1dce33fe626c335462177cb7/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43299230665">the run</a></td></tr>
+<tr><td class="when">2026-11-12 18:05</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/873a19cdbeaa1ccfb91538ec2f3854a39488e608"><code>873a19c</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/323">#323</a> feat: add DeferredCommits</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td class="n">80 of 80</td><td><a href="../main/873a19cdbeaa1ccfb91538ec2f3854a39488e608/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43268404492">the run</a></td></tr>
+<tr><td class="when">2026-11-12 01:26</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/ffe1c1e7715a3c8c5a01c215df2e20fe1a118e5e"><code>ffe1c1e</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/316">#316</a> feat(core): start GroupV3 joiners at the commit that added them</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td class="n">80 of 80</td><td><a href="../main/ffe1c1e7715a3c8c5a01c215df2e20fe1a118e5e/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43128937981">the run</a></td></tr>
+<tr><td class="when">2026-11-11 09:01</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/d176754dc4830a206e05be2961ab408b128cda7a"><code>d176754</code></a></td><td class="pr"><a href="https://github.com/logos-messaging/logos-chat/pull/327">#327</a> chore: add justfile for running ci jobs</td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td class="n">80 of 80</td><td><a href="../main/d176754dc4830a206e05be2961ab408b128cda7a/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/42986640663">the run</a></td></tr>
+<tr><td class="when">2026-11-10 18:00</td><td><a href="https://github.com/logos-messaging/logos-chat/commit/70aa02b87bf8701c38b1e44c5a3ab7da8775bc29"><code>70aa02b</code></a></td><td class="pr"><span class="muted">none</span></td><td><a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a></td><td class="n">80 of 80</td><td><a href="../main/70aa02b87bf8701c38b1e44c5a3ab7da8775bc29/7449a234648c2f80055ff04e1f64b996e970a36c/">point</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/42863878457">the run</a></td></tr>
+</tbody>
+</table></div>
+</body>
+</html>

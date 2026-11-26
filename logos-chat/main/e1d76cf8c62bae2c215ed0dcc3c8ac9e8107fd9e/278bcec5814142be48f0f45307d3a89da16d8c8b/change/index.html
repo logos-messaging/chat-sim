@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>chat-sim: logos-chat main e1d76cf against 90c4128</title>
+<style>
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--rate-2:#3987e5;--v2:#2a78d6;--v3:#eb6834;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--rate-2:#6da7ec;--v2:#3987e5;--v3:#d95926;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
+background:var(--bg);font:15px/1.5 system-ui,sans-serif}
+a{color:var(--link)}
+h1{overflow-wrap:anywhere}
+h2{margin-top:2.5rem}
+h3{margin-top:2rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:.25rem 0 1rem;padding:.75rem;overflow-x:auto;font-size:12px;line-height:1.45;
+background:var(--box);border:1px solid var(--line);border-radius:6px}
+.wide{overflow-x:auto}
+table{border-collapse:collapse}
+th,td{padding:.3rem 1.25rem .3rem 0;border-bottom:1px solid var(--line);text-align:left;
+vertical-align:top}
+summary{cursor:pointer}
+.file{margin:.75rem 0 0}
+.muted{color:var(--muted)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.none{color:var(--none)}
+
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+
+.facts code{font-size:13px}
+.verdict{font-size:1.1em}
+.side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
+details{margin:.75rem 0}
+details.run>summary{font-size:1.1em;font-weight:600}
+summary span{font-weight:normal;margin-left:.4rem}
+details.text>summary{font-size:13px;color:var(--muted)}
+.who{font-size:14px;margin:.4rem 0}
+.lines,.runs,.rates,.rounds{font-size:14px}
+.lines th,.lines td,.rounds th,.rounds td{padding:.15rem 1rem .15rem 0}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates th[colspan]{text-align:center}
+.rates td,.runs td.n{white-space:nowrap}
+
+.verdicts{margin:1rem 0 0;padding:0;list-style:none;font-size:16px}
+.verdicts li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 6px}
+.verdicts li>b{min-width:5rem}
+.verdicts .muted{flex:1 1 20rem;font-size:14px}
+.chip{padding:1px 8px;border-radius:2em;font-size:12px;font-weight:600;white-space:nowrap;
+background:var(--neutral-bg);color:var(--muted)}
+.chip.moved,.chip.within{color:var(--fg)}
+.chip.later{background:var(--good-bg);color:var(--good)}
+.chip.earlier{background:var(--bad-bg);color:var(--bad)}
+.chip.unbuilt{background:var(--none-bg);color:var(--none)}
+#runs>.legend{margin:1rem 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+.forks{display:flex;flex-direction:column;gap:10px;width:max-content}
+.forks>div{display:flex;align-items:flex-start;gap:10px}
+.forks .rate{width:116px}
+.forks .seed{width:306px;padding:0 9px;font-size:12px;color:var(--muted)}
+.forks .seed b{color:var(--fg)}
+.forks .vacant{width:324px}
+.ds{display:flex;gap:4px;margin:0 0 4px}
+.d{display:flex;flex-direction:column;align-items:center;min-width:26px;padding:1px 4px 2px;
+border:1px solid var(--line);border-radius:4px;font-size:12px;font-weight:600;
+font-variant-numeric:tabular-nums;color:var(--fg);text-decoration:none}
+.d span{font-size:10px;font-weight:400;color:var(--muted)}
+.d:hover{border-color:var(--link)}
+.d.moved{border-color:var(--fg)}
+.d.later{background:var(--good-bg);color:var(--good)}
+.d.earlier{background:var(--bad-bg);color:var(--bad)}
+.d.none{background:var(--none-bg);color:var(--none)}
+.chart .forks svg{display:block;max-width:none}
+.fork{padding:6px 8px 8px;border:1px solid var(--line);border-radius:6px;color:var(--fg);
+text-decoration:none}
+.fork:hover{border-color:var(--link)}
+.fork.moved{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
+.fork.unbuilt{border-color:var(--none);border-style:dashed}
+.said{display:flex;align-items:center;gap:6px;height:20px;margin:0 0 2px;font-size:12px;
+color:var(--muted);white-space:nowrap}
+.said b{color:var(--fg)}
+.rate .said{font-size:13px}
+.outlined{padding:0 6px;border:1px solid var(--fg);border-radius:4px;
+box-shadow:0 0 0 1px var(--fg)}
+.ran{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:.75rem 0 .25rem;
+font-size:16px}
+.reading{max-width:52rem;color:var(--muted)}
+.how{max-width:52rem;margin:.25rem 0 .5rem;padding-left:1.25rem}
+.about{max-width:52rem;margin:0 0 1rem}
+#scenarios+.lead{max-width:52rem}
+.about a{white-space:nowrap}
+
+.v2{--hue:var(--v2)}
+.v3{--hue:var(--v3)}
+.now{margin:.75rem 0 0}
+.now th{font-size:13px;color:var(--muted)}
+.now th,.now td{padding:.5rem 2.5rem .5rem 0}
+.now td b{display:block;font-size:28px;line-height:1.15;font-variant-numeric:tabular-nums}
+.now td small{display:block;font-size:12px;color:var(--muted)}
+.now .name{font-weight:600;white-space:nowrap;vertical-align:middle}
+.dot{display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:50%;
+background:var(--hue)}
+.meter{display:block;margin:4px 0}
+.meter .track{fill:var(--neutral-bg)}
+.meter .reached{fill:var(--hue)}
+.since{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:1rem 0 0}
+.trend .band{fill:var(--hue);opacity:.14}
+.trend .goal{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:5 4}
+.wash{fill:var(--muted);opacity:.18}
+.any{fill:var(--muted)}
+.results{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;max-width:52rem;
+margin:.5rem 0 1rem;font-size:13px;color:var(--muted)}
+.changes td{font-variant-numeric:tabular-nums}
+.changes .when,.changes .pr a,.changes td:last-child{white-space:nowrap}
+.changes .pr{min-width:12rem}
+.changes .quiet td{color:var(--muted)}
+.changes .rates{display:grid;grid-template-columns:repeat(3,max-content);align-items:center;
+gap:2px 12px;margin:6px 0 4px;font-size:13px}
+.tally{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.tally .earlier{fill:var(--bad)}
+.tally .tied{fill:var(--line)}
+.tally .later{fill:var(--good)}
+.pairs{font-size:14px}
+.pairs th,.pairs td{padding:.15rem 1.25rem .15rem 0;white-space:nowrap}
+.dumb .before{fill:var(--bg);stroke:var(--hue);stroke-width:2}
+.dumb .after{fill:var(--hue)}
+.dumb .link{stroke:var(--hue);stroke-width:2;stroke-linecap:round;opacity:.45}
+</style>
+</head>
+<body>
+<p class="muted"><a href="../../../../../">chat-sim</a> / <a href="../../../../">Over main</a> / <code>e1d76cf</code></p>
+<h1><a href="https://github.com/logos-messaging/logos-chat/pull/349">#349</a> feat(core)!: report each GroupV3 member&#x27;s state in its debug data</h1>
+<p class="facts">main <a href="https://github.com/logos-messaging/logos-chat/commit/e1d76cf8c62bae2c215ed0dcc3c8ac9e8107fd9e"><code>e1d76cf</code></a> against the commit before it, <a href="https://github.com/logos-messaging/logos-chat/commit/90c41288a072c9f4f6632ffe9a91fff5db9d977a"><code>90c4128</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/278bcec5814142be48f0f45307d3a89da16d8c8b"><code>278bcec</code></a> at both · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/45418493349">the run</a> · 2026-11-24 15:57 UTC</p>
+<ul class="verdicts">
+<li><b>GroupV2</b> <span class="chip same">nothing moved</span> <span class="muted">· 0%: nothing moved in seeds 0 to 19 · 0.5%: nothing moved in seeds 0 to 19 · 1%: nothing moved in seeds 0 to 19 · 5%: nothing moved in seeds 0 to 19</span></li>
+<li><b>GroupV3</b> <span class="chip within">moved, within chance</span> <span class="muted">· 0%: 0 later, 0 earlier, 20 tied (p 1) · 0.5%: 8 later, 5 earlier, 7 tied (p 0.58) · 1%: 3 later, 7 earlier, 10 tied (p 0.34) · 5%: 4 later, 6 earlier, 10 tied (p 0.75)</span></li>
+</ul>
+<p class="reading">A seed is compared where it has an outcome at both commits, and the base is the commit before. Tied says its first fork came at the same epoch at both, in two runs that came out differently.</p>
+<section class="chart" id="v3">
+<h2>GroupV3, seed by seed</h2>
+<p class="legend"><span><svg class="dumb v3" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle class="before" cx="6" cy="6" r="3.5"/></svg>before, at 90c4128</span><span><svg class="dumb v3" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle class="after" cx="6" cy="6" r="4"/></svg>after, at e1d76cf</span></p>
+<div class="panels">
+<div class="panel">
+<p>0.5%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 288" width="360" height="288" role="img" aria-label="Epochs before the first fork at both commits, GroupV3 at 0.5%">
+<text class="axis small" x="0" y="11">seed</text>
+<line class="grid" x1="34.0" x2="34.0" y1="18" y2="282"/>
+<text class="axis small" x="34.0" y="11" text-anchor="middle">0</text>
+<line class="grid" x1="96.4" x2="96.4" y1="18" y2="282"/>
+<text class="axis small" x="96.4" y="11" text-anchor="middle">10</text>
+<line class="grid" x1="158.8" x2="158.8" y1="18" y2="282"/>
+<text class="axis small" x="158.8" y="11" text-anchor="middle">20</text>
+<line class="grid" x1="221.2" x2="221.2" y1="18" y2="282"/>
+<text class="axis small" x="221.2" y="11" text-anchor="middle">30</text>
+<line class="grid" x1="283.6" x2="283.6" y1="18" y2="282"/>
+<text class="axis small" x="283.6" y="11" text-anchor="middle">40</text>
+<line class="grid" x1="346.0" x2="346.0" y1="18" y2="282"/>
+<text class="axis small" x="346.0" y="11" text-anchor="middle">50</text>
+<g class="dumb v3">
+<g><title>seed 3: 27 before, 6 after, 21 earlier</title><rect class="hit" x="0" y="22.0" width="360" height="13"/><text class="axis small" x="22" y="32.0" text-anchor="end">3</text>
+<line class="link" x1="202.5" x2="71.4" y1="28.5" y2="28.5"/><circle class="before" cx="202.5" cy="28.5" r="3.5"/>
+<circle class="after" cx="71.4" cy="28.5" r="4"/></g>
+<g><title>seed 17: 32 before, 16 after, 16 earlier</title><rect class="hit" x="0" y="35.0" width="360" height="13"/><text class="axis small" x="22" y="45.0" text-anchor="end">17</text>
+<line class="link" x1="233.7" x2="133.8" y1="41.5" y2="41.5"/><circle class="before" cx="233.7" cy="41.5" r="3.5"/>
+<circle class="after" cx="133.8" cy="41.5" r="4"/></g>
+<g><title>seed 18: 37 before, 23 after, 14 earlier</title><rect class="hit" x="0" y="48.0" width="360" height="13"/><text class="axis small" x="22" y="58.0" text-anchor="end">18</text>
+<line class="link" x1="264.9" x2="177.5" y1="54.5" y2="54.5"/><circle class="before" cx="264.9" cy="54.5" r="3.5"/>
+<circle class="after" cx="177.5" cy="54.5" r="4"/></g>
+<g><title>seed 9: 50 before, 38 after, 12 earlier</title><rect class="hit" x="0" y="61.0" width="360" height="13"/><text class="axis small" x="22" y="71.0" text-anchor="end">9</text>
+<line class="link" x1="346.0" x2="271.1" y1="67.5" y2="67.5"/><circle class="before" cx="346.0" cy="67.5" r="3.5"/>
+<circle class="after" cx="271.1" cy="67.5" r="4"/></g>
+<g><title>seed 14: 15 before, 9 after, 6 earlier</title><rect class="hit" x="0" y="74.0" width="360" height="13"/><text class="axis small" x="22" y="84.0" text-anchor="end">14</text>
+<line class="link" x1="127.6" x2="90.2" y1="80.5" y2="80.5"/><circle class="before" cx="127.6" cy="80.5" r="3.5"/>
+<circle class="after" cx="90.2" cy="80.5" r="4"/></g>
+<g><title>seed 0: 24 before, 24 after, tied</title><rect class="hit" x="0" y="87.0" width="360" height="13"/><text class="axis small" x="22" y="97.0" text-anchor="end">0</text>
+<circle class="after" cx="183.8" cy="93.5" r="4"/></g>
+<g><title>seed 1: 10 before, 10 after, tied</title><rect class="hit" x="0" y="100.0" width="360" height="13"/><text class="axis small" x="22" y="110.0" text-anchor="end">1</text>
+<circle class="after" cx="96.4" cy="106.5" r="4"/></g>
+<g><title>seed 2: 27 before, 27 after, tied</title><rect class="hit" x="0" y="113.0" width="360" height="13"/><text class="axis small" x="22" y="123.0" text-anchor="end">2</text>
+<circle class="after" cx="202.5" cy="119.5" r="4"/></g>
+<g><title>seed 4: 20 before, 20 after, tied</title><rect class="hit" x="0" y="126.0" width="360" height="13"/><text class="axis small" x="22" y="136.0" text-anchor="end">4</text>
+<circle class="after" cx="158.8" cy="132.5" r="4"/></g>
+<g><title>seed 5: 17 before, 17 after, tied</title><rect class="hit" x="0" y="139.0" width="360" height="13"/><text class="axis small" x="22" y="149.0" text-anchor="end">5</text>
+<circle class="after" cx="140.1" cy="145.5" r="4"/></g>
+<g><title>seed 15: 28 before, 28 after, tied</title><rect class="hit" x="0" y="152.0" width="360" height="13"/><text class="axis small" x="22" y="162.0" text-anchor="end">15</text>
+<circle class="after" cx="208.7" cy="158.5" r="4"/></g>
+<g><title>seed 19: 27 before, 27 after, tied</title><rect class="hit" x="0" y="165.0" width="360" height="13"/><text class="axis small" x="22" y="175.0" text-anchor="end">19</text>
+<circle class="after" cx="202.5" cy="171.5" r="4"/></g>
+<g><title>seed 6: 13 before, 19 after, 6 later</title><rect class="hit" x="0" y="178.0" width="360" height="13"/><text class="axis small" x="22" y="188.0" text-anchor="end">6</text>
+<line class="link" x1="115.1" x2="152.6" y1="184.5" y2="184.5"/><circle class="before" cx="115.1" cy="184.5" r="3.5"/>
+<circle class="after" cx="152.6" cy="184.5" r="4"/></g>
+<g><title>seed 12: 19 before, 25 after, 6 later</title><rect class="hit" x="0" y="191.0" width="360" height="13"/><text class="axis small" x="22" y="201.0" text-anchor="end">12</text>
+<line class="link" x1="152.6" x2="190.0" y1="197.5" y2="197.5"/><circle class="before" cx="152.6" cy="197.5" r="3.5"/>
+<circle class="after" cx="190.0" cy="197.5" r="4"/></g>
+<g><title>seed 7: 33 before, 41 after, 8 later</title><rect class="hit" x="0" y="204.0" width="360" height="13"/><text class="axis small" x="22" y="214.0" text-anchor="end">7</text>
+<line class="link" x1="239.9" x2="289.8" y1="210.5" y2="210.5"/><circle class="before" cx="239.9" cy="210.5" r="3.5"/>
+<circle class="after" cx="289.8" cy="210.5" r="4"/></g>
+<g><title>seed 11: 18 before, 26 after, 8 later</title><rect class="hit" x="0" y="217.0" width="360" height="13"/><text class="axis small" x="22" y="227.0" text-anchor="end">11</text>
+<line class="link" x1="146.3" x2="196.2" y1="223.5" y2="223.5"/><circle class="before" cx="146.3" cy="223.5" r="3.5"/>
+<circle class="after" cx="196.2" cy="223.5" r="4"/></g>
+<g><title>seed 16: 29 before, 42 after, 13 later</title><rect class="hit" x="0" y="230.0" width="360" height="13"/><text class="axis small" x="22" y="240.0" text-anchor="end">16</text>
+<line class="link" x1="215.0" x2="296.1" y1="236.5" y2="236.5"/><circle class="before" cx="215.0" cy="236.5" r="3.5"/>
+<circle class="after" cx="296.1" cy="236.5" r="4"/></g>
+<g><title>seed 10: 21 before, 35 after, 14 later</title><rect class="hit" x="0" y="243.0" width="360" height="13"/><text class="axis small" x="22" y="253.0" text-anchor="end">10</text>
+<line class="link" x1="165.0" x2="252.4" y1="249.5" y2="249.5"/><circle class="before" cx="165.0" cy="249.5" r="3.5"/>
+<circle class="after" cx="252.4" cy="249.5" r="4"/></g>
+<g><title>seed 8: 18 before, 34 after, 16 later</title><rect class="hit" x="0" y="256.0" width="360" height="13"/><text class="axis small" x="22" y="266.0" text-anchor="end">8</text>
+<line class="link" x1="146.3" x2="246.2" y1="262.5" y2="262.5"/><circle class="before" cx="146.3" cy="262.5" r="3.5"/>
+<circle class="after" cx="246.2" cy="262.5" r="4"/></g>
+<g><title>seed 13: 23 before, 39 after, 16 later</title><rect class="hit" x="0" y="269.0" width="360" height="13"/><text class="axis small" x="22" y="279.0" text-anchor="end">13</text>
+<line class="link" x1="177.5" x2="277.4" y1="275.5" y2="275.5"/><circle class="before" cx="177.5" cy="275.5" r="3.5"/>
+<circle class="after" cx="277.4" cy="275.5" r="4"/></g>
+</g>
+</svg>
+</div>
+<div class="panel">
+<p>1%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 288" width="360" height="288" role="img" aria-label="Epochs before the first fork at both commits, GroupV3 at 1%">
+<text class="axis small" x="0" y="11">seed</text>
+<line class="grid" x1="34.0" x2="34.0" y1="18" y2="282"/>
+<text class="axis small" x="34.0" y="11" text-anchor="middle">0</text>
+<line class="grid" x1="96.4" x2="96.4" y1="18" y2="282"/>
+<text class="axis small" x="96.4" y="11" text-anchor="middle">10</text>
+<line class="grid" x1="158.8" x2="158.8" y1="18" y2="282"/>
+<text class="axis small" x="158.8" y="11" text-anchor="middle">20</text>
+<line class="grid" x1="221.2" x2="221.2" y1="18" y2="282"/>
+<text class="axis small" x="221.2" y="11" text-anchor="middle">30</text>
+<line class="grid" x1="283.6" x2="283.6" y1="18" y2="282"/>
+<text class="axis small" x="283.6" y="11" text-anchor="middle">40</text>
+<line class="grid" x1="346.0" x2="346.0" y1="18" y2="282"/>
+<text class="axis small" x="346.0" y="11" text-anchor="middle">50</text>
+<g class="dumb v3">
+<g><title>seed 14: 30 before, 9 after, 21 earlier</title><rect class="hit" x="0" y="22.0" width="360" height="13"/><text class="axis small" x="22" y="32.0" text-anchor="end">14</text>
+<line class="link" x1="221.2" x2="90.2" y1="28.5" y2="28.5"/><circle class="before" cx="221.2" cy="28.5" r="3.5"/>
+<circle class="after" cx="90.2" cy="28.5" r="4"/></g>
+<g><title>seed 18: 29 before, 13 after, 16 earlier</title><rect class="hit" x="0" y="35.0" width="360" height="13"/><text class="axis small" x="22" y="45.0" text-anchor="end">18</text>
+<line class="link" x1="215.0" x2="115.1" y1="41.5" y2="41.5"/><circle class="before" cx="215.0" cy="41.5" r="3.5"/>
+<circle class="after" cx="115.1" cy="41.5" r="4"/></g>
+<g><title>seed 3: 18 before, 6 after, 12 earlier</title><rect class="hit" x="0" y="48.0" width="360" height="13"/><text class="axis small" x="22" y="58.0" text-anchor="end">3</text>
+<line class="link" x1="146.3" x2="71.4" y1="54.5" y2="54.5"/><circle class="before" cx="146.3" cy="54.5" r="3.5"/>
+<circle class="after" cx="71.4" cy="54.5" r="4"/></g>
+<g><title>seed 8: 30 before, 25 after, 5 earlier</title><rect class="hit" x="0" y="61.0" width="360" height="13"/><text class="axis small" x="22" y="71.0" text-anchor="end">8</text>
+<line class="link" x1="221.2" x2="190.0" y1="67.5" y2="67.5"/><circle class="before" cx="221.2" cy="67.5" r="3.5"/>
+<circle class="after" cx="190.0" cy="67.5" r="4"/></g>
+<g><title>seed 0: 28 before, 24 after, 4 earlier</title><rect class="hit" x="0" y="74.0" width="360" height="13"/><text class="axis small" x="22" y="84.0" text-anchor="end">0</text>
+<line class="link" x1="208.7" x2="183.8" y1="80.5" y2="80.5"/><circle class="before" cx="208.7" cy="80.5" r="3.5"/>
+<circle class="after" cx="183.8" cy="80.5" r="4"/></g>
+<g><title>seed 12: 22 before, 18 after, 4 earlier</title><rect class="hit" x="0" y="87.0" width="360" height="13"/><text class="axis small" x="22" y="97.0" text-anchor="end">12</text>
+<line class="link" x1="171.3" x2="146.3" y1="93.5" y2="93.5"/><circle class="before" cx="171.3" cy="93.5" r="3.5"/>
+<circle class="after" cx="146.3" cy="93.5" r="4"/></g>
+<g><title>seed 2: 15 before, 14 after, 1 earlier</title><rect class="hit" x="0" y="100.0" width="360" height="13"/><text class="axis small" x="22" y="110.0" text-anchor="end">2</text>
+<line class="link" x1="127.6" x2="121.4" y1="106.5" y2="106.5"/><circle class="before" cx="127.6" cy="106.5" r="3.5"/>
+<circle class="after" cx="121.4" cy="106.5" r="4"/></g>
+<g><title>seed 1: 12 before, 12 after, tied</title><rect class="hit" x="0" y="113.0" width="360" height="13"/><text class="axis small" x="22" y="123.0" text-anchor="end">1</text>
+<circle class="after" cx="108.9" cy="119.5" r="4"/></g>
+<g><title>seed 4: 9 before, 9 after, tied</title><rect class="hit" x="0" y="126.0" width="360" height="13"/><text class="axis small" x="22" y="136.0" text-anchor="end">4</text>
+<circle class="after" cx="90.2" cy="132.5" r="4"/></g>
+<g><title>seed 5: 8 before, 8 after, tied</title><rect class="hit" x="0" y="139.0" width="360" height="13"/><text class="axis small" x="22" y="149.0" text-anchor="end">5</text>
+<circle class="after" cx="83.9" cy="145.5" r="4"/></g>
+<g><title>seed 7: 8 before, 8 after, tied</title><rect class="hit" x="0" y="152.0" width="360" height="13"/><text class="axis small" x="22" y="162.0" text-anchor="end">7</text>
+<circle class="after" cx="83.9" cy="158.5" r="4"/></g>
+<g><title>seed 9: 17 before, 17 after, tied</title><rect class="hit" x="0" y="165.0" width="360" height="13"/><text class="axis small" x="22" y="175.0" text-anchor="end">9</text>
+<circle class="after" cx="140.1" cy="171.5" r="4"/></g>
+<g><title>seed 11: 9 before, 9 after, tied</title><rect class="hit" x="0" y="178.0" width="360" height="13"/><text class="axis small" x="22" y="188.0" text-anchor="end">11</text>
+<circle class="after" cx="90.2" cy="184.5" r="4"/></g>
+<g><title>seed 13: 16 before, 16 after, tied</title><rect class="hit" x="0" y="191.0" width="360" height="13"/><text class="axis small" x="22" y="201.0" text-anchor="end">13</text>
+<circle class="after" cx="133.8" cy="197.5" r="4"/></g>
+<g><title>seed 15: 12 before, 12 after, the same outcome</title><rect class="hit" x="0" y="204.0" width="360" height="13"/><text class="axis small" x="22" y="214.0" text-anchor="end">15</text>
+<circle class="after" cx="108.9" cy="210.5" r="4"/></g>
+<g><title>seed 17: 9 before, 9 after, tied</title><rect class="hit" x="0" y="217.0" width="360" height="13"/><text class="axis small" x="22" y="227.0" text-anchor="end">17</text>
+<circle class="after" cx="90.2" cy="223.5" r="4"/></g>
+<g><title>seed 19: 11 before, 11 after, tied</title><rect class="hit" x="0" y="230.0" width="360" height="13"/><text class="axis small" x="22" y="240.0" text-anchor="end">19</text>
+<circle class="after" cx="102.6" cy="236.5" r="4"/></g>
+<g><title>seed 6: 13 before, 14 after, 1 later</title><rect class="hit" x="0" y="243.0" width="360" height="13"/><text class="axis small" x="22" y="253.0" text-anchor="end">6</text>
+<line class="link" x1="115.1" x2="121.4" y1="249.5" y2="249.5"/><circle class="before" cx="115.1" cy="249.5" r="3.5"/>
+<circle class="after" cx="121.4" cy="249.5" r="4"/></g>
+<g><title>seed 10: 11 before, 18 after, 7 later</title><rect class="hit" x="0" y="256.0" width="360" height="13"/><text class="axis small" x="22" y="266.0" text-anchor="end">10</text>
+<line class="link" x1="102.6" x2="146.3" y1="262.5" y2="262.5"/><circle class="before" cx="102.6" cy="262.5" r="3.5"/>
+<circle class="after" cx="146.3" cy="262.5" r="4"/></g>
+<g><title>seed 16: 20 before, 42 after, 22 later</title><rect class="hit" x="0" y="269.0" width="360" height="13"/><text class="axis small" x="22" y="279.0" text-anchor="end">16</text>
+<line class="link" x1="158.8" x2="296.1" y1="275.5" y2="275.5"/><circle class="before" cx="158.8" cy="275.5" r="3.5"/>
+<circle class="after" cx="296.1" cy="275.5" r="4"/></g>
+</g>
+</svg>
+</div>
+<div class="panel">
+<p>5%</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 288" width="360" height="288" role="img" aria-label="Epochs before the first fork at both commits, GroupV3 at 5%">
+<text class="axis small" x="0" y="11">seed</text>
+<line class="grid" x1="34.0" x2="34.0" y1="18" y2="282"/>
+<text class="axis small" x="34.0" y="11" text-anchor="middle">0</text>
+<line class="grid" x1="96.4" x2="96.4" y1="18" y2="282"/>
+<text class="axis small" x="96.4" y="11" text-anchor="middle">10</text>
+<line class="grid" x1="158.8" x2="158.8" y1="18" y2="282"/>
+<text class="axis small" x="158.8" y="11" text-anchor="middle">20</text>
+<line class="grid" x1="221.2" x2="221.2" y1="18" y2="282"/>
+<text class="axis small" x="221.2" y="11" text-anchor="middle">30</text>
+<line class="grid" x1="283.6" x2="283.6" y1="18" y2="282"/>
+<text class="axis small" x="283.6" y="11" text-anchor="middle">40</text>
+<line class="grid" x1="346.0" x2="346.0" y1="18" y2="282"/>
+<text class="axis small" x="346.0" y="11" text-anchor="middle">50</text>
+<g class="dumb v3">
+<g><title>seed 16: 19 before, 13 after, 6 earlier</title><rect class="hit" x="0" y="22.0" width="360" height="13"/><text class="axis small" x="22" y="32.0" text-anchor="end">16</text>
+<line class="link" x1="152.6" x2="115.1" y1="28.5" y2="28.5"/><circle class="before" cx="152.6" cy="28.5" r="3.5"/>
+<circle class="after" cx="115.1" cy="28.5" r="4"/></g>
+<g><title>seed 1: 18 before, 14 after, 4 earlier</title><rect class="hit" x="0" y="35.0" width="360" height="13"/><text class="axis small" x="22" y="45.0" text-anchor="end">1</text>
+<line class="link" x1="146.3" x2="121.4" y1="41.5" y2="41.5"/><circle class="before" cx="146.3" cy="41.5" r="3.5"/>
+<circle class="after" cx="121.4" cy="41.5" r="4"/></g>
+<g><title>seed 5: 13 before, 9 after, 4 earlier</title><rect class="hit" x="0" y="48.0" width="360" height="13"/><text class="axis small" x="22" y="58.0" text-anchor="end">5</text>
+<line class="link" x1="115.1" x2="90.2" y1="54.5" y2="54.5"/><circle class="before" cx="115.1" cy="54.5" r="3.5"/>
+<circle class="after" cx="90.2" cy="54.5" r="4"/></g>
+<g><title>seed 9: 11 before, 7 after, 4 earlier</title><rect class="hit" x="0" y="61.0" width="360" height="13"/><text class="axis small" x="22" y="71.0" text-anchor="end">9</text>
+<line class="link" x1="102.6" x2="77.7" y1="67.5" y2="67.5"/><circle class="before" cx="102.6" cy="67.5" r="3.5"/>
+<circle class="after" cx="77.7" cy="67.5" r="4"/></g>
+<g><title>seed 19: 10 before, 6 after, 4 earlier</title><rect class="hit" x="0" y="74.0" width="360" height="13"/><text class="axis small" x="22" y="84.0" text-anchor="end">19</text>
+<line class="link" x1="96.4" x2="71.4" y1="80.5" y2="80.5"/><circle class="before" cx="96.4" cy="80.5" r="3.5"/>
+<circle class="after" cx="71.4" cy="80.5" r="4"/></g>
+<g><title>seed 6: 10 before, 7 after, 3 earlier</title><rect class="hit" x="0" y="87.0" width="360" height="13"/><text class="axis small" x="22" y="97.0" text-anchor="end">6</text>
+<line class="link" x1="96.4" x2="77.7" y1="93.5" y2="93.5"/><circle class="before" cx="96.4" cy="93.5" r="3.5"/>
+<circle class="after" cx="77.7" cy="93.5" r="4"/></g>
+<g><title>seed 2: 5 before, 5 after, tied</title><rect class="hit" x="0" y="100.0" width="360" height="13"/><text class="axis small" x="22" y="110.0" text-anchor="end">2</text>
+<circle class="after" cx="65.2" cy="106.5" r="4"/></g>
+<g><title>seed 3: 2 before, 2 after, tied</title><rect class="hit" x="0" y="113.0" width="360" height="13"/><text class="axis small" x="22" y="123.0" text-anchor="end">3</text>
+<circle class="after" cx="46.5" cy="119.5" r="4"/></g>
+<g><title>seed 4: 8 before, 8 after, tied</title><rect class="hit" x="0" y="126.0" width="360" height="13"/><text class="axis small" x="22" y="136.0" text-anchor="end">4</text>
+<circle class="after" cx="83.9" cy="132.5" r="4"/></g>
+<g><title>seed 7: 4 before, 4 after, tied</title><rect class="hit" x="0" y="139.0" width="360" height="13"/><text class="axis small" x="22" y="149.0" text-anchor="end">7</text>
+<circle class="after" cx="59.0" cy="145.5" r="4"/></g>
+<g><title>seed 8: 21 before, 21 after, tied</title><rect class="hit" x="0" y="152.0" width="360" height="13"/><text class="axis small" x="22" y="162.0" text-anchor="end">8</text>
+<circle class="after" cx="165.0" cy="158.5" r="4"/></g>
+<g><title>seed 10: 7 before, 7 after, tied</title><rect class="hit" x="0" y="165.0" width="360" height="13"/><text class="axis small" x="22" y="175.0" text-anchor="end">10</text>
+<circle class="after" cx="77.7" cy="171.5" r="4"/></g>
+<g><title>seed 11: 6 before, 6 after, tied</title><rect class="hit" x="0" y="178.0" width="360" height="13"/><text class="axis small" x="22" y="188.0" text-anchor="end">11</text>
+<circle class="after" cx="71.4" cy="184.5" r="4"/></g>
+<g><title>seed 12: 7 before, 7 after, tied</title><rect class="hit" x="0" y="191.0" width="360" height="13"/><text class="axis small" x="22" y="201.0" text-anchor="end">12</text>
+<circle class="after" cx="77.7" cy="197.5" r="4"/></g>
+<g><title>seed 14: 9 before, 9 after, tied</title><rect class="hit" x="0" y="204.0" width="360" height="13"/><text class="axis small" x="22" y="214.0" text-anchor="end">14</text>
+<circle class="after" cx="90.2" cy="210.5" r="4"/></g>
+<g><title>seed 15: 10 before, 10 after, tied</title><rect class="hit" x="0" y="217.0" width="360" height="13"/><text class="axis small" x="22" y="227.0" text-anchor="end">15</text>
+<circle class="after" cx="96.4" cy="223.5" r="4"/></g>
+<g><title>seed 13: 11 before, 12 after, 1 later</title><rect class="hit" x="0" y="230.0" width="360" height="13"/><text class="axis small" x="22" y="240.0" text-anchor="end">13</text>
+<line class="link" x1="102.6" x2="108.9" y1="236.5" y2="236.5"/><circle class="before" cx="102.6" cy="236.5" r="3.5"/>
+<circle class="after" cx="108.9" cy="236.5" r="4"/></g>
+<g><title>seed 17: 17 before, 18 after, 1 later</title><rect class="hit" x="0" y="243.0" width="360" height="13"/><text class="axis small" x="22" y="253.0" text-anchor="end">17</text>
+<line class="link" x1="140.1" x2="146.3" y1="249.5" y2="249.5"/><circle class="before" cx="140.1" cy="249.5" r="3.5"/>
+<circle class="after" cx="146.3" cy="249.5" r="4"/></g>
+<g><title>seed 0: 9 before, 12 after, 3 later</title><rect class="hit" x="0" y="256.0" width="360" height="13"/><text class="axis small" x="22" y="266.0" text-anchor="end">0</text>
+<line class="link" x1="90.2" x2="108.9" y1="262.5" y2="262.5"/><circle class="before" cx="90.2" cy="262.5" r="3.5"/>
+<circle class="after" cx="108.9" cy="262.5" r="4"/></g>
+<g><title>seed 18: 13 before, 17 after, 4 later</title><rect class="hit" x="0" y="269.0" width="360" height="13"/><text class="axis small" x="22" y="279.0" text-anchor="end">18</text>
+<line class="link" x1="115.1" x2="140.1" y1="275.5" y2="275.5"/><circle class="before" cx="115.1" cy="275.5" r="3.5"/>
+<circle class="after" cx="140.1" cy="275.5" r="4"/></g>
+</g>
+</svg>
+</div>
+</div>
+<p class="caption">Epochs before the first fork, a row a seed, from the seed whose first fork moved earliest to the one whose moved latest. Further right is later, which is better. A dot alone is a tied seed. At 0% no seed's first fork moved.</p>
+<h3>Open a pair</h3>
+<details>
+<summary>0% <span class="muted">20 seeds</span></summary>
+<div class="wide"><table class="pairs">
+<thead><tr><th class="n">Seed</th><th class="n">Run</th><th class="n">Before</th><th class="n">After</th><th>Moved</th><th>The runs part in</th><th>The run before</th><th>The run after</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td class="n">1</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/1/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/1/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/1/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/1/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/1/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/1/run.json">run.json</a></td></tr>
+<tr><td class="n">1</td><td class="n">2</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/2/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/2/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/2/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/2/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/2/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/2/run.json">run.json</a></td></tr>
+<tr><td class="n">2</td><td class="n">3</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/3/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/3/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/3/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/3/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/3/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/3/run.json">run.json</a></td></tr>
+<tr><td class="n">3</td><td class="n">4</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/4/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/4/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/4/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/4/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/4/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/4/run.json">run.json</a></td></tr>
+<tr><td class="n">4</td><td class="n">5</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/5/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/5/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/5/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/5/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/5/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/5/run.json">run.json</a></td></tr>
+<tr><td class="n">5</td><td class="n">6</td><td class="n">50</td><td class="n">50</td><td>tied</td><td>round 19</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/6/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/6/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/6/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/6/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/6/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/6/run.json">run.json</a></td></tr>
+<tr><td class="n">6</td><td class="n">7</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>round 6</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/7/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/7/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/7/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/7/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/7/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/7/run.json">run.json</a></td></tr>
+<tr><td class="n">7</td><td class="n">8</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/8/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/8/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/8/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/8/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/8/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/8/run.json">run.json</a></td></tr>
+<tr><td class="n">8</td><td class="n">9</td><td class="n">50</td><td class="n">50</td><td>tied</td><td>round 8</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/9/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/9/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/9/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/9/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/9/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/9/run.json">run.json</a></td></tr>
+<tr><td class="n">9</td><td class="n">10</td><td class="n">50</td><td class="n">50</td><td>tied</td><td>round 34</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/10/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/10/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/10/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/10/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/10/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/10/run.json">run.json</a></td></tr>
+<tr><td class="n">10</td><td class="n">11</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>round 17</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/11/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/11/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/11/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/11/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/11/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/11/run.json">run.json</a></td></tr>
+<tr><td class="n">11</td><td class="n">12</td><td class="n">50</td><td class="n">50</td><td>tied</td><td>round 14</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/12/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/12/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/12/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/12/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/12/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/12/run.json">run.json</a></td></tr>
+<tr><td class="n">12</td><td class="n">13</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/13/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/13/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/13/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/13/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/13/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/13/run.json">run.json</a></td></tr>
+<tr><td class="n">13</td><td class="n">14</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/14/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/14/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/14/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/14/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/14/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/14/run.json">run.json</a></td></tr>
+<tr><td class="n">14</td><td class="n">15</td><td class="n">50</td><td class="n">50</td><td>tied</td><td>round 32</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/15/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/15/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/15/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/15/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/15/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/15/run.json">run.json</a></td></tr>
+<tr><td class="n">15</td><td class="n">16</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/16/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/16/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/16/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/16/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/16/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/16/run.json">run.json</a></td></tr>
+<tr><td class="n">16</td><td class="n">17</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/17/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/17/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/17/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/17/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/17/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/17/run.json">run.json</a></td></tr>
+<tr><td class="n">17</td><td class="n">18</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/18/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/18/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/18/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/18/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/18/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/18/run.json">run.json</a></td></tr>
+<tr><td class="n">18</td><td class="n">19</td><td class="n">50</td><td class="n">50</td><td>tied</td><td>round 3</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/19/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/19/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/19/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/19/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/19/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/19/run.json">run.json</a></td></tr>
+<tr><td class="n">19</td><td class="n">20</td><td class="n">50</td><td class="n">50</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/20/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/20/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0-groupv3/20/run.json">run.json</a></td><td><a href="../grow-waku-loss-0-groupv3/20/run.txt">run.txt</a> · <a href="../grow-waku-loss-0-groupv3/20/report.txt">report.txt</a> · <a href="../grow-waku-loss-0-groupv3/20/run.json">run.json</a></td></tr>
+</tbody>
+</table></div>
+<p class="side">The logs of both commits' runs, a seed's <code>group.log</code> under its run's number:</p>
+<pre>gh run download 45367945392 --repo logos-messaging/chat-sim --dir before --pattern &#x27;logs-revision-grow-waku-loss-0-groupv3-[0-9]*&#x27;
+gh run download 45418493349 --repo logos-messaging/chat-sim --dir after --pattern &#x27;logs-revision-grow-waku-loss-0-groupv3-[0-9]*&#x27;</pre>
+</details>
+<details open>
+<summary>0.5% <span class="muted">20 seeds</span></summary>
+<div class="wide"><table class="pairs">
+<thead><tr><th class="n">Seed</th><th class="n">Run</th><th class="n">Before</th><th class="n">After</th><th>Moved</th><th>The runs part in</th><th>The run before</th><th>The run after</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td class="n">1</td><td class="n">24</td><td class="n">24</td><td>tied</td><td>round 29</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/1/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/1/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/1/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/1/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/1/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/1/run.json">run.json</a></td></tr>
+<tr><td class="n">1</td><td class="n">2</td><td class="n">10</td><td class="n">10</td><td>tied</td><td>round 20</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/2/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/2/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/2/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/2/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/2/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/2/run.json">run.json</a></td></tr>
+<tr><td class="n">2</td><td class="n">3</td><td class="n">27</td><td class="n">27</td><td>tied</td><td>round 34</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/3/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/3/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/3/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/3/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/3/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/3/run.json">run.json</a></td></tr>
+<tr><td class="n">3</td><td class="n">4</td><td class="n">27</td><td class="n">6</td><td>21 earlier</td><td>round 8</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/4/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/4/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/4/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/4/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/4/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/4/run.json">run.json</a></td></tr>
+<tr><td class="n">4</td><td class="n">5</td><td class="n">20</td><td class="n">20</td><td>tied</td><td>round 28</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/5/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/5/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/5/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/5/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/5/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/5/run.json">run.json</a></td></tr>
+<tr><td class="n">5</td><td class="n">6</td><td class="n">17</td><td class="n">17</td><td>tied</td><td>round 41</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/6/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/6/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/6/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/6/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/6/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/6/run.json">run.json</a></td></tr>
+<tr><td class="n">6</td><td class="n">7</td><td class="n">13</td><td class="n">19</td><td>6 later</td><td>round 6</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/7/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/7/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/7/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/7/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/7/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/7/run.json">run.json</a></td></tr>
+<tr><td class="n">7</td><td class="n">8</td><td class="n">33</td><td class="n">41</td><td>8 later</td><td>round 25</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/8/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/8/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/8/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/8/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/8/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/8/run.json">run.json</a></td></tr>
+<tr><td class="n">8</td><td class="n">9</td><td class="n">18</td><td class="n">34</td><td>16 later</td><td>round 8</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/9/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/9/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/9/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/9/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/9/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/9/run.json">run.json</a></td></tr>
+<tr><td class="n">9</td><td class="n">10</td><td class="n">50</td><td class="n">38</td><td>12 earlier</td><td>round 45</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/10/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/10/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/10/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/10/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/10/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/10/run.json">run.json</a></td></tr>
+<tr><td class="n">10</td><td class="n">11</td><td class="n">21</td><td class="n">35</td><td>14 later</td><td>round 17</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/11/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/11/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/11/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/11/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/11/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/11/run.json">run.json</a></td></tr>
+<tr><td class="n">11</td><td class="n">12</td><td class="n">18</td><td class="n">26</td><td>8 later</td><td>round 11</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/12/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/12/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/12/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/12/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/12/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/12/run.json">run.json</a></td></tr>
+<tr><td class="n">12</td><td class="n">13</td><td class="n">19</td><td class="n">25</td><td>6 later</td><td>round 13</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/13/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/13/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/13/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/13/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/13/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/13/run.json">run.json</a></td></tr>
+<tr><td class="n">13</td><td class="n">14</td><td class="n">23</td><td class="n">39</td><td>16 later</td><td>round 27</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/14/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/14/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/14/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/14/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/14/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/14/run.json">run.json</a></td></tr>
+<tr><td class="n">14</td><td class="n">15</td><td class="n">15</td><td class="n">9</td><td>6 earlier</td><td>round 11</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/15/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/15/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/15/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/15/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/15/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/15/run.json">run.json</a></td></tr>
+<tr><td class="n">15</td><td class="n">16</td><td class="n">28</td><td class="n">28</td><td>tied</td><td>round 25</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/16/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/16/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/16/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/16/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/16/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/16/run.json">run.json</a></td></tr>
+<tr><td class="n">16</td><td class="n">17</td><td class="n">29</td><td class="n">42</td><td>13 later</td><td>round 12</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/17/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/17/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/17/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/17/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/17/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/17/run.json">run.json</a></td></tr>
+<tr><td class="n">17</td><td class="n">18</td><td class="n">32</td><td class="n">16</td><td>16 earlier</td><td>round 8</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/18/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/18/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/18/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/18/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/18/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/18/run.json">run.json</a></td></tr>
+<tr><td class="n">18</td><td class="n">19</td><td class="n">37</td><td class="n">23</td><td>14 earlier</td><td>round 3</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/19/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/19/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/19/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/19/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/19/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/19/run.json">run.json</a></td></tr>
+<tr><td class="n">19</td><td class="n">20</td><td class="n">27</td><td class="n">27</td><td>tied</td><td>round 15</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/20/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/20/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-0.5-groupv3/20/run.json">run.json</a></td><td><a href="../grow-waku-loss-0.5-groupv3/20/run.txt">run.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/20/report.txt">report.txt</a> · <a href="../grow-waku-loss-0.5-groupv3/20/run.json">run.json</a></td></tr>
+</tbody>
+</table></div>
+<p class="side">The logs of both commits' runs, a seed's <code>group.log</code> under its run's number:</p>
+<pre>gh run download 45367945392 --repo logos-messaging/chat-sim --dir before --pattern &#x27;logs-revision-grow-waku-loss-0.5-groupv3-[0-9]*&#x27;
+gh run download 45418493349 --repo logos-messaging/chat-sim --dir after --pattern &#x27;logs-revision-grow-waku-loss-0.5-groupv3-[0-9]*&#x27;</pre>
+</details>
+<details>
+<summary>1% <span class="muted">20 seeds</span></summary>
+<div class="wide"><table class="pairs">
+<thead><tr><th class="n">Seed</th><th class="n">Run</th><th class="n">Before</th><th class="n">After</th><th>Moved</th><th>The runs part in</th><th>The run before</th><th>The run after</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td class="n">1</td><td class="n">28</td><td class="n">24</td><td>4 earlier</td><td>round 15</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/1/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/1/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/1/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/1/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/1/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/1/run.json">run.json</a></td></tr>
+<tr><td class="n">1</td><td class="n">2</td><td class="n">12</td><td class="n">12</td><td>tied</td><td>round 16</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/2/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/2/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/2/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/2/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/2/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/2/run.json">run.json</a></td></tr>
+<tr><td class="n">2</td><td class="n">3</td><td class="n">15</td><td class="n">14</td><td>1 earlier</td><td>round 16</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/3/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/3/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/3/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/3/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/3/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/3/run.json">run.json</a></td></tr>
+<tr><td class="n">3</td><td class="n">4</td><td class="n">18</td><td class="n">6</td><td>12 earlier</td><td>round 8</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/4/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/4/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/4/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/4/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/4/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/4/run.json">run.json</a></td></tr>
+<tr><td class="n">4</td><td class="n">5</td><td class="n">9</td><td class="n">9</td><td>tied</td><td>round 40</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/5/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/5/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/5/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/5/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/5/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/5/run.json">run.json</a></td></tr>
+<tr><td class="n">5</td><td class="n">6</td><td class="n">8</td><td class="n">8</td><td>tied</td><td>round 31</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/6/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/6/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/6/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/6/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/6/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/6/run.json">run.json</a></td></tr>
+<tr><td class="n">6</td><td class="n">7</td><td class="n">13</td><td class="n">14</td><td>1 later</td><td>round 6</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/7/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/7/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/7/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/7/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/7/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/7/run.json">run.json</a></td></tr>
+<tr><td class="n">7</td><td class="n">8</td><td class="n">8</td><td class="n">8</td><td>tied</td><td>round 15</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/8/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/8/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/8/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/8/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/8/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/8/run.json">run.json</a></td></tr>
+<tr><td class="n">8</td><td class="n">9</td><td class="n">30</td><td class="n">25</td><td>5 earlier</td><td>round 19</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/9/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/9/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/9/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/9/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/9/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/9/run.json">run.json</a></td></tr>
+<tr><td class="n">9</td><td class="n">10</td><td class="n">17</td><td class="n">17</td><td>tied</td><td>round 27</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/10/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/10/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/10/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/10/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/10/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/10/run.json">run.json</a></td></tr>
+<tr><td class="n">10</td><td class="n">11</td><td class="n">11</td><td class="n">18</td><td>7 later</td><td>round 11</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/11/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/11/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/11/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/11/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/11/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/11/run.json">run.json</a></td></tr>
+<tr><td class="n">11</td><td class="n">12</td><td class="n">9</td><td class="n">9</td><td>tied</td><td>round 7</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/12/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/12/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/12/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/12/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/12/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/12/run.json">run.json</a></td></tr>
+<tr><td class="n">12</td><td class="n">13</td><td class="n">22</td><td class="n">18</td><td>4 earlier</td><td>round 13</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/13/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/13/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/13/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/13/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/13/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/13/run.json">run.json</a></td></tr>
+<tr><td class="n">13</td><td class="n">14</td><td class="n">16</td><td class="n">16</td><td>tied</td><td>round 13</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/14/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/14/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/14/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/14/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/14/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/14/run.json">run.json</a></td></tr>
+<tr><td class="n">14</td><td class="n">15</td><td class="n">30</td><td class="n">9</td><td>21 earlier</td><td>round 11</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/15/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/15/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/15/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/15/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/15/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/15/run.json">run.json</a></td></tr>
+<tr><td class="n">15</td><td class="n">16</td><td class="n">12</td><td class="n">12</td><td>the same outcome</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/16/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/16/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/16/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/16/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/16/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/16/run.json">run.json</a></td></tr>
+<tr><td class="n">16</td><td class="n">17</td><td class="n">20</td><td class="n">42</td><td>22 later</td><td>round 15</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/17/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/17/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/17/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/17/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/17/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/17/run.json">run.json</a></td></tr>
+<tr><td class="n">17</td><td class="n">18</td><td class="n">9</td><td class="n">9</td><td>tied</td><td>round 10</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/18/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/18/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/18/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/18/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/18/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/18/run.json">run.json</a></td></tr>
+<tr><td class="n">18</td><td class="n">19</td><td class="n">29</td><td class="n">13</td><td>16 earlier</td><td>round 3</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/19/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/19/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/19/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/19/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/19/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/19/run.json">run.json</a></td></tr>
+<tr><td class="n">19</td><td class="n">20</td><td class="n">11</td><td class="n">11</td><td>tied</td><td>round 15</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/20/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/20/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-1-groupv3/20/run.json">run.json</a></td><td><a href="../grow-waku-loss-1-groupv3/20/run.txt">run.txt</a> · <a href="../grow-waku-loss-1-groupv3/20/report.txt">report.txt</a> · <a href="../grow-waku-loss-1-groupv3/20/run.json">run.json</a></td></tr>
+</tbody>
+</table></div>
+<p class="side">The logs of both commits' runs, a seed's <code>group.log</code> under its run's number:</p>
+<pre>gh run download 45367945392 --repo logos-messaging/chat-sim --dir before --pattern &#x27;logs-revision-grow-waku-loss-1-groupv3-[0-9]*&#x27;
+gh run download 45418493349 --repo logos-messaging/chat-sim --dir after --pattern &#x27;logs-revision-grow-waku-loss-1-groupv3-[0-9]*&#x27;</pre>
+</details>
+<details>
+<summary>5% <span class="muted">20 seeds</span></summary>
+<div class="wide"><table class="pairs">
+<thead><tr><th class="n">Seed</th><th class="n">Run</th><th class="n">Before</th><th class="n">After</th><th>Moved</th><th>The runs part in</th><th>The run before</th><th>The run after</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td class="n">1</td><td class="n">9</td><td class="n">12</td><td>3 later</td><td>round 7</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/1/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/1/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/1/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/1/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/1/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/1/run.json">run.json</a></td></tr>
+<tr><td class="n">1</td><td class="n">2</td><td class="n">18</td><td class="n">14</td><td>4 earlier</td><td>round 19</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/2/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/2/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/2/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/2/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/2/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/2/run.json">run.json</a></td></tr>
+<tr><td class="n">2</td><td class="n">3</td><td class="n">5</td><td class="n">5</td><td>tied</td><td>round 18</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/3/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/3/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/3/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/3/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/3/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/3/run.json">run.json</a></td></tr>
+<tr><td class="n">3</td><td class="n">4</td><td class="n">2</td><td class="n">2</td><td>tied</td><td>round 5</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/4/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/4/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/4/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/4/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/4/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/4/run.json">run.json</a></td></tr>
+<tr><td class="n">4</td><td class="n">5</td><td class="n">8</td><td class="n">8</td><td>tied</td><td>round 12</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/5/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/5/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/5/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/5/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/5/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/5/run.json">run.json</a></td></tr>
+<tr><td class="n">5</td><td class="n">6</td><td class="n">13</td><td class="n">9</td><td>4 earlier</td><td>round 12</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/6/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/6/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/6/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/6/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/6/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/6/run.json">run.json</a></td></tr>
+<tr><td class="n">6</td><td class="n">7</td><td class="n">10</td><td class="n">7</td><td>3 earlier</td><td>round 6</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/7/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/7/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/7/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/7/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/7/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/7/run.json">run.json</a></td></tr>
+<tr><td class="n">7</td><td class="n">8</td><td class="n">4</td><td class="n">4</td><td>tied</td><td>round 9</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/8/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/8/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/8/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/8/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/8/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/8/run.json">run.json</a></td></tr>
+<tr><td class="n">8</td><td class="n">9</td><td class="n">21</td><td class="n">21</td><td>tied</td><td>round 18</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/9/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/9/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/9/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/9/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/9/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/9/run.json">run.json</a></td></tr>
+<tr><td class="n">9</td><td class="n">10</td><td class="n">11</td><td class="n">7</td><td>4 earlier</td><td>round 4</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/10/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/10/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/10/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/10/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/10/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/10/run.json">run.json</a></td></tr>
+<tr><td class="n">10</td><td class="n">11</td><td class="n">7</td><td class="n">7</td><td>tied</td><td>round 6</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/11/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/11/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/11/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/11/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/11/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/11/run.json">run.json</a></td></tr>
+<tr><td class="n">11</td><td class="n">12</td><td class="n">6</td><td class="n">6</td><td>tied</td><td>round 7</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/12/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/12/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/12/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/12/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/12/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/12/run.json">run.json</a></td></tr>
+<tr><td class="n">12</td><td class="n">13</td><td class="n">7</td><td class="n">7</td><td>tied</td><td>round 9</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/13/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/13/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/13/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/13/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/13/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/13/run.json">run.json</a></td></tr>
+<tr><td class="n">13</td><td class="n">14</td><td class="n">11</td><td class="n">12</td><td>1 later</td><td>round 10</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/14/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/14/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/14/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/14/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/14/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/14/run.json">run.json</a></td></tr>
+<tr><td class="n">14</td><td class="n">15</td><td class="n">9</td><td class="n">9</td><td>tied</td><td>round 14</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/15/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/15/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/15/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/15/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/15/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/15/run.json">run.json</a></td></tr>
+<tr><td class="n">15</td><td class="n">16</td><td class="n">10</td><td class="n">10</td><td>tied</td><td>no round</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/16/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/16/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/16/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/16/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/16/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/16/run.json">run.json</a></td></tr>
+<tr><td class="n">16</td><td class="n">17</td><td class="n">19</td><td class="n">13</td><td>6 earlier</td><td>round 12</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/17/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/17/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/17/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/17/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/17/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/17/run.json">run.json</a></td></tr>
+<tr><td class="n">17</td><td class="n">18</td><td class="n">17</td><td class="n">18</td><td>1 later</td><td>round 6</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/18/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/18/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/18/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/18/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/18/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/18/run.json">run.json</a></td></tr>
+<tr><td class="n">18</td><td class="n">19</td><td class="n">13</td><td class="n">17</td><td>4 later</td><td>round 8</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/19/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/19/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/19/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/19/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/19/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/19/run.json">run.json</a></td></tr>
+<tr><td class="n">19</td><td class="n">20</td><td class="n">10</td><td class="n">6</td><td>4 earlier</td><td>round 8</td><td><a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/20/run.txt">run.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/20/report.txt">report.txt</a> · <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/grow-waku-loss-5-groupv3/20/run.json">run.json</a></td><td><a href="../grow-waku-loss-5-groupv3/20/run.txt">run.txt</a> · <a href="../grow-waku-loss-5-groupv3/20/report.txt">report.txt</a> · <a href="../grow-waku-loss-5-groupv3/20/run.json">run.json</a></td></tr>
+</tbody>
+</table></div>
+<p class="side">The logs of both commits' runs, a seed's <code>group.log</code> under its run's number:</p>
+<pre>gh run download 45367945392 --repo logos-messaging/chat-sim --dir before --pattern &#x27;logs-revision-grow-waku-loss-5-groupv3-[0-9]*&#x27;
+gh run download 45418493349 --repo logos-messaging/chat-sim --dir after --pattern &#x27;logs-revision-grow-waku-loss-5-groupv3-[0-9]*&#x27;</pre>
+</details>
+<p class="caption">A round is one step of the test: the members the seed draws each add one. The two runs of a seed have the same rounds up to the one named. A run's rounds and its outcome are two records of it: two runs of the same outcome can part in a round, and two that differ can part in none.</p>
+<p class="caption">The site keeps the runs' text of the newest 11 points and no log. GitHub keeps a run's logs 90 days. Where a command finds none, the pages of <a href="../">the runs after</a> and <a href="../../../90c41288a072c9f4f6632ffe9a91fff5db9d977a/278bcec5814142be48f0f45307d3a89da16d8c8b/">the runs before</a> have the command that runs each run again. What to read in a log is in the guide's <a href="../../../../../guide/investigate/moved-run/#into-the-log">Into the log</a>.</p>
+</section>
+<p class="muted">What the page shows: the guide's <a href="../../../../../guide/track/main/#the-page-of-a-change">The page of a change</a>.</p>
+</body>
+</html>
