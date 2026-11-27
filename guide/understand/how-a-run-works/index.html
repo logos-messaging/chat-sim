@@ -115,7 +115,7 @@ post. Between each member and the frames sent to it stands the scenario’s netw
 <code dir="auto">crates/network-model</code>. It loses a share of the frames and holds the rest for a delay. A frame it
 loses never comes later.</p>
 <p>The clock is virtual: the runner moves it by at most 50 ms at a time and waits for nothing. So a
-run takes the time its work takes, not the time its timers count. The run of the goal that
+run takes the time its work takes, not the time its timers count. The run that
 <a href="/chat-sim/guide/investigate/moved-run/#what-a-run-prints">What a run prints</a> shows took 2712 s on
 the clock and 21 s of wall time.</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="a-runs-outcome">A run’s outcome</h2><a class="sl-anchor-link" href="#a-runs-outcome"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “A run’s outcome”</span></a></div>
@@ -166,8 +166,9 @@ forked, and stopped short.</p>
 <p>A run’s <strong>outcome</strong> is all of the above, with its seeds, the ids of its group and members, how
 many members were added, and the seconds of its clock. A run <strong>moved</strong> when its outcome differs
 in any field from the outcome it is compared with.</p>
-<p>A scenario without a <code dir="auto">grow</code> step, such as <code dir="auto">50-epochs.json</code>, reports another way. <code dir="auto">tools/forks</code>
-reads its log and gives the conversation a verdict, such as <code dir="auto">whole</code> or <code dir="auto">split at epoch 4</code>
+<p>A scenario without a <code dir="auto">grow</code> step, such as <code dir="auto">seat-50-post-groupv2.json</code>, reports another way.
+<code dir="auto">tools/forks</code> reads its log and gives the conversation a verdict, such as <code dir="auto">whole</code> or
+<code dir="auto">split at epoch 4</code>
 (<a href="/chat-sim/guide/reference/commands/#forks">Commands</a>).</p>
 <div class="sl-heading-wrapper level-h2"><h2 id="the-same-run-and-when-it-is-not">The same run, and when it is not</h2><a class="sl-anchor-link" href="#the-same-run-and-when-it-is-not"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 1 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 0 0-1.42-1.42m8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 1 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l3.88-3.89a4.49 4.49 0 0 0 0-6.33M8.83 15.17a1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.92-4.92a1 1 0 1 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “The same run, and when it is not”</span></a></div>
 <p>On Linux a scenario and its seeds always give the same run. A scenario has two seeds:</p>
