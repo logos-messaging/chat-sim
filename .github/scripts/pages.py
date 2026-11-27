@@ -1952,12 +1952,12 @@ def pull_requests(site: Path) -> List[int]:
 
 
 def rerolled(was: dict, now: dict) -> bool:
-    """Whether a cell of `now` drew other ids than the cell of `was` at its scenario and seed,
-    the group's or the members', where both drew ids: a re-roll, as `tools/sim compare` tells
-    one."""
-    held = {(cell["scenario"], cell["seed"]): _ids(cell) for cell in was["cells"]}
+    """Whether a cell of `now` drew other ids than the cell of `was` at its rate, as `_rate` keys
+    it, and its seed, the group's or the members', where both drew ids: a re-roll, as
+    `tools/sim compare` tells one."""
+    held = {(_rate(cell), cell["seed"]): _ids(cell) for cell in was["cells"]}
     for cell in now["cells"]:
-        before, drawn = held.get((cell["scenario"], cell["seed"])), _ids(cell)
+        before, drawn = held.get((_rate(cell), cell["seed"])), _ids(cell)
         if None not in (before, drawn) and before != drawn:
             return True
     return False

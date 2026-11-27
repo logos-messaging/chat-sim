@@ -892,6 +892,15 @@ class Point(LogosChat):
         self.point(sha(4), minute=4, run_number=4, runs=missing, commits=self.commits())
         self.assertFalse(self.read(sha(4))["previous"]["rerolled"])
 
+    def test_a_re_roll_is_told_at_a_rate_whose_scenario_was_renamed_since(self):
+        self.point(sha(1), minute=1, run_number=1)
+        was = self.read(sha(1))
+        for edits, rerolled in (({}, False), ({"1/1": {"conversation": "7c3e9a01b2"}}, True)):
+            with self.subTest(edits=edits):
+                text = self.matrix(self.uploaded(**edits)).read_text(encoding="utf-8")
+                renamed = json.loads(text.replace("grow-1-adder", "grow-one-adder"))
+                self.assertEqual(pages.rerolled(was, renamed), rerolled)
+
     def test_the_pull_requests_merged_are_read_from_the_commits_since_the_point_it_follows(self):
         self.point(sha(1), minute=1, run_number=1)
         commits = self.commits(
