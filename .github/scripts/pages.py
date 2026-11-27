@@ -57,7 +57,7 @@ from sim import compare as sim_compare  # noqa: E402
 from sim import matrix as sim_matrix  # noqa: E402
 
 # The scenarios of the job "Sim in one process", in the order it runs them.
-FIFTY_EPOCHS = ("50-epochs", "50-epochs-waku")
+SEAT_50_POST = ("seat-50-post-groupv2", "seat-50-post-groupv2-waku-loss-0pct")
 
 AS_EXPECTED = "as expected"
 NOT_AS_EXPECTED = "not as expected"
@@ -71,10 +71,10 @@ LOGOS_CHAT = "logos-chat"
 # shows that text. Eleven take 326 MB. Every point keeps its point.json.
 WINDOW = 11
 # How many of the newest long runs keep their text, their runs' and compare's. A long run takes
-# about 10 MB while it keeps its text: 7 MB of the three runs of grow-waku-size-50, 1 MB of the
-# six of grow-waku-loss-0.1 and its `-groupv3`, 1 MB of the sixteen of the 50-epochs-by-saro
-# scenarios, on master's CI run 44661545505 without report.json, and its page, 1 MB, which shows
-# that text. Fifteen take 150 MB, so with the eleven points the two hold under half of Pages' 1 GB.
+# about 10 MB while it keeps its text: 7 MB of the three runs of `grow-3-adders-size-50`, 1 MB of
+# the six of `grow-3-adders` at 0.1% loss, 1 MB of the sixteen of `grow-1-adder`, on master's CI
+# run 44661545505 without report.json, and its page, 1 MB, which shows that text. Fifteen take
+# 150 MB, so with the eleven points the two hold under half of Pages' 1 GB.
 # Every long run keeps its long.json, and a page drawn from it.
 LONG_WINDOW = 15
 # The text of a run the site keeps, and the build's log of one whose job could not build
@@ -138,8 +138,8 @@ _FIELDS = {
     "sweeps": int,
 }
 _CLASS = {AS_EXPECTED: "good", NOT_AS_EXPECTED: "bad", NO_OUTCOME: "none"}
-# The epoch the goal's runs grow toward, the top of the scale of epochs without a fork, and the
-# bins of a cell's epochs: ten epochs each, and the top alone.
+# The goal, the epoch a run of `grow-3-adders` grows toward and the top of the scale of epochs
+# without a fork, and the bins of a cell's epochs: ten epochs each, and the top alone.
 _TOP = 50
 _BINS = ("0 to 9", "10 to 19", "20 to 29", "30 to 39", "40 to 49", "50")
 # How a small tree is read, as a page says it first under its trees.
@@ -818,7 +818,7 @@ def write_report(artifacts: Path, site: Path, swept: Sequence[str], meta: dict) 
         f"<h1>{_e(_heading(meta))}</h1>\n"
         f"<p>{_facts(meta)}</p>\n"
         f'<p>{_link("#held", "Held to what is expected")}: {_tally(meta)} · '
-        f'{_link("#fifty-epochs", "Fifty epochs")}</p>\n'
+        f'{_link("#seat-50-post", "seat-50-post")}</p>\n'
         '<h2 id="held">Held to what is expected</h2>\n'
         "<p>Each scenario CI sweeps, held by <code>tools/sim compare</code> to the outcomes "
         "<code>tools/sim/expected/</code> holds for its runs.</p>\n"
@@ -827,9 +827,10 @@ def write_report(artifacts: Path, site: Path, swept: Sequence[str], meta: dict) 
         f"<tbody>\n{rows}</tbody>\n"
         "</table></div>\n"
         + "".join(_sweep(artifacts / name, name, said, show) for name, said in outcomes)
-        + '<h2 id="fifty-epochs">Fifty epochs</h2>\n'
+        + '<h2 id="seat-50-post">seat-50-post</h2>\n'
         '<p>The runs of the job "Sim in one process", each held to what its scenario '
-        "expects.</p>\n" + "".join(_fifty(artifacts / name, name, show) for name in FIFTY_EPOCHS)
+        "expects.</p>\n"
+        + "".join(_seat_50_post(artifacts / name, name, show) for name in SEAT_50_POST)
     )
     page = _page(f"chat-sim: {_heading(meta)}", body)
     (out / "index.html").write_text(page, encoding="utf-8")
@@ -1507,8 +1508,8 @@ def draw_long(directory: Path, long: dict) -> None:
         f"{_commit(CHAT_SIM_URL, long['chat_sim'])} · the measurement "
         f"{_commit(CHAT_SIM_URL, long['measurement'])} · {_link(long['run_url'], 'the run')} · "
         f"{_when(long)} UTC</p>\n"
-        "<p>The two scenarios of fifty epochs, a run each, and each scenario "
-        "<code>tools/sim/expected</code> holds but the goal's on either group, as many runs as it "
+        "<p>The two <code>seat-50-post</code> scenarios, a run each, and each scenario "
+        "<code>tools/sim/expected</code> holds that main's points leave out, as many runs as it "
         "holds outcomes, held to them, at this commit of logos-chat's main. The graph over main "
         "draws none of it.</p>\n"
     )
@@ -1951,12 +1952,12 @@ def pull_requests(site: Path) -> List[int]:
 
 
 def rerolled(was: dict, now: dict) -> bool:
-    """Whether a cell of `now` drew other ids than the cell of `was` at its scenario and seed,
-    the group's or the members', where both drew ids: a re-roll, as `tools/sim compare` tells
-    one."""
-    held = {(cell["scenario"], cell["seed"]): _ids(cell) for cell in was["cells"]}
+    """Whether a cell of `now` drew other ids than the cell of `was` at its rate, as `_rate` keys
+    it, and its seed, the group's or the members', where both drew ids: a re-roll, as
+    `tools/sim compare` tells one."""
+    held = {(_rate(cell), cell["seed"]): _ids(cell) for cell in was["cells"]}
     for cell in now["cells"]:
-        before, drawn = held.get((cell["scenario"], cell["seed"])), _ids(cell)
+        before, drawn = held.get((_rate(cell), cell["seed"])), _ids(cell)
         if None not in (before, drawn) and before != drawn:
             return True
     return False
@@ -2693,8 +2694,8 @@ def _sweep(sweep: Path, name: str, said: str, show: Callable[..., str]) -> str:
     )
 
 
-def _fifty(run: Path, name: str, show: Callable[..., str]) -> str:
-    """The section of one run of fifty epochs: its run.txt and report.txt."""
+def _seat_50_post(run: Path, name: str, show: Callable[..., str]) -> str:
+    """The section of one run of `seat-50-post`: its run.txt and report.txt."""
     head = f'<h3 id="{_e(name)}">{_e(name)}</h3>\n'
     if not run.is_dir():
         return head + "<p>Nothing of this run was uploaded: it did not run, or wrote nothing.</p>\n"
@@ -3180,9 +3181,10 @@ def _foot(site: Path, commits: Sequence[dict], earlier: Sequence[dict]) -> str:
         at = f"long/{long['logos_chat']}/{long['measurement']}/"
         drawn += (
             f'<p class="caption">{_link(at, "The newest long run")}, at main '
-            f"{_code(long['logos_chat'])} on {_when(long)} UTC: the two scenarios of fifty epochs "
-            "and each scenario chat-sim holds to what is expected but the goal's on either "
-            "group, run at main's tip each Sunday. Nothing of it is drawn here.</p>\n"
+            f"{_code(long['logos_chat'])} on {_when(long)} UTC: the two "
+            "<code>seat-50-post</code> scenarios and each scenario chat-sim holds to what is "
+            "expected that main's points leave out, run at main's tip each Sunday. Nothing of it "
+            "is drawn here.</p>\n"
         )
     return drawn + (
         f'<p class="muted">What the page shows: the guide\'s '

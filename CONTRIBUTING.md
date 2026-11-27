@@ -10,7 +10,7 @@
 | Test | `cargo test --release --workspace` in the dev shell, on Linux and macOS |
 | Tools | the tests of `tools/forks`, `tools/sim` and `.github/scripts` |
 | Ask whether a path the sims depend on changed | `simulate.py changed`, against the pull request's base or the commit before the push |
-| Sim in one process | `50-epochs.json` and `50-epochs-waku.json`, each held to what its scenario expects |
+| Sim in one process | `seat-50-post-groupv2.json` and `seat-50-post-groupv2-waku-loss-0pct.json`, each held to what its scenario expects |
 | Sim held to what is expected | for each file in `tools/sim/expected/`, a sweep of the scenario of that name, held by `tools/sim compare` to the file |
 | Publish the report to GitHub Pages | what the two sim jobs came to, under `reports/` of the site |
 
@@ -29,19 +29,27 @@ publishes it from master.
 tip of logos-chat's main a new point of its own, beside the one before.
 
 `HELD` adds `tools/sim/expected/` and `.github/workflows/ci.yml`: a change to any held path runs
-chat-sim's own sims. The suites, `GOALS` and `RATES` in `simulate.py`, are in neither, so a change
-to them moves no measurement.
+chat-sim's own sims. The suites, `GROW_3_ADDERS` and `RATES` in `simulate.py`, are in neither, so
+a change to them moves no measurement.
+
+## A scenario's name
+
+A file in `tools/sim/scenarios/` is named for its steps, its group and its network, such as
+`grow-3-adders-groupv3-waku-loss-0.5pct.json`. The guide's
+[The scenarios](https://logos-messaging.github.io/chat-sim/guide/understand/scenarios/) reads a
+name part by part. A test of `tools/sim` writes each file's name from what the file says, and fails
+on any other name. A scenario of steps that no file has yet gets its name in that test.
 
 ## What is expected
 
 `tools/sim/expected/<scenario>.json` holds the outcome of each run CI sweeps of that scenario, at
-the revision of logos-chat that `Cargo.toml` pins: two runs of each `50-epochs-by-saro-waku-loss-`
-file, three of each `grow-waku-` one. A change that moves how a run comes out, such as a new pin,
-has its outcomes written again, and the file's diff shows what moved:
+the revision of logos-chat that `Cargo.toml` pins: two runs of each `grow-1-adder` file, three of
+each `grow-3-adders` one. A change that moves how a run comes out, such as a new pin, has its
+outcomes written again, and the file's diff shows what moved:
 
 ```sh
-nix run .#groupv2-simulation -- sweep tools/sim/scenarios/grow-waku-loss-5.json --runs 3 --out tmp/grow-waku-loss-5
-python3 tools/sim compare --write tools/sim/expected/grow-waku-loss-5.json tmp/grow-waku-loss-5
+nix run .#sim -- sweep tools/sim/scenarios/grow-3-adders-groupv2-waku-loss-5pct.json --runs 3 --out tmp/grow-3-adders-groupv2-waku-loss-5pct
+python3 tools/sim compare --write tools/sim/expected/grow-3-adders-groupv2-waku-loss-5pct.json tmp/grow-3-adders-groupv2-waku-loss-5pct
 ```
 
 `--runs` is as many as the file holds. Without `--write`, `compare` holds the sweep to the file and

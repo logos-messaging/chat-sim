@@ -7,17 +7,30 @@ A scenario is a JSON file in `tools/sim/scenarios/`. It says how many members th
 do, and what the network does to them
 ([Scenario format](/chat-sim/guide/reference/scenario-format/)).
 
+A file's name says three things, in this order:
+
+| Part | Says | Example |
+|---|---|---|
+| the steps | what the members do, in the words of the scenario format | `grow-3-adders` |
+| the group | the kind of group that is created | `groupv2` or `groupv3` |
+| the network | Waku's delays, and the rate of loss in percent | `waku-loss-0.5pct` |
+
+So `grow-3-adders-groupv3-waku-loss-0.5pct.json` grows a GroupV3 group, with up to three members
+adding at once, on Waku's delays at 0.5% loss. A file without a network model has no third part.
+
+The steps make five scenarios:
+
 | Scenario | Does | Run by |
 |---|---|---|
-| `grow-waku-loss-*` | **the goal**: a group grows toward epoch 50, up to three members adding at once, at the rate of loss in its name | pull requests at 0.5, 1 and 5%; `main` at those and 0%; the long run at 0.1% |
-| `50-epochs-by-saro-waku-loss-*` | a group grows toward epoch 50, saro alone adding | the long run |
-| `grow-waku-size-50` | a group kept at 50 members grows toward epoch 1000, at no loss | the long run |
-| `50-epochs`, `50-epochs-waku` | saro adds 50 members one at a time, then the last one posts | the long run |
-| `three` | three members and one post, on fast timers | you, to try the tools |
+| `grow-3-adders` | a group grows toward epoch 50, up to three members adding at once | pull requests at 0.5, 1 and 5% loss; `main` at those and 0%; the long run at 0.1% |
+| `grow-1-adder` | a group grows toward epoch 50, saro alone adding | the long run |
+| `grow-3-adders-size-50` | a group kept at 50 members grows toward epoch 1000, at no loss | the long run |
+| `seat-50-post` | saro adds 50 members one at a time, then the last one posts | the long run |
+| `seat-2-post` | saro adds two members, then the last one posts, on fast timers | you, to try the tools |
 
-Each `grow-waku-loss-` and `50-epochs-by-saro-waku-loss-` file has a `-groupv3` copy, which runs
-the same on a GroupV3 group. chat-sim's own CI runs every scenario but `three`
-([chat-sim's own reports](/chat-sim/guide/reports/)).
+`grow-3-adders` and `grow-1-adder` have a file for each kind of group, and the two differ in
+nothing else. The other three run on GroupV2 alone. chat-sim's own CI runs every scenario but
+`seat-2-post` ([chat-sim's own reports](/chat-sim/guide/reports/)).
 
 Every GroupV2 scenario that CI runs sets logos-chat's own timers, as logos-chat-module runs a
 group. A GroupV3 group keeps timers of its own, whatever the file says.
@@ -66,7 +79,8 @@ The step ends at the start of a round when one of these is true:
 [`crates/harness/README.md`](https://github.com/logos-messaging/chat-sim/blob/master/crates/harness/README.md#a-group-that-grows)
 has the rule in full.
 
-Here is how one run of `grow-waku-loss-0.5.json` ended, as its `run.txt` prints it:
+Here is how one run of `grow-3-adders-groupv2-waku-loss-0.5pct.json` ended, as its `run.txt`
+prints it:
 
 ```text
 5 main branches ran side by side: trunk at epoch 9, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 1 never joined
@@ -97,11 +111,10 @@ never joined: peer20
 - The first fork is at epoch 5, where line 2 left the trunk. So the run went 5 epochs without a
   fork.
 
-## The goal
+## `grow-3-adders`
 
-The `grow-waku-loss-` scenarios ask one question: how many epochs does a growing group last before
-it first forks? The goal is 50, and the guide calls these scenarios **the goal** after it. Each
-part of the file has a reason:
+The `grow-3-adders` scenarios ask one question: how many epochs does a growing group last before
+it first forks? **The goal** is 50. Each part of the file has a reason:
 
 - **Up to three adders a round, on any line.** Two adders can commit for one epoch, which a
   GroupV3 group needs to fork. Members on a branch keep adding, as members of a real group would.
@@ -139,7 +152,7 @@ and lost no packet. Its 10 KB messages gave 8991 arrivals, from 263 to 673 ms, w
 518 ms ([`raw/latency_10kb.txt`](https://github.com/logos-messaging/research/blob/d7167bcedb1142e3d7462dcf24a30f65b1a3ef90/rln-delay-simulations/raw/latency_10kb.txt)).
 
 A scenario gives each member one quantile of those arrivals, in a fixed order, and gives saro the
-median. The goal's 200 members get 268 to 659 ms. The model has two limits:
+median. The 200 members of `grow-3-adders` get 268 to 659 ms. The model has two limits:
 
 - A member's delay is the same for every frame it receives. On Waku it changes from message to
   message.
@@ -147,15 +160,16 @@ median. The goal's 200 members get 268 to 659 ms. The model has two limits:
 
 ## The other scenarios
 
-- **`50-epochs-by-saro-waku-loss-`**: saro alone adds, one member a round, and `branches` is 51,
-  so a run goes on past any fork. With one adder there is no race between adders, so what splits a
-  GroupV2 group is what the network loses. A GroupV3 group cannot fork with one committer: a
-  member that misses a commit falls behind on the same line.
-- **`grow-waku-size-50.json`**: the group stays at 50 members, since each add past 50 first
+- **`grow-1-adder`**: saro alone adds, one member a round, and `branches` is 51, so a run goes
+  on past any fork. It runs at 0, 0.1, 1 and 5% loss. With one adder there is no race between
+  adders, so what splits a GroupV2 group is what the network loses. A GroupV3 group cannot fork
+  with one committer: a member that misses a commit falls behind on the same line.
+- **`grow-3-adders-size-50`**: the group stays at 50 members, since each add past 50 first
   removes the member added longest ago that is not adding in that round. The run goes toward
   epoch 1000 and ends at its first main branch (`branches` is 2). It runs on GroupV2 alone, since
   a GroupV3 group removes no member.
-- **`50-epochs.json` and `50-epochs-waku.json`**: saro adds 50 members one at a time, and the
-  last one posts. The second runs on Waku's delays. `tools/forks` reads the log and must find the
-  group `whole`.
-- **`three.json`**: three members and one post. It runs in under a second, to try the tools on.
+- **`seat-50-post`**: saro adds 50 members one at a time, and the last one posts. One file has no
+  network model, and the other runs on Waku's delays at no loss. `tools/forks` reads the log and
+  must find the group `whole`.
+- **`seat-2-post`**: saro adds two members, and the last one posts. It runs in under a second, to
+  try the tools on.

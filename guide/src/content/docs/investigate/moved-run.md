@@ -8,8 +8,8 @@ seed. Every run of a pull request's report links a page of its own. From there y
 runs again on Linux, byte for byte, and take them apart.
 
 This page follows one run as its example: `GroupV3 · 1% loss · seed 4`. It is run 5 of its
-scenario, `grow-waku-loss-1-groupv3.json`: the runs of a scenario are numbered from 1, and the
-seeds of the goal from 0.
+scenario, `grow-3-adders-groupv3-waku-loss-1pct.json`: the runs of a scenario are numbered from 1,
+and the seeds of `grow-3-adders` from 0.
 
 ## The run's page
 
@@ -70,7 +70,7 @@ pinned=$(jq -r '.nodes."logos-chat".locked.rev' flake.lock)
 sed -i "s/$pinned/<head-commit>/g" flake.nix Cargo.toml
 nix flake lock
 nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-1-groupv3.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/grow-waku-loss-1-groupv3-seed-4
+python3 tools/sim sweep tools/sim/scenarios/grow-3-adders-groupv3-waku-loss-1pct.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/grow-3-adders-groupv3-waku-loss-1pct-seed-4
 ```
 
 | Line | Does |
@@ -88,10 +88,10 @@ build takes longer.
 ## What a run prints
 
 `sweep` prints one row for the run and writes the run's directory under `--out`, here
-`tmp/grow-waku-loss-1-groupv3-seed-4/5/`
-([What a run leaves](/chat-sim/guide/reference/records/#what-a-run-leaves)). A `run.txt` of the
-goal starts like this. The sample is another run, seed 0 of `grow-waku-loss-5.json`, cut to three
-members:
+`tmp/grow-3-adders-groupv3-waku-loss-1pct-seed-4/5/`
+([What a run leaves](/chat-sim/guide/reference/records/#what-a-run-leaves)). A `run.txt` of
+`grow-3-adders` starts like this. The sample is another run, seed 0 of
+`grow-3-adders-groupv2-waku-loss-5pct.json`, cut to three members:
 
 ```text
 200 members, default group timers, one process, 2712.459s on a virtual clock in 21.288s of wall time, seed 0, network seed 1, loss 0.05, welcome loss 0.05
@@ -135,8 +135,8 @@ at the end or never joined. `run.json` holds the same for scripts, and each roun
 head's run against it:
 
 ```sh
-cd ~/moved/base/chat-sim && python3 tools/sim compare --write ~/moved/base.json tmp/grow-waku-loss-1-groupv3-seed-4
-cd ~/moved/head/chat-sim && python3 tools/sim compare ~/moved/base.json tmp/grow-waku-loss-1-groupv3-seed-4
+cd ~/moved/base/chat-sim && python3 tools/sim compare --write ~/moved/base.json tmp/grow-3-adders-groupv3-waku-loss-1pct-seed-4
+cd ~/moved/head/chat-sim && python3 tools/sim compare ~/moved/base.json tmp/grow-3-adders-groupv3-waku-loss-1pct-seed-4
 ```
 
 It prints the head's run as a row marked `moved`, and the base's outcome under it as `was`. A
@@ -160,12 +160,12 @@ artifacts. So does the page of a point whose runs have no page of their own. The
 GitHub's `gh`. For the example:
 
 ```sh
-gh run download <run-id> --repo logos-messaging/chat-sim --dir logs --pattern 'logs-revision-grow-waku-loss-1-groupv3-[0-9]*'
+gh run download <run-id> --repo logos-messaging/chat-sim --dir logs --pattern 'logs-revision-grow-3-adders-groupv3-waku-loss-1pct-[0-9]*'
 ```
 
 Each artifact holds the runs of one job, one directory per run, named by the run's number. The
 example's run 5 is in the artifact of the job that starts at run 4:
-`logs/logs-revision-grow-waku-loss-1-groupv3-4/grow-waku-loss-1-groupv3/5/group.log`.
+`logs/logs-revision-grow-3-adders-groupv3-waku-loss-1pct-4/grow-3-adders-groupv3-waku-loss-1pct/5/group.log`.
 `ls -d logs/*/*/*/` lists the directory of each run that was downloaded.
 
 When the command finds no artifact, [make the run again](#run-it-yourself): its directory holds
@@ -174,7 +174,7 @@ the log.
 `tools/forks` reads a log and says where the group split:
 
 ```sh
-python3 tools/forks report tmp/grow-waku-loss-1-groupv3-seed-4/5/group.log
+python3 tools/forks report tmp/grow-3-adders-groupv3-waku-loss-1pct-seed-4/5/group.log
 ```
 
 Its report gives the conversation's verdict, each branch with its newest epoch and state, and the

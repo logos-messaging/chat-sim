@@ -14,10 +14,10 @@ from sim.matrix import Run, Side
 from tests import FIXTURES, Scratch
 from tests.test_compare import GROWN, SPLIT, STALLED, WHOLE
 
-SCENARIO = "50-epochs-by-saro-waku-loss-1"
-GOAL = "50-epochs-by-saro-waku-loss-{}"
-# The goal on a GroupV3 group.
-GROUPV3 = "50-epochs-by-saro-waku-loss-{}-groupv3"
+SCENARIO = "grow-1-adder-groupv2-waku-loss-1pct"
+GROUPV2 = "grow-1-adder-groupv2-waku-loss-{}pct"
+# The same on a GroupV3 group.
+GROUPV3 = "grow-1-adder-groupv3-waku-loss-{}pct"
 # What the jobs of the pr suite uploaded at a revision: seeds 0 and 1 of three rates, as the
 # probe at logos-chat fa5282a3 ran them, each `run.json` cut to what the matrix reads.
 UPLOADED = FIXTURES / "matrix"
@@ -226,7 +226,7 @@ class Result(unittest.TestCase):
         )
 
     def test_a_group_s_verdict_is_the_worst_of_its_rates_and_the_matrix_s_of_its_groups(self):
-        names = (GOAL.format(1), GOAL.format(5), GROUPV3.format(1))
+        names = (GROUPV2.format(1), GROUPV2.format(5), GROUPV3.format(1))
         base = sides(**{name: (SPLIT,) * 8 for name in names})
         some_sooner = (SOONER, *[SPLIT] * 7)
         for runs, results, verdicts, worst in (
@@ -266,8 +266,8 @@ class Result(unittest.TestCase):
             ((SPLIT,) * 8, (SPLIT,) * 8, (), "no-base"),
         ):
             with self.subTest(worst=worst):
-                head = sides(**{GOAL.format(1): at_1, GOAL.format(5): at_5})
-                base = sides(**{GOAL.format(1): (SPLIT,) * 8, GOAL.format(5): base_at_5})
+                head = sides(**{GROUPV2.format(1): at_1, GROUPV2.format(5): at_5})
+                base = sides(**{GROUPV2.format(1): (SPLIT,) * 8, GROUPV2.format(5): base_at_5})
                 self.assertEqual(matrix.matrix(head, base)["verdict"], worst)
 
 
@@ -347,7 +347,7 @@ class Cells(unittest.TestCase):
 
     def test_the_cells_are_in_the_order_of_their_loss_then_seed(self):
         runs = {
-            (GOAL.format(rate), seed): Run(seed + 1, loss, dict(SPLIT, seed=seed))
+            (GROUPV2.format(rate), seed): Run(seed + 1, loss, dict(SPLIT, seed=seed))
             for rate, loss in (("5", 0.05), ("0.1", 0.001), ("1", 0.01))
             for seed in (1, 0)
         }
@@ -362,7 +362,7 @@ class Cells(unittest.TestCase):
     def test_a_cell_is_of_its_scenario_s_group_and_the_groups_are_in_the_order_of_theirs(self):
         runs = {
             (name.format(rate), seed): Run(seed + 1, loss, dict(SPLIT, seed=seed))
-            for name in (GROUPV3, GOAL)
+            for name in (GROUPV3, GROUPV2)
             for rate, loss in (("1", 0.01), ("0.1", 0.001))
             for seed in (0, 1)
         }
@@ -381,8 +381,8 @@ class Cells(unittest.TestCase):
         self.assertEqual(
             [(one["scenario"], one["group"]) for one in made["summary"]],
             [
-                (GOAL.format("0.1"), "v2"),
-                (GOAL.format(1), "v2"),
+                (GROUPV2.format("0.1"), "v2"),
+                (GROUPV2.format(1), "v2"),
                 (GROUPV3.format("0.1"), "v3"),
                 (GROUPV3.format(1), "v3"),
             ],
@@ -448,7 +448,7 @@ class Read(Scratch):
         return copy
 
     def run_json(self, side: Path, rate: str, seed: int) -> Path:
-        name = GOAL.format(rate)
+        name = GROUPV2.format(rate)
         return side / f"sim-revision-{name}-{seed + 1}" / name / str(seed + 1) / "run.json"
 
     def edit(self, side: Path, rate: str, seed: int, **changed) -> None:
@@ -468,9 +468,9 @@ class Read(Scratch):
 
         self.assertEqual(
             sorted(read.runs),
-            [(GOAL.format(rate), seed) for rate in ("0.1", "1", "5") for seed in (0, 1)],
+            [(GROUPV2.format(rate), seed) for rate in ("0.1", "1", "5") for seed in (0, 1)],
         )
-        one = read.runs[(GOAL.format("5"), 1)]
+        one = read.runs[(GROUPV2.format("5"), 1)]
         self.assertEqual((one.number, one.loss), (2, 0.05))
         self.assertEqual((one.outcome["first_fork"], one.outcome["ended"]), (3, "split"))
 
@@ -508,7 +508,7 @@ class Read(Scratch):
 
     def unbuilt(self, side: Path, rate: str, number: int) -> None:
         """The artifact of the job of run `number` at `rate` as one that could not build."""
-        name = GOAL.format(rate)
+        name = GROUPV2.format(rate)
         job = side / f"sim-revision-{name}-{number}"
         shutil.rmtree(job, ignore_errors=True)
         marker = job / name / str(number) / "unbuilt"
@@ -540,7 +540,7 @@ class Read(Scratch):
 
     def test_a_run_it_cannot_read_or_one_at_a_seed_already_read_is_refused(self):
         head = self.uploaded("head")
-        name = GOAL.format("1")
+        name = GROUPV2.format("1")
         first = head / f"sim-revision-{name}-1" / name / "1" / "run.json"
         for placed, said in (
             (head / "again" / name / "3" / "run.json", f"a second run of {name} at seed 0"),
@@ -590,7 +590,7 @@ class CommandLine(Scratch):
         shutil.rmtree(head / f"sim-revision-{SCENARIO}-2")
         asked = self.scratch / "asked.json"
         sweeps = [
-            {"side": side, "scenario": GOAL.format(rate), "from": first, "runs": 1}
+            {"side": side, "scenario": GROUPV2.format(rate), "from": first, "runs": 1}
             for side in ("revision", "base")
             for rate in ("0.1", "1", "5")
             for first in (1, 2)

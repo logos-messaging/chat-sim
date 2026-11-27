@@ -4,8 +4,8 @@ description: How chat-sim measures each commit of logos-chat's main, and how to 
 ---
 
 Each push to logos-chat's `main` runs chat-sim at the pushed commit. It runs
-[the goal](/chat-sim/guide/understand/scenarios/#the-goal) on both kinds of group: seeds 0 to 2 at
-no loss, and seeds 0 to 19 at 0.5, 1 and 5% loss.
+[`grow-3-adders`](/chat-sim/guide/understand/scenarios/#grow-3-adders) on both kinds of group:
+seeds 0 to 2 at no loss, and seeds 0 to 19 at 0.5, 1 and 5% loss.
 
 The runs of one commit make a **point** of `main`.
 [The graph over main](/chat-sim/logos-chat/) draws the points. Every hour chat-sim also looks at
@@ -124,8 +124,9 @@ point does not hold: it draws the trunk, and a mark where the run first forked.
 
 ## The long runs
 
-Once each Sunday, in UTC, chat-sim runs every scenario that a point does not run, but `three`, at
-`main`'s tip ([The scenarios](/chat-sim/guide/understand/scenarios/) says which). The page of a long run,
+Once each Sunday, in UTC, chat-sim runs every scenario that a point does not run, but
+`seat-2-post`, at `main`'s tip ([The scenarios](/chat-sim/guide/understand/scenarios/) says
+which). The page of a long run,
 `logos-chat/long/<sha>/<measurement>/`, has one row per scenario: how its runs ended, and whether
 they were as expected.
 

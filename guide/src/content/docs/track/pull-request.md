@@ -164,9 +164,9 @@ flowchart LR
     more --> out
 ```
 
-A pull request runs [the goal](/chat-sim/guide/understand/scenarios/#the-goal). One member creates
-a group, and its members add new ones from a supply of 200, toward epoch 50. The goal runs at
-0.5, 1 and 5% loss, on GroupV2 and on GroupV3. Both sides run the same chat-sim, each
+A pull request runs [`grow-3-adders`](/chat-sim/guide/understand/scenarios/#grow-3-adders). One
+member creates a group, and its members add new ones from a supply of 200, toward epoch 50. It
+runs at 0.5, 1 and 5% loss, on GroupV2 and on GroupV3. Both sides run the same chat-sim, each
 built with logos-chat at its own commit.
 
 1. Seeds 0 to 2 run first: 18 runs at the head, and the same 18 at the base.

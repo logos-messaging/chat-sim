@@ -24,14 +24,14 @@ From the repository root, with Nix, one command builds the runner from the check
 with it. What follows `--` is `sim`'s command line, less the flag the app gives:
 
 ```sh
-nix run .#groupv2-simulation -- run tools/sim/scenarios/three.json --out tmp/three
+nix run .#sim -- run tools/sim/scenarios/seat-2-post-groupv2.json --out tmp/seat-2-post-groupv2
 ```
 
 Without the app:
 
 ```sh
 nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim run tools/sim/scenarios/three.json --one-process target/release/harness-run --out tmp/three
+python3 tools/sim run tools/sim/scenarios/seat-2-post-groupv2.json --one-process target/release/harness-run --out tmp/seat-2-post-groupv2
 ```
 
 ```console
@@ -125,7 +125,7 @@ N to N+K-1 of a sweep, each with the seeds it has in a sweep from run 1, so one 
 be made alone:
 
 ```sh
-nix run .#groupv2-simulation -- sweep tools/sim/scenarios/grow-waku-loss-5.json --runs 3 --out tmp/grow-waku-loss-5
+nix run .#sim -- sweep tools/sim/scenarios/grow-3-adders-groupv2-waku-loss-5pct.json --runs 3 --out tmp/grow-3-adders-groupv2-waku-loss-5pct
 ```
 
 ```console
@@ -145,8 +145,8 @@ time each run took.
 ## A sweep held to what is expected
 
 ```sh
-python3 tools/sim compare tools/sim/expected/grow-waku-loss-5.json tmp/grow-waku-loss-5
-python3 tools/sim compare --write tools/sim/expected/grow-waku-loss-5.json tmp/grow-waku-loss-5
+python3 tools/sim compare tools/sim/expected/grow-3-adders-groupv2-waku-loss-5pct.json tmp/grow-3-adders-groupv2-waku-loss-5pct
+python3 tools/sim compare --write tools/sim/expected/grow-3-adders-groupv2-waku-loss-5pct.json tmp/grow-3-adders-groupv2-waku-loss-5pct
 ```
 
 A run in one process is the same run every time from its seeds, on Linux, so a run that comes out
@@ -248,8 +248,8 @@ are clients in that one process, on a clock the runner moves. What that means fo
 - A member answers a frame in the step that hands it over. Of fifty members seated ten at a time
   on the library's own timers, the ten that the second batch seats never vote on the steward
   election that batch opens, which is decided at its 30 s timeout, so the third batch is seated
-  after 90 s. Seated one at a time, as `50-epochs.json` seats them, no epoch takes longer than
-  70.05 s.
+  after 90 s. Seated one at a time, as `seat-50-post-groupv2.json` seats them, no epoch takes
+  longer than 70.05 s.
 - There is one log. `group.log` holds the trace records of every member, stamped by the virtual
   clock, which starts at 2026-01-01T00:00:00Z in every run. The report takes it for one run that
   holds every installation, and names each `group`, after the log; `run.txt` has each member's
@@ -349,5 +349,5 @@ of a `grow` step. What the stand-in leaves is held against their fields, and a r
 result whole and with each field the run reads taken out in turn. `tests/fixtures/grow_whole.json`,
 `grow_split.json` and `grow_stalled.json` are the `run.json` of three runs of a `grow` step, cut to
 what `compare` reads. `tests/fixtures/matrix/` is what six jobs uploaded of seeds 0 and 1 of
-`50-epochs-by-saro-waku-loss-0.1.json`, `-1` and `-5`, each in the directory of its artifact, every
+`grow-1-adder` on GroupV2 at 0.1, 1 and 5% loss, each in the directory of its artifact, every
 `run.json` cut to what `matrix` reads.

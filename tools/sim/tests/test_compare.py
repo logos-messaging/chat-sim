@@ -290,21 +290,23 @@ class HeldRuns(Scratch):
         (self.scratch / f"{name}.json").write_text(held, encoding="utf-8")
 
     def test_each_scenario_holds_as_many_runs_as_its_file_has_outcomes(self):
-        self.hold("grow-waku-loss-5", json.dumps([WHOLE, SPLIT, STALLED]))
-        self.hold("50-epochs-by-saro-waku-loss-1", json.dumps([WHOLE, SPLIT]))
+        self.hold("grow-3-adders-groupv2-waku-loss-5pct", json.dumps([WHOLE, SPLIT, STALLED]))
+        self.hold("grow-1-adder-groupv2-waku-loss-1pct", json.dumps([WHOLE, SPLIT]))
 
         self.assertEqual(
             compare.held_runs(self.scratch),
-            [("50-epochs-by-saro-waku-loss-1", 2), ("grow-waku-loss-5", 3)],
+            [
+                ("grow-1-adder-groupv2-waku-loss-1pct", 2),
+                ("grow-3-adders-groupv2-waku-loss-5pct", 3),
+            ],
         )
 
     def test_a_file_that_cannot_be_read_is_refused_by_its_name(self):
-        self.hold("grow-waku-loss-5", json.dumps([WHOLE, SPLIT, STALLED]))
-        self.hold("grow-waku-loss-1", "<<<<<<< HEAD")
+        self.hold("grow-3-adders-groupv2-waku-loss-5pct", json.dumps([WHOLE, SPLIT, STALLED]))
+        self.hold("grow-3-adders-groupv2-waku-loss-1pct", "<<<<<<< HEAD")
 
         with self.assertRaises(compare.Unreadable) as refused:
             compare.held_runs(self.scratch)
 
-        self.assertTrue(
-            str(refused.exception).startswith(f"{self.scratch / 'grow-waku-loss-1.json'}: not JSON")
-        )
+        unread = self.scratch / "grow-3-adders-groupv2-waku-loss-1pct.json"
+        self.assertTrue(str(refused.exception).startswith(f"{unread}: not JSON"))

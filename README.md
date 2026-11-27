@@ -49,7 +49,7 @@ revision. To move it, change the revision in both, then run
 With Nix, one command builds what a run needs and runs a scenario:
 
 ```sh
-nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out tmp/50-epochs
+nix run .#sim -- run tools/sim/scenarios/seat-50-post-groupv2.json --out tmp/seat-50-post-groupv2
 ```
 
 The dev shell has the toolchain for cargo:
@@ -57,7 +57,7 @@ The dev shell has the toolchain for cargo:
 ```sh
 nix develop
 cargo build --release --workspace
-python3 tools/sim run tools/sim/scenarios/50-epochs.json --one-process target/release/harness-run --out tmp/50-epochs
+python3 tools/sim run tools/sim/scenarios/seat-50-post-groupv2.json --one-process target/release/harness-run --out tmp/seat-50-post-groupv2
 ```
 
 [`tools/sim`](tools/sim/README.md#running-it) has the flags and what a run reports.

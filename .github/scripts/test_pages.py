@@ -26,14 +26,14 @@ REVISION = "89abcdef0123456789abcdef0123456789abcdef"
 BASE = "fedcba9876543210fedcba9876543210fedcba98"
 MEASUREMENT = "76543210fedcba9876543210fedcba9876543210"
 ROOT = Path(__file__).resolve().parents[2]
-# What the GroupV2 jobs of a pr suite of HELD_GOALS' goal uploaded at a revision, seeds 0 and 1 of
+# What the GroupV2 jobs of a pr suite of `grow-1-adder` uploaded at a revision, seeds 0 and 1 of
 # 0.1, 1 and 5% loss, each job's artifact in a directory of its own, cut to what tools/sim matrix
 # reads.
 UPLOADED = ROOT / "tools" / "sim" / "tests" / "fixtures" / "matrix"
-GOAL = "50-epochs-by-saro-waku-loss-{}"
-# The goal of each group, by the group's name in a scenario: UPLOADED holds GroupV2's runs of it,
-# and the tests copy them as GroupV3's.
-HELD_GOALS = {"v2": GOAL, "v3": "50-epochs-by-saro-waku-loss-{}-groupv3"}
+GROUPV2 = "grow-1-adder-groupv2-waku-loss-{}pct"
+# The scenario of each group, by the group's name in a scenario: UPLOADED holds GroupV2's runs of
+# it, and the tests copy them as GroupV3's.
+GROW_1_ADDER = {"v2": GROUPV2, "v3": "grow-1-adder-groupv3-waku-loss-{}pct"}
 # What a pull request's report page says each scenario of the runs it is given loses.
 WELCOMED = (
     "A row is a rate of loss: each member loses that share of the frames it receives, at random, "
@@ -320,7 +320,7 @@ class Report(Site):
     def test_every_file_the_page_shows_is_beside_it_and_every_anchor_has_its_section(self):
         self.swept("grow-a", "grow-b")
         self.sweep("grow-a", "1", runs=3)
-        first, second = pages.FIFTY_EPOCHS
+        first, second = pages.SEAT_50_POST
         self.ran(first)
         self.ran(second)
         (self.artifacts / second / "run.txt").unlink()
@@ -332,7 +332,7 @@ class Report(Site):
         for link in files:
             self.assertEqual((out / link).read_bytes(), (self.artifacts / link).read_bytes())
         anchors = {link[1:] for link in parsed.links if link.startswith("#")}
-        self.assertEqual(anchors, {"held", "fifty-epochs", "grow-a", "grow-b"})
+        self.assertEqual(anchors, {"held", "seat-50-post", "grow-a", "grow-b"})
         self.assertLessEqual(anchors, parsed.ids)
         self.assertIn(f"{second}\nrun.txt was not uploaded", parsed.text)
         self.assertEqual(parsed.text.count("was not uploaded"), 1)
@@ -508,7 +508,7 @@ class LogosChat(unittest.TestCase):
 
     def uploaded(self, groupv3: bool = False, **edits: dict) -> Path:
         """A copy of UPLOADED, with `groupv3` each of its runs again as GroupV3's, under the name
-        of the GroupV3 goal at its rate; each run with its run.txt, report.txt and report.json
+        of the GroupV3 scenario at its rate; each run with its run.txt, report.txt and report.json
         beside its run.json, and the fields `edits` gives a run changed as `edited` changes them,
         by its rate and seed, or by its group, rate and seed."""
         self.made += 1
@@ -517,7 +517,7 @@ class LogosChat(unittest.TestCase):
         if groupv3:
             for report in list(copy.rglob("run.json")):
                 job, scenario, run = report.parts[-4:-1]
-                name = HELD_GOALS["v3"].format(scenario.removeprefix(GOAL.format("")))
+                name = scenario.replace("groupv2", "groupv3")
                 shutil.copytree(report.parent, copy / job.replace(scenario, name) / name / run)
         for report in copy.rglob("run.json"):
             for name in ("run.txt", "report.txt", "report.json"):
@@ -532,8 +532,8 @@ class LogosChat(unittest.TestCase):
         """The run.json of a cell under `side`, by its rate and seed, `1/0`, a cell of GroupV2's,
         or by its group, rate and seed, `v3/1/0`."""
         *named, rate, seed = cell.split("/")
-        goal = HELD_GOALS[named[0]] if named else GOAL
-        scenario, number = goal.format(rate), int(seed) + 1
+        grow = GROW_1_ADDER[named[0]] if named else GROUPV2
+        scenario, number = grow.format(rate), int(seed) + 1
         return side / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
 
     def seeded(self, side: Path, rate: str, seeds: Sequence[int], **edits: dict) -> Path:
@@ -684,7 +684,7 @@ class Point(LogosChat):
         self.assertEqual(
             [(cell["group"], cell["scenario"], cell["seed"]) for cell in written["cells"]],
             [
-                (group, HELD_GOALS[group].format(rate), seed)
+                (group, GROW_1_ADDER[group].format(rate), seed)
                 for group in ("v2", "v3")
                 for rate in ("0.1", "1", "5")
                 for seed in (0, 1)
@@ -708,9 +708,9 @@ class Point(LogosChat):
             }
             for line in GROW["lines"]
         ]
-        self.assertEqual((lines[f"{GOAL.format(1)}/2/"], len(held)), (held, 3))
+        self.assertEqual((lines[f"{GROUPV2.format(1)}/2/"], len(held)), (held, 3))
         # Lines that do not come down from one trunk are not a tree, and are not kept.
-        self.assertNotIn(f"{GOAL.format(5)}/1/", lines)
+        self.assertNotIn(f"{GROUPV2.format(5)}/1/", lines)
         self.assertLess(set(lines), {pages._run_href(cell) for cell in self.read()["cells"]})
         self.assertEqual(pages.read_point(self.at() / "point.json"), self.read())
 
@@ -724,12 +724,12 @@ class Point(LogosChat):
     def test_each_run_s_text_is_kept_by_its_number_and_its_report_json_is_not(self):
         runs = self.uploaded()
         # A lone artifact downloads flat, and a run of a sweep of ten or more is named 01.
-        lone = runs / "sim-revision-50-epochs-by-saro-waku-loss-5-2" / GOAL.format(5)
+        lone = runs / "sim-revision-grow-1-adder-groupv2-waku-loss-5pct-2" / GROUPV2.format(5)
         (lone / "2").rename(lone / "02")
-        lone.rename(runs / GOAL.format(5))
+        lone.rename(runs / GROUPV2.format(5))
         self.point(runs=runs)
         texts = [
-            f"{GOAL.format(rate)}/{run}/{name}"
+            f"{GROUPV2.format(rate)}/{run}/{name}"
             for rate in ("0.1", "1", "5")
             for run in (1, 2)
             for name in ("index.html", "report.txt", "run.json", "run.txt")
@@ -737,8 +737,8 @@ class Point(LogosChat):
         self.assertEqual(self.files(self.at()), sorted(["index.html", "point.json", *texts]))
         for name in ("run.txt", "report.txt", "run.json"):
             self.assertEqual(
-                (self.at() / GOAL.format(5) / "2" / name).read_bytes(),
-                (runs / GOAL.format(5) / "02" / name).read_bytes(),
+                (self.at() / GROUPV2.format(5) / "2" / name).read_bytes(),
+                (runs / GROUPV2.format(5) / "02" / name).read_bytes(),
             )
         # The point's page and its runs', and no other page of the site.
         self.assertEqual(len(list(self.site.rglob("*.html"))), 1 + 6)
@@ -796,10 +796,12 @@ class Point(LogosChat):
                 dict(written, lines={"nothing/1/": []}),
             ),
             (
-                f"lines['{GOAL.format(1)}/1/'] is not the lines of a run, down from one trunk",
+                f"lines['{GROUPV2.format(1)}/1/'] is not the lines of a run, down from one trunk",
                 dict(
                     written,
-                    lines={f"{GOAL.format(1)}/1/": [{"from": None, "forked_at": None, "epoch": 3}]},
+                    lines={
+                        f"{GROUPV2.format(1)}/1/": [{"from": None, "forked_at": None, "epoch": 3}]
+                    },
                 ),
             ),
             ("cells[0] has a base", cell(base=head)),
@@ -890,6 +892,15 @@ class Point(LogosChat):
         self.point(sha(4), minute=4, run_number=4, runs=missing, commits=self.commits())
         self.assertFalse(self.read(sha(4))["previous"]["rerolled"])
 
+    def test_a_re_roll_is_told_at_a_rate_whose_scenario_was_renamed_since(self):
+        self.point(sha(1), minute=1, run_number=1)
+        was = self.read(sha(1))
+        for edits, rerolled in (({}, False), ({"1/1": {"conversation": "7c3e9a01b2"}}, True)):
+            with self.subTest(edits=edits):
+                text = self.matrix(self.uploaded(**edits)).read_text(encoding="utf-8")
+                renamed = json.loads(text.replace("grow-1-adder", "grow-one-adder"))
+                self.assertEqual(pages.rerolled(was, renamed), rerolled)
+
     def test_the_pull_requests_merged_are_read_from_the_commits_since_the_point_it_follows(self):
         self.point(sha(1), minute=1, run_number=1)
         commits = self.commits(
@@ -956,7 +967,7 @@ class Point(LogosChat):
         # What a run job at a revision logos-chat does not have leaves: nothing at all.
         nothing = self.scratch / "nothing"
         nothing.mkdir()
-        asked = [{"scenario": GOAL.format(rate), "from": 1, "runs": 2} for rate in ("1", "5")]
+        asked = [{"scenario": GROUPV2.format(rate), "from": 1, "runs": 2} for rate in ("1", "5")]
         given = [str(self.matrix(nothing, asked=asked)), str(nothing), str(self.site)]
         given += ["--revision", REVISION, "--measurement", MEASUREMENT, *self.ran(1, 1)]
         status, out, err = self.run_pages("point", *given)
@@ -986,7 +997,7 @@ class Point(LogosChat):
 
     def test_a_re_run_replaces_the_point_of_its_run_whole(self):
         self.point(run_number=8)
-        stale = self.at() / GOAL.format(1) / "9" / "run.txt"
+        stale = self.at() / GROUPV2.format(1) / "9" / "run.txt"
         write(stale, "an earlier run\n")
         moved = self.uploaded(**{"1/1": {"first_fork": 5}})
         self.assertEqual(self.point(run_number=8, minute=5, runs=moved), "")
@@ -1069,10 +1080,10 @@ class Window(LogosChat):
                 commits=None if number == 1 else self.commits(),
             )
         newest = self.read(sha(12))["lines"]
-        self.assertIn(f"{GOAL.format(1)}/2/", newest)
+        self.assertIn(f"{GROUPV2.format(1)}/2/", newest)
         # That command took point 1's text, past the newest eleven, and left point 2 its own.
         self.assertEqual(self.files(self.at(sha(1))), ["index.html", "point.json"])
-        self.assertIn(f"{GOAL.format(1)}/2/run.json", self.files(self.at(sha(2))))
+        self.assertIn(f"{GROUPV2.format(1)}/2/run.json", self.files(self.at(sha(2))))
         self.assertEqual((self.read(sha(1))["lines"], self.read(sha(2))["lines"]), (newest, newest))
 
     def test_a_point_with_neither_its_runs_lines_nor_their_text_stays_as_it_is(self):
@@ -1100,7 +1111,7 @@ class Window(LogosChat):
     def test_a_point_json_that_is_refused_is_left_alone(self):
         refused = self.site / "logos-chat" / "main" / sha(200) / MEASUREMENT
         write(refused / "point.json", "{}\n")
-        write(refused / GOAL.format(1) / "1" / "run.txt", "a run\n")
+        write(refused / GROUPV2.format(1) / "1" / "run.txt", "a run\n")
         runs = self.uploaded()
         matrix = self.matrix(runs)
         for minute in range(12):
@@ -1112,7 +1123,7 @@ class Window(LogosChat):
                 matrix=matrix,
                 commits=None if minute == 0 else self.commits(),
             )
-        self.assertEqual(self.files(refused), [f"{GOAL.format(1)}/1/run.txt", "point.json"])
+        self.assertEqual(self.files(refused), [f"{GROUPV2.format(1)}/1/run.txt", "point.json"])
         self.assertEqual(self.files(self.at(sha(0))), ["index.html", "point.json"])
 
 
@@ -1144,27 +1155,28 @@ class PullRequest(LogosChat):
         self.pr(head=head, base=self.uploaded(), run_number=12, minute=581)
         out = self.site / "logos-chat" / "pr-316"
         texts = [
-            f"{side}/{GOAL.format(rate)}/{run}/{name}"
+            f"{side}/{GROUPV2.format(rate)}/{run}/{name}"
             for side in ("base", "head")
             for rate in ("0.1", "1", "5")
             for run in (1, 2)
             for name in ("report.txt", "run.json", "run.txt")
         ]
         drawn = [
-            f"head/{GOAL.format(rate)}/{run}/index.html"
+            f"head/{GROUPV2.format(rate)}/{run}/index.html"
             for rate in ("0.1", "1", "5")
             for run in (1, 2)
         ]
-        scenarios = [f"scenarios/{GOAL.format(rate)}.json" for rate in ("0.1", "1", "5")]
+        scenarios = [f"scenarios/{GROUPV2.format(rate)}.json" for rate in ("0.1", "1", "5")]
         pictures = ["trees-v2.svg", "trees-v2-dark.svg"]
         kept = ["index.html", "matrix.json", "meta.json", *texts, *drawn, *scenarios, *pictures]
         self.assertEqual(self.files(out), sorted(kept))
         self.assertEqual(
-            (out / "head" / GOAL.format(1) / "2" / "run.json").read_bytes(),
+            (out / "head" / GROUPV2.format(1) / "2" / "run.json").read_bytes(),
             self.run_json(head, "1/1").read_bytes(),
         )
         self.assertEqual(
-            (out / scenarios[1]).read_bytes(), (SCENARIOS / f"{GOAL.format(1)}.json").read_bytes()
+            (out / scenarios[1]).read_bytes(),
+            (SCENARIOS / f"{GROUPV2.format(1)}.json").read_bytes(),
         )
         matrix = pages.read_matrix(out / "matrix.json")
         self.assertEqual(matrix["verdict"], "within")
@@ -1238,7 +1250,7 @@ class PullRequest(LogosChat):
 
     def test_a_newer_run_or_a_re_run_replaces_the_one_before_it_whole(self):
         self.pr(run_number=7)
-        stale = self.site / "logos-chat" / "pr-316" / "base" / GOAL.format(1) / "1" / "run.json"
+        stale = self.site / "logos-chat" / "pr-316" / "base" / GROUPV2.format(1) / "1" / "run.json"
         self.assertTrue(stale.is_file())
         self.assertEqual(self.pr(run_number=8, base=None), "")
         self.assertFalse(stale.exists())
@@ -1292,12 +1304,13 @@ class PullRequest(LogosChat):
         for scenarios in (held, seated):
             scenarios.mkdir()
             for rate in ("1", "5"):
-                shutil.copy(SCENARIOS / f"{GOAL.format(rate)}.json", scenarios)
-        missing, three = held / f"{GOAL.format('0.1')}.json", seated / f"{GOAL.format('0.1')}.json"
-        shutil.copy(SCENARIOS / "three.json", three)
+                shutil.copy(SCENARIOS / f"{GROUPV2.format(rate)}.json", scenarios)
+        missing = held / f"{GROUPV2.format('0.1')}.json"
+        three = seated / f"{GROUPV2.format('0.1')}.json"
+        shutil.copy(SCENARIOS / "seat-2-post-groupv2.json", three)
         for scenarios, said in (
             (self.scratch / "none", "--scenarios: no such directory"),
-            (held, f"{missing}: no such file, and the matrix ran {GOAL.format('0.1')}"),
+            (held, f"{missing}: no such file, and the matrix ran {GROUPV2.format('0.1')}"),
             (seated, f"{three} is not a scenario of a grow step alone"),
         ):
             with self.subTest(scenarios=scenarios):
@@ -1431,13 +1444,13 @@ class Trend(LogosChat):
         renamed = self.scratch / f"renamed-{self.made}"
         for report in runs.rglob("run.json"):
             job, scenario, run = report.parts[-4:-1]
-            name = scenario.replace("50-epochs-by-saro", "fifty-by-saro")
+            name = scenario.replace("grow-1-adder", "grow-one-adder")
             shutil.copytree(report.parent, renamed / job.replace(scenario, name) / name / run)
         # tools/sim matrix takes a cell's group from its scenario's file, which a renamed one does
         # not have: the matrix is the runs', its scenarios renamed.
         matrix = self.matrix(runs)
         text = matrix.read_text(encoding="utf-8")
-        write(matrix, text.replace("50-epochs-by-saro", "fifty-by-saro"))
+        write(matrix, text.replace("grow-1-adder", "grow-one-adder"))
         return dict(runs=renamed, matrix=matrix)
 
     def test_the_page_holds_now_the_commits_and_what_changed_in_that_order(self):
@@ -1472,7 +1485,7 @@ class Trend(LogosChat):
         self.assertIn('<tr class="v2">', self.section("now"))
         still, _, nearest = self.typical()
         href, hover, tree = nearest
-        self.assertEqual(href, f"main/{REVISION}/{MEASUREMENT}/{GOAL.format(5)}/3/")
+        self.assertEqual(href, f"main/{REVISION}/{MEASUREMENT}/{GROUPV2.format(5)}/3/")
         self.assertTrue((self.site / "logos-chat" / href / "index.html").is_file())
         self.assertTrue(hover.startswith("GroupV2 5%, seed 2: split at 4, 2 lines and "), hover)
         self.assertEqual(tree.get("aria-label"), "The tree of GroupV2 5%, seed 2")
@@ -1482,7 +1495,7 @@ class Trend(LogosChat):
             [GROWN[0], GROWN[1], "line 1, off the trunk: 1 member, epochs 4 to 8"],
         )
         # Of two runs as far from their median, the lower seed, here one whose lines no point keeps.
-        self.assertEqual(still[0], f"main/{REVISION}/{MEASUREMENT}/{GOAL.format('0.1')}/1/")
+        self.assertEqual(still[0], f"main/{REVISION}/{MEASUREMENT}/{GROUPV2.format('0.1')}/1/")
         self.assertEqual(self.trees(still[2]), ["tree head sketch"])
         caption = Parsed(self.section("now")).text
         for said in (
@@ -1809,7 +1822,7 @@ class Trend(LogosChat):
     def test_a_commit_one_of_whose_runs_has_no_outcome_says_so(self):
         self.point(sha(1), minute=1, run_number=1)
         lacking = self.without(self.uploaded(), "5/1")
-        asked = [{"scenario": GOAL.format(rate), "from": 1, "runs": 2} for rate in ("0.1", "5")]
+        asked = [{"scenario": GROUPV2.format(rate), "from": 1, "runs": 2} for rate in ("0.1", "5")]
         given = dict(runs=lacking, matrix=self.matrix(lacking, asked=asked))
         self.point(sha(2), minute=2, run_number=2, commits=self.commits(), **given)
         # The same run of the commit after has none either, and none before to hold it to.
@@ -1926,7 +1939,7 @@ class Trend(LogosChat):
         # No file names the renamed scenarios, so the newest commit is not held to the first.
         warned = self.trend()
         self.assertEqual(len(warned), 1)
-        self.assertIn("fifty-by-saro-waku-loss-", warned[0])
+        self.assertIn("grow-one-adder-groupv2-waku-loss-", warned[0])
         self.assertEqual(
             [row[3] for row in self.rows()],
             ["not compared with the commit before", "the first commit this test ran on"],
@@ -1972,10 +1985,10 @@ class Trend(LogosChat):
         self.assertEqual(rows[("0", "1", "18", "18")][0], "the same outcome")
         self.assertEqual(rows[("0", "1", "8", "8")], ["the same outcome", "round 3"])
         self.assertIn("two runs of the same outcome can part in a round", parsed.text)
-        run = f"{GOAL.format('1')}/2/"
+        run = f"{GROUPV2.format('1')}/2/"
         self.assertIn(f"../{run}run.json", parsed.links)
         self.assertIn(f"../../../{sha(1)}/{MEASUREMENT}/{run}run.json", parsed.links)
-        named = f"--pattern 'logs-revision-{GOAL.format('1')}-[0-9]*'"
+        named = f"--pattern 'logs-revision-{GROUPV2.format('1')}-[0-9]*'"
         self.assertIn(
             f"gh run download 71 --repo logos-messaging/chat-sim --dir before {named}\n"
             f"gh run download 72 --repo logos-messaging/chat-sim --dir after {named}",
@@ -2034,7 +2047,7 @@ class Trend(LogosChat):
         self.assertEqual([title for title, _, _ in self.lines(moved, "base")], GROWN)
         self.assertEqual(self.rings(moved), [("2 never joined", "2")] * 2)
         # Each of the two trees opens its own run's page.
-        run = f"{GOAL.format('1')}/2/"
+        run = f"{GROUPV2.format('1')}/2/"
         opened = [one.get("href") for one in moved.iter(f"{SVG}a")]
         self.assertEqual(opened, [f"../{run}", f"../../../{sha(1)}/{MEASUREMENT}/{run}"])
         for link in opened:
@@ -2185,9 +2198,9 @@ class Describe(unittest.TestCase):
     scenarios test, as that page says it."""
 
     def test_each_scenario_a_suite_runs_is_said_and_one_of_any_other_step_refused(self):
-        goals = {
-            goal.format(rate)
-            for goal in simulate.GOALS.values()
+        grown = {
+            grow.format(rate)
+            for grow in simulate.GROW_3_ADDERS.values()
             for rates in simulate.RATES.values()
             for rate in rates
         }
@@ -2202,10 +2215,11 @@ class Describe(unittest.TestCase):
                 told = pages.describe(scenario)
                 self.assertTrue(all(one.endswith(".") for one in told))
                 said.add(path.stem)
-        self.assertLessEqual(goals, said)
+        self.assertLessEqual(grown, said)
 
     def test_a_grow_of_drawn_adders_says_who_adds_what_the_trunk_is_and_when_a_run_ends(self):
-        grow = json.loads((SCENARIOS / "grow-waku-loss-1-groupv3.json").read_text("utf-8"))
+        file = SCENARIOS / "grow-3-adders-groupv3-waku-loss-1pct.json"
+        grow = json.loads(file.read_text("utf-8"))
         self.assertEqual(
             pages.describe(grow),
             [
@@ -2594,7 +2608,7 @@ class Pages(LogosChat):
         self.assertEqual(
             [href for _, href, _, _ in self.forks(out)],
             [
-                f"head/{GOAL.format(rate)}/{run}/"
+                f"head/{GROUPV2.format(rate)}/{run}/"
                 for rate, runs in (("0.1", (1, 2)), ("1", range(1, 9)), ("5", (1, 2)))
                 for run in runs
             ],
@@ -2638,14 +2652,14 @@ class Pages(LogosChat):
         self.assertEqual(
             [(kind, href, seed, shown) for kind, href, _, seed, shown in re.findall(d, ds)],
             [
-                ("d", f"head/{GOAL.format(1)}/1/", "0", "0"),
-                ("d", f"head/{GOAL.format(1)}/2/", "1", "0"),
-                ("d", f"head/{GOAL.format(1)}/3/", "2", "0"),
-                ("d moved earlier", f"head/{GOAL.format(1)}/4/", "3", "-8"),
-                ("d moved later", f"head/{GOAL.format(1)}/5/", "4", "+12"),
-                ("d moved", f"head/{GOAL.format(1)}/6/", "5", "0"),
-                ("d none", f"head/{GOAL.format(1)}/7/", "6", "-"),
-                ("d", f"head/{GOAL.format(1)}/8/", "7", "0"),
+                ("d", f"head/{GROUPV2.format(1)}/1/", "0", "0"),
+                ("d", f"head/{GROUPV2.format(1)}/2/", "1", "0"),
+                ("d", f"head/{GROUPV2.format(1)}/3/", "2", "0"),
+                ("d moved earlier", f"head/{GROUPV2.format(1)}/4/", "3", "-8"),
+                ("d moved later", f"head/{GROUPV2.format(1)}/5/", "4", "+12"),
+                ("d moved", f"head/{GROUPV2.format(1)}/6/", "5", "0"),
+                ("d none", f"head/{GROUPV2.format(1)}/7/", "6", "-"),
+                ("d", f"head/{GROUPV2.format(1)}/8/", "7", "0"),
             ],
         )
         self.assertEqual(
@@ -2659,7 +2673,7 @@ class Pages(LogosChat):
         self.assertIn("A strip under a row holds every seed of the rate", page)
         self.assertIn("The fold under a strip draws the rate's other seeds", page)
         for run in range(4, 9):
-            self.stands_alone(out / f"head/{GOAL.format(1)}/{run}")
+            self.stands_alone(out / f"head/{GROUPV2.format(1)}/{run}")
 
     def test_a_group_s_verdict_is_its_worst_rate_s_and_each_run_says_how_it_moved_or_why_not(
         self,
@@ -2731,7 +2745,7 @@ class Pages(LogosChat):
                 "neither earlier nor later.",
             ],
         )
-        unbuilt = self.stands_alone(out / f"head/{GOAL.format(1)}/1")
+        unbuilt = self.stands_alone(out / f"head/{GROUPV2.format(1)}/1")
         self.assertEqual([link for link in unbuilt.links if link.endswith(".log")], ["build.log"])
 
     def test_a_tree_lays_its_lines_out_by_the_line_each_left_and_draws_them_as_wide_as_members(
@@ -2769,7 +2783,7 @@ class Pages(LogosChat):
         )
         self.assertEqual(sketch.findall(f"{SVG}path")[1].get("d"), "M45.6 7.0V14.0")
         self.assertEqual(self.rings(looped), [("2 never joined", "2")] * 2)
-        large = self.charts(out / f"head/{GOAL.format(5)}/1")
+        large = self.charts(out / f"head/{GROUPV2.format(5)}/1")
         tree = large["GroupV2 5%, seed 0: the head's tree over the base's"]
         self.assertEqual(
             [title for title, _, _ in self.lines(tree, "head")], [title for title, _, _ in drawn]
@@ -2796,7 +2810,7 @@ class Pages(LogosChat):
             [("trunk: 0 members, epoch 0", "M4.0 7.0H4.0", "1.20")],
         )
         self.assertEqual(self.key(out), ["the head on top", "the base under it", "never joined"])
-        parsed = self.stands_alone(out / f"head/{GOAL.format(5)}/1")
+        parsed = self.stands_alone(out / f"head/{GROUPV2.format(5)}/1")
         self.assertIn("0 on the trunk · 0 on 0 lines off it", parsed.text)
 
     def test_each_run_s_page_says_how_it_moved_and_draws_both_trees_large_with_its_command_and_text(
@@ -2824,7 +2838,7 @@ class Pages(LogosChat):
                         for name in ("run.txt", "report.txt", "run.json")
                     ],
                 )
-        run = out / f"head/{GOAL.format(5)}/1"
+        run = out / f"head/{GROUPV2.format(5)}/1"
         page = self.drawn(run)
         ran = Parsed(page.split('<p class="ran">', 1)[1].split("</p>", 1)[0]).text
         self.assertEqual(
@@ -2854,7 +2868,7 @@ class Pages(LogosChat):
         base = self.uploaded(**{"5/0": {"grow": dict(GROW, rounds=ROUNDS)}})
         out = self.pr(self.moved(), self.matrix(self.moved(), base), base)
 
-        run = out / f"head/{GOAL.format(5)}/1"
+        run = out / f"head/{GROUPV2.format(5)}/1"
         parsed = self.stands_alone(run)
         self.assertIn(
             "seated counts every member added, the creator included, and not removed: those on a "
@@ -2871,7 +2885,7 @@ class Pages(LogosChat):
         self.assertIn(f"the base {BASE[:7]}", rounds.text)
         self.assertNotIn("the head", rounds.text)
         self.assertIn("The run does not say which adder added which member.", rounds.text)
-        self.assertNotIn("<h2>The rounds</h2>", self.drawn(out / f"head/{GOAL.format(5)}/2"))
+        self.assertNotIn("<h2>The rounds</h2>", self.drawn(out / f"head/{GROUPV2.format(5)}/2"))
 
     def test_a_run_of_both_groups_lists_each_group_s_verdict_and_draws_its_runs_apart(self):
         base = self.uploaded(groupv3=True)
@@ -2896,7 +2910,7 @@ class Pages(LogosChat):
         )
         self.assertEqual(re.findall(r"<h2>(.*?)</h2>", self.drawn(out)), ["GroupV2", "GroupV3"])
         self.assertEqual({kind for kind, *_ in self.forks(out, "GroupV2")}, {"fork"})
-        v3 = HELD_GOALS["v3"]
+        v3 = GROW_1_ADDER["v3"]
         self.assertEqual(
             [(kind, href) for kind, href, *_ in self.forks(out, "GroupV3") if kind != "fork"],
             [("fork moved", f"head/{v3.format(1)}/2/"), ("fork moved", f"head/{v3.format(5)}/1/")],
@@ -3019,7 +3033,7 @@ class Pages(LogosChat):
             ("v2", "A GroupV2 group, on GroupV2's default timers."),
             ("v3", "A GroupV3 group, on timers of its own, whatever the file's timers say."),
         ):
-            names = [HELD_GOALS[group].format(rate) for rate in ("0.1", "1", "5")]
+            names = [GROW_1_ADDER[group].format(rate) for rate in ("0.1", "1", "5")]
             with self.subTest(group=group):
                 about = self.about(page, group)
                 self.assertEqual(
@@ -3031,7 +3045,7 @@ class Pages(LogosChat):
     def test_what_some_scenarios_alone_say_is_said_under_their_group_or_beside_their_file(self):
         base, head = self.uploaded(groupv3=True), self.uploaded(groupv3=True)
         out = self.pr(head, self.matrix(head, base), base)
-        lone = out / "scenarios" / f"{GOAL.format(1)}.json"
+        lone = out / "scenarios" / f"{GROUPV2.format(1)}.json"
         scenario = json.loads(lone.read_text(encoding="utf-8"))
         scenario["network"]["welcome_loss"] = 0
         lone.write_text(json.dumps(scenario), encoding="utf-8")
@@ -3045,10 +3059,11 @@ class Pages(LogosChat):
         self.assertEqual(
             self.about(page, "v2").text,
             "A GroupV2 group, on GroupV2's default timers. The scenario files: "
-            f"{GOAL.format('0.1')}.json ({WELCOMED}) · {GOAL.format(1)}.json ({unwelcomed}) · "
-            f"{GOAL.format(5)}.json ({WELCOMED})",
+            f"{GROUPV2.format('0.1')}.json ({WELCOMED}) · "
+            f"{GROUPV2.format(1)}.json ({unwelcomed}) · "
+            f"{GROUPV2.format(5)}.json ({WELCOMED})",
         )
-        v3 = HELD_GOALS["v3"]
+        v3 = GROW_1_ADDER["v3"]
         self.assertEqual(
             self.about(page, "v3").text,
             f"A GroupV3 group, on timers of its own, whatever the file's timers say. {WELCOMED} "
@@ -3060,11 +3075,11 @@ class Pages(LogosChat):
         for spoilt in ("kept none", "not a grow", "not JSON"):
             with self.subTest(spoilt=spoilt):
                 out = self.pr(self.uploaded(), self.matrix(self.uploaded()), None)
-                lone = out / "scenarios" / f"{GOAL.format(1)}.json"
+                lone = out / "scenarios" / f"{GROUPV2.format(1)}.json"
                 if spoilt == "kept none":
                     shutil.rmtree(out / "scenarios")
                 elif spoilt == "not a grow":
-                    shutil.copy(SCENARIOS / "three.json", lone)
+                    shutil.copy(SCENARIOS / "seat-2-post-groupv2.json", lone)
                 else:
                     lone.write_text("{", encoding="utf-8")
                 pages.draw_pr(
@@ -3075,7 +3090,7 @@ class Pages(LogosChat):
                 page = self.drawn(out)
 
                 self.assertNotIn('id="scenarios"', page)
-                names = [GOAL.format(rate) for rate in ("0.1", "1", "5")]
+                names = [GROUPV2.format(rate) for rate in ("0.1", "1", "5")]
                 said = "The scenario files: " + " · ".join(f"{one}.json" for one in names)
                 self.assertEqual(self.about(page, "v2").text, said)
                 kept = [] if spoilt == "kept none" else [f"scenarios/{one}.json" for one in names]
@@ -3096,15 +3111,15 @@ class Pages(LogosChat):
         forks = self.forks(alone)
         self.assertEqual([said for _, _, said, _ in forks][3], "first fork 5")
         self.assertEqual([self.trees(svg) for *_, svg in forks], [["tree head sketch"]] * 6)
-        run = self.stands_alone(alone / f"head/{GOAL.format(1)}/2")
-        ran = self.drawn(alone / f"head/{GOAL.format(1)}/2").split('<p class="ran">', 1)[1]
+        run = self.stands_alone(alone / f"head/{GROUPV2.format(1)}/2")
+        ran = self.drawn(alone / f"head/{GROUPV2.format(1)}/2").split('<p class="ran">', 1)[1]
         self.assertEqual(
             Parsed(ran.split("</p>", 1)[0]).text,
             "not compared The head first forked at epoch 5. There is no base to compare.",
         )
         self.assertIn("no base", run.text)
         self.assertEqual([link for link in run.links if "base/" in link], [])
-        cell = {"scenario": GOAL.format(1), "run": 2, "seed": 1}
+        cell = {"scenario": GROUPV2.format(1), "run": 2, "seed": 1}
         self.assertIn("\n".join(simulate.again(cell, REVISION, SHA)), run.text)
         self.assertNotIn("Run each block", run.text)
         self.assertEqual(run.text.count("git clone "), 1)
@@ -3113,12 +3128,12 @@ class Pages(LogosChat):
         head = self.scratch / "unbuilt"
         for rate in ("0.1", "1", "5"):
             for number in (1, 2):
-                scenario = GOAL.format(rate)
+                scenario = GROUPV2.format(rate)
                 run = head / f"sim-revision-{scenario}-{number}" / scenario / str(number)
                 write(run / "unbuilt", f"chat-sim does not build at {REVISION}\n")
                 write(run / "build.log", LOG)
         asked = [
-            {"scenario": GOAL.format(rate), "from": 1, "runs": 2} for rate in ("0.1", "1", "5")
+            {"scenario": GROUPV2.format(rate), "from": 1, "runs": 2} for rate in ("0.1", "1", "5")
         ]
         base = self.uploaded()
         out = self.pr(head, self.matrix(head, base, asked), base)
@@ -3132,11 +3147,11 @@ class Pages(LogosChat):
         self.assertIn("build", parsed.ids)
         self.assertFalse({"matrix", "cells", "runs"} & parsed.ids)
         self.assertIn(LOG, parsed.text)
-        self.assertIn(f"head/{GOAL.format('0.1')}/1/build.log", parsed.links)
+        self.assertIn(f"head/{GROUPV2.format('0.1')}/1/build.log", parsed.links)
         self.assertEqual(
             [path for path in self.files(out) if path.startswith("head/")],
             sorted(
-                f"head/{GOAL.format(rate)}/{number}/build.log"
+                f"head/{GROUPV2.format(rate)}/{number}/build.log"
                 for rate in ("0.1", "1", "5")
                 for number in (1, 2)
             ),
@@ -3150,7 +3165,7 @@ class Pages(LogosChat):
         base = self.uploaded()
         out = self.pr(head, self.matrix(head, base), base)
 
-        run = out / f"head/{GOAL.format(1)}/2/index.html"
+        run = out / f"head/{GROUPV2.format(1)}/2/index.html"
         for drawn in (out / "index.html", run):
             with self.subTest(drawn=drawn.relative_to(out)):
                 self.assertNotIn("<script", drawn.read_text(encoding="utf-8"))
@@ -3209,12 +3224,12 @@ class Pages(LogosChat):
         self.assertEqual(
             [(href, said) for href, said, _, _ in tiles],
             [
-                (f"{GOAL.format('0.1')}/2/", "seed 1 first fork 46"),
-                (f"{GOAL.format('0.1')}/1/", "seed 0 whole at 50"),
-                (f"{GOAL.format(1)}/2/", "seed 1 first fork 9"),
-                (f"{GOAL.format(1)}/1/", "seed 0 first fork 18"),
-                (f"{GOAL.format(5)}/2/", "seed 1 first fork 3"),
-                (f"{GOAL.format(5)}/1/", "seed 0 first fork 8"),
+                (f"{GROUPV2.format('0.1')}/2/", "seed 1 first fork 46"),
+                (f"{GROUPV2.format('0.1')}/1/", "seed 0 whole at 50"),
+                (f"{GROUPV2.format(1)}/2/", "seed 1 first fork 9"),
+                (f"{GROUPV2.format(1)}/1/", "seed 0 first fork 18"),
+                (f"{GROUPV2.format(5)}/2/", "seed 1 first fork 3"),
+                (f"{GROUPV2.format(5)}/1/", "seed 0 first fork 8"),
             ],
         )
         for href, _, hover, svg in tiles:
@@ -3224,7 +3239,7 @@ class Pages(LogosChat):
                 job = f"GroupV2 {cell['rate']}, seed {cell['seed']}"
                 self.assertEqual(svg.get("aria-label"), job)
                 # The point keeps the lines of the one run whose run.json holds a tree's.
-                kept = href == f"{GOAL.format(5)}/1/"
+                kept = href == f"{GROUPV2.format(5)}/1/"
                 self.assertEqual(self.trees(svg), ["tree head" if kept else "tree head sketch"])
         grown = tiles[-1][3]
         self.assertEqual([title for title, _, _ in self.lines(grown, "head")], GROWN)
@@ -3258,7 +3273,7 @@ class Pages(LogosChat):
         grow = dict(GROW, rounds=ROUNDS)
         self.point(runs=self.uploaded(**{"5/0": {"grow": grow, "wall_s": 0.916510242}}))
 
-        run = self.at() / GOAL.format(5) / "1"
+        run = self.at() / GROUPV2.format(5) / "1"
         parsed, page = self.stands_alone(run), self.drawn(run)
         self.assertIn(
             f"<title>chat-sim: logos-chat main {REVISION[:7]}, GroupV2 5%, seed 0</title>", page
@@ -3289,7 +3304,7 @@ class Pages(LogosChat):
         self.assertEqual(rounds.rows, ROUNDED)
         self.assertIn("The run does not say which adder added which member.", rounds.text)
         # A run whose run.json holds no rounds, no wall time and no tree's lines.
-        other = self.at() / GOAL.format(5) / "2"
+        other = self.at() / GROUPV2.format(5) / "2"
         self.assertNotIn("<h2>The rounds</h2>", self.drawn(other))
         self.assertNotIn("wall time", self.drawn(other))
         sketched = self.charts(other)["GroupV2 5%, seed 1: its tree"]
@@ -3301,11 +3316,11 @@ class Pages(LogosChat):
         for rate in ("0.1", "1", "5"):
             command = (
                 "gh run download 42 --repo logos-messaging/chat-sim --dir logs --pattern "
-                f"'logs-revision-{GOAL.format(rate)}-[0-9]*'"
+                f"'logs-revision-{GROUPV2.format(rate)}-[0-9]*'"
             )
             for run in (1, 2):
                 with self.subTest(rate=rate, run=run):
-                    parsed = self.stands_alone(self.at() / GOAL.format(rate) / str(run))
+                    parsed = self.stands_alone(self.at() / GROUPV2.format(rate) / str(run))
                     self.assertEqual(parsed.text.count(command), 1)
                     self.assertIn(
                         "an artifact of the workflow run, which GitHub keeps 90 days. This "
@@ -3324,7 +3339,7 @@ class Pages(LogosChat):
         runs = self.uploaded()
         self.unbuilt(runs, "5/0")
         self.point(runs=runs)
-        unbuilt = self.at() / GOAL.format(5) / "1"
+        unbuilt = self.at() / GROUPV2.format(5) / "1"
         parsed = self.stands_alone(unbuilt)
         self.assertIn("chat-sim does not build at this commit, so nothing ran.", parsed.text)
         self.assertNotIn("gh run download", parsed.text)
@@ -3332,10 +3347,12 @@ class Pages(LogosChat):
         self.assertEqual([link for link in parsed.links if link.endswith(".log")], ["build.log"])
         again = simulate.again(self.read()["cells"][4], REVISION, SHA)
         self.assertIn("\n".join(again), parsed.text)
-        self.assertIn("gh run download", self.stands_alone(self.at() / GOAL.format(5) / "2").text)
+        self.assertIn(
+            "gh run download", self.stands_alone(self.at() / GROUPV2.format(5) / "2").text
+        )
         # On the point's page it has no tree: its seed is under its rate, linked to its page.
         self.assertIn(
-            f'<p class="of muted">does not build: seed <a href="{GOAL.format(5)}/1/">0</a></p>',
+            f'<p class="of muted">does not build: seed <a href="{GROUPV2.format(5)}/1/">0</a></p>',
             self.drawn(self.at()),
         )
         self.assertEqual(
@@ -3354,7 +3371,7 @@ class Pages(LogosChat):
             self.assertNotIn("gh run download", run.read_text(encoding="utf-8"))
 
     def test_a_run_s_page_gives_the_command_that_downloads_the_log_of_each_side_that_ran(self):
-        scenario, at = GOAL.format(1), "--repo logos-messaging/chat-sim --dir logs"
+        scenario, at = GROUPV2.format(1), "--repo logos-messaging/chat-sim --dir logs"
         head = f"--pattern 'logs-revision-{scenario}-[0-9]*'"
         base = f"'logs-base-{scenario}-[0-9]*'"
         out = self.pr(self.moved(), self.matrix(self.moved(), self.uploaded()), self.uploaded())
@@ -3424,7 +3441,7 @@ class Pages(LogosChat):
                 self.assertEqual(
                     [href for href, *_ in tiles],
                     [
-                        f"{HELD_GOALS[key].format(rate)}/{run}/"
+                        f"{GROW_1_ADDER[key].format(rate)}/{run}/"
                         for rate in ("0.1", "1", "5")
                         for run in (2, 1)
                     ],
@@ -3432,7 +3449,7 @@ class Pages(LogosChat):
                 self.assertEqual(
                     tiles[2][1], f"seed 1 first fork {5 if key == 'v3' else 9}"
                 )
-        v3 = self.at() / HELD_GOALS["v3"].format(1) / "2"
+        v3 = self.at() / GROW_1_ADDER["v3"].format(1) / "2"
         self.assertEqual(self.stands_alone(v3).h1, ["GroupV3 · 1% loss · seed 1"])
         self.assertIn('<div class="chart wide v3">', self.drawn(v3))
         self.assertEqual(len(list(self.at().glob("*/*/index.html"))), 12)
@@ -3519,12 +3536,12 @@ class Pages(LogosChat):
         unbuilt = self.scratch / "unbuilt"
         for rate in ("0.1", "1", "5"):
             for number in (1, 2):
-                scenario = GOAL.format(rate)
+                scenario = GROUPV2.format(rate)
                 run = unbuilt / f"sim-revision-{scenario}-{number}" / scenario / str(number)
                 write(run / "unbuilt", f"chat-sim does not build at {sha(1)}\n")
                 write(run / "build.log", LOG)
         asked = [
-            {"scenario": GOAL.format(rate), "from": 1, "runs": 2} for rate in ("0.1", "1", "5")
+            {"scenario": GROUPV2.format(rate), "from": 1, "runs": 2} for rate in ("0.1", "1", "5")
         ]
         matrix = self.matrix(unbuilt, None, asked)
         self.point(sha(1), minute=1, run_number=1, runs=unbuilt, matrix=matrix)
@@ -3533,7 +3550,7 @@ class Pages(LogosChat):
         parsed = self.stands_alone(first)
         self.assertEqual(parsed.text.count(LOG), 1)
         each = [
-            f"{GOAL.format(rate)}/{number}/build.log"
+            f"{GROUPV2.format(rate)}/{number}/build.log"
             for rate in ("0.1", "1", "5")
             for number in (1, 2)
         ]
@@ -3564,7 +3581,7 @@ class Pages(LogosChat):
         matrix = self.matrix(runs)
         self.point(sha(1), minute=1, run_number=1, runs=runs, matrix=matrix)
         first = self.at(sha(1))
-        self.assertIn(f"{GOAL.format(1)}/1/", Parsed(self.drawn(first)).links)
+        self.assertIn(f"{GROUPV2.format(1)}/1/", Parsed(self.drawn(first)).links)
 
         for number in range(2, 13):
             given = dict(runs=runs, matrix=matrix, commits=self.commits())
@@ -3597,14 +3614,14 @@ class Pages(LogosChat):
         for rate in ("0.1", "1", "5"):
             command = (
                 "gh run download 42 --repo logos-messaging/chat-sim --dir logs --pattern "
-                f"'logs-revision-{GOAL.format(rate)}-[0-9]*'"
+                f"'logs-revision-{GROUPV2.format(rate)}-[0-9]*'"
             )
             self.assertEqual(parsed.text.count(command), 1)
         self.assertEqual(
             parsed.text.count("a run's group.log under its number, the seed plus 1:"), 3
         )
         self.assertIn("GitHub keeps it 90 days.", parsed.text)
-        self.assertIn(f"{GOAL.format(1)}/1/", Parsed(self.drawn(self.at(sha(2)))).links)
+        self.assertIn(f"{GROUPV2.format(1)}/1/", Parsed(self.drawn(self.at(sha(2)))).links)
 
     def test_past_the_window_a_point_that_did_not_build_has_no_command_for_its_logs(self):
         unbuilt = self.uploaded()
@@ -3622,8 +3639,8 @@ class Pages(LogosChat):
 
 EXPECTED = ROOT / "tools" / "sim" / "expected"
 SCENARIOS = ROOT / "tools" / "sim" / "scenarios"
-# The outcome of seed 0 of 50-epochs.json, on master's CI run 42121862497.
-FIFTY = {
+# The outcome of seed 0 of seat-50-post-groupv2.json, on master's CI run 42121862497.
+SEATED = {
     "seed": 0,
     "network_seed": None,
     "conversation": "def2b1dd40",
@@ -3641,7 +3658,7 @@ FIFTY = {
     "came_to": "as expected",
     "stopped": None,
 }
-# What compare printed of 50-epochs-by-saro-waku-loss-5's two runs on master's CI run
+# What compare printed of grow-1-adder-groupv2-waku-loss-5pct's two runs on master's CI run
 # 44661545505, cut to its first row.
 COMPARED = (
     "run  seed  change     verdict                 at the tip  seconds  came to\n"
@@ -3649,10 +3666,10 @@ COMPARED = (
     "trunk at epoch 14, 3 main, 0 sub, 7 fell behind, 5 behind at the end, 2 never joined\n"
     "2 of 2 runs came out as expected\n"
 )
-# The row of 50-epochs-by-saro-waku-loss-5 on a long run's page, its runs as tools/sim/expected
-# holds them.
+# The row of grow-1-adder-groupv2-waku-loss-5pct on a long run's page, its runs as
+# tools/sim/expected holds them.
 LOSS_5 = [
-    "50-epochs-by-saro-waku-loss-5",
+    "grow-1-adder-groupv2-waku-loss-5pct",
     "2",
     "split at epoch 8 · split at epoch 3",
     "2 of 2 runs came out as expected",
@@ -3672,7 +3689,7 @@ class Long(LogosChat):
     def long_uploaded(self, unbuilt: bool = False) -> Tuple[Path, Path]:
         """What the run jobs of a long run uploaded, a job a scenario, each run with its run.txt,
         report.txt, run.json and report.json and each sweep its outcomes, those tools/sim/expected
-        holds or fifty epochs whole; and what compare wrote of each scenario it holds. Where
+        holds or `SEATED`; and what compare wrote of each scenario it holds. Where
         chat-sim did not build, each run's unbuilt marker and the build's log."""
         self.made += 1
         runs, compared = self.scratch / f"long-{self.made}", self.scratch / f"compared-{self.made}"
@@ -3680,7 +3697,7 @@ class Long(LogosChat):
         for name, count in self.suite():
             sweep = runs / f"sim-revision-{name}-1" / name
             held = EXPECTED / f"{name}.json"
-            outcomes = json.loads(held.read_text("utf-8")) if held.is_file() else [FIFTY] * count
+            outcomes = json.loads(held.read_text("utf-8")) if held.is_file() else [SEATED] * count
             for number in range(1, count + 1):
                 run = sweep / str(number)
                 if unbuilt:
@@ -3770,7 +3787,9 @@ class Long(LogosChat):
             loss["compare"],
             {"verdict": pages.AS_EXPECTED, "counted": "2 of 2 runs came out as expected"},
         )
-        held = json.loads((EXPECTED / "50-epochs-by-saro-waku-loss-5.json").read_text("utf-8"))
+        held = json.loads(
+            (EXPECTED / "grow-1-adder-groupv2-waku-loss-5pct.json").read_text("utf-8")
+        )
         self.assertEqual(
             loss["runs"],
             [
@@ -3801,11 +3820,13 @@ class Long(LogosChat):
         ):
             self.assertIn(link, parsed.links)
         self.assertIn(LOSS_5, parsed.rows)
-        self.assertIn(["50-epochs", "1", "whole", "nothing held"], parsed.rows)
+        self.assertIn(["seat-50-post-groupv2", "1", "whole", "nothing held"], parsed.rows)
         self.assertTrue({name for name, _ in self.suite()} <= parsed.ids)
         self.assertIn(COMPARED, parsed.text)
-        self.assertIn("50-epochs-by-saro-waku-loss-5/compare.txt", parsed.links)
-        held = json.loads((EXPECTED / "50-epochs-by-saro-waku-loss-5.json").read_text("utf-8"))
+        self.assertIn("grow-1-adder-groupv2-waku-loss-5pct/compare.txt", parsed.links)
+        held = json.loads(
+            (EXPECTED / "grow-1-adder-groupv2-waku-loss-5pct.json").read_text("utf-8")
+        )
         self.assertIn(["0", "split at epoch 8", held[0]["came_to"], "3 min 9 s"], parsed.rows)
         self.assertIn(["1", "split at epoch 3", held[1]["came_to"], "2 min 1 s"], parsed.rows)
         self.assertIn("never joined: tomo, peer14", parsed.text)
@@ -3816,9 +3837,9 @@ class Long(LogosChat):
             "they came out well.",
             parsed.text,
         )
-        self.assertIn("run.txt of 50-epochs-by-saro-waku-loss-5/1\n", parsed.text)
-        self.assertIn("50-epochs-by-saro-waku-loss-5/1/run.json", parsed.links)
-        self.assertNotIn("50-epochs-by-saro-waku-loss-5/1/report.json", parsed.links)
+        self.assertIn("run.txt of grow-1-adder-groupv2-waku-loss-5pct/1\n", parsed.text)
+        self.assertIn("grow-1-adder-groupv2-waku-loss-5pct/1/run.json", parsed.links)
+        self.assertNotIn("grow-1-adder-groupv2-waku-loss-5pct/1/report.json", parsed.links)
         for name, count in self.suite():
             for number in range(1, count + 1):
                 cell = {"scenario": name, "run": number, "seed": number - 1}
@@ -3828,18 +3849,26 @@ class Long(LogosChat):
 
     def test_a_run_with_no_outcome_has_its_seed_and_the_command_and_links_the_text_it_left(self):
         runs, compared = self.long_uploaded()
-        # 50-epochs could not build, 50-epochs-waku's job uploaded nothing, grow-waku-loss-0.1's
-        # compare --write wrote no outcomes, and grow-waku-loss-0.1-groupv3's sweep
-        # stopped after run 2.
-        fifty = runs / "sim-revision-50-epochs-1" / "50-epochs"
-        shutil.rmtree(fifty)
-        write(fifty / "1" / "unbuilt", f"chat-sim does not build at {REVISION}\n")
-        write(fifty / "1" / "build.log", LOG)
-        shutil.rmtree(runs / "sim-revision-50-epochs-waku-1")
-        lost = runs / "sim-revision-grow-waku-loss-0.1-1" / "grow-waku-loss-0.1"
+        # seat-50-post-groupv2 could not build, seat-50-post-groupv2-waku-loss-0pct's job uploaded
+        # nothing, grow-3-adders-groupv2-waku-loss-0.1pct's compare --write wrote no outcomes, and
+        # grow-3-adders-groupv3-waku-loss-0.1pct's sweep stopped after run 2.
+        seated = runs / "sim-revision-seat-50-post-groupv2-1" / "seat-50-post-groupv2"
+        shutil.rmtree(seated)
+        write(seated / "1" / "unbuilt", f"chat-sim does not build at {REVISION}\n")
+        write(seated / "1" / "build.log", LOG)
+        shutil.rmtree(runs / "sim-revision-seat-50-post-groupv2-waku-loss-0pct-1")
+        lost = (
+            runs
+            / "sim-revision-grow-3-adders-groupv2-waku-loss-0.1pct-1"
+            / "grow-3-adders-groupv2-waku-loss-0.1pct"
+        )
         (lost / "outcomes.json").unlink()
-        shutil.rmtree(compared / "grow-waku-loss-0.1")
-        stopped = runs / "sim-revision-grow-waku-loss-0.1-groupv3-1" / "grow-waku-loss-0.1-groupv3"
+        shutil.rmtree(compared / "grow-3-adders-groupv2-waku-loss-0.1pct")
+        stopped = (
+            runs
+            / "sim-revision-grow-3-adders-groupv3-waku-loss-0.1pct-1"
+            / "grow-3-adders-groupv3-waku-loss-0.1pct"
+        )
         shutil.rmtree(stopped / "3")
         two = json.loads((stopped / "outcomes.json").read_text("utf-8"))[:2]
         write(stopped / "outcomes.json", json.dumps(two))
@@ -3856,27 +3885,27 @@ class Long(LogosChat):
         self.assertEqual(len(self.folds(out)), sum(count for _, count in self.suite()))
         self.assertIn((False, "seed 0 does not build"), self.folds(out))
         for row in (
-            ["50-epochs", "1", "does not build", "-"],
-            ["50-epochs-waku", "1", "no outcome", "-"],
-            ["grow-waku-loss-0.1", "3", "no outcome", "-"],
+            ["seat-50-post-groupv2", "1", "does not build", "-"],
+            ["seat-50-post-groupv2-waku-loss-0pct", "1", "no outcome", "-"],
+            ["grow-3-adders-groupv2-waku-loss-0.1pct", "3", "no outcome", "-"],
             ["0", "no outcome", "-", "1 min"],
             ["2", "no outcome", "-", "-"],
         ):
             self.assertIn(row, parsed.rows)
         for text in ("run.txt", "report.txt", "run.json"):
-            self.assertIn(f"grow-waku-loss-0.1/1/{text}", parsed.links)
-        self.assertIn("run.txt of grow-waku-loss-0.1/1\n", parsed.text)
+            self.assertIn(f"grow-3-adders-groupv2-waku-loss-0.1pct/1/{text}", parsed.links)
+        self.assertIn("run.txt of grow-3-adders-groupv2-waku-loss-0.1pct/1\n", parsed.text)
 
     def test_a_scenario_s_own_seed_is_that_of_its_first_run_and_an_outcome_of_another_is_refused(
         self,
     ):
         scenarios = self.scratch / "scenarios"
         shutil.copytree(SCENARIOS, scenarios)
-        fifty = json.loads((scenarios / "50-epochs.json").read_text("utf-8"))
-        write(scenarios / "50-epochs.json", json.dumps({**fifty, "seed": 7}))
+        seated = json.loads((scenarios / "seat-50-post-groupv2.json").read_text("utf-8"))
+        write(scenarios / "seat-50-post-groupv2.json", json.dumps({**seated, "seed": 7}))
         runs, compared = self.long_uploaded()
-        sweep = runs / "sim-revision-50-epochs-1" / "50-epochs"
-        write(sweep / "outcomes.json", json.dumps([{**FIFTY, "seed": 7}]))
+        sweep = runs / "sim-revision-seat-50-post-groupv2-1" / "seat-50-post-groupv2"
+        write(sweep / "outcomes.json", json.dumps([{**SEATED, "seed": 7}]))
         given = self.given(runs, compared, REVISION, 0, 1)
         given[given.index("--scenarios") + 1] = str(scenarios)
         status, _, err = self.run_pages("long", *given)
@@ -3884,17 +3913,17 @@ class Long(LogosChat):
 
         long = pages.read_long(self.held() / "long.json")
         self.assertEqual(long["scenarios"][0]["runs"][0]["seed"], 7)
-        cell = {"scenario": "50-epochs", "run": 1, "seed": 7}
+        cell = {"scenario": "seat-50-post-groupv2", "run": 1, "seed": 7}
         again = simulate.again(cell, REVISION, SHA)
         self.assertIn("\n".join(again), Parsed(self.drawn(self.held())).text)
-        write(sweep / "outcomes.json", json.dumps([FIFTY]))
+        write(sweep / "outcomes.json", json.dumps([SEATED]))
         status, _, err = self.run_pages("long", *given)
         self.assertEqual(status, 2)
         self.assertIn("[0] is of seed 0, and run 1 of seed 7", err)
-        write(scenarios / "50-epochs.json", json.dumps({**fifty, "seed": "7"}))
+        write(scenarios / "seat-50-post-groupv2.json", json.dumps({**seated, "seed": "7"}))
         status, _, err = self.run_pages("long", *given)
         self.assertEqual(status, 2)
-        self.assertIn("50-epochs.json: its seed is not a whole number from 0", err)
+        self.assertIn("seat-50-post-groupv2.json: its seed is not a whole number from 0", err)
 
     def test_every_text_of_a_run_and_of_compare_is_escaped(self):
         runs, compared = self.long_uploaded()
@@ -3904,7 +3933,10 @@ class Long(LogosChat):
         outcomes = json.loads((loss / "outcomes.json").read_text("utf-8"))
         outcomes[0]["came_to"] = MARKUP
         write(loss / "outcomes.json", json.dumps(outcomes))
-        write(compared / "50-epochs-by-saro-waku-loss-5" / "compare.txt", f"{MARKUP}\n{COMPARED}")
+        write(
+            compared / "grow-1-adder-groupv2-waku-loss-5pct" / "compare.txt",
+            f"{MARKUP}\n{COMPARED}",
+        )
         self.long(uploaded=(runs, compared))
 
         page = self.drawn(self.held())
@@ -3922,7 +3954,9 @@ class Long(LogosChat):
         parsed = self.stands_alone(out)
         self.assertEqual(parsed.text.count(LOG), 1)
         self.assertIn("build", parsed.ids)
-        self.assertIn("Of the job that was to run 50-epochs: no scenario ran.", parsed.text)
+        self.assertIn(
+            "Of the job that was to run seat-50-post-groupv2: no scenario ran.", parsed.text
+        )
         each = [
             f"{name}/{number}/build.log"
             for name, count in self.suite()
@@ -4046,9 +4080,11 @@ class Long(LogosChat):
             self.assertIn("The site keeps the text of the newest 15 long runs", parsed.text)
             self.assertNotIn(COMPARED, parsed.text)
             self.assertIn(LOSS_5, parsed.rows)
-            cell = {"scenario": "50-epochs-by-saro-waku-loss-5", "run": 2, "seed": 1}
+            cell = {"scenario": "grow-1-adder-groupv2-waku-loss-5pct", "run": 2, "seed": 1}
             self.assertIn("\n".join(simulate.again(cell, sha(100 - number), SHA)), parsed.text)
-        self.assertIn("50-epochs-by-saro-waku-loss-5/compare.txt", self.files(self.held(sha(97))))
+        self.assertIn(
+            "grow-1-adder-groupv2-waku-loss-5pct/compare.txt", self.files(self.held(sha(97)))
+        )
 
     def test_the_graph_over_main_links_the_newest_long_run_and_draws_nothing_of_it(self):
         self.point(sha(1), minute=1, run_number=1)
@@ -4063,8 +4099,9 @@ class Long(LogosChat):
         links = [link for link in Parsed(page).links if link.startswith("long/")]
         self.assertEqual(links, [f"long/{sha(3)}/{MEASUREMENT}/"])
         said = (
-            f"The newest long run, at main {sha(3)[:7]} on 2026-11-09 00:03 UTC: the two scenarios "
-            "of fifty epochs and each scenario chat-sim holds to what is expected but the goal's"
+            f"The newest long run, at main {sha(3)[:7]} on 2026-11-09 00:03 UTC: the two "
+            "seat-50-post scenarios and each scenario chat-sim holds to what is expected that "
+            "main's points leave out"
         )
         self.assertIn(said, Parsed(page).text)
         self.assertEqual(page.count("<svg"), alone.count("<svg"))

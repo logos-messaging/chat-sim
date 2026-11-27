@@ -61,7 +61,7 @@ post. Between each member and the frames sent to it stands the scenario's networ
 loses never comes later.
 
 The clock is virtual: the runner moves it by at most 50 ms at a time and waits for nothing. So a
-run takes the time its work takes, not the time its timers count. The run of the goal that
+run takes the time its work takes, not the time its timers count. The run that
 [What a run prints](/chat-sim/guide/investigate/moved-run/#what-a-run-prints) shows took 2712 s on
 the clock and 21 s of wall time.
 
@@ -100,8 +100,9 @@ A run's **outcome** is all of the above, with its seeds, the ids of its group an
 many members were added, and the seconds of its clock. A run **moved** when its outcome differs
 in any field from the outcome it is compared with.
 
-A scenario without a `grow` step, such as `50-epochs.json`, reports another way. `tools/forks`
-reads its log and gives the conversation a verdict, such as `whole` or `split at epoch 4`
+A scenario without a `grow` step, such as `seat-50-post-groupv2.json`, reports another way.
+`tools/forks` reads its log and gives the conversation a verdict, such as `whole` or
+`split at epoch 4`
 ([Commands](/chat-sim/guide/reference/commands/#forks)).
 
 ## The same run, and when it is not
