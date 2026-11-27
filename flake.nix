@@ -57,7 +57,7 @@
         }
       );
 
-      # `nix run .#groupv2-simulation -- run tools/sim/scenarios/50-epochs.json --out tmp/50-epochs`:
+      # `nix run .#groupv2-simulation -- run tools/sim/scenarios/seat-50-post-groupv2.json --out DIR`:
       # tools/sim with the runner built and passed to it.
       apps = forAllSystems ({ pkgs, system, ... }:
         let

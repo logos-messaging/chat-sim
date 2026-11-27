@@ -4,9 +4,9 @@ name: Simulate
 run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr != '' && format(' for logos-chat#{0}', inputs.pr) || '' }}
 
 # Runs chat-sim's master at a logos-chat revision it is handed, in one of three
-# suites. pr and main run the goal, a group grown toward epoch 50 by up to three
-# members of any branch a round (tools/sim/scenarios/grow-waku-loss-*.json), on
-# GroupV2 and, in the -groupv3 files, on GroupV3, at rates of loss. pr, for a
+# suites. pr and main run grow-3-adders, a group grown toward epoch 50 by up to
+# three members of any branch a round, on GroupV2 and on GroupV3, at rates of
+# loss (tools/sim/scenarios/grow-3-adders-group*.json). pr, for a
 # logos-chat pull request, runs seeds 0 to 2 of each group at 0.5, 1 and 5%, a
 # job a run, at the revision and at the base it is handed; the pair job then
 # finds each group a run of which came out otherwise at the two, and the more
@@ -17,10 +17,10 @@ run-name: Simulate ${{ inputs.suite }} at ${{ inputs.revision }}${{ inputs.pr !=
 # judges each rate of each group by a sign test on how far the first fork moved
 # in its seeds, and says the verdict of each group; the comment is drawn from
 # what it wrote, kept as the artifact matrix, and for pr says of each group what
-# its runs at each rate came to. long runs the two scenarios of fifty epochs and
-# every other one tools/sim/expected holds but the goal's on either group, as
-# many runs as it holds, a job a scenario a side, and holds them to the base's
-# runs, or without a base to what is held.
+# its runs at each rate came to. long runs the two seat-50-post scenarios and
+# every other one tools/sim/expected holds but main's, as many runs as it
+# holds, a job a scenario a side, and holds them to the base's runs, or
+# without a base to what is held.
 # The publish job keeps a main run on the Pages site as a point of main,
 # logos-chat/main/<sha>/<measurement>/, with the point's page and, while it
 # keeps the runs' text, a page for each run, and draws the

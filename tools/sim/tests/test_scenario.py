@@ -42,6 +42,22 @@ def three(**changed) -> dict:
 GROW = {"step": "grow", "epochs": 3, "adders": 2, "branches": 5}
 
 
+def named(held: Scenario) -> str:
+    """The name of a scenario's file: its steps, its group, and its network where it has one."""
+    kinds = [type(step) for step in held.steps]
+    if kinds == [Grow]:
+        (grow,) = held.steps
+        steps = "grow-1-adder" if grow.by else f"grow-{grow.adders}-adders"
+        steps += f"-size-{grow.size}" if grow.size else ""
+    elif kinds == [Seat, Post]:
+        # Those the creator seats: `to` counts the creator too.
+        steps = f"seat-{held.steps[0].to - 1}-post"
+    else:
+        raise AssertionError(f"no name for the steps {[kind.__name__ for kind in kinds]}")
+    network = "" if held.network is None else f"-waku-loss-{held.network.loss * 100:g}pct"
+    return f"{steps}-group{held.group}{network}"
+
+
 def steps(*steps: dict, members: int = 5) -> dict:
     return {"members": members, "steps": list(steps)}
 
@@ -359,39 +375,44 @@ class Reading(unittest.TestCase):
         self.assertEqual(
             kept,
             [
-                "50-epochs-by-saro-waku-loss-0-groupv3.json",
-                "50-epochs-by-saro-waku-loss-0.1-groupv3.json",
-                "50-epochs-by-saro-waku-loss-0.1.json",
-                "50-epochs-by-saro-waku-loss-0.json",
-                "50-epochs-by-saro-waku-loss-1-groupv3.json",
-                "50-epochs-by-saro-waku-loss-1.json",
-                "50-epochs-by-saro-waku-loss-5-groupv3.json",
-                "50-epochs-by-saro-waku-loss-5.json",
-                "50-epochs-waku.json",
-                "50-epochs.json",
-                "grow-waku-loss-0-groupv3.json",
-                "grow-waku-loss-0.1-groupv3.json",
-                "grow-waku-loss-0.1.json",
-                "grow-waku-loss-0.5-groupv3.json",
-                "grow-waku-loss-0.5.json",
-                "grow-waku-loss-0.json",
-                "grow-waku-loss-1-groupv3.json",
-                "grow-waku-loss-1.json",
-                "grow-waku-loss-5-groupv3.json",
-                "grow-waku-loss-5.json",
-                "grow-waku-size-50.json",
-                "three.json",
+                "grow-1-adder-groupv2-waku-loss-0.1pct.json",
+                "grow-1-adder-groupv2-waku-loss-0pct.json",
+                "grow-1-adder-groupv2-waku-loss-1pct.json",
+                "grow-1-adder-groupv2-waku-loss-5pct.json",
+                "grow-1-adder-groupv3-waku-loss-0.1pct.json",
+                "grow-1-adder-groupv3-waku-loss-0pct.json",
+                "grow-1-adder-groupv3-waku-loss-1pct.json",
+                "grow-1-adder-groupv3-waku-loss-5pct.json",
+                "grow-3-adders-groupv2-waku-loss-0.1pct.json",
+                "grow-3-adders-groupv2-waku-loss-0.5pct.json",
+                "grow-3-adders-groupv2-waku-loss-0pct.json",
+                "grow-3-adders-groupv2-waku-loss-1pct.json",
+                "grow-3-adders-groupv2-waku-loss-5pct.json",
+                "grow-3-adders-groupv3-waku-loss-0.1pct.json",
+                "grow-3-adders-groupv3-waku-loss-0.5pct.json",
+                "grow-3-adders-groupv3-waku-loss-0pct.json",
+                "grow-3-adders-groupv3-waku-loss-1pct.json",
+                "grow-3-adders-groupv3-waku-loss-5pct.json",
+                "grow-3-adders-size-50-groupv2-waku-loss-0pct.json",
+                "seat-2-post-groupv2.json",
+                "seat-50-post-groupv2-waku-loss-0pct.json",
+                "seat-50-post-groupv2.json",
             ],
         )
-        for name, members in (("three.json", 3), ("50-epochs.json", 51)):
+        for name, members in (("seat-2-post-groupv2.json", 3), ("seat-50-post-groupv2.json", 51)):
             held = scenario.read(TOOL / "scenarios" / name)
             self.assertEqual((held.members, held.seated), (members, members), name)
             self.assertEqual(held.expect, Expect(), name)
             self.assertIsNone(held.network, name)
 
-    def test_fifty_epochs_are_on_the_librarys_own_timers_and_on_waku_held_and_not_lost(self):
-        lossless = scenario.read(TOOL / "scenarios" / "50-epochs.json")
-        waku = scenario.read(TOOL / "scenarios" / "50-epochs-waku.json")
+    def test_each_scenario_file_is_named_for_its_steps_its_group_and_its_network(self):
+        for file in sorted((TOOL / "scenarios").glob("*.json")):
+            with self.subTest(file=file.name):
+                self.assertEqual(file.stem, named(scenario.read(file)))
+
+    def test_seat_50_post_is_on_the_librarys_own_timers_and_on_waku_held_and_not_lost(self):
+        lossless = scenario.read(TOOL / "scenarios" / "seat-50-post-groupv2.json")
+        waku = scenario.read(TOOL / "scenarios" / "seat-50-post-groupv2-waku-loss-0pct.json")
 
         self.assertEqual(lossless.steps[0], Seat(to=51, batch=1))
         self.assertEqual(waku.steps, lossless.steps)
@@ -402,12 +423,12 @@ class Reading(unittest.TestCase):
         self.assertEqual((min(delays), max(delays), delays[0]), (284, 644, 518))
         self.assertEqual(round(sum(delays) / 51, 1), 507.6)
 
-    def test_fifty_epochs_by_saro_are_those_on_waku_grown_by_saro_at_their_rate(self):
-        seated = scenario.read(TOOL / "scenarios" / "50-epochs-waku.json")
+    def test_grow_1_adder_is_seat_50_post_on_waku_grown_by_saro_at_its_rate(self):
+        seated = scenario.read(TOOL / "scenarios" / "seat-50-post-groupv2-waku-loss-0pct.json")
         alone = Grow(epochs=50, adders=None, branches=51, by="saro")
         for percent, rate in ((0, 0), (0.1, 0.001), (1, 0.01), (5, 0.05)):
             grown = scenario.read(
-                TOOL / "scenarios" / f"50-epochs-by-saro-waku-loss-{percent}.json"
+                TOOL / "scenarios" / f"grow-1-adder-groupv2-waku-loss-{percent}pct.json"
             )
             rated = dataclasses.replace(seated.network, loss=rate, welcome_loss=rate)
             self.assertEqual(
@@ -416,7 +437,9 @@ class Reading(unittest.TestCase):
 
     def test_a_grow_on_waku_has_two_hundred_delays_of_its_arrivals_and_differs_by_its_rate(self):
         grows = {
-            rate: scenario.read(TOOL / "scenarios" / f"grow-waku-loss-{percent}.json")
+            rate: scenario.read(
+                TOOL / "scenarios" / f"grow-3-adders-groupv2-waku-loss-{percent}pct.json"
+            )
             for percent, rate in ((0, 0), (0.1, 0.001), (0.5, 0.005), (1, 0.01), (5, 0.05))
         }
         first = grows[0.001]
@@ -432,7 +455,9 @@ class Reading(unittest.TestCase):
             self.assertEqual(dataclasses.replace(held, network=rated), first)
 
     def test_a_grow_of_fifty_on_waku_goes_toward_epoch_1000_with_any_fifty_in_a_row_spread(self):
-        sized = scenario.read(TOOL / "scenarios" / "grow-waku-size-50.json")
+        sized = scenario.read(
+            TOOL / "scenarios" / "grow-3-adders-size-50-groupv2-waku-loss-0pct.json"
+        )
 
         self.assertEqual(sized.steps, (Grow(epochs=1000, adders=3, branches=2, size=50),))
         self.assertEqual((sized.members, sized.timers, sized.network.seed), (3001, "default", 1))
@@ -447,15 +472,15 @@ class Reading(unittest.TestCase):
 
     def test_each_groupv3_scenario_is_its_groupv2_sibling_on_a_groupv3_group(self):
         siblings = [
-            *(f"50-epochs-by-saro-waku-loss-{percent}" for percent in (0, 0.1, 1, 5)),
-            *(f"grow-waku-loss-{percent}" for percent in (0, 0.1, 0.5, 1, 5)),
+            *(f"grow-1-adder-{{}}-waku-loss-{percent}pct" for percent in (0, 0.1, 1, 5)),
+            *(f"grow-3-adders-{{}}-waku-loss-{percent}pct" for percent in (0, 0.1, 0.5, 1, 5)),
         ]
-        kept = sorted(file.stem for file in (TOOL / "scenarios").glob("*-groupv3.json"))
-        self.assertEqual(kept, sorted(f"{name}-groupv3" for name in siblings))
+        kept = sorted(file.stem for file in (TOOL / "scenarios").glob("*-groupv3-*.json"))
+        self.assertEqual(kept, sorted(name.format("groupv3") for name in siblings))
         for name in siblings:
             with self.subTest(name=name):
-                groupv2 = scenario.read(TOOL / "scenarios" / f"{name}.json")
-                groupv3 = scenario.read(TOOL / "scenarios" / f"{name}-groupv3.json")
+                groupv2 = scenario.read(TOOL / "scenarios" / f"{name.format('groupv2')}.json")
+                groupv3 = scenario.read(TOOL / "scenarios" / f"{name.format('groupv3')}.json")
                 self.assertEqual(groupv2.group, "v2")
                 self.assertEqual(groupv3, dataclasses.replace(groupv2, group="v3"))
 

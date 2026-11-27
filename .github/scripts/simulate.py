@@ -2,12 +2,12 @@
 """Plans the jobs of simulate.yml and writes the comment on what they came to.
 
 simulate.yml runs chat-sim at a logos-chat revision it is handed, and at a base revision too when
-it is handed one, in one of three suites. `pr` and `main` run the goal, a group grown toward epoch
-50 by up to three members of any branch a round, on GroupV2 and on GroupV3 at rates of loss: `pr`
-seeds 0 to 2 of the three lossy rates, a job a run, at the revision and at the base, and of a group
-a run of which came out otherwise at the two, seeds 3 to 19 of each of its rates as well, six a
-job; `main` seeds 0 to 2 at 0% and 0 to 19 at the rest, ten a job, and no base. `long` runs the
-two scenarios of fifty epochs and every other one `tools/sim/expected` holds but the goal's, a job
+it is handed one, in one of three suites. `pr` and `main` run `grow-3-adders`, a group grown toward
+epoch 50 by up to three members of any branch a round, on GroupV2 and on GroupV3 at rates of loss:
+`pr` seeds 0 to 2 of the three lossy rates, a job a run, at the revision and at the base, and of a
+group a run of which came out otherwise at the two, seeds 3 to 19 of each of its rates as well, six
+a job; `main` seeds 0 to 2 at 0% and 0 to 19 at the rest, ten a job, and no base. `long` runs the
+two `seat-50-post` scenarios and every other one `tools/sim/expected` holds but `main`'s, a job
 a scenario a side. `plan` checks what it was handed and prints the run jobs, and `widen` the run
 jobs of seeds 3 to 19 from the matrix of seeds 0 to 2. `comment` writes the comment in Markdown:
 for `pr` and `main` from the matrix `tools/sim matrix` wrote of the runs, each group's apart, for
@@ -33,10 +33,13 @@ from pathlib import Path
 from typing import Callable, List, Optional, Sequence, Tuple
 from urllib.parse import urljoin
 
-# The goal's scenario of each group at a rate of loss in percent, by the group's name in a
-# scenario: two or more adders a round can commit for one epoch, which a GroupV3 group needs to
-# fork. Its files set no seed, so that run k of a sweep has seed k - 1.
-GOALS = {"v2": "grow-waku-loss-{}", "v3": "grow-waku-loss-{}-groupv3"}
+# The scenario `pr` and `main` run, of each group at a rate of loss in percent, by the group's name
+# in a scenario: two or more adders a round can commit for one epoch, which a GroupV3 group needs
+# to fork. Its files set no seed, so that run k of a sweep has seed k - 1.
+GROW_3_ADDERS = {
+    "v2": "grow-3-adders-groupv2-waku-loss-{}pct",
+    "v3": "grow-3-adders-groupv3-waku-loss-{}pct",
+}
 # What the comment calls each group.
 GROUPS = {"v2": "GroupV2", "v3": "GroupV3"}
 # How many seeds of each rate a suite runs, from seed 0. GroupV3 forks at each of `pr`'s rates on
@@ -46,7 +49,7 @@ RATES = {"pr": {"0.5": 3, "1": 3, "5": 3}, "main": {"0": 3, "0.5": 20, "1": 20, 
 # How many runs a job does. `widen` is the rest of main's seeds of each rate of a `pr` group whose
 # runs moved, at both sides.
 A_JOB = {"pr": 1, "main": 10, "widen": 6}
-FIFTY_EPOCHS = ("50-epochs", "50-epochs-waku")
+SEAT_50_POST = ("seat-50-post-groupv2", "seat-50-post-groupv2-waku-loss-0pct")
 SUITES = ("pr", "main", "long")
 LOGOS_CHAT = "https://github.com/logos-messaging/logos-chat"
 CHAT_SIM = "https://github.com/logos-messaging/chat-sim"
@@ -347,19 +350,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 def scenarios(suite: str, expected: Path) -> List[Tuple[str, int]]:
     """The scenarios of `suite` and how many runs of each it does.
 
-    For `pr` and `main` the goal's of each group at the suite's rates, as many as its seeds. For
-    `long` the two of fifty epochs and every scenario `expected` holds but the goal's, as many as
-    `expected` holds for each, and one when it holds none.
+    For `pr` and `main` `grow-3-adders` of each group at the suite's rates, as many as its seeds.
+    For `long` the two of `seat-50-post` and every scenario `expected` holds but `main`'s, as many
+    as `expected` holds for each, and one when it holds none.
     """
     if suite in RATES:
         return [
-            (goal.format(rate), seeds)
-            for goal in GOALS.values()
+            (grow.format(rate), seeds)
+            for grow in GROW_3_ADDERS.values()
             for rate, seeds in RATES[suite].items()
         ]
-    goal = {goal.format(rate) for goal in GOALS.values() for rate in RATES["main"]}
-    held = sorted(path.stem for path in expected.glob("*.json") if path.stem not in goal)
-    names = FIFTY_EPOCHS + tuple(held)
+    grown = {grow.format(rate) for grow in GROW_3_ADDERS.values() for rate in RATES["main"]}
+    held = sorted(path.stem for path in expected.glob("*.json") if path.stem not in grown)
+    names = SEAT_50_POST + tuple(held)
     return [(name, _held_runs(expected / f"{name}.json") or 1) for name in names]
 
 
@@ -427,11 +430,11 @@ def widen(matrix: dict, revision: str, base: str) -> List[dict]:
     counts, as nothing moved only where every outcome is the same."""
     moved = {cell["group"] for cell in matrix["cells"] if cell["change"] == "moved"}
     found = []
-    for group, goal in GOALS.items():
+    for group, grow in GROW_3_ADDERS.items():
         if group not in moved:
             continue
         for rate, seeds in RATES["pr"].items():
-            swept = [(goal.format(rate), RATES["main"][rate])]
+            swept = [(grow.format(rate), RATES["main"][rate])]
             found += jobs("widen", revision, base, swept, seeds + 1)
     # Every job at the revision first, as plan prints them.
     return sorted(found, key=lambda job: job["side"] == "base")
@@ -956,9 +959,9 @@ def _part(suite: str, name: str, first: int, count: int) -> str:
         return name
     rate = next(
         f"{GROUPS[group]} {rate}%"
-        for group, goal in GOALS.items()
+        for group, grow in GROW_3_ADDERS.items()
         for rate in RATES["main"]
-        if goal.format(rate) == name
+        if grow.format(rate) == name
     )
     if count == 1:
         return f"{rate} seed {first - 1}"

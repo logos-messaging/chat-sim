@@ -38,7 +38,7 @@ def files(revision: str, measurement: str) -> List[str]:
     return [
         f"{directory}/index.html",
         f"{directory}/point.json",
-        f"{directory}/50-epochs-by-saro-waku-loss-1/01/run.txt",
+        f"{directory}/grow-1-adder-groupv2-waku-loss-1pct/01/run.txt",
     ]
 
 
@@ -48,8 +48,8 @@ def long_files(revision: str, measurement: str) -> List[str]:
     return [
         f"{directory}/index.html",
         f"{directory}/long.json",
-        f"{directory}/grow-waku-loss-5/compare.txt",
-        f"{directory}/grow-waku-loss-5/1/run.txt",
+        f"{directory}/grow-3-adders-groupv2-waku-loss-5pct/compare.txt",
+        f"{directory}/grow-3-adders-groupv2-waku-loss-5pct/1/run.txt",
     ]
 
 

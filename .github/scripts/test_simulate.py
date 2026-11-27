@@ -37,17 +37,17 @@ ROOT = Path(__file__).resolve().parents[2]
 # rates, cut to what tools/sim matrix reads: 0.1% whole and split at epoch 46, 1% split at 18 and
 # 9, 5% split at 8 and 3.
 UPLOADED = ROOT / "tools" / "sim" / "tests" / "fixtures" / "matrix"
-# The goal UPLOADED holds runs of, a group of 51 that saro grows toward epoch 50, by the group's
-# name in a scenario, and the rates and seeds the suites ran of it.
-HELD_GOALS = {
-    "v2": "50-epochs-by-saro-waku-loss-{}",
-    "v3": "50-epochs-by-saro-waku-loss-{}-groupv3",
+# The scenario UPLOADED holds runs of, a group of 51 that saro grows toward epoch 50, by the
+# group's name in a scenario, and the rates and seeds the suites ran of it.
+GROW_1_ADDER = {
+    "v2": "grow-1-adder-groupv2-waku-loss-{}pct",
+    "v3": "grow-1-adder-groupv3-waku-loss-{}pct",
 }
 # Two of UPLOADED's runs as a head that split sooner, by the run's rate and seed: 1% seed 1 at
 # epoch 5, not 9, and 5% seed 0 at 4, not 8.
 SOONER = {"1/1": {"first_fork": 5}, "5/0": {"first_fork": 4}}
 HELD_SUITES = {
-    "GOALS": HELD_GOALS,
+    "GROW_3_ADDERS": GROW_1_ADDER,
     "RATES": {"pr": {"0.1": 2, "1": 2, "5": 2}, "main": {"0": 20, "0.1": 20, "1": 20, "5": 20}},
 }
 
@@ -85,10 +85,10 @@ def commit(sha: str) -> str:
 
 
 def with_groupv3(runs: Path, into: Path) -> Path:
-    """A copy of `runs` at `into` that holds each run of the goal on GroupV2 again as the run of
-    the goal on GroupV3 at its rate and seed, in an artifact of its own."""
+    """A copy of `runs` at `into` that holds each run of the scenario on GroupV2 again as its run
+    on GroupV3 at its rate and seed, in an artifact of its own."""
     groupv3 = {
-        HELD_GOALS["v2"].format(rate): HELD_GOALS["v3"].format(rate)
+        GROW_1_ADDER["v2"].format(rate): GROW_1_ADDER["v3"].format(rate)
         for rate in HELD_SUITES["RATES"]["main"]
     }
     shutil.copytree(runs, into)
@@ -107,76 +107,76 @@ class Fixture(unittest.TestCase):
         self.root = Path(directory.name)
         self.expected = self.root / "expected"
         held = (
-            "50-epochs-by-saro-waku-loss-1",
-            "50-epochs-by-saro-waku-loss-1-groupv3",
-            "grow-waku-loss-0.1",
-            "grow-waku-loss-1",
-            "grow-waku-loss-1-groupv3",
-            "grow-waku-size-50",
+            "grow-1-adder-groupv2-waku-loss-1pct",
+            "grow-1-adder-groupv3-waku-loss-1pct",
+            "grow-3-adders-groupv2-waku-loss-0.1pct",
+            "grow-3-adders-groupv2-waku-loss-1pct",
+            "grow-3-adders-groupv3-waku-loss-1pct",
+            "grow-3-adders-size-50-groupv2-waku-loss-0pct",
         )
         for name in held:
             write(self.expected / f"{name}.json", [outcome(0), outcome(1), outcome(2)])
 
 
 class Scenarios(Fixture):
-    def test_pr_is_three_seeds_of_the_goal_on_each_group_at_each_of_its_three_lossy_rates(self):
+    def test_pr_is_three_seeds_of_grow_3_adders_on_each_group_at_each_of_its_lossy_rates(self):
         self.assertEqual(
             simulate.scenarios("pr", self.expected),
             [
-                ("grow-waku-loss-0.5", 3),
-                ("grow-waku-loss-1", 3),
-                ("grow-waku-loss-5", 3),
-                ("grow-waku-loss-0.5-groupv3", 3),
-                ("grow-waku-loss-1-groupv3", 3),
-                ("grow-waku-loss-5-groupv3", 3),
+                ("grow-3-adders-groupv2-waku-loss-0.5pct", 3),
+                ("grow-3-adders-groupv2-waku-loss-1pct", 3),
+                ("grow-3-adders-groupv2-waku-loss-5pct", 3),
+                ("grow-3-adders-groupv3-waku-loss-0.5pct", 3),
+                ("grow-3-adders-groupv3-waku-loss-1pct", 3),
+                ("grow-3-adders-groupv3-waku-loss-5pct", 3),
             ],
         )
 
-    def test_main_is_three_seeds_of_the_goal_on_each_group_at_no_loss_and_twenty_at_each_loss(
+    def test_main_is_three_seeds_of_grow_3_adders_on_each_group_at_no_loss_and_twenty_at_a_loss(
         self,
     ):
         self.assertEqual(
             simulate.scenarios("main", self.expected),
             [
-                ("grow-waku-loss-0", 3),
-                ("grow-waku-loss-0.5", 20),
-                ("grow-waku-loss-1", 20),
-                ("grow-waku-loss-5", 20),
-                ("grow-waku-loss-0-groupv3", 3),
-                ("grow-waku-loss-0.5-groupv3", 20),
-                ("grow-waku-loss-1-groupv3", 20),
-                ("grow-waku-loss-5-groupv3", 20),
+                ("grow-3-adders-groupv2-waku-loss-0pct", 3),
+                ("grow-3-adders-groupv2-waku-loss-0.5pct", 20),
+                ("grow-3-adders-groupv2-waku-loss-1pct", 20),
+                ("grow-3-adders-groupv2-waku-loss-5pct", 20),
+                ("grow-3-adders-groupv3-waku-loss-0pct", 3),
+                ("grow-3-adders-groupv3-waku-loss-0.5pct", 20),
+                ("grow-3-adders-groupv3-waku-loss-1pct", 20),
+                ("grow-3-adders-groupv3-waku-loss-5pct", 20),
             ],
         )
 
-    def test_long_is_fifty_epochs_and_every_held_scenario_but_the_goals_as_held(self):
+    def test_long_is_seat_50_post_and_every_held_scenario_but_main_s_as_held(self):
         self.assertEqual(
             simulate.scenarios("long", self.expected),
             [
-                ("50-epochs", 1),
-                ("50-epochs-waku", 1),
-                ("50-epochs-by-saro-waku-loss-1", 3),
-                ("50-epochs-by-saro-waku-loss-1-groupv3", 3),
-                ("grow-waku-loss-0.1", 3),
-                ("grow-waku-size-50", 3),
+                ("seat-50-post-groupv2", 1),
+                ("seat-50-post-groupv2-waku-loss-0pct", 1),
+                ("grow-1-adder-groupv2-waku-loss-1pct", 3),
+                ("grow-1-adder-groupv3-waku-loss-1pct", 3),
+                ("grow-3-adders-groupv2-waku-loss-0.1pct", 3),
+                ("grow-3-adders-size-50-groupv2-waku-loss-0pct", 3),
             ],
         )
 
-    def test_the_goals_files_set_no_seed_so_that_seed_k_is_run_k_plus_1(self):
-        for goal in simulate.GOALS.values():
+    def test_the_files_of_grow_3_adders_set_no_seed_so_that_seed_k_is_run_k_plus_1(self):
+        for grow in simulate.GROW_3_ADDERS.values():
             for rate in simulate.RATES["main"]:
-                name = goal.format(rate)
+                name = grow.format(rate)
                 file = ROOT / "tools/sim/scenarios" / f"{name}.json"
                 self.assertNotIn("seed", json.loads(file.read_text("utf-8")), name)
 
-    def test_each_group_s_goal_creates_that_group_and_is_the_other_s_goal_but_for_it(self):
+    def test_each_group_s_grow_3_adders_creates_that_group_and_is_the_other_s_but_for_it(self):
         def read(name: str) -> dict:
             return json.loads((ROOT / "tools/sim/scenarios" / f"{name}.json").read_text("utf-8"))
 
         for rate in simulate.RATES["main"]:
             with self.subTest(rate=rate):
-                groupv2 = read(simulate.GOALS["v2"].format(rate))
-                groupv3 = read(simulate.GOALS["v3"].format(rate))
+                groupv2 = read(simulate.GROW_3_ADDERS["v2"].format(rate))
+                groupv3 = read(simulate.GROW_3_ADDERS["v3"].format(rate))
                 self.assertEqual((groupv2.get("group", "v2"), groupv3["group"]), ("v2", "v3"))
                 self.assertEqual(groupv2, {k: v for k, v in groupv3.items() if k != "group"})
 
@@ -193,8 +193,8 @@ class Jobs(unittest.TestCase):
         self.assertEqual(
             [(job["scenario"], job["from"], job["runs"]) for job in jobs[:18]],
             [
-                (goal.format(rate), first, 1)
-                for goal in simulate.GOALS.values()
+                (grow.format(rate), first, 1)
+                for grow in simulate.GROW_3_ADDERS.values()
                 for rate in ("0.5", "1", "5")
                 for first in (1, 2, 3)
             ],
@@ -220,8 +220,8 @@ class Jobs(unittest.TestCase):
         self.assertEqual(
             [(job["scenario"], job["from"], job["runs"]) for job in jobs],
             [
-                (goal.format(rate), first, min(10, seeds - first + 1))
-                for goal in simulate.GOALS.values()
+                (grow.format(rate), first, min(10, seeds - first + 1))
+                for grow in simulate.GROW_3_ADDERS.values()
                 for rate, seeds in (("0", 3), ("0.5", 20), ("1", 20), ("5", 20))
                 for first in range(1, seeds + 1, 10)
             ],
@@ -232,20 +232,20 @@ class Jobs(unittest.TestCase):
         )
 
     def test_long_is_a_job_a_scenario_a_side_that_does_its_runs_as_held(self):
-        swept = [("50-epochs", 1), ("grow-waku-loss-1", 3)]
+        swept = [("seat-50-post-groupv2", 1), ("grow-3-adders-groupv2-waku-loss-1pct", 3)]
         jobs = simulate.jobs("long", REVISION, BASE, swept)
 
         self.assertEqual(
             [(job["side"], job["scenario"], job["from"], job["runs"]) for job in jobs],
             [
-                ("revision", "50-epochs", 1, 1),
-                ("revision", "grow-waku-loss-1", 1, 3),
-                ("base", "50-epochs", 1, 1),
-                ("base", "grow-waku-loss-1", 1, 3),
+                ("revision", "seat-50-post-groupv2", 1, 1),
+                ("revision", "grow-3-adders-groupv2-waku-loss-1pct", 1, 3),
+                ("base", "seat-50-post-groupv2", 1, 1),
+                ("base", "grow-3-adders-groupv2-waku-loss-1pct", 1, 3),
             ],
         )
-        self.assertEqual(jobs[1]["name"], "head 0123456: grow-waku-loss-1")
-        self.assertEqual(jobs[2]["name"], "base 89abcde: 50-epochs")
+        self.assertEqual(jobs[1]["name"], "head 0123456: grow-3-adders-groupv2-waku-loss-1pct")
+        self.assertEqual(jobs[2]["name"], "base 89abcde: seat-50-post-groupv2")
 
 
 class Widen(unittest.TestCase):
@@ -280,7 +280,7 @@ class Widen(unittest.TestCase):
         self.assertEqual(
             [(job["scenario"], job["from"], job["runs"]) for job in jobs[:9]],
             [
-                (simulate.GOALS["v3"].format(rate), first, runs)
+                (simulate.GROW_3_ADDERS["v3"].format(rate), first, runs)
                 for rate in ("0.5", "1", "5")
                 for first, runs in ((4, 6), (10, 6), (16, 5))
             ],
@@ -765,7 +765,7 @@ class Drawn(unittest.TestCase):
         with_groupv3(UPLOADED, copy) if both else shutil.copytree(UPLOADED, copy)
         for cell, changed in edits.items():
             rate, seed, *group = cell.split("/")
-            scenario = HELD_GOALS[group[0] if group else "v2"].format(rate)
+            scenario = GROW_1_ADDER[group[0] if group else "v2"].format(rate)
             number = int(seed) + 1
             file = copy / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
             report = json.loads(file.read_text(encoding="utf-8"))
@@ -779,7 +779,7 @@ class Drawn(unittest.TestCase):
         """`side` with runs of `group` at `rate` at `seeds` too, each a copy of seed 0's at its own
         seed: by default seeds 2 to 7, eight seeds, as many as can fork earlier or later beyond
         chance."""
-        scenario = HELD_GOALS[group].format(rate)
+        scenario = GROW_1_ADDER[group].format(rate)
         first = side / f"sim-revision-{scenario}-1" / scenario / "1" / "run.json"
         report = json.loads(first.read_text(encoding="utf-8"))
         for seed in seeds:
@@ -791,7 +791,7 @@ class Drawn(unittest.TestCase):
 
     def unbuilt(self, side: Path, rate: str, seed: int) -> None:
         """The artifact of the job of a run at `rate` and `seed` as one that could not build."""
-        scenario, number = HELD_GOALS["v2"].format(rate), seed + 1
+        scenario, number = GROW_1_ADDER["v2"].format(rate), seed + 1
         job = side / f"sim-revision-{scenario}-{number}"
         shutil.rmtree(job, ignore_errors=True)
         (job / scenario / str(number)).mkdir(parents=True)
@@ -810,7 +810,7 @@ class Drawn(unittest.TestCase):
         return out
 
     def pr_jobs(self) -> List[dict]:
-        """The run jobs of pr, as the suite ran the goal UPLOADED holds the runs of."""
+        """The run jobs of pr, as the suite ran the scenario UPLOADED holds the runs of."""
         with mock.patch.multiple(simulate, **HELD_SUITES):
             return simulate.jobs("pr", REVISION, BASE, simulate.scenarios("pr", Path()))
 
@@ -1000,7 +1000,7 @@ class Drawn(unittest.TestCase):
         self.assertEqual(
             {(job["side"], job["scenario"], job["from"]) for job in more},
             {
-                (side, HELD_GOALS["v3"].format(rate), start)
+                (side, GROW_1_ADDER["v3"].format(rate), start)
                 for side in ("revision", "base")
                 for rate in ("0.1", "1", "5")
                 for start in (3, 9, 15)
@@ -1010,7 +1010,7 @@ class Drawn(unittest.TestCase):
             for rate in ("0.1", "1", "5"):
                 self.widened(side, rate, "v3", range(2, 20))
         for seed in range(2, 10):
-            scenario, number = HELD_GOALS["v3"].format("1"), seed + 1
+            scenario, number = GROW_1_ADDER["v3"].format("1"), seed + 1
             file = head / f"sim-revision-{scenario}-{number}" / scenario / str(number) / "run.json"
             report = json.loads(file.read_text(encoding="utf-8"))
             edited(report, {"first_fork": 10})
@@ -1061,13 +1061,13 @@ class Drawn(unittest.TestCase):
         unbuilt_base = self.uploaded("unbuilt-base", both=True)
         self.unbuilt(unbuilt_base, "1", 1)
         no_outcome = self.uploaded("no-outcome", both=True)
-        shutil.rmtree(no_outcome / "sim-revision-50-epochs-by-saro-waku-loss-5-2")
+        shutil.rmtree(no_outcome / "sim-revision-grow-1-adder-groupv2-waku-loss-5pct-2")
         unbuilt = self.uploaded("unbuilt-head", both=True)
         self.unbuilt(unbuilt, "1", 1)
         sooner = self.uploaded("sooner", both=True, **{"5/0": {"first_fork": 4}})
         later = {"1/0": {"first_fork": 4}, "5/0": {"first_fork": 49}}
         mixed = self.uploaded("mixed", both=True, **later)
-        shutil.rmtree(mixed / "sim-revision-50-epochs-by-saro-waku-loss-5-2")
+        shutil.rmtree(mixed / "sim-revision-grow-1-adder-groupv2-waku-loss-5pct-2")
         same = "nothing moved in seeds 0 to 1"
         moved = "0 later, 1 earlier, 1 tied (p 1)"
         missing = "no outcome in 1 of 2 runs"
@@ -1230,9 +1230,9 @@ class Drawn(unittest.TestCase):
 
     def test_main_with_a_job_that_uploaded_nothing_counts_its_runs_with_no_outcome(self):
         head = self.uploaded("head")
-        shutil.rmtree(head / "sim-revision-50-epochs-by-saro-waku-loss-1-2")
+        shutil.rmtree(head / "sim-revision-grow-1-adder-groupv2-waku-loss-1pct-2")
         asked = [
-            {"scenario": HELD_GOALS["v2"].format(rate), "from": 1, "runs": 2}
+            {"scenario": GROW_1_ADDER["v2"].format(rate), "from": 1, "runs": 2}
             for rate in ("0.1", "1", "5")
         ]
         _, out, _ = self.comment("main", self.matrix(head, None, asked))
@@ -1340,7 +1340,7 @@ class Comment(Fixture):
         self.base_runs = self.root / "base"
         self.names = [name for name, _ in simulate.scenarios("long", self.expected)]
         for name in self.names:
-            count = 1 if name.startswith("50-epochs") else 3
+            count = 1 if name.startswith("seat-50-post") else 3
             write(
                 self.swept(self.runs, name) / "outcomes.json",
                 [outcome(seed) for seed in range(count)],
@@ -1394,10 +1394,10 @@ class Comment(Fixture):
 
     def test_against_the_base_says_what_compare_counted(self):
         write(
-            self.swept(self.runs, "grow-waku-loss-0.1") / "outcomes.json",
+            self.swept(self.runs, "grow-3-adders-groupv2-waku-loss-0.1pct") / "outcomes.json",
             [outcome(0), outcome(1, "split at epoch 9"), outcome(2, "split at epoch 4")],
         )
-        self.compared("grow-waku-loss-0.1", "1 of 3 runs came out as expected")
+        self.compared("grow-3-adders-groupv2-waku-loss-0.1pct", "1 of 3 runs came out as expected")
         status, out, _ = self.comment(*self.with_base, "--pr", "316")
         self.assertEqual(status, 0)
         self.assertIn(
@@ -1409,39 +1409,41 @@ class Comment(Fixture):
         self.assertIn("| Scenario | Runs | Came to | Against the base |", out)
         rows = self.rows(out)
         self.assertEqual(
-            rows["grow-waku-loss-0.1"],
+            rows["grow-3-adders-groupv2-waku-loss-0.1pct"],
             [
                 "3",
                 "whole · split at epoch 9 · split at epoch 4",
                 "1 of 3 runs came out as expected",
             ],
         )
-        self.assertEqual(rows["50-epochs"], ["1", "whole", "no outcome at the base"])
+        self.assertEqual(rows["seat-50-post-groupv2"], ["1", "whole", "no outcome at the base"])
         self.assertIn(f"chat-sim `fedcba9` · [the run]({RUN_URL})", out)
 
     def test_without_a_base_holds_to_what_is_expected_and_says_where_nothing_is(self):
-        self.compared("grow-waku-size-50", "3 of 3 runs came out as expected")
+        self.compared(
+            "grow-3-adders-size-50-groupv2-waku-loss-0pct", "3 of 3 runs came out as expected"
+        )
         status, out, _ = self.comment()
         self.assertEqual(status, 0)
         self.assertIn("against what chat-sim holds in `tools/sim/expected`", out)
         self.assertIn("| Scenario | Runs | Came to | Against what is held |", out)
         rows = self.rows(out)
-        self.assertEqual(rows["50-epochs"], ["1", "whole", "nothing held"])
+        self.assertEqual(rows["seat-50-post-groupv2"], ["1", "whole", "nothing held"])
         self.assertEqual(
-            rows["grow-waku-size-50"],
+            rows["grow-3-adders-size-50-groupv2-waku-loss-0pct"],
             ["3", "whole · whole · whole", "3 of 3 runs came out as expected"],
         )
 
     def test_a_scenario_with_no_outcome_says_so(self):
-        (self.swept(self.runs, "50-epochs") / "outcomes.json").unlink()
+        (self.swept(self.runs, "seat-50-post-groupv2") / "outcomes.json").unlink()
         write(
-            self.swept(self.runs, "grow-waku-loss-0.1") / "outcomes.json",
+            self.swept(self.runs, "grow-3-adders-groupv2-waku-loss-0.1pct") / "outcomes.json",
             [outcome(0), outcome(1, None)],
         )
         _, out, _ = self.comment(*self.with_base)
         rows = self.rows(out)
-        self.assertEqual(rows["50-epochs"], ["1", "no outcome", "-"])
-        self.assertEqual(rows["grow-waku-loss-0.1"][1], "whole · no verdict")
+        self.assertEqual(rows["seat-50-post-groupv2"], ["1", "no outcome", "-"])
+        self.assertEqual(rows["grow-3-adders-groupv2-waku-loss-0.1pct"][1], "whole · no verdict")
 
     def test_a_run_of_a_grow_step_with_no_verdict_says_how_its_lineage_ended(self):
         endings = (
@@ -1454,12 +1456,14 @@ class Comment(Fixture):
             dict(outcome(seed, None), trunk_epoch=trunk, first_fork=fork, ended=ended)
             for seed, (trunk, fork, ended) in enumerate(endings)
         ]
-        write(self.swept(self.runs, "grow-waku-loss-0.1") / "outcomes.json", grown)
+        write(
+            self.swept(self.runs, "grow-3-adders-groupv2-waku-loss-0.1pct") / "outcomes.json", grown
+        )
 
         _, out, _ = self.comment(*self.with_base)
 
         self.assertEqual(
-            self.rows(out)["grow-waku-loss-0.1"][1],
+            self.rows(out)["grow-3-adders-groupv2-waku-loss-0.1pct"][1],
             "split at epoch 9 · stalled at epoch 4 · whole · whole, members behind",
         )
 
@@ -1493,7 +1497,9 @@ class Comment(Fixture):
         self.unbuilt(self.base_runs)
         _, out, _ = self.comment(*self.with_base)
         rows = self.rows(out)
-        self.assertEqual(rows["50-epochs"], ["1", "whole", "chat-sim does not build at the base"])
+        self.assertEqual(
+            rows["seat-50-post-groupv2"], ["1", "whole", "chat-sim does not build at the base"]
+        )
 
     def test_refuses_a_base_without_its_runs_and_runs_without_a_base(self):
         for extra in (("--base", BASE), ("--base-runs", str(self.base_runs))):
@@ -1504,11 +1510,13 @@ class Comment(Fixture):
                 self.assertIn("--base-runs", err)
 
     def test_shows_each_compare_folded_under_the_table(self):
-        compared = self.compared("grow-waku-loss-0.1", "3 of 3 runs came out as expected")
+        compared = self.compared(
+            "grow-3-adders-groupv2-waku-loss-0.1pct", "3 of 3 runs came out as expected"
+        )
         _, out, _ = self.comment()
         self.assertIn(
-            "<details><summary><code>grow-waku-loss-0.1</code></summary>\n\n```\n"
-            f"{compared}```\n\n</details>\n",
+            "<details><summary><code>grow-3-adders-groupv2-waku-loss-0.1pct</code></summary>\n\n"
+            f"```\n{compared}```\n\n</details>\n",
             out,
         )
         self.assertEqual(out.count("<details>"), 1)
@@ -1741,7 +1749,7 @@ class SweepWorkflow(unittest.TestCase):
             self.sweep,
         )[1]
         pin = [line.strip().replace("$REVISION", REVISION) for line in step.splitlines()]
-        cell = {"scenario": "grow-waku-loss-0.1", "run": 2, "seed": 1}
+        cell = {"scenario": "grow-3-adders-groupv2-waku-loss-0.1pct", "run": 2, "seed": 1}
 
         again = simulate.again(cell, REVISION, CHAT_SIM)
 

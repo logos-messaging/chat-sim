@@ -16,8 +16,8 @@ row says what ran, its commit, when, and how many sweeps were as expected. It li
 the CI run.
 
 A report page has one row per sweep: `as expected`, `not as expected` or `no outcome`. Then come
-each sweep's `compare` output, its `sweep.txt` and each run's text, and the two runs of fifty
-epochs.
+each sweep's `compare` output, its `sweep.txt` and each run's text, and the two runs of
+`seat-50-post`.
 
 A pull request's row and page go when it closes. A pull request from a fork gets neither: its
 token cannot push to the site.
