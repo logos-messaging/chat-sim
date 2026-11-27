@@ -75,10 +75,15 @@ details.text>summary{font-size:13px;color:var(--muted)}
 .n{text-align:right;font-variant-numeric:tabular-nums}
 .rates th[colspan]{text-align:center}
 .rates td,.runs td.n{white-space:nowrap}
+.reading{max-width:52rem;color:var(--muted)}
 
 .tree path{fill:none;stroke-linejoin:round;stroke-linecap:round}
 .tree.head path{stroke:var(--rate-2)}
 .tree.head circle{fill:var(--rate-2)}
+.v2 .tree.head path{stroke:var(--v2)}
+.v2 .tree.head circle{fill:var(--v2)}
+.v3 .tree.head path{stroke:var(--v3)}
+.v3 .tree.head circle{fill:var(--v3)}
 .tree.base path{stroke:var(--muted)}
 .tree.base circle{fill:var(--muted)}
 .tree.sketch path{stroke-dasharray:3 3}
@@ -108,6 +113,9 @@ background:var(--neutral-bg);color:var(--muted)}
 .forks .seed{width:306px;padding:0 9px;font-size:12px;color:var(--muted)}
 .forks .seed b{color:var(--fg)}
 .forks .vacant{width:324px}
+.forks>details{margin:0}
+.forks>details>summary{margin-left:126px;font-size:12px;color:var(--link)}
+.forks>details>div{display:flex;align-items:flex-start;gap:10px;margin-top:10px}
 .ds{display:flex;gap:4px;margin:0 0 4px}
 .d{display:flex;flex-direction:column;align-items:center;min-width:26px;padding:1px 4px 2px;
 border:1px solid var(--line);border-radius:4px;font-size:12px;font-weight:600;
@@ -121,18 +129,20 @@ font-variant-numeric:tabular-nums;color:var(--fg);text-decoration:none}
 .chart .forks svg{display:block;max-width:none}
 .fork{padding:6px 8px 8px;border:1px solid var(--line);border-radius:6px;color:var(--fg);
 text-decoration:none}
-.fork:hover{border-color:var(--link)}
+a.fork:hover{border-color:var(--link)}
+.fork a:hover .hit{fill:var(--link);fill-opacity:.08}
 .fork.moved{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
 .fork.unbuilt{border-color:var(--none);border-style:dashed}
 .said{display:flex;align-items:center;gap:6px;height:20px;margin:0 0 2px;font-size:12px;
 color:var(--muted);white-space:nowrap}
 .said b{color:var(--fg)}
+.fork .said{max-width:306px}
+.fork .said>span:not(.chip){min-width:0;overflow:hidden;text-overflow:ellipsis}
 .rate .said{font-size:13px}
 .outlined{padding:0 6px;border:1px solid var(--fg);border-radius:4px;
 box-shadow:0 0 0 1px var(--fg)}
 .ran{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:.75rem 0 .25rem;
 font-size:16px}
-.reading{max-width:52rem;color:var(--muted)}
 .how{max-width:52rem;margin:.25rem 0 .5rem;padding-left:1.25rem}
 .about{max-width:52rem;margin:0 0 1rem}
 #scenarios+.lead{max-width:52rem}
@@ -143,7 +153,7 @@ font-size:16px}
 <p class="muted"><a href="../../../../../">chat-sim</a> / <a href="../../../../">logos-chat</a> / <a href="../../../">#371</a> / GroupV3 5%, seed 11</p>
 <h1>GroupV3 · 5% loss · seed 11</h1>
 <p class="ran"><span class="chip moved">moved</span> <span>The head first forked at epoch 6, and the base first forked at epoch 6. The runs differ, but not in the epoch of the first fork, so the run counts neither earlier nor later.</span></p>
-<p class="facts">head <a href="https://github.com/logos-messaging/logos-chat/commit/d1a77f443298447aa8c746bede73f829884f1473"><code>d1a77f4</code></a> · merge base <a href="https://github.com/logos-messaging/logos-chat/commit/92cfdde86bdb692f6e5e6e30f61f02ec71093260"><code>92cfdde</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/749f669564cb335f9f302fcdd014d15ab36cdd08"><code>749f669</code></a></p>
+<p class="facts">head <a href="https://github.com/logos-messaging/logos-chat/commit/d1a77f443298447aa8c746bede73f829884f1473"><code>d1a77f4</code></a> · merge base <a href="https://github.com/logos-messaging/logos-chat/commit/92cfdde86bdb692f6e5e6e30f61f02ec71093260"><code>92cfdde</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/7a5b74c386c96b07decddc0917c96efc0c547458"><code>7a5b74c</code></a></p>
 <div class="chart wide">
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1118 788" width="1118" height="788" role="img" aria-label="GroupV3 5%, seed 11: the head&#x27;s tree over the base&#x27;s"><line class="epoch" x1="92.0" x2="92.0" y1="20" y2="788"/><line class="epoch" x1="244.0" x2="244.0" y1="20" y2="788"/><line class="epoch" x1="396.0" x2="396.0" y1="20" y2="788"/><line class="epoch" x1="548.0" x2="548.0" y1="20" y2="788"/><line class="epoch" x1="700.0" x2="700.0" y1="20" y2="788"/><line class="epoch" x1="852.0" x2="852.0" y1="20" y2="788"/><text class="axis small" x="92.0" y="14" text-anchor="middle">0</text><text class="axis small" x="244.0" y="14" text-anchor="middle">10</text><text class="axis small" x="396.0" y="14" text-anchor="middle">20</text><text class="axis small" x="548.0" y="14" text-anchor="middle">30</text><text class="axis small" x="700.0" y="14" text-anchor="middle">40</text><text class="axis small" x="852.0" y="14" text-anchor="middle">50</text><text class="note" x="866.0" y="14">the goal</text><text class="label strong" x="0" y="84">head</text><text class="note" x="0" y="100">d1a77f4</text><line class="mark" x1="183.2" x2="183.2" y1="72" y2="58"/><text class="note" x="188.2" y="67">first fork <tspan class="label strong">6</tspan></text><g class="tree head"><g><title>line 4, off line 1: 1 member, epoch 21</title><path d="M411.2 192.0V220.0H411.2" stroke-width="3.70"/><circle cx="411.2" cy="220.0" r="3.50"/></g><g><title>line 1, off the trunk: 17 members, epochs 6 to 23</title><path d="M183.2 80.0V192.0H441.6" stroke-width="9.00"/><circle cx="441.6" cy="192.0" r="5.25"/></g><g><title>line 2, off the trunk: 7 members, epochs 11 to 17</title><path d="M259.2 80.0V164.0H350.4" stroke-width="6.49"/><circle cx="350.4" cy="164.0" r="4.00"/></g><g><title>line 3, off the trunk: 10 members, epochs 14 to 23</title><path d="M304.8 80.0V136.0H441.6" stroke-width="7.37"/><circle cx="441.6" cy="136.0" r="4.43"/></g><g><title>line 5, off the trunk: 2 members, epoch 21</title><path d="M411.2 80.0V108.0H411.2" stroke-width="4.40"/><circle cx="411.2" cy="108.0" r="3.50"/></g><g><title>trunk: 12 members, epochs 0 to 21</title><path d="M92.0 80.0H411.2" stroke-width="7.88"/><circle cx="411.2" cy="80.0" r="4.69"/></g></g><text class="note" x="420.7" y="224.0"><tspan class="label strong">1 member</tspan>, epoch 21, off line 1</text><text class="note" x="452.9" y="196.0"><tspan class="label strong">17 members</tspan>, epochs 6 to 23</text><text class="note" x="360.4" y="168.0"><tspan class="label strong">7 members</tspan>, epochs 11 to 17</text><text class="note" x="452.0" y="140.0"><tspan class="label strong">10 members</tspan>, epochs 14 to 23</text><text class="note" x="420.7" y="112.0"><tspan class="label strong">2 members</tspan>, epoch 21</text><text class="note" x="421.9" y="84.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">12 members</tspan>, epochs 0 to 21</text><text class="note" x="0" y="258">fell behind</text><g class="fell"><title>mira fell behind at epoch 7</title><circle cx="198.4" cy="254" r="4"/><text class="note" x="206.4" y="258">mira at 7</text></g><g class="fell"><title>tomo fell behind at epoch 11</title><circle cx="259.2" cy="254" r="4"/><text class="note" x="267.2" y="258">tomo at 11</text></g><g class="fell"><title>peer9, peer19 fell behind at epoch 12</title><circle cx="274.4" cy="272" r="4"/><text class="note" x="282.4" y="276">peer9, peer19 at 12</text></g><g class="fell"><title>peer19 fell behind at epoch 13</title><circle cx="289.6" cy="290" r="4"/><text class="note" x="297.6" y="294">peer19 at 13</text></g><g class="fell"><title>peer34, peer27 fell behind at epoch 14</title><circle cx="304.8" cy="308" r="4"/><text class="note" x="312.8" y="312">peer34, peer27 at 14</text></g><g class="fell"><title>mira, peer42 fell behind at epoch 15</title><circle cx="320.0" cy="326" r="4"/><text class="note" x="328.0" y="330">mira, peer42 at 15</text></g><g class="fell"><title>mira fell behind at epoch 16</title><circle cx="335.2" cy="254" r="4"/><text class="note" x="343.2" y="258">mira at 16</text></g><g class="fell"><title>saro fell behind at epoch 18</title><circle cx="365.6" cy="344" r="4"/><text class="note" x="373.6" y="348">saro at 18</text></g><g class="fell"><title>tomo fell behind at epoch 21</title><circle cx="411.2" cy="254" r="4"/><text class="note" x="419.2" y="258">tomo at 21</text></g><g class="fell"><title>peer27 fell behind at epoch 22</title><circle cx="426.4" cy="272" r="4"/><text class="note" x="434.4" y="276">peer27 at 22</text></g><text class="note" x="0" y="376">members</text><text class="note" x="92" y="376"><tspan class="label strong">72 seated</tspan> · 12 on the trunk · 37 on 5 lines off it · 1 behind at the end · </text><g class="ring"><title>23 never joined</title><rect x="461.6" y="365.0" width="32" height="14" rx="7"/><circle cx="469.1" cy="372.0" r="3"/><text x="475.6" y="375.5">23</text></g><text class="note" x="498.6" y="376">never joined</text><line class="rule" x1="0" x2="1118" y1="392" y2="392"/><text class="label strong" x="0" y="454">base</text><text class="note" x="0" y="470">92cfdde</text><line class="mark" x1="183.2" x2="183.2" y1="442" y2="428"/><text class="note" x="188.2" y="437">first fork <tspan class="label strong">6</tspan></text><g class="tree base"><g><title>line 4, off line 3: 5 members, epochs 16 to 19</title><path d="M335.2 590.0V618.0H380.8" stroke-width="5.80"/><circle cx="380.8" cy="618.0" r="3.65"/></g><g><title>line 3, off line 1: 5 members, epochs 15 to 18</title><path d="M320.0 562.0V590.0H365.6" stroke-width="5.80"/><circle cx="365.6" cy="590.0" r="3.65"/></g><g><title>line 1, off the trunk: 15 members, epochs 6 to 22</title><path d="M183.2 450.0V562.0H426.4" stroke-width="8.58"/><circle cx="426.4" cy="562.0" r="5.04"/></g><g><title>line 2, off the trunk: 6 members, epochs 11 to 17</title><path d="M259.2 450.0V534.0H350.4" stroke-width="6.16"/><circle cx="350.4" cy="534.0" r="3.83"/></g><g><title>line 5, off the trunk: 1 member, epoch 21</title><path d="M411.2 450.0V506.0H411.2" stroke-width="3.70"/><circle cx="411.2" cy="506.0" r="3.50"/></g><g><title>line 6, off the trunk: 2 members, epoch 24</title><path d="M456.8 450.0V478.0H456.8" stroke-width="4.40"/><circle cx="456.8" cy="478.0" r="3.50"/></g><g><title>trunk: 15 members, epochs 0 to 24</title><path d="M92.0 450.0H456.8" stroke-width="8.58"/><circle cx="456.8" cy="450.0" r="5.04"/></g></g><text class="note" x="390.4" y="622.0"><tspan class="label strong">5 members</tspan>, epochs 16 to 19, off line 3</text><text class="note" x="375.2" y="594.0"><tspan class="label strong">5 members</tspan>, epochs 15 to 18, off line 1</text><text class="note" x="437.4" y="566.0"><tspan class="label strong">15 members</tspan>, epochs 6 to 22</text><text class="note" x="360.2" y="538.0"><tspan class="label strong">6 members</tspan>, epochs 11 to 17</text><text class="note" x="420.7" y="510.0"><tspan class="label strong">1 member</tspan>, epoch 21</text><text class="note" x="466.3" y="482.0"><tspan class="label strong">2 members</tspan>, epoch 24</text><text class="note" x="467.8" y="454.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">15 members</tspan>, epochs 0 to 24</text><text class="note" x="0" y="656">fell behind</text><g class="fell"><title>mira fell behind at epoch 7</title><circle cx="198.4" cy="652" r="4"/><text class="note" x="206.4" y="656">mira at 7</text></g><g class="fell"><title>saro fell behind at epoch 12</title><circle cx="274.4" cy="652" r="4"/><text class="note" x="282.4" y="656">saro at 12</text></g><g class="fell"><title>mira fell behind at epoch 13</title><circle cx="289.6" cy="670" r="4"/><text class="note" x="297.6" y="674">mira at 13</text></g><g class="fell"><title>peer30 fell behind at epoch 14</title><circle cx="304.8" cy="688" r="4"/><text class="note" x="312.8" y="692">peer30 at 14</text></g><g class="fell"><title>peer36, peer41 fell behind at epoch 15</title><circle cx="320.0" cy="706" r="4"/><text class="note" x="328.0" y="710">peer36, peer41 at 15</text></g><g class="fell"><title>pax, peer19 fell behind at epoch 16</title><circle cx="335.2" cy="724" r="4"/><text class="note" x="343.2" y="728">pax, peer19 at 16</text></g><g class="fell"><title>mira, peer51 fell behind at epoch 18</title><circle cx="365.6" cy="652" r="4"/><text class="note" x="373.6" y="656">mira, peer51 at 18</text></g><g class="fell"><title>peer24, peer47 fell behind at epoch 19</title><circle cx="380.8" cy="670" r="4"/><text class="note" x="388.8" y="674">peer24, peer47 at 19</text></g><g class="fell"><title>tomo fell behind at epoch 21</title><circle cx="411.2" cy="688" r="4"/><text class="note" x="419.2" y="692">tomo at 21</text></g><g class="fell"><title>peer40 fell behind at epoch 22</title><circle cx="426.4" cy="742" r="4"/><text class="note" x="434.4" y="746">peer40 at 22</text></g><text class="note" x="0" y="774">members</text><text class="note" x="92" y="774"><tspan class="label strong">72 seated</tspan> · 15 on the trunk · 34 on 6 lines off it · </text><g class="ring"><title>23 never joined</title><rect x="352.0" y="763.0" width="32" height="14" rx="7"/><circle cx="359.5" cy="770.0" r="3"/><text x="366.0" y="773.5">23</text></g><text class="note" x="389.0" y="774">never joined</text></svg>
 </div>
@@ -233,14 +243,14 @@ font-size:16px}
 <h2>Run it yourself</h2>
 <p class="reading">It needs Linux on x86-64, Nix with flakes, jq and python3. Run each block from a directory of its own, since each clones chat-sim.</p>
 <p class="side">the head <code>d1a77f4</code></p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 749f669564cb335f9f302fcdd014d15ab36cdd08
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 7a5b74c386c96b07decddc0917c96efc0c547458
 pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
 sed -i &quot;s/$pinned/d1a77f443298447aa8c746bede73f829884f1473/g&quot; flake.nix Cargo.toml
 nix flake lock
 nix develop -c cargo build --release -p harness --bin harness-run
 python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-5-groupv3.json --from 12 --runs 1 --one-process target/release/harness-run --out tmp/grow-waku-loss-5-groupv3-seed-11</pre>
 <p class="side">the base <code>92cfdde</code></p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 749f669564cb335f9f302fcdd014d15ab36cdd08
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 7a5b74c386c96b07decddc0917c96efc0c547458
 pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
 sed -i &quot;s/$pinned/92cfdde86bdb692f6e5e6e30f61f02ec71093260/g&quot; flake.nix Cargo.toml
 nix flake lock
@@ -253,6 +263,6 @@ python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-5-groupv3.json --from
 <p class="file"><a href="../../../base/grow-waku-loss-5-groupv3/12/run.txt">run.txt</a> · <a href="../../../base/grow-waku-loss-5-groupv3/12/run.json">run.json</a></p>
 <h2>The log</h2>
 <p class="reading">The site keeps no log: each job uploads its runs' as an artifact of the workflow run, which GitHub keeps 90 days. This downloads both sides', and the run's log is <code>group.log</code> under run 12 of each. What to read in it: the guide's <a href="../../../../../guide/investigate/moved-run/#into-the-log">Into the log</a>.</p>
-<pre>gh run download 45832841793 --repo logos-messaging/chat-sim --dir logs --pattern &#x27;logs-revision-grow-waku-loss-5-groupv3-[0-9]*&#x27; --pattern &#x27;logs-base-grow-waku-loss-5-groupv3-[0-9]*&#x27;</pre>
+<pre>gh run download 45967989270 --repo logos-messaging/chat-sim --dir logs --pattern &#x27;logs-revision-grow-waku-loss-5-groupv3-[0-9]*&#x27; --pattern &#x27;logs-base-grow-waku-loss-5-groupv3-[0-9]*&#x27;</pre>
 </body>
 </html>
