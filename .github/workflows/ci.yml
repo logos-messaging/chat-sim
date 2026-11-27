@@ -256,12 +256,12 @@ jobs:
 
       # The pages every report shares, the list of the reports and the landing
       # page, are written by the default branch's pages.py, not a pull request's.
+      # The whole tree, since pages.py imports tools/sim.
       - name: Checkout the default branch's scripts
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
           path: base
-          sparse-checkout: .github/scripts
 
       # Fails when there is no gh-pages branch, which is made once, by hand.
       - name: Checkout gh-pages
