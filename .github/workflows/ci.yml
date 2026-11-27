@@ -108,11 +108,11 @@ jobs:
       # the same run whenever it is made, so a logos-chat revision that changes
       # its outcome changed the core, if only in the random numbers it draws.
       - name: Run seat-50-post
-        run: nix run .#groupv2-simulation -- run tools/sim/scenarios/seat-50-post-groupv2.json --out "$RUNNER_TEMP/sim/seat-50-post-groupv2"
+        run: nix run .#sim -- run tools/sim/scenarios/seat-50-post-groupv2.json --out "$RUNNER_TEMP/sim/seat-50-post-groupv2"
       # Runs when the first run fails as well, so that the report has both.
       - name: Run seat-50-post on Waku's delays
         if: ${{ !cancelled() }}
-        run: nix run .#groupv2-simulation -- run tools/sim/scenarios/seat-50-post-groupv2-waku-loss-0pct.json --out "$RUNNER_TEMP/sim/seat-50-post-groupv2-waku-loss-0pct"
+        run: nix run .#sim -- run tools/sim/scenarios/seat-50-post-groupv2-waku-loss-0pct.json --out "$RUNNER_TEMP/sim/seat-50-post-groupv2-waku-loss-0pct"
       # Each run's files, for the report on Pages, without group.log,
       # plan.json, result.json, runner.out and runner.stderr. The wildcard makes
       # $RUNNER_TEMP/sim the artifact's root, so each run keeps the directory
@@ -183,7 +183,7 @@ jobs:
           attic-token-ci: ${{ secrets.ATTIC_TOKEN_CI }}
           attic-token-public: ${{ secrets.ATTIC_TOKEN_PUBLIC }}
       - name: Sweep as many runs as are expected
-        run: nix run .#groupv2-simulation -- sweep "tools/sim/scenarios/$SCENARIO.json" --runs "$RUNS" --out "$RUNNER_TEMP/sim/$SCENARIO"
+        run: nix run .#sim -- sweep "tools/sim/scenarios/$SCENARIO.json" --runs "$RUNS" --out "$RUNNER_TEMP/sim/$SCENARIO"
       # A run in one process is the same run whenever it is made, so an outcome
       # other than the one expected was moved by the revision its runner was
       # built from, if only in what it draws at random or which frames it loses.

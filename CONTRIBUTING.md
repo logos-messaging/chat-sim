@@ -48,7 +48,7 @@ each `grow-3-adders` one. A change that moves how a run comes out, such as a new
 outcomes written again, and the file's diff shows what moved:
 
 ```sh
-nix run .#groupv2-simulation -- sweep tools/sim/scenarios/grow-3-adders-groupv2-waku-loss-5pct.json --runs 3 --out tmp/grow-3-adders-groupv2-waku-loss-5pct
+nix run .#sim -- sweep tools/sim/scenarios/grow-3-adders-groupv2-waku-loss-5pct.json --runs 3 --out tmp/grow-3-adders-groupv2-waku-loss-5pct
 python3 tools/sim compare --write tools/sim/expected/grow-3-adders-groupv2-waku-loss-5pct.json tmp/grow-3-adders-groupv2-waku-loss-5pct
 ```
 

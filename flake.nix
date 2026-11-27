@@ -57,13 +57,13 @@
         }
       );
 
-      # `nix run .#groupv2-simulation -- run tools/sim/scenarios/seat-50-post-groupv2.json --out DIR`:
+      # `nix run .#sim -- run tools/sim/scenarios/seat-50-post-groupv2.json --out DIR`:
       # tools/sim with the runner built and passed to it.
       apps = forAllSystems ({ pkgs, system, ... }:
         let
           packages = self.packages.${system};
           # tools/sim finds tools/forks by its place in the repository.
-          sim = pkgs.lib.fileset.toSource {
+          tools = pkgs.lib.fileset.toSource {
             root = ./.;
             fileset = ./tools;
           };
@@ -77,9 +77,9 @@
           };
         in
         {
-          groupv2-simulation = app "groupv2-simulation"
+          sim = app "sim"
             "tools/sim with its members in one process, on a virtual clock"
-            ''exec python3 ${sim}/tools/sim "$@" --one-process ${pkgs.lib.getExe packages.harness-run}'';
+            ''exec python3 ${tools}/tools/sim "$@" --one-process ${pkgs.lib.getExe packages.harness-run}'';
         }
       );
 

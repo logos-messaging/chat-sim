@@ -13,7 +13,7 @@ python3 tools/sim run SCENARIO --one-process PATH --out DIR
 python3 tools/sim sweep SCENARIO --one-process PATH --out DIR --runs K [--from N]
 python3 tools/sim compare [--write] EXPECTED OUT
 python3 tools/sim matrix HEAD [--base DIR] [--asked FILE] [--out FILE]
-nix run .#groupv2-simulation -- run SCENARIO --out DIR
+nix run .#sim -- run SCENARIO --out DIR
 ```
 
 | Command | Does |
@@ -24,8 +24,8 @@ nix run .#groupv2-simulation -- run SCENARIO --out DIR
 | `matrix` | pairs the runs under `HEAD` with those under `--base` by scenario and seed, gives each group its verdict, and writes the pairs and the verdicts as JSON: the matrix. `--asked FILE` lists the sweeps each side was asked for, so that a run nobody made counts as one with no outcome |
 
 `--one-process PATH` is the runner, `harness-run`. `--out DIR` must not exist. The flake's app
-`groupv2-simulation` builds `harness-run` from the checkout and adds `--one-process` to what
-follows `--`, so it runs `run` and `sweep`. `compare` and `matrix` run with `python3`.
+`sim` builds `harness-run` from the checkout and adds `--one-process` to what follows `--`, so it
+runs `run` and `sweep`. `compare` and `matrix` run with `python3`.
 
 `run` and `sweep` exit 0 when every step was done and every run went as expected, and 1 when not.
 They exit 2 when the command line or the scenario is refused. `compare` exits 0 when every run

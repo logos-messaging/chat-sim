@@ -49,7 +49,7 @@ revision. To move it, change the revision in both, then run
 With Nix, one command builds what a run needs and runs a scenario:
 
 ```sh
-nix run .#groupv2-simulation -- run tools/sim/scenarios/seat-50-post-groupv2.json --out tmp/seat-50-post-groupv2
+nix run .#sim -- run tools/sim/scenarios/seat-50-post-groupv2.json --out tmp/seat-50-post-groupv2
 ```
 
 The dev shell has the toolchain for cargo:

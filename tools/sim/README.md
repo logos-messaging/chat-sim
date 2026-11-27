@@ -24,7 +24,7 @@ From the repository root, with Nix, one command builds the runner from the check
 with it. What follows `--` is `sim`'s command line, less the flag the app gives:
 
 ```sh
-nix run .#groupv2-simulation -- run tools/sim/scenarios/seat-2-post-groupv2.json --out tmp/seat-2-post-groupv2
+nix run .#sim -- run tools/sim/scenarios/seat-2-post-groupv2.json --out tmp/seat-2-post-groupv2
 ```
 
 Without the app:
@@ -125,7 +125,7 @@ N to N+K-1 of a sweep, each with the seeds it has in a sweep from run 1, so one 
 be made alone:
 
 ```sh
-nix run .#groupv2-simulation -- sweep tools/sim/scenarios/grow-3-adders-groupv2-waku-loss-5pct.json --runs 3 --out tmp/grow-3-adders-groupv2-waku-loss-5pct
+nix run .#sim -- sweep tools/sim/scenarios/grow-3-adders-groupv2-waku-loss-5pct.json --runs 3 --out tmp/grow-3-adders-groupv2-waku-loss-5pct
 ```
 
 ```console
