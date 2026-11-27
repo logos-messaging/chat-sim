@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>chat-sim: logos-chat main 3ab70ec, GroupV3 1%, seed 18</title>
+<style>
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--rate-2:#3987e5;--v2:#2a78d6;--v3:#eb6834;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--rate-2:#6da7ec;--v2:#3987e5;--v3:#d95926;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
+background:var(--bg);font:15px/1.5 system-ui,sans-serif}
+a{color:var(--link)}
+h1{overflow-wrap:anywhere}
+h2{margin-top:2.5rem}
+h3{margin-top:2rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:.25rem 0 1rem;padding:.75rem;overflow-x:auto;font-size:12px;line-height:1.45;
+background:var(--box);border:1px solid var(--line);border-radius:6px}
+.wide{overflow-x:auto}
+table{border-collapse:collapse}
+th,td{padding:.3rem 1.25rem .3rem 0;border-bottom:1px solid var(--line);text-align:left;
+vertical-align:top}
+summary{cursor:pointer}
+.file{margin:.75rem 0 0}
+.muted{color:var(--muted)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.none{color:var(--none)}
+
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+
+.facts code{font-size:13px}
+.verdict{font-size:1.1em}
+.side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
+details{margin:.75rem 0}
+details.run>summary{font-size:1.1em;font-weight:600}
+summary span{font-weight:normal;margin-left:.4rem}
+details.text>summary{font-size:13px;color:var(--muted)}
+.who{font-size:14px;margin:.4rem 0}
+.lines,.runs,.rates,.rounds{font-size:14px}
+.lines th,.lines td,.rounds th,.rounds td{padding:.15rem 1rem .15rem 0}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates th[colspan]{text-align:center}
+.rates td,.runs td.n{white-space:nowrap}
+.reading{max-width:52rem;color:var(--muted)}
+
+.tree path{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.tree.head path{stroke:var(--rate-2)}
+.tree.head circle{fill:var(--rate-2)}
+.v2 .tree.head path{stroke:var(--v2)}
+.v2 .tree.head circle{fill:var(--v2)}
+.v3 .tree.head path{stroke:var(--v3)}
+.v3 .tree.head circle{fill:var(--v3)}
+.tree.base path{stroke:var(--muted)}
+.tree.base circle{fill:var(--muted)}
+.tree.sketch path{stroke-dasharray:3 3}
+.epoch{stroke:var(--grid)}
+.strong{font-weight:600}
+.ring rect{fill:var(--bg);stroke:var(--line)}
+.ring circle{fill:none;stroke:var(--muted);stroke-width:1.25}
+.ring text{fill:var(--muted);font-size:10px}
+.fell circle{fill:var(--bg);stroke:var(--muted);stroke-width:1.5}
+.mark{stroke:var(--fg)}
+.rule{stroke:var(--line)}
+
+.verdicts{margin:1rem 0 0;padding:0;list-style:none;font-size:16px}
+.verdicts li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 6px}
+.verdicts li>b{min-width:5rem}
+.verdicts .muted{flex:1 1 20rem;font-size:14px}
+.chip{padding:1px 8px;border-radius:2em;font-size:12px;font-weight:600;white-space:nowrap;
+background:var(--neutral-bg);color:var(--muted)}
+.chip.moved,.chip.within{color:var(--fg)}
+.chip.later{background:var(--good-bg);color:var(--good)}
+.chip.earlier{background:var(--bad-bg);color:var(--bad)}
+.chip.unbuilt{background:var(--none-bg);color:var(--none)}
+#runs>.legend{margin:1rem 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+.forks{display:flex;flex-direction:column;gap:10px;width:max-content}
+.forks>div{display:flex;align-items:flex-start;gap:10px}
+.forks .rate{width:116px}
+.forks .seed{width:306px;padding:0 9px;font-size:12px;color:var(--muted)}
+.forks .seed b{color:var(--fg)}
+.forks .vacant{width:324px}
+.forks>details{margin:0}
+.forks>details>summary{margin-left:126px;font-size:12px;color:var(--link)}
+.forks>details>div{display:flex;align-items:flex-start;gap:10px;margin-top:10px}
+.ds{display:flex;gap:4px;margin:0 0 4px}
+.d{display:flex;flex-direction:column;align-items:center;min-width:26px;padding:1px 4px 2px;
+border:1px solid var(--line);border-radius:4px;font-size:12px;font-weight:600;
+font-variant-numeric:tabular-nums;color:var(--fg);text-decoration:none}
+.d span{font-size:10px;font-weight:400;color:var(--muted)}
+.d:hover{border-color:var(--link)}
+.d.moved{border-color:var(--fg)}
+.d.later{background:var(--good-bg);color:var(--good)}
+.d.earlier{background:var(--bad-bg);color:var(--bad)}
+.d.none{background:var(--none-bg);color:var(--none)}
+.chart .forks svg{display:block;max-width:none}
+.fork{padding:6px 8px 8px;border:1px solid var(--line);border-radius:6px;color:var(--fg);
+text-decoration:none}
+a.fork:hover{border-color:var(--link)}
+.fork a:hover .hit{fill:var(--link);fill-opacity:.08}
+.fork.moved{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
+.fork.unbuilt{border-color:var(--none);border-style:dashed}
+.said{display:flex;align-items:center;gap:6px;height:20px;margin:0 0 2px;font-size:12px;
+color:var(--muted);white-space:nowrap}
+.said b{color:var(--fg)}
+.fork .said{max-width:306px}
+.fork .said>span:not(.chip){min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rate .said{font-size:13px}
+.outlined{padding:0 6px;border:1px solid var(--fg);border-radius:4px;
+box-shadow:0 0 0 1px var(--fg)}
+.ran{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:.75rem 0 .25rem;
+font-size:16px}
+.how{max-width:52rem;margin:.25rem 0 .5rem;padding-left:1.25rem}
+.about{max-width:52rem;margin:0 0 1rem}
+#scenarios+.lead{max-width:52rem}
+.about a{white-space:nowrap}
+</style>
+</head>
+<body>
+<p class="muted"><a href="../../../../../../">chat-sim</a> / <a href="../../../../../">Over main</a> / <a href="../../"><code>3ab70ec</code></a> / GroupV3 1%, seed 18</p>
+<h1>GroupV3 · 1% loss · seed 18</h1>
+<p class="ran"><span>The run first forked at epoch 13.</span></p>
+<p class="facts">main <a href="https://github.com/logos-messaging/logos-chat/commit/3ab70ec84dbfdd4df4ac848a6da838c7734c7e69"><code>3ab70ec</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/030a8d39c782a8206397ffd92db22b7ac137b009"><code>030a8d3</code></a> · the measurement <a href="https://github.com/logos-messaging/chat-sim/commit/278bcec5814142be48f0f45307d3a89da16d8c8b"><code>278bcec</code></a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/45441076648">the run</a> · 2026-11-24 17:29 UTC · wall time 1 min 5 s</p>
+<div class="chart wide v3">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1118 336" width="1118" height="336" role="img" aria-label="GroupV3 1%, seed 18: its tree"><line class="epoch" x1="92.0" x2="92.0" y1="20" y2="336"/><line class="epoch" x1="244.0" x2="244.0" y1="20" y2="336"/><line class="epoch" x1="396.0" x2="396.0" y1="20" y2="336"/><line class="epoch" x1="548.0" x2="548.0" y1="20" y2="336"/><line class="epoch" x1="700.0" x2="700.0" y1="20" y2="336"/><line class="epoch" x1="852.0" x2="852.0" y1="20" y2="336"/><text class="axis small" x="92.0" y="14" text-anchor="middle">0</text><text class="axis small" x="244.0" y="14" text-anchor="middle">10</text><text class="axis small" x="396.0" y="14" text-anchor="middle">20</text><text class="axis small" x="548.0" y="14" text-anchor="middle">30</text><text class="axis small" x="700.0" y="14" text-anchor="middle">40</text><text class="axis small" x="852.0" y="14" text-anchor="middle">50</text><text class="note" x="866.0" y="14">the goal</text><text class="label strong" x="0" y="84">main</text><text class="note" x="0" y="100">3ab70ec</text><line class="mark" x1="289.6" x2="289.6" y1="72" y2="58"/><text class="note" x="294.6" y="67">first fork <tspan class="label strong">13</tspan></text><g class="tree head"><g><title>line 3, off line 1: 2 members, epoch 16</title><path d="M335.2 192.0V220.0H335.2" stroke-width="3.55"/><circle cx="335.2" cy="220.0" r="3.50"/></g><g><title>line 1, off the trunk: 7 members, epochs 13 to 20</title><path d="M289.6 80.0V192.0H396.0" stroke-width="4.89"/><circle cx="396.0" cy="192.0" r="3.50"/></g><g><title>line 2, off the trunk: 5 members, epochs 17 to 21</title><path d="M350.4 80.0V164.0H411.2" stroke-width="4.44"/><circle cx="411.2" cy="164.0" r="3.50"/></g><g><title>line 4, off the trunk: 1 member, epoch 44</title><path d="M760.8 80.0V136.0H760.8" stroke-width="3.09"/><circle cx="760.8" cy="136.0" r="3.50"/></g><g><title>line 5, off the trunk: 2 members, epoch 45</title><path d="M776.0 80.0V108.0H776.0" stroke-width="3.55"/><circle cx="776.0" cy="108.0" r="3.50"/></g><g><title>trunk: 41 members, epochs 0 to 45</title><path d="M92.0 80.0H776.0" stroke-width="9.00"/><circle cx="776.0" cy="80.0" r="5.25"/></g></g><text class="note" x="344.7" y="224.0"><tspan class="label strong">2 members</tspan>, epoch 16, off line 1</text><text class="note" x="405.5" y="196.0"><tspan class="label strong">7 members</tspan>, epochs 13 to 20</text><text class="note" x="420.7" y="168.0"><tspan class="label strong">5 members</tspan>, epochs 17 to 21</text><text class="note" x="770.3" y="140.0"><tspan class="label strong">1 member</tspan>, epoch 44</text><text class="note" x="785.5" y="112.0"><tspan class="label strong">2 members</tspan>, epoch 45</text><text class="note" x="787.2" y="84.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">41 members</tspan>, epochs 0 to 45</text><text class="note" x="0" y="258">fell behind</text><g class="fell"><title>pax fell behind at epoch 19</title><circle cx="380.8" cy="254" r="4"/><text class="note" x="388.8" y="258">pax at 19</text></g><g class="fell"><title>peer18 fell behind at epoch 22</title><circle cx="426.4" cy="272" r="4"/><text class="note" x="434.4" y="276">peer18 at 22</text></g><g class="fell"><title>peer38 fell behind at epoch 24</title><circle cx="456.8" cy="254" r="4"/><text class="note" x="464.8" y="258">peer38 at 24</text></g><g class="fell"><title>peer29 fell behind at epoch 25</title><circle cx="472.0" cy="290" r="4"/><text class="note" x="480.0" y="294">peer29 at 25</text></g><g class="fell"><title>peer47 fell behind at epoch 28</title><circle cx="517.6" cy="272" r="4"/><text class="note" x="525.6" y="276">peer47 at 28</text></g><g class="fell"><title>peer51 fell behind at epoch 31</title><circle cx="563.2" cy="254" r="4"/><text class="note" x="571.2" y="258">peer51 at 31</text></g><text class="note" x="0" y="322">members</text><text class="note" x="92" y="322"><tspan class="label strong">87 seated</tspan> · 41 on the trunk · 17 on 5 lines off it · 1 behind at the end · </text><g class="ring"><title>29 never joined</title><rect x="461.6" y="311.0" width="32" height="14" rx="7"/><circle cx="469.1" cy="318.0" r="3"/><text x="475.6" y="321.5">29</text></g><text class="note" x="498.6" y="322">never joined</text></svg>
+</div>
+<p class="reading">seated counts every member added, the creator included, and not removed: those on a line and those that never joined.</p>
+<h2>The rounds</h2>
+<div class="wide"><table class="rounds">
+<thead><tr><th class="n">round</th><th>adders</th><th>joiners</th><th>refused</th><th class="n">settled s</th></tr></thead>
+<tbody>
+<tr><td class="n">1</td><td>saro</td><td>raya</td><td>-</td><td class="n">120.600</td></tr>
+<tr><td class="n">2</td><td>saro, raya</td><td>pax, mira</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">3</td><td>saro</td><td>kes</td><td>-</td><td class="n">121.950</td></tr>
+<tr><td class="n">4</td><td>saro</td><td>tomo</td><td>-</td><td class="n">121.150</td></tr>
+<tr><td class="n">5</td><td>tomo</td><td>peer7</td><td>-</td><td class="n">121.400</td></tr>
+<tr><td class="n">6</td><td>kes, saro, tomo</td><td>peer8, peer9, peer10</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">7</td><td>pax, peer10, peer7</td><td>peer11, peer12, peer13</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">8</td><td>tomo</td><td>peer14</td><td>-</td><td class="n">121.600</td></tr>
+<tr><td class="n">9</td><td>peer12, saro, peer14</td><td>peer15, peer16, peer17</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">10</td><td>raya</td><td>peer18</td><td>-</td><td class="n">121.950</td></tr>
+<tr><td class="n">11</td><td>kes</td><td>peer19</td><td>-</td><td class="n">121.350</td></tr>
+<tr><td class="n">12</td><td>peer18</td><td>peer20</td><td>-</td><td class="n">121.250</td></tr>
+<tr><td class="n">13</td><td>peer14, peer17, peer18</td><td>peer21, peer22, peer23</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">14</td><td>peer12</td><td>peer24</td><td>-</td><td class="n">121.400</td></tr>
+<tr><td class="n">15</td><td>peer12</td><td>peer25</td><td>-</td><td class="n">121.350</td></tr>
+<tr><td class="n">16</td><td>pax, peer17, peer24</td><td>peer26, peer27, peer28</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">17</td><td>peer17, peer25</td><td>peer29, peer30</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">18</td><td>pax, peer17, peer14</td><td>peer31, peer32, peer33</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">19</td><td>peer29</td><td>peer34</td><td>-</td><td class="n">121.300</td></tr>
+<tr><td class="n">20</td><td>saro, peer20, peer34</td><td>peer35, peer36, peer37</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">21</td><td>peer23, peer14, peer34</td><td>peer38, peer39, peer40</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">22</td><td>tomo</td><td>peer41</td><td>-</td><td class="n">121.600</td></tr>
+<tr><td class="n">23</td><td>kes, saro</td><td>peer42, peer43</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">24</td><td>peer43, peer25</td><td>peer44, peer45</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">25</td><td>peer34</td><td>peer46</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">26</td><td>peer23</td><td>peer47</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">27</td><td>peer46, peer10</td><td>peer48, peer49</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">28</td><td>peer18, peer44</td><td>peer50, peer51</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">29</td><td>kes, peer25</td><td>peer52, peer53</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">30</td><td>peer25, peer18, saro</td><td>peer54, peer55, peer56</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">31</td><td>peer52, peer18</td><td>peer57, peer58</td><td>-</td><td class="n">121.650</td></tr>
+<tr><td class="n">32</td><td>peer46</td><td>peer59</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">33</td><td>peer58, tomo</td><td>peer60, peer61</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">34</td><td>peer26, pax</td><td>peer62, peer63</td><td>-</td><td class="n">1.600</td></tr>
+<tr><td class="n">35</td><td>peer51, peer47, peer7</td><td>peer64, peer65, peer66</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">36</td><td>peer38, peer32, peer28</td><td>peer67, peer68, peer69</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">37</td><td>pax, peer52</td><td>peer70, peer71</td><td>-</td><td class="n">1.600</td></tr>
+<tr><td class="n">38</td><td>saro</td><td>peer72</td><td>-</td><td class="n">121.550</td></tr>
+<tr><td class="n">39</td><td>peer49</td><td>peer73</td><td>-</td><td class="n">121.450</td></tr>
+<tr><td class="n">40</td><td>peer49, peer31</td><td>peer74, peer75</td><td>-</td><td class="n">121.550</td></tr>
+<tr><td class="n">41</td><td>peer58, peer41</td><td>peer76, peer77</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">42</td><td>peer61</td><td>peer78</td><td>-</td><td class="n">121.900</td></tr>
+<tr><td class="n">43</td><td>tomo</td><td>peer79</td><td>-</td><td class="n">121.550</td></tr>
+<tr><td class="n">44</td><td>peer41</td><td>peer80</td><td>-</td><td class="n">121.550</td></tr>
+<tr><td class="n">45</td><td>peer14</td><td>peer81</td><td>-</td><td class="n">121.450</td></tr>
+<tr><td class="n">46</td><td>peer76, peer44</td><td>peer82, peer83</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">47</td><td>peer31</td><td>peer84</td><td>-</td><td class="n">61.850</td></tr>
+<tr><td class="n">48</td><td>peer19, peer84, peer28</td><td>peer85, peer86, peer87</td><td>-</td><td class="n">180.000</td></tr>
+</tbody>
+</table></div>
+<p class="caption">Each round's adders, the members they added, the adders refused the whole round, and the virtual seconds the round took. The run does not say which adder added which member.</p>
+<h2>Run it yourself</h2>
+<p class="reading">It needs Linux on x86-64, Nix with flakes, jq and python3.</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout 030a8d39c782a8206397ffd92db22b7ac137b009
+pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
+sed -i &quot;s/$pinned/3ab70ec84dbfdd4df4ac848a6da838c7734c7e69/g&quot; flake.nix Cargo.toml
+nix flake lock
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-1-groupv3.json --from 19 --runs 1 --one-process target/release/harness-run --out tmp/grow-waku-loss-1-groupv3-seed-18</pre>
+<h2>The text</h2>
+<p class="file"><a href="run.txt">run.txt</a> · <a href="report.txt">report.txt</a> · <a href="run.json">run.json</a></p>
+<h2>The log</h2>
+<p class="reading">The site keeps no log: each job uploads its runs' as an artifact of the workflow run, which GitHub keeps 90 days. This downloads its scenario's, and the run's log is <code>group.log</code> under run 19. What to read in it: the guide's <a href="../../../../../../guide/investigate/moved-run/#into-the-log">Into the log</a>.</p>
+<pre>gh run download 45441076648 --repo logos-messaging/chat-sim --dir logs --pattern &#x27;logs-revision-grow-waku-loss-1-groupv3-[0-9]*&#x27;</pre>
+</body>
+</html>

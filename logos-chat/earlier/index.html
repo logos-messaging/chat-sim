@@ -75,6 +75,7 @@ details.text>summary{font-size:13px;color:var(--muted)}
 .n{text-align:right;font-variant-numeric:tabular-nums}
 .rates th[colspan]{text-align:center}
 .rates td,.runs td.n{white-space:nowrap}
+.reading{max-width:52rem;color:var(--muted)}
 
 .v2{--hue:var(--v2)}
 .v3{--hue:var(--v3)}
@@ -86,9 +87,9 @@ details.text>summary{font-size:13px;color:var(--muted)}
 .now .name{font-weight:600;white-space:nowrap;vertical-align:middle}
 .dot{display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:50%;
 background:var(--hue)}
-.meter{display:block;margin:4px 0}
-.meter .track{fill:var(--neutral-bg)}
-.meter .reached{fill:var(--hue)}
+.typical{display:block;width:150px;margin:5px 0 3px;border-radius:4px}
+.typical svg{display:block}
+a.typical:hover{background:var(--box)}
 .since{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:1rem 0 0}
 .trend .band{fill:var(--hue);opacity:.14}
 .trend .goal{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:5 4}
@@ -106,6 +107,7 @@ gap:2px 12px;margin:6px 0 4px;font-size:13px}
 .tally .earlier{fill:var(--bad)}
 .tally .tied{fill:var(--line)}
 .tally .later{fill:var(--good)}
+details .forks{margin:.5rem 0 1rem}
 .pairs{font-size:14px}
 .pairs th,.pairs td{padding:.15rem 1.25rem .15rem 0;white-space:nowrap}
 .dumb .before{fill:var(--bg);stroke:var(--hue);stroke-width:2}

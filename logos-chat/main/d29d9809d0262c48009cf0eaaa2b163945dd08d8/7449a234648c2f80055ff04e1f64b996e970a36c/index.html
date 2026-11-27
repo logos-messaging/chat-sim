@@ -6,16 +6,8 @@
 <meta name="color-scheme" content="light dark">
 <title>chat-sim: logos-chat main d29d980</title>
 <style>
-:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;
---line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--grid:#e6e9ed;
---band:rgba(57,135,229,.18);--rate-1:#86b6ef;--rate-2:#3987e5;--rate-3:#1c5cab;
---rate-4:#0d366b;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;
---w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
-@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;
---box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;
---grid:#21262d;--band:rgba(109,167,236,.22);--rate-1:#b7d3f6;--rate-2:#6da7ec;
---rate-3:#2a78d6;--rate-4:#184f95;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;
---w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--rate-2:#3987e5;--v2:#2a78d6;--v3:#eb6834;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--rate-2:#6da7ec;--v2:#3987e5;--v3:#d95926;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
 body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
 background:var(--bg);font:15px/1.5 system-ui,sans-serif}
 a{color:var(--link)}
@@ -51,18 +43,11 @@ font-size:12px;color:var(--muted)}
 .chart .small{font-size:10px}
 .label{fill:var(--fg)}
 .note{fill:var(--muted)}
-.band{fill:var(--band)}
-.measure{stroke:var(--muted);stroke-dasharray:3 3}
 .leader{stroke:var(--line)}
 .hit{fill:none;pointer-events:all}
-.s1{--hue:var(--rate-1)}
-.s2{--hue:var(--rate-2)}
-.s3{--hue:var(--rate-3)}
-.s4{--hue:var(--rate-4)}
 .series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .marker,.key{fill:var(--hue)}
 .marker{stroke:var(--bg);stroke-width:2}
-.marker.open{fill:var(--bg);stroke:var(--hue)}
 .cell rect{fill:var(--cell)}
 .chart .cell text{fill:currentColor;font-size:12px}
 .cell .whole{fill:currentColor}
@@ -76,38 +61,57 @@ font-size:12px;color:var(--muted)}
 .empty{--cell:var(--box);color:var(--muted)}
 .empty rect{stroke:var(--line);stroke-dasharray:3 2}
 .chart svg+.legend{margin-top:.5rem}
-.points td{white-space:nowrap;font-variant-numeric:tabular-nums}
-.points th[colspan]{text-align:center}
-.points .merged{white-space:normal;min-width:14rem}
-.points .moved{white-space:normal;font-size:13px;color:var(--muted);min-width:12rem}
 
 .facts code{font-size:13px}
 .verdict{font-size:1.1em}
 .side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
-.heats{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 3rem}
-.sides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));
-gap:0 2.5rem}
-.sides>div{min-width:0}
 details{margin:.75rem 0}
 details.run>summary{font-size:1.1em;font-weight:600}
 summary span{font-weight:normal;margin-left:.4rem}
 details.text>summary{font-size:13px;color:var(--muted)}
 .who{font-size:14px;margin:.4rem 0}
-.lines,.runs,.rates{font-size:14px}
-.lines th,.lines td{padding:.15rem 1rem .15rem 0}
+.lines,.runs,.rates,.rounds{font-size:14px}
+.lines th,.lines td,.rounds th,.rounds td{padding:.15rem 1rem .15rem 0}
 .n{text-align:right;font-variant-numeric:tabular-nums}
 .rates th[colspan]{text-align:center}
 .rates td,.runs td.n{white-space:nowrap}
-.spread{margin-top:18px}
-.spread th,.spread td{height:30px;padding:0 .75rem 0 0;border:0;font-size:13px;
-vertical-align:middle;white-space:nowrap}
-.spread th{font-weight:normal;color:var(--muted)}
-.cell .outline{fill:none;stroke-width:2.5}
-.worse .outline{stroke:var(--bad)}
-.better .outline{stroke:var(--good)}
-.tick{stroke:var(--line)}
-.seed{fill:var(--muted);fill-opacity:.55}
-.head{fill:var(--fg);stroke:var(--bg);stroke-width:2}
+.reading{max-width:52rem;color:var(--muted)}
+
+.tree path{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.tree.head path{stroke:var(--rate-2)}
+.tree.head circle{fill:var(--rate-2)}
+.v2 .tree.head path{stroke:var(--v2)}
+.v2 .tree.head circle{fill:var(--v2)}
+.v3 .tree.head path{stroke:var(--v3)}
+.v3 .tree.head circle{fill:var(--v3)}
+.tree.base path{stroke:var(--muted)}
+.tree.base circle{fill:var(--muted)}
+.tree.sketch path{stroke-dasharray:3 3}
+.epoch{stroke:var(--grid)}
+.strong{font-weight:600}
+.ring rect{fill:var(--bg);stroke:var(--line)}
+.ring circle{fill:none;stroke:var(--muted);stroke-width:1.25}
+.ring text{fill:var(--muted);font-size:10px}
+.fell circle{fill:var(--bg);stroke:var(--muted);stroke-width:1.5}
+.mark{stroke:var(--fg)}
+.rule{stroke:var(--line)}
+
+.of{margin:0 0 4px;font-size:13px}
+.of span{margin-left:.4rem;font-size:12px;color:var(--muted)}
+.chart .ticks{margin:0 0 2px 85px}
+.forest,.row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:0 16px;margin:0 0 12px}
+.forest>div{width:362px}
+.tile{box-sizing:border-box;display:flex;align-items:center;gap:6px;width:362px;margin:0 0 4px;
+padding:2px 6px;border:1px solid var(--line);border-radius:6px;color:var(--fg);
+text-decoration:none}
+a.tile:hover{border-color:var(--link)}
+.tile .at{flex:none;width:72px;font-size:11px;line-height:1.3;color:var(--muted);
+white-space:nowrap}
+.tile .at b{color:var(--fg)}
+.chart .tile svg{max-width:none}
+.median{display:flex;align-items:center;gap:8px;margin:1px 0 5px;font-size:11px;
+color:var(--muted);white-space:nowrap}
+.median::before,.median::after{content:"";flex:1;border-top:1px dashed var(--muted)}
 </style>
 </head>
 <body>
@@ -115,7 +119,7 @@ vertical-align:middle;white-space:nowrap}
 <h1>logos-chat main d29d980, 2026-11-16</h1>
 <p class="facts">main <a href="https://github.com/logos-messaging/logos-chat/commit/d29d9809d0262c48009cf0eaaa2b163945dd08d8"><code>d29d980</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/c031bb1f65c3f5dafa6d353d21817a0b8107a274"><code>c031bb1</code></a> · the measurement <a href="https://github.com/logos-messaging/chat-sim/commit/7449a234648c2f80055ff04e1f64b996e970a36c"><code>7449a23</code></a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/43966164564">the run</a> · 2026-11-16 22:08 UTC</p>
 <p>Pull requests merged since the point it follows: <a href="https://github.com/logos-messaging/logos-chat/pull/332">#332</a> ci: run chat-sim on every pull request, and on main. It follows the point of main <a href="../../96172d212c2be583ce3660c74669b44e1b18922c/7449a234648c2f80055ff04e1f64b996e970a36c/"><code>96172d2</code></a> at chat-sim <code>7449a23</code>.</p>
-<p class="muted">The site keeps the runs' text of the newest 11 points, and no longer this one's: the command under each run makes it again.</p>
+<p class="muted">The site keeps the runs' text and pages of the newest 11 points, and no longer this one's: the commands under its runs make one again.</p>
 <section class="chart" id="matrix">
 <h2>The matrix</h2>
 <h3>GroupV2</h3>
@@ -248,1001 +252,66 @@ vertical-align:middle;white-space:nowrap}
 </table></div>
 <p class="caption">Whole: one group, every member that joined at its tip, at epoch 50; behind: one group, some members behind; stalled: one group that stopped growing short of 50; split: it forked. Off the trunk: behind at the end, on a line not the trunk, or never joined. A run's wall time is the runner's, while its run.json is kept.</p>
 </section>
-<section id="runs">
+<section class="chart" id="runs">
 <h2>The runs</h2>
+<div class="v2">
+<h3>GroupV2</h3>
+<p class="of"><b>no loss</b><span>20 runs</span></p>
+<p class="of muted">does not build: seeds 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19</p>
+<p class="of"><b>0.1% loss</b><span>20 runs</span></p>
+<p class="of muted">does not build: seeds 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19</p>
+<p class="of"><b>1% loss</b><span>20 runs</span></p>
+<p class="of muted">does not build: seeds 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19</p>
+<p class="of"><b>5% loss</b><span>20 runs</span></p>
+<p class="of muted">does not build: seeds 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19</p>
+</div>
+<h3>Run one yourself</h3>
+<p class="reading">A fold a rate holds the commands that run its first seed again, and says how they run another.</p>
 <details>
 <summary>GroupV2 0% <span class="muted">20 runs</span></summary>
-<div class="wide"><table class="runs">
-<thead><tr><th class="n">seed</th><th class="n">epochs without a fork</th><th>how it ended</th><th>what the grow came to</th><th class="n">wall time</th></tr></thead>
-<tbody>
-<tr><td class="n">0</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">1</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">2</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">3</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">4</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">5</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">6</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">7</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">8</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">9</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">10</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">11</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">12</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">13</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">14</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">15</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">16</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">17</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">18</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">19</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-</tbody>
-</table></div>
-<details class="run">
-<summary>seed 0 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
+<p class="side">Run seed 0 again (Linux on x86-64, Nix with flakes, jq and python3):</p>
 <pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
+pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
+sed -i &quot;s/$pinned/d29d9809d0262c48009cf0eaaa2b163945dd08d8/g&quot; flake.nix Cargo.toml
+nix flake lock
 nix develop -c cargo build --release -p harness --bin harness-run
 python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-0</pre>
-</details>
-<details class="run">
-<summary>seed 1 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-1</pre>
-</details>
-<details class="run">
-<summary>seed 2 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 3 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-2</pre>
-</details>
-<details class="run">
-<summary>seed 3 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 4 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-3</pre>
-</details>
-<details class="run">
-<summary>seed 4 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-4</pre>
-</details>
-<details class="run">
-<summary>seed 5 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 6 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-5</pre>
-</details>
-<details class="run">
-<summary>seed 6 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 7 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-6</pre>
-</details>
-<details class="run">
-<summary>seed 7 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 8 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-7</pre>
-</details>
-<details class="run">
-<summary>seed 8 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 9 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-8</pre>
-</details>
-<details class="run">
-<summary>seed 9 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 10 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-9</pre>
-</details>
-<details class="run">
-<summary>seed 10 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 11 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-10</pre>
-</details>
-<details class="run">
-<summary>seed 11 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 12 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-11</pre>
-</details>
-<details class="run">
-<summary>seed 12 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 13 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-12</pre>
-</details>
-<details class="run">
-<summary>seed 13 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-13</pre>
-</details>
-<details class="run">
-<summary>seed 14 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 15 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-14</pre>
-</details>
-<details class="run">
-<summary>seed 15 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 16 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-15</pre>
-</details>
-<details class="run">
-<summary>seed 16 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 17 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-16</pre>
-</details>
-<details class="run">
-<summary>seed 17 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 18 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-17</pre>
-</details>
-<details class="run">
-<summary>seed 18 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 19 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-18</pre>
-</details>
-<details class="run">
-<summary>seed 19 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.json --from 20 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0-seed-19</pre>
-</details>
+<p class="side">For another seed, give <code>--from</code> the seed plus 1 and name the seed in <code>--out</code>.</p>
 </details>
 <details>
 <summary>GroupV2 0.1% <span class="muted">20 runs</span></summary>
-<div class="wide"><table class="runs">
-<thead><tr><th class="n">seed</th><th class="n">epochs without a fork</th><th>how it ended</th><th>what the grow came to</th><th class="n">wall time</th></tr></thead>
-<tbody>
-<tr><td class="n">0</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">1</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">2</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">3</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">4</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">5</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">6</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">7</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">8</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">9</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">10</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">11</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">12</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">13</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">14</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">15</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">16</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">17</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">18</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">19</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-</tbody>
-</table></div>
-<details class="run">
-<summary>seed 0 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
+<p class="side">Run seed 0 again (Linux on x86-64, Nix with flakes, jq and python3):</p>
 <pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
+pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
+sed -i &quot;s/$pinned/d29d9809d0262c48009cf0eaaa2b163945dd08d8/g&quot; flake.nix Cargo.toml
+nix flake lock
 nix develop -c cargo build --release -p harness --bin harness-run
 python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-0</pre>
-</details>
-<details class="run">
-<summary>seed 1 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-1</pre>
-</details>
-<details class="run">
-<summary>seed 2 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 3 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-2</pre>
-</details>
-<details class="run">
-<summary>seed 3 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 4 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-3</pre>
-</details>
-<details class="run">
-<summary>seed 4 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-4</pre>
-</details>
-<details class="run">
-<summary>seed 5 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 6 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-5</pre>
-</details>
-<details class="run">
-<summary>seed 6 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 7 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-6</pre>
-</details>
-<details class="run">
-<summary>seed 7 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 8 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-7</pre>
-</details>
-<details class="run">
-<summary>seed 8 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 9 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-8</pre>
-</details>
-<details class="run">
-<summary>seed 9 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 10 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-9</pre>
-</details>
-<details class="run">
-<summary>seed 10 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 11 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-10</pre>
-</details>
-<details class="run">
-<summary>seed 11 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 12 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-11</pre>
-</details>
-<details class="run">
-<summary>seed 12 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 13 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-12</pre>
-</details>
-<details class="run">
-<summary>seed 13 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-13</pre>
-</details>
-<details class="run">
-<summary>seed 14 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 15 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-14</pre>
-</details>
-<details class="run">
-<summary>seed 15 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 16 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-15</pre>
-</details>
-<details class="run">
-<summary>seed 16 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 17 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-16</pre>
-</details>
-<details class="run">
-<summary>seed 17 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 18 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-17</pre>
-</details>
-<details class="run">
-<summary>seed 18 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 19 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-18</pre>
-</details>
-<details class="run">
-<summary>seed 19 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-0.1.json --from 20 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-0.1-seed-19</pre>
-</details>
+<p class="side">For another seed, give <code>--from</code> the seed plus 1 and name the seed in <code>--out</code>.</p>
 </details>
 <details>
 <summary>GroupV2 1% <span class="muted">20 runs</span></summary>
-<div class="wide"><table class="runs">
-<thead><tr><th class="n">seed</th><th class="n">epochs without a fork</th><th>how it ended</th><th>what the grow came to</th><th class="n">wall time</th></tr></thead>
-<tbody>
-<tr><td class="n">0</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">1</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">2</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">3</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">4</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">5</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">6</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">7</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">8</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">9</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">10</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">11</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">12</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">13</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">14</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">15</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">16</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">17</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">18</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">19</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-</tbody>
-</table></div>
-<details class="run">
-<summary>seed 0 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
+<p class="side">Run seed 0 again (Linux on x86-64, Nix with flakes, jq and python3):</p>
 <pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
+pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
+sed -i &quot;s/$pinned/d29d9809d0262c48009cf0eaaa2b163945dd08d8/g&quot; flake.nix Cargo.toml
+nix flake lock
 nix develop -c cargo build --release -p harness --bin harness-run
 python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-0</pre>
-</details>
-<details class="run">
-<summary>seed 1 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-1</pre>
-</details>
-<details class="run">
-<summary>seed 2 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 3 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-2</pre>
-</details>
-<details class="run">
-<summary>seed 3 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 4 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-3</pre>
-</details>
-<details class="run">
-<summary>seed 4 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-4</pre>
-</details>
-<details class="run">
-<summary>seed 5 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 6 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-5</pre>
-</details>
-<details class="run">
-<summary>seed 6 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 7 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-6</pre>
-</details>
-<details class="run">
-<summary>seed 7 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 8 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-7</pre>
-</details>
-<details class="run">
-<summary>seed 8 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 9 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-8</pre>
-</details>
-<details class="run">
-<summary>seed 9 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 10 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-9</pre>
-</details>
-<details class="run">
-<summary>seed 10 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 11 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-10</pre>
-</details>
-<details class="run">
-<summary>seed 11 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 12 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-11</pre>
-</details>
-<details class="run">
-<summary>seed 12 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 13 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-12</pre>
-</details>
-<details class="run">
-<summary>seed 13 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-13</pre>
-</details>
-<details class="run">
-<summary>seed 14 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 15 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-14</pre>
-</details>
-<details class="run">
-<summary>seed 15 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 16 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-15</pre>
-</details>
-<details class="run">
-<summary>seed 16 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 17 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-16</pre>
-</details>
-<details class="run">
-<summary>seed 17 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 18 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-17</pre>
-</details>
-<details class="run">
-<summary>seed 18 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 19 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-18</pre>
-</details>
-<details class="run">
-<summary>seed 19 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-1.json --from 20 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-1-seed-19</pre>
-</details>
+<p class="side">For another seed, give <code>--from</code> the seed plus 1 and name the seed in <code>--out</code>.</p>
 </details>
 <details>
 <summary>GroupV2 5% <span class="muted">20 runs</span></summary>
-<div class="wide"><table class="runs">
-<thead><tr><th class="n">seed</th><th class="n">epochs without a fork</th><th>how it ended</th><th>what the grow came to</th><th class="n">wall time</th></tr></thead>
-<tbody>
-<tr><td class="n">0</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">1</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">2</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">3</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">4</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">5</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">6</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">7</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">8</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">9</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">10</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">11</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">12</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">13</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">14</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">15</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">16</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">17</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">18</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-<tr><td class="n">19</td><td class="n">-</td><td>does not build</td><td>-</td><td class="n">-</td></tr>
-</tbody>
-</table></div>
-<details class="run">
-<summary>seed 0 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
+<p class="side">Run seed 0 again (Linux on x86-64, Nix with flakes, jq and python3):</p>
 <pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
+pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
+sed -i &quot;s/$pinned/d29d9809d0262c48009cf0eaaa2b163945dd08d8/g&quot; flake.nix Cargo.toml
+nix flake lock
 nix develop -c cargo build --release -p harness --bin harness-run
 python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 1 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-0</pre>
-</details>
-<details class="run">
-<summary>seed 1 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 2 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-1</pre>
-</details>
-<details class="run">
-<summary>seed 2 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 3 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-2</pre>
-</details>
-<details class="run">
-<summary>seed 3 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 4 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-3</pre>
-</details>
-<details class="run">
-<summary>seed 4 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 5 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-4</pre>
-</details>
-<details class="run">
-<summary>seed 5 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 6 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-5</pre>
-</details>
-<details class="run">
-<summary>seed 6 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 7 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-6</pre>
-</details>
-<details class="run">
-<summary>seed 7 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 8 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-7</pre>
-</details>
-<details class="run">
-<summary>seed 8 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 9 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-8</pre>
-</details>
-<details class="run">
-<summary>seed 9 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 10 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-9</pre>
-</details>
-<details class="run">
-<summary>seed 10 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 11 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-10</pre>
-</details>
-<details class="run">
-<summary>seed 11 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 12 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-11</pre>
-</details>
-<details class="run">
-<summary>seed 12 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 13 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-12</pre>
-</details>
-<details class="run">
-<summary>seed 13 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-13</pre>
-</details>
-<details class="run">
-<summary>seed 14 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 15 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-14</pre>
-</details>
-<details class="run">
-<summary>seed 15 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 16 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-15</pre>
-</details>
-<details class="run">
-<summary>seed 16 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 17 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-16</pre>
-</details>
-<details class="run">
-<summary>seed 17 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 18 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-17</pre>
-</details>
-<details class="run">
-<summary>seed 18 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 19 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-18</pre>
-</details>
-<details class="run">
-<summary>seed 19 <span class="muted">does not build</span></summary>
-<div>
-<p>does not build</p>
-</div>
-<p class="side">Run it again:</p>
-<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout c031bb1f65c3f5dafa6d353d21817a0b8107a274
-# move both pins to d29d9809d0262c48009cf0eaaa2b163945dd08d8, then
-nix develop -c cargo build --release -p harness --bin harness-run
-python3 tools/sim sweep tools/sim/scenarios/50-epochs-by-saro-waku-loss-5.json --from 20 --runs 1 --one-process target/release/harness-run --out tmp/50-epochs-by-saro-waku-loss-5-seed-19</pre>
-</details>
+<p class="side">For another seed, give <code>--from</code> the seed plus 1 and name the seed in <code>--out</code>.</p>
 </details>
 </section>
-<p class="muted">What the page shows: the guide's <a href="../../../../guide/reports/#the-pages-of-logos-chats-runs">Reports</a>.</p>
+<p class="muted">What the page shows: the guide's <a href="../../../../guide/track/main/#the-page-of-a-point">The page of a point</a>.</p>
 </body>
 </html>

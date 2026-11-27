@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>chat-sim: logos-chat main ce916b8, GroupV2 0.5%, seed 19</title>
+<style>
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--rate-2:#3987e5;--v2:#2a78d6;--v3:#eb6834;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--rate-2:#6da7ec;--v2:#3987e5;--v3:#d95926;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
+background:var(--bg);font:15px/1.5 system-ui,sans-serif}
+a{color:var(--link)}
+h1{overflow-wrap:anywhere}
+h2{margin-top:2.5rem}
+h3{margin-top:2rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:.25rem 0 1rem;padding:.75rem;overflow-x:auto;font-size:12px;line-height:1.45;
+background:var(--box);border:1px solid var(--line);border-radius:6px}
+.wide{overflow-x:auto}
+table{border-collapse:collapse}
+th,td{padding:.3rem 1.25rem .3rem 0;border-bottom:1px solid var(--line);text-align:left;
+vertical-align:top}
+summary{cursor:pointer}
+.file{margin:.75rem 0 0}
+.muted{color:var(--muted)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.none{color:var(--none)}
+
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+
+.facts code{font-size:13px}
+.verdict{font-size:1.1em}
+.side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
+details{margin:.75rem 0}
+details.run>summary{font-size:1.1em;font-weight:600}
+summary span{font-weight:normal;margin-left:.4rem}
+details.text>summary{font-size:13px;color:var(--muted)}
+.who{font-size:14px;margin:.4rem 0}
+.lines,.runs,.rates,.rounds{font-size:14px}
+.lines th,.lines td,.rounds th,.rounds td{padding:.15rem 1rem .15rem 0}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates th[colspan]{text-align:center}
+.rates td,.runs td.n{white-space:nowrap}
+.reading{max-width:52rem;color:var(--muted)}
+
+.tree path{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.tree.head path{stroke:var(--rate-2)}
+.tree.head circle{fill:var(--rate-2)}
+.v2 .tree.head path{stroke:var(--v2)}
+.v2 .tree.head circle{fill:var(--v2)}
+.v3 .tree.head path{stroke:var(--v3)}
+.v3 .tree.head circle{fill:var(--v3)}
+.tree.base path{stroke:var(--muted)}
+.tree.base circle{fill:var(--muted)}
+.tree.sketch path{stroke-dasharray:3 3}
+.epoch{stroke:var(--grid)}
+.strong{font-weight:600}
+.ring rect{fill:var(--bg);stroke:var(--line)}
+.ring circle{fill:none;stroke:var(--muted);stroke-width:1.25}
+.ring text{fill:var(--muted);font-size:10px}
+.fell circle{fill:var(--bg);stroke:var(--muted);stroke-width:1.5}
+.mark{stroke:var(--fg)}
+.rule{stroke:var(--line)}
+
+.verdicts{margin:1rem 0 0;padding:0;list-style:none;font-size:16px}
+.verdicts li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 6px}
+.verdicts li>b{min-width:5rem}
+.verdicts .muted{flex:1 1 20rem;font-size:14px}
+.chip{padding:1px 8px;border-radius:2em;font-size:12px;font-weight:600;white-space:nowrap;
+background:var(--neutral-bg);color:var(--muted)}
+.chip.moved,.chip.within{color:var(--fg)}
+.chip.later{background:var(--good-bg);color:var(--good)}
+.chip.earlier{background:var(--bad-bg);color:var(--bad)}
+.chip.unbuilt{background:var(--none-bg);color:var(--none)}
+#runs>.legend{margin:1rem 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+.forks{display:flex;flex-direction:column;gap:10px;width:max-content}
+.forks>div{display:flex;align-items:flex-start;gap:10px}
+.forks .rate{width:116px}
+.forks .seed{width:306px;padding:0 9px;font-size:12px;color:var(--muted)}
+.forks .seed b{color:var(--fg)}
+.forks .vacant{width:324px}
+.forks>details{margin:0}
+.forks>details>summary{margin-left:126px;font-size:12px;color:var(--link)}
+.forks>details>div{display:flex;align-items:flex-start;gap:10px;margin-top:10px}
+.ds{display:flex;gap:4px;margin:0 0 4px}
+.d{display:flex;flex-direction:column;align-items:center;min-width:26px;padding:1px 4px 2px;
+border:1px solid var(--line);border-radius:4px;font-size:12px;font-weight:600;
+font-variant-numeric:tabular-nums;color:var(--fg);text-decoration:none}
+.d span{font-size:10px;font-weight:400;color:var(--muted)}
+.d:hover{border-color:var(--link)}
+.d.moved{border-color:var(--fg)}
+.d.later{background:var(--good-bg);color:var(--good)}
+.d.earlier{background:var(--bad-bg);color:var(--bad)}
+.d.none{background:var(--none-bg);color:var(--none)}
+.chart .forks svg{display:block;max-width:none}
+.fork{padding:6px 8px 8px;border:1px solid var(--line);border-radius:6px;color:var(--fg);
+text-decoration:none}
+a.fork:hover{border-color:var(--link)}
+.fork a:hover .hit{fill:var(--link);fill-opacity:.08}
+.fork.moved{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
+.fork.unbuilt{border-color:var(--none);border-style:dashed}
+.said{display:flex;align-items:center;gap:6px;height:20px;margin:0 0 2px;font-size:12px;
+color:var(--muted);white-space:nowrap}
+.said b{color:var(--fg)}
+.fork .said{max-width:306px}
+.fork .said>span:not(.chip){min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rate .said{font-size:13px}
+.outlined{padding:0 6px;border:1px solid var(--fg);border-radius:4px;
+box-shadow:0 0 0 1px var(--fg)}
+.ran{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:.75rem 0 .25rem;
+font-size:16px}
+.how{max-width:52rem;margin:.25rem 0 .5rem;padding-left:1.25rem}
+.about{max-width:52rem;margin:0 0 1rem}
+#scenarios+.lead{max-width:52rem}
+.about a{white-space:nowrap}
+</style>
+</head>
+<body>
+<p class="muted"><a href="../../../../../../">chat-sim</a> / <a href="../../../../../">Over main</a> / <a href="../../"><code>ce916b8</code></a> / GroupV2 0.5%, seed 19</p>
+<h1>GroupV2 · 0.5% loss · seed 19</h1>
+<p class="ran"><span>The run first forked at epoch 5.</span></p>
+<p class="facts">main <a href="https://github.com/logos-messaging/logos-chat/commit/ce916b886f0379968804b7e62b154c4d5348e4bf"><code>ce916b8</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/a610fe1e69a8a2b168ce28bd7a6ce0cc1a403233"><code>a610fe1</code></a> · the measurement <a href="https://github.com/logos-messaging/chat-sim/commit/a610fe1e69a8a2b168ce28bd7a6ce0cc1a403233"><code>a610fe1</code></a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/44764251037">the run</a> · 2026-11-20 16:40 UTC · wall time 2 s</p>
+<div class="chart wide v2">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1118 272" width="1118" height="272" role="img" aria-label="GroupV2 0.5%, seed 19: its tree"><line class="epoch" x1="92.0" x2="92.0" y1="20" y2="272"/><line class="epoch" x1="244.0" x2="244.0" y1="20" y2="272"/><line class="epoch" x1="396.0" x2="396.0" y1="20" y2="272"/><line class="epoch" x1="548.0" x2="548.0" y1="20" y2="272"/><line class="epoch" x1="700.0" x2="700.0" y1="20" y2="272"/><line class="epoch" x1="852.0" x2="852.0" y1="20" y2="272"/><text class="axis small" x="92.0" y="14" text-anchor="middle">0</text><text class="axis small" x="244.0" y="14" text-anchor="middle">10</text><text class="axis small" x="396.0" y="14" text-anchor="middle">20</text><text class="axis small" x="548.0" y="14" text-anchor="middle">30</text><text class="axis small" x="700.0" y="14" text-anchor="middle">40</text><text class="axis small" x="852.0" y="14" text-anchor="middle">50</text><text class="note" x="866.0" y="14">the goal</text><text class="label strong" x="0" y="84">main</text><text class="note" x="0" y="100">ce916b8</text><line class="mark" x1="168.0" x2="168.0" y1="72" y2="58"/><text class="note" x="173.0" y="67">first fork <tspan class="label strong">5</tspan></text><g class="tree head"><g><title>line 1, off the trunk: 2 members, epochs 5 to 6</title><path d="M168.0 80.0V192.0H183.2" stroke-width="4.33"/><circle cx="183.2" cy="192.0" r="3.50"/></g><g><title>line 2, off the trunk: 1 member, epoch 8</title><path d="M213.6 80.0V164.0H213.6" stroke-width="3.65"/><circle cx="213.6" cy="164.0" r="3.50"/></g><g><title>line 3, off the trunk: 1 member, epoch 9</title><path d="M228.8 80.0V136.0H228.8" stroke-width="3.65"/><circle cx="228.8" cy="136.0" r="3.50"/></g><g><title>line 4, off the trunk: 1 member, epoch 11</title><path d="M259.2 80.0V108.0H259.2" stroke-width="3.65"/><circle cx="259.2" cy="108.0" r="3.50"/></g><g><title>trunk: 18 members, epochs 0 to 11</title><path d="M92.0 80.0H259.2" stroke-width="9.00"/><circle cx="259.2" cy="80.0" r="5.25"/></g></g><text class="note" x="192.7" y="196.0"><tspan class="label strong">2 members</tspan>, epochs 5 to 6</text><text class="note" x="223.1" y="168.0"><tspan class="label strong">1 member</tspan>, epoch 8</text><text class="note" x="238.3" y="140.0"><tspan class="label strong">1 member</tspan>, epoch 9</text><text class="note" x="268.7" y="112.0"><tspan class="label strong">1 member</tspan>, epoch 11</text><text class="note" x="270.4" y="84.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">18 members</tspan>, epochs 0 to 11</text><text class="note" x="0" y="230">fell behind</text><g class="fell"><title>peer7 fell behind at epoch 4</title><circle cx="152.8" cy="226" r="4"/><text class="note" x="160.8" y="230">peer7 at 4</text></g><g class="fell"><title>peer19 fell behind at epoch 10</title><circle cx="244.0" cy="226" r="4"/><text class="note" x="252.0" y="230">peer19 at 10</text></g><text class="note" x="0" y="258">members</text><text class="note" x="92" y="258"><tspan class="label strong">24 seated</tspan> · 18 on the trunk · 5 on 4 lines off it · 1 behind at the end · </text><g class="ring"><title>1 never joined</title><rect x="455.2" y="247.0" width="26" height="14" rx="7"/><circle cx="462.7" cy="254.0" r="3"/><text x="469.2" y="257.5">1</text></g><text class="note" x="486.2" y="258">never joined</text></svg>
+</div>
+<p class="reading">seated counts every member added, the creator included, and not removed: those on a line and those that never joined.</p>
+<h2>The rounds</h2>
+<div class="wide"><table class="rounds">
+<thead><tr><th class="n">round</th><th>adders</th><th>joiners</th><th>refused</th><th class="n">settled s</th></tr></thead>
+<tbody>
+<tr><td class="n">1</td><td>saro</td><td>raya</td><td>-</td><td class="n">60.600</td></tr>
+<tr><td class="n">2</td><td>saro, raya</td><td>pax, mira</td><td>-</td><td class="n">71.750</td></tr>
+<tr><td class="n">3</td><td>mira, raya, pax</td><td>kes, tomo, peer7</td><td>-</td><td class="n">72.950</td></tr>
+<tr><td class="n">4</td><td>peer7, kes</td><td>peer8, peer9</td><td>-</td><td class="n">72.850</td></tr>
+<tr><td class="n">5</td><td>peer9, saro, peer8</td><td>peer10, peer11, peer12</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">6</td><td>peer9, peer8, mira</td><td>peer13, peer14, peer15</td><td>-</td><td class="n">73.050</td></tr>
+<tr><td class="n">7</td><td>peer12, peer8</td><td>peer16, peer17</td><td>-</td><td class="n">72.900</td></tr>
+<tr><td class="n">8</td><td>peer12</td><td>peer18</td><td>-</td><td class="n">72.300</td></tr>
+<tr><td class="n">9</td><td>peer8</td><td>peer19</td><td>-</td><td class="n">72.050</td></tr>
+<tr><td class="n">10</td><td>peer7, peer8, peer19</td><td>peer20, peer21, peer22</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">11</td><td>peer7, peer15</td><td>peer23, peer24</td><td>-</td><td class="n">180.000</td></tr>
+</tbody>
+</table></div>
+<p class="caption">Each round's adders, the members they added, the adders refused the whole round, and the virtual seconds the round took. The run does not say which adder added which member.</p>
+<h2>Run it yourself</h2>
+<p class="reading">It needs Linux on x86-64, Nix with flakes, jq and python3.</p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout a610fe1e69a8a2b168ce28bd7a6ce0cc1a403233
+pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
+sed -i &quot;s/$pinned/ce916b886f0379968804b7e62b154c4d5348e4bf/g&quot; flake.nix Cargo.toml
+nix flake lock
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/grow-waku-loss-0.5.json --from 20 --runs 1 --one-process target/release/harness-run --out tmp/grow-waku-loss-0.5-seed-19</pre>
+<h2>The text</h2>
+<p class="file"><a href="run.txt">run.txt</a> · <a href="report.txt">report.txt</a> · <a href="run.json">run.json</a></p>
+<h2>The log</h2>
+<p class="reading">The site keeps no log: each job uploads its runs' as an artifact of the workflow run, which GitHub keeps 90 days. This downloads its scenario's, and the run's log is <code>group.log</code> under run 20. What to read in it: the guide's <a href="../../../../../../guide/investigate/moved-run/#into-the-log">Into the log</a>.</p>
+<pre>gh run download 44764251037 --repo logos-messaging/chat-sim --dir logs --pattern &#x27;logs-revision-grow-waku-loss-0.5-[0-9]*&#x27;</pre>
+</body>
+</html>
