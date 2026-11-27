@@ -30,7 +30,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Callable, Iterable, List, Optional, Sequence, Tuple
 from urllib.parse import urljoin
 
 # The scenario `pr` and `main` run, of each group at a rate of loss in percent, by the group's name
@@ -90,6 +90,8 @@ RESULTS = {
 _SHA = re.compile(r"[0-9a-f]{40}")
 _PR = re.compile(r"[1-9][0-9]*")
 _CHECK_RUN = re.compile(r"[1-9][0-9]*")
+# A number in a scenario's name: how many add, a size, a group's version or a rate of loss.
+_NUMBER = re.compile(r"([0-9]+(?:\.[0-9]+)?)")
 # logos-chat in GitHub's API, where the comment and the check are.
 ON_LOGOS_CHAT = "repos/logos-messaging/logos-chat"
 # The check's conclusion of each verdict: failure where the head's runs fork earlier beyond
@@ -361,9 +363,19 @@ def scenarios(suite: str, expected: Path) -> List[Tuple[str, int]]:
             for rate, seeds in RATES[suite].items()
         ]
     grown = {grow.format(rate) for grow in GROW_3_ADDERS.values() for rate in RATES["main"]}
-    held = sorted(path.stem for path in expected.glob("*.json") if path.stem not in grown)
+    held = in_order(path.stem for path in expected.glob("*.json") if path.stem not in grown)
     names = SEAT_50_POST + tuple(held)
     return [(name, _held_runs(expected / f"{name}.json") or 1) for name in names]
+
+
+def in_order(names: Iterable[str]) -> List[str]:
+    """`names` of scenarios sorted with each number in a name read as a number, so that a
+    scenario at 0pct comes before the one at 0.1pct."""
+
+    def numbered(name: str) -> List[object]:
+        return [float(part) if at % 2 else part for at, part in enumerate(_NUMBER.split(name))]
+
+    return sorted(names, key=numbered)
 
 
 def measurement(tree: Path) -> Optional[str]:
