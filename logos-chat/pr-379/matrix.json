@@ -1,7 +1,7 @@
 {
  "head": {
-  "runs": 0,
-  "unbuilt": 18
+  "runs": 18,
+  "unbuilt": 0
  },
  "base": {
   "runs": 18,
@@ -15,7 +15,24 @@
    "run": 1,
    "loss": 0.005,
    "rate": "0.5%",
-   "head": null,
+   "head": {
+    "seed": 0,
+    "network_seed": 1,
+    "conversation": "ee89b1a642",
+    "members_digest": "e488a3e2806f41ee",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 20,
+    "virtual_s": 1041.209,
+    "trunk_epoch": 9,
+    "first_fork": 5,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 5,
+    "never_joined": 1,
+    "came_to": "5 main branches ran side by side: trunk at epoch 9, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 1 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 0,
     "network_seed": 1,
@@ -35,19 +52,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 5,
     "base": 5
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5",
@@ -56,7 +73,24 @@
    "run": 2,
    "loss": 0.005,
    "rate": "0.5%",
-   "head": null,
+   "head": {
+    "seed": 1,
+    "network_seed": 2,
+    "conversation": "af92293c83",
+    "members_digest": "d2eb242052b1fa76",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 37,
+    "virtual_s": 1808.7,
+    "trunk_epoch": 19,
+    "first_fork": 14,
+    "ended": "split",
+    "lines_off_trunk": 6,
+    "members_off_trunk": 7,
+    "never_joined": 1,
+    "came_to": "7 main branches ran side by side: trunk at epoch 19, 7 main, 0 sub, 5 fell behind, 0 behind at the end, 1 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 1,
     "network_seed": 2,
@@ -76,19 +110,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 14,
     "base": 14
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5",
@@ -97,7 +131,24 @@
    "run": 3,
    "loss": 0.005,
    "rate": "0.5%",
-   "head": null,
+   "head": {
+    "seed": 2,
+    "network_seed": 3,
+    "conversation": "8159753266",
+    "members_digest": "9f50fb7f0f75164f",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 50,
+    "virtual_s": 2038.0,
+    "trunk_epoch": 23,
+    "first_fork": 14,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 7,
+    "never_joined": 0,
+    "came_to": "5 main branches ran side by side: trunk at epoch 23, 5 main, 0 sub, 4 fell behind, 2 behind at the end, 0 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 2,
     "network_seed": 3,
@@ -117,19 +168,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 14,
     "base": 14
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1",
@@ -138,7 +189,24 @@
    "run": 1,
    "loss": 0.01,
    "rate": "1%",
-   "head": null,
+   "head": {
+    "seed": 0,
+    "network_seed": 1,
+    "conversation": "ee89b1a642",
+    "members_digest": "e488a3e2806f41ee",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 26,
+    "virtual_s": 1321.55,
+    "trunk_epoch": 11,
+    "first_fork": 5,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 8,
+    "never_joined": 1,
+    "came_to": "5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 3 fell behind, 1 behind at the end, 1 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 0,
     "network_seed": 1,
@@ -158,19 +226,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 5,
     "base": 5
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1",
@@ -179,7 +247,24 @@
    "run": 2,
    "loss": 0.01,
    "rate": "1%",
-   "head": null,
+   "head": {
+    "seed": 1,
+    "network_seed": 2,
+    "conversation": "af92293c83",
+    "members_digest": "d2eb242052b1fa76",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 25,
+    "virtual_s": 1276.55,
+    "trunk_epoch": 14,
+    "first_fork": 11,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 6,
+    "never_joined": 1,
+    "came_to": "5 main branches ran side by side: trunk at epoch 14, 5 main, 0 sub, 2 fell behind, 1 behind at the end, 1 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 1,
     "network_seed": 2,
@@ -199,19 +284,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 11,
     "base": 11
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1",
@@ -220,7 +305,24 @@
    "run": 3,
    "loss": 0.01,
    "rate": "1%",
-   "head": null,
+   "head": {
+    "seed": 2,
+    "network_seed": 3,
+    "conversation": "8159753266",
+    "members_digest": "9f50fb7f0f75164f",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 27,
+    "virtual_s": 1439.35,
+    "trunk_epoch": 13,
+    "first_fork": 4,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 9,
+    "never_joined": 0,
+    "came_to": "5 main branches ran side by side: trunk at epoch 13, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 0 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 2,
     "network_seed": 3,
@@ -240,19 +342,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 4,
     "base": 4
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5",
@@ -261,7 +363,24 @@
    "run": 1,
    "loss": 0.05,
    "rate": "5%",
-   "head": null,
+   "head": {
+    "seed": 0,
+    "network_seed": 1,
+    "conversation": "ee89b1a642",
+    "members_digest": "e488a3e2806f41ee",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 43,
+    "virtual_s": 2712.459,
+    "trunk_epoch": 11,
+    "first_fork": 3,
+    "ended": "split",
+    "lines_off_trunk": 10,
+    "members_off_trunk": 39,
+    "never_joined": 3,
+    "came_to": "5 main branches ran side by side: trunk at epoch 11, 5 main, 6 sub, 15 fell behind, 6 behind at the end, 3 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 0,
     "network_seed": 1,
@@ -281,19 +400,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 3,
     "base": 3
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5",
@@ -302,7 +421,24 @@
    "run": 2,
    "loss": 0.05,
    "rate": "5%",
-   "head": null,
+   "head": {
+    "seed": 1,
+    "network_seed": 2,
+    "conversation": "af92293c83",
+    "members_digest": "d2eb242052b1fa76",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 22,
+    "virtual_s": 1602.95,
+    "trunk_epoch": 11,
+    "first_fork": 5,
+    "ended": "split",
+    "lines_off_trunk": 7,
+    "members_off_trunk": 15,
+    "never_joined": 2,
+    "came_to": "6 main branches ran side by side: trunk at epoch 11, 6 main, 2 sub, 4 fell behind, 2 behind at the end, 2 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 1,
     "network_seed": 2,
@@ -322,19 +458,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 5,
     "base": 5
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5",
@@ -343,7 +479,24 @@
    "run": 3,
    "loss": 0.05,
    "rate": "5%",
-   "head": null,
+   "head": {
+    "seed": 2,
+    "network_seed": 3,
+    "conversation": "8159753266",
+    "members_digest": "9f50fb7f0f75164f",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 20,
+    "virtual_s": 1626.559,
+    "trunk_epoch": 11,
+    "first_fork": 5,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 12,
+    "never_joined": 3,
+    "came_to": "5 main branches ran side by side: trunk at epoch 11, 5 main, 0 sub, 6 fell behind, 4 behind at the end, 3 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 2,
     "network_seed": 3,
@@ -363,19 +516,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 5,
     "base": 5
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5-groupv3",
@@ -384,7 +537,24 @@
    "run": 1,
    "loss": 0.005,
    "rate": "0.5%",
-   "head": null,
+   "head": {
+    "seed": 0,
+    "network_seed": 1,
+    "conversation": "15a00cfb038295fd6463c4f58a947f42",
+    "members_digest": "e488a3e2806f41ee",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 105,
+    "virtual_s": 8067.65,
+    "trunk_epoch": 49,
+    "first_fork": 24,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 60,
+    "never_joined": 46,
+    "came_to": "5 main branches ran side by side: trunk at epoch 49, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 46 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 0,
     "network_seed": 1,
@@ -404,19 +574,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 24,
     "base": 24
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5-groupv3",
@@ -425,7 +595,24 @@
    "run": 2,
    "loss": 0.005,
    "rate": "0.5%",
-   "head": null,
+   "head": {
+    "seed": 1,
+    "network_seed": 2,
+    "conversation": "ecc153091067054925f8d2c3ffd8e793",
+    "members_digest": "d2eb242052b1fa76",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 112,
+    "virtual_s": 8545.95,
+    "trunk_epoch": 50,
+    "first_fork": 10,
+    "ended": "split",
+    "lines_off_trunk": 3,
+    "members_off_trunk": 65,
+    "never_joined": 41,
+    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 4 main, 0 sub, 1 fell behind, 0 behind at the end, 41 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 1,
     "network_seed": 2,
@@ -445,19 +632,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 10,
     "base": 10
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-0.5-groupv3",
@@ -466,7 +653,24 @@
    "run": 3,
    "loss": 0.005,
    "rate": "0.5%",
-   "head": null,
+   "head": {
+    "seed": 2,
+    "network_seed": 3,
+    "conversation": "dbab77347029e73de5133d3fcb015ec2",
+    "members_digest": "9f50fb7f0f75164f",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 108,
+    "virtual_s": 8238.9,
+    "trunk_epoch": 50,
+    "first_fork": 27,
+    "ended": "split",
+    "lines_off_trunk": 2,
+    "members_off_trunk": 59,
+    "never_joined": 55,
+    "came_to": "the trunk reached epoch 50: trunk at epoch 50, 3 main, 0 sub, 0 fell behind, 0 behind at the end, 55 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 2,
     "network_seed": 3,
@@ -486,19 +690,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 27,
     "base": 27
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1-groupv3",
@@ -507,7 +711,24 @@
    "run": 1,
    "loss": 0.01,
    "rate": "1%",
-   "head": null,
+   "head": {
+    "seed": 0,
+    "network_seed": 1,
+    "conversation": "15a00cfb038295fd6463c4f58a947f42",
+    "members_digest": "e488a3e2806f41ee",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 83,
+    "virtual_s": 6375.65,
+    "trunk_epoch": 39,
+    "first_fork": 24,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 47,
+    "never_joined": 42,
+    "came_to": "5 main branches ran side by side: trunk at epoch 39, 5 main, 0 sub, 2 fell behind, 0 behind at the end, 42 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 0,
     "network_seed": 1,
@@ -527,19 +748,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 24,
     "base": 24
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1-groupv3",
@@ -548,7 +769,24 @@
    "run": 2,
    "loss": 0.01,
    "rate": "1%",
-   "head": null,
+   "head": {
+    "seed": 1,
+    "network_seed": 2,
+    "conversation": "ecc153091067054925f8d2c3ffd8e793",
+    "members_digest": "d2eb242052b1fa76",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 33,
+    "virtual_s": 2474.259,
+    "trunk_epoch": 16,
+    "first_fork": 12,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 21,
+    "never_joined": 9,
+    "came_to": "5 main branches ran side by side: trunk at epoch 16, 5 main, 0 sub, 0 fell behind, 0 behind at the end, 9 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 1,
     "network_seed": 2,
@@ -568,19 +806,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 12,
     "base": 12
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-1-groupv3",
@@ -589,7 +827,24 @@
    "run": 3,
    "loss": 0.01,
    "rate": "1%",
-   "head": null,
+   "head": {
+    "seed": 2,
+    "network_seed": 3,
+    "conversation": "dbab77347029e73de5133d3fcb015ec2",
+    "members_digest": "9f50fb7f0f75164f",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 94,
+    "virtual_s": 7100.55,
+    "trunk_epoch": 38,
+    "first_fork": 14,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 59,
+    "never_joined": 35,
+    "came_to": "5 main branches ran side by side: trunk at epoch 38, 5 main, 0 sub, 4 fell behind, 0 behind at the end, 35 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 2,
     "network_seed": 3,
@@ -609,19 +864,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 14,
     "base": 14
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5-groupv3",
@@ -630,7 +885,24 @@
    "run": 1,
    "loss": 0.05,
    "rate": "5%",
-   "head": null,
+   "head": {
+    "seed": 0,
+    "network_seed": 1,
+    "conversation": "15a00cfb038295fd6463c4f58a947f42",
+    "members_digest": "e488a3e2806f41ee",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 40,
+    "virtual_s": 3068.6,
+    "trunk_epoch": 19,
+    "first_fork": 12,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 26,
+    "never_joined": 19,
+    "came_to": "5 main branches ran side by side: trunk at epoch 19, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 19 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 0,
     "network_seed": 1,
@@ -650,19 +922,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 12,
     "base": 12
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5-groupv3",
@@ -671,7 +943,24 @@
    "run": 2,
    "loss": 0.05,
    "rate": "5%",
-   "head": null,
+   "head": {
+    "seed": 1,
+    "network_seed": 2,
+    "conversation": "ecc153091067054925f8d2c3ffd8e793",
+    "members_digest": "d2eb242052b1fa76",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 54,
+    "virtual_s": 4269.25,
+    "trunk_epoch": 25,
+    "first_fork": 14,
+    "ended": "split",
+    "lines_off_trunk": 4,
+    "members_off_trunk": 34,
+    "never_joined": 25,
+    "came_to": "5 main branches ran side by side: trunk at epoch 25, 5 main, 0 sub, 3 fell behind, 0 behind at the end, 25 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 1,
     "network_seed": 2,
@@ -691,19 +980,19 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 14,
     "base": 14
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   },
   {
    "scenario": "grow-waku-loss-5-groupv3",
@@ -712,7 +1001,24 @@
    "run": 3,
    "loss": 0.05,
    "rate": "5%",
-   "head": null,
+   "head": {
+    "seed": 2,
+    "network_seed": 3,
+    "conversation": "dbab77347029e73de5133d3fcb015ec2",
+    "members_digest": "9f50fb7f0f75164f",
+    "verdict": null,
+    "at_tip": null,
+    "seated": 63,
+    "virtual_s": 4930.8,
+    "trunk_epoch": 25,
+    "first_fork": 5,
+    "ended": "split",
+    "lines_off_trunk": 5,
+    "members_off_trunk": 45,
+    "never_joined": 22,
+    "came_to": "5 main branches ran side by side: trunk at epoch 25, 5 main, 1 sub, 9 fell behind, 1 behind at the end, 22 never joined",
+    "stopped": null
+   },
    "base": {
     "seed": 2,
     "network_seed": 3,
@@ -732,40 +1038,40 @@
     "stopped": null
    },
    "unbuilt": {
-    "head": true,
+    "head": false,
     "base": false
    },
-   "change": null,
+   "change": "same",
    "epochs": {
-    "head": null,
+    "head": 5,
     "base": 5
    },
    "ended": {
-    "head": null,
+    "head": "split",
     "base": "split"
    },
-   "d": null
+   "d": 0
   }
  ],
  "counts": {
   "cells": 18,
-  "compared": 0,
-  "same": 0,
+  "compared": 18,
+  "same": 18,
   "moved": 0,
-  "no-outcome": 18
+  "no-outcome": 0
  },
- "verdict": "unbuilt",
+ "verdict": "same",
  "groups": [
   {
    "group": "v2",
    "counts": {
     "cells": 9,
-    "compared": 0,
-    "same": 0,
+    "compared": 9,
+    "same": 9,
     "moved": 0,
-    "no-outcome": 9
+    "no-outcome": 0
    },
-   "verdict": "unbuilt",
+   "verdict": "same",
    "results": [
     {
      "scenario": "grow-waku-loss-0.5",
@@ -775,11 +1081,11 @@
       1,
       2
      ],
-     "later": null,
-     "earlier": null,
-     "zero": null,
-     "p": null,
-     "result": "unbuilt"
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
     },
     {
      "scenario": "grow-waku-loss-1",
@@ -789,11 +1095,11 @@
       1,
       2
      ],
-     "later": null,
-     "earlier": null,
-     "zero": null,
-     "p": null,
-     "result": "unbuilt"
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
     },
     {
      "scenario": "grow-waku-loss-5",
@@ -803,11 +1109,11 @@
       1,
       2
      ],
-     "later": null,
-     "earlier": null,
-     "zero": null,
-     "p": null,
-     "result": "unbuilt"
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
     }
    ]
   },
@@ -815,12 +1121,12 @@
    "group": "v3",
    "counts": {
     "cells": 9,
-    "compared": 0,
-    "same": 0,
+    "compared": 9,
+    "same": 9,
     "moved": 0,
-    "no-outcome": 9
+    "no-outcome": 0
    },
-   "verdict": "unbuilt",
+   "verdict": "same",
    "results": [
     {
      "scenario": "grow-waku-loss-0.5-groupv3",
@@ -830,11 +1136,11 @@
       1,
       2
      ],
-     "later": null,
-     "earlier": null,
-     "zero": null,
-     "p": null,
-     "result": "unbuilt"
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
     },
     {
      "scenario": "grow-waku-loss-1-groupv3",
@@ -844,11 +1150,11 @@
       1,
       2
      ],
-     "later": null,
-     "earlier": null,
-     "zero": null,
-     "p": null,
-     "result": "unbuilt"
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
     },
     {
      "scenario": "grow-waku-loss-5-groupv3",
@@ -858,11 +1164,11 @@
       1,
       2
      ],
-     "later": null,
-     "earlier": null,
-     "zero": null,
-     "p": null,
-     "result": "unbuilt"
+     "later": 0,
+     "earlier": 0,
+     "zero": 3,
+     "p": 1.0,
+     "result": "same"
     }
    ]
   }
