@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>chat-sim: logos-chat #379</title>
+<style>
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--rate-2:#3987e5;--v2:#2a78d6;--v3:#eb6834;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--rate-2:#6da7ec;--v2:#3987e5;--v3:#d95926;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
+background:var(--bg);font:15px/1.5 system-ui,sans-serif}
+a{color:var(--link)}
+h1{overflow-wrap:anywhere}
+h2{margin-top:2.5rem}
+h3{margin-top:2rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:.25rem 0 1rem;padding:.75rem;overflow-x:auto;font-size:12px;line-height:1.45;
+background:var(--box);border:1px solid var(--line);border-radius:6px}
+.wide{overflow-x:auto}
+table{border-collapse:collapse}
+th,td{padding:.3rem 1.25rem .3rem 0;border-bottom:1px solid var(--line);text-align:left;
+vertical-align:top}
+summary{cursor:pointer}
+.file{margin:.75rem 0 0}
+.muted{color:var(--muted)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.none{color:var(--none)}
+
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+
+.facts code{font-size:13px}
+.verdict{font-size:1.1em}
+.side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
+details{margin:.75rem 0}
+details.run>summary{font-size:1.1em;font-weight:600}
+summary span{font-weight:normal;margin-left:.4rem}
+details.text>summary{font-size:13px;color:var(--muted)}
+.who{font-size:14px;margin:.4rem 0}
+.lines,.runs,.rates,.rounds{font-size:14px}
+.lines th,.lines td,.rounds th,.rounds td{padding:.15rem 1rem .15rem 0}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates th[colspan]{text-align:center}
+.rates td,.runs td.n{white-space:nowrap}
+.reading{max-width:52rem;color:var(--muted)}
+
+.tree path{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.tree.head path{stroke:var(--rate-2)}
+.tree.head circle{fill:var(--rate-2)}
+.v2 .tree.head path{stroke:var(--v2)}
+.v2 .tree.head circle{fill:var(--v2)}
+.v3 .tree.head path{stroke:var(--v3)}
+.v3 .tree.head circle{fill:var(--v3)}
+.tree.base path{stroke:var(--muted)}
+.tree.base circle{fill:var(--muted)}
+.tree.sketch path{stroke-dasharray:3 3}
+.epoch{stroke:var(--grid)}
+.strong{font-weight:600}
+.ring rect{fill:var(--bg);stroke:var(--line)}
+.ring circle{fill:none;stroke:var(--muted);stroke-width:1.25}
+.ring text{fill:var(--muted);font-size:10px}
+.fell circle{fill:var(--bg);stroke:var(--muted);stroke-width:1.5}
+.mark{stroke:var(--fg)}
+.rule{stroke:var(--line)}
+
+.verdicts{margin:1rem 0 0;padding:0;list-style:none;font-size:16px}
+.verdicts li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 6px}
+.verdicts li>b{min-width:5rem}
+.verdicts .muted{flex:1 1 20rem;font-size:14px}
+.chip{padding:1px 8px;border-radius:2em;font-size:12px;font-weight:600;white-space:nowrap;
+background:var(--neutral-bg);color:var(--muted)}
+.chip.moved,.chip.within{color:var(--fg)}
+.chip.later{background:var(--good-bg);color:var(--good)}
+.chip.earlier{background:var(--bad-bg);color:var(--bad)}
+.chip.unbuilt{background:var(--none-bg);color:var(--none)}
+#runs>.legend{margin:1rem 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+.forks{display:flex;flex-direction:column;gap:10px;width:max-content}
+.forks>div{display:flex;align-items:flex-start;gap:10px}
+.forks .rate{width:116px}
+.forks .seed{width:306px;padding:0 9px;font-size:12px;color:var(--muted)}
+.forks .seed b{color:var(--fg)}
+.forks .vacant{width:324px}
+.forks>details{margin:0}
+.forks>details>summary{margin-left:126px;font-size:12px;color:var(--link)}
+.forks>details>div{display:flex;align-items:flex-start;gap:10px;margin-top:10px}
+.ds{display:flex;gap:4px;margin:0 0 4px}
+.d{display:flex;flex-direction:column;align-items:center;min-width:26px;padding:1px 4px 2px;
+border:1px solid var(--line);border-radius:4px;font-size:12px;font-weight:600;
+font-variant-numeric:tabular-nums;color:var(--fg);text-decoration:none}
+.d span{font-size:10px;font-weight:400;color:var(--muted)}
+.d:hover{border-color:var(--link)}
+.d.moved{border-color:var(--fg)}
+.d.later{background:var(--good-bg);color:var(--good)}
+.d.earlier{background:var(--bad-bg);color:var(--bad)}
+.d.none{background:var(--none-bg);color:var(--none)}
+.chart .forks svg{display:block;max-width:none}
+.fork{padding:6px 8px 8px;border:1px solid var(--line);border-radius:6px;color:var(--fg);
+text-decoration:none}
+a.fork:hover{border-color:var(--link)}
+.fork a:hover .hit{fill:var(--link);fill-opacity:.08}
+.fork.moved{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
+.fork.unbuilt{border-color:var(--none);border-style:dashed}
+.said{display:flex;align-items:center;gap:6px;height:20px;margin:0 0 2px;font-size:12px;
+color:var(--muted);white-space:nowrap}
+.said b{color:var(--fg)}
+.fork .said{max-width:306px}
+.fork .said>span:not(.chip){min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rate .said{font-size:13px}
+.outlined{padding:0 6px;border:1px solid var(--fg);border-radius:4px;
+box-shadow:0 0 0 1px var(--fg)}
+.ran{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:.75rem 0 .25rem;
+font-size:16px}
+.how{max-width:52rem;margin:.25rem 0 .5rem;padding-left:1.25rem}
+.about{max-width:52rem;margin:0 0 1rem}
+#scenarios+.lead{max-width:52rem}
+.about a{white-space:nowrap}
+</style>
+</head>
+<body>
+<p class="muted"><a href="../../">chat-sim</a> / <a href="../">logos-chat</a> / #379</p>
+<h1>logos-chat #379</h1>
+<p class="facts">head <a href="https://github.com/logos-messaging/logos-chat/commit/b54e11cf837e2561869bb2b66934a2dfc7f55528"><code>b54e11c</code></a> · merge base <a href="https://github.com/logos-messaging/logos-chat/commit/1723c1db93d6a1b915e4ada0c9b0358ed1c19cf1"><code>1723c1d</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/7a5b74c386c96b07decddc0917c96efc0c547458"><code>7a5b74c</code></a> · <a href="https://github.com/logos-messaging/logos-chat/pull/379">the pull request</a> · <a href="https://github.com/logos-messaging/chat-sim/actions/runs/46041818002">the run</a> · 2026-11-27 17:30 UTC</p>
+<p class="verdict"><b>chat-sim does not build against this commit</b> <span class="muted">at <code>b54e11c</code> against its merge base <code>1723c1d</code></span></p>
+<section id="build">
+<h2>The build's log</h2>
+<p>Of the job that was to run GroupV2 0.5%, seed 0: no scenario ran.</p>
+<p class="file"><a href="head/grow-waku-loss-0.5/1/build.log">build.log</a></p>
+<pre>    Updating git repository `https://github.com/logos-messaging/logos-chat`
+    Updating git repository `https://github.com/logos-messaging/sds-rs`
+     Locking 6 packages to latest Rust 1.95.0 compatible versions
+      Adding account v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+      Adding account-log v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+      Adding components v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+      Adding crypto v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+      Adding libchat v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+      Adding sds v0.1.0 (https://github.com/logos-messaging/sds-rs?rev=5c50a1a6ee1500df02f2b376cfd404f89f3d5b52#5c50a1a6)
+    Updating crates.io index
+   Compiling crypto v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+   Compiling sds v0.1.0 (https://github.com/logos-messaging/sds-rs?rev=5c50a1a6ee1500df02f2b376cfd404f89f3d5b52#5c50a1a6)
+   Compiling account-log v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+   Compiling libchat v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+   Compiling account v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+   Compiling network-model v0.1.0 (/home/runner/work/chat-sim/chat-sim/crates/network-model)
+   Compiling components v0.1.0 (https://github.com/logos-messaging/logos-chat?rev=b54e11cf837e2561869bb2b66934a2dfc7f55528#b54e11cf)
+   Compiling harness v0.1.0 (/home/runner/work/chat-sim/chat-sim/crates/harness)
+error[E0050]: method `signers_for_participant` has 2 parameters but the declaration in trait `signers_for_participant` has 3
+   --&gt; crates/harness/src/test_ident.rs:103:9
+    |
+103 | /         &amp;self,
+104 | |         ident: &amp;ParticipantId,
+    | |_____________________________^ expected 3 parameters, found 2
+    |
+    = note: `signers_for_participant` from trait: `fn(&amp;Self, &amp;ParticipantId, RetrieveMode) -&gt; Result&lt;Vec&lt;SignerKey&gt;, &lt;Self as AuthService&gt;::Error&gt;`
+
+For more information about this error, try `rustc --explain E0050`.
+error: could not compile `harness` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+</pre>
+</section>
+<p class="muted">What the page shows: the guide's <a href="../../guide/track/pull-request/#the-report-page">The report page</a>.</p>
+</body>
+</html>
