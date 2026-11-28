@@ -271,6 +271,13 @@ class Report(Site):
         )
         self.assertEqual(self.tally("master"), (1, 5))
 
+    def test_the_report_lists_a_scenario_s_rates_from_the_lowest(self):
+        names = [f"grow-a-waku-loss-{rate}pct" for rate in ("0", "0.1", "0.5", "1", "5")]
+        self.swept(*names)
+        self.report()
+        rows = Parsed(self.page("reports", "master", "index.html")).rows[1:]
+        self.assertEqual([row[0] for row in rows], names)
+
     def test_a_sweep_whose_job_uploaded_nothing_has_no_outcome(self):
         self.swept("grow-a", "grow-b")
         self.sweep("grow-a", "0")

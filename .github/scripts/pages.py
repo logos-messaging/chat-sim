@@ -2128,7 +2128,7 @@ def _report(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     write_report(
         args.artifacts,
         args.site,
-        sorted(path.stem for path in args.expected.glob("*.json")),
+        simulate.in_order(path.stem for path in args.expected.glob("*.json")),
         {
             "key": args.key,
             "name": "master" if number is None else f"#{number}",

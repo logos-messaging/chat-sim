@@ -162,6 +162,15 @@ class Scenarios(Fixture):
             ],
         )
 
+    def test_long_lists_a_scenario_s_rates_from_the_lowest(self):
+        for rate in ("0", "0.1", "5"):
+            write(self.expected / f"grow-1-adder-groupv2-waku-loss-{rate}pct.json", [outcome(0)])
+        names = [name for name, _ in simulate.scenarios("long", self.expected)]
+        self.assertEqual(
+            [name for name in names if name.startswith("grow-1-adder-groupv2")],
+            [f"grow-1-adder-groupv2-waku-loss-{rate}pct" for rate in ("0", "0.1", "1", "5")],
+        )
+
     def test_the_files_of_grow_3_adders_set_no_seed_so_that_seed_k_is_run_k_plus_1(self):
         for grow in simulate.GROW_3_ADDERS.values():
             for rate in simulate.RATES["main"]:
