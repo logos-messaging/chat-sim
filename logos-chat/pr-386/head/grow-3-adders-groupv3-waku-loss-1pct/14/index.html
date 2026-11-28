@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>chat-sim: logos-chat #386, GroupV3 1%, seed 13</title>
+<style>
+:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--box:#f6f8fa;--line:#d1d9e0;--link:#0969da;--good:#1a7f37;--bad:#cf222e;--none:#9a6700;--good-bg:#dafbe1;--bad-bg:#ffebe9;--none-bg:#fff8c5;--neutral-bg:#eaeef2;--grid:#e6e9ed;--rate-2:#3987e5;--v2:#2a78d6;--v3:#eb6834;--w0:#cde2fb;--w1:#9ec5f4;--w2:#6da7ec;--w3:#3987e5;--w4:#1c5cab;--w5:#0d366b;--w-ink-light:#1f2328;--w-ink-dark:#fff}
+@media (prefers-color-scheme:dark){:root{--fg:#f0f6fc;--muted:#9198a1;--bg:#0d1117;--box:#151b23;--line:#3d444d;--link:#4493f8;--good:#3fb950;--bad:#f85149;--none:#d29922;--good-bg:#12261e;--bad-bg:#2d1416;--none-bg:#2a2111;--neutral-bg:#1c2128;--grid:#21262d;--rate-2:#6da7ec;--v2:#3987e5;--v3:#d95926;--w0:#184f95;--w1:#256abf;--w2:#3987e5;--w3:#6da7ec;--w4:#9ec5f4;--w5:#cde2fb;--w-ink-light:#fff;--w-ink-dark:#0d1117}}
+body{max-width:72rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:var(--fg);
+background:var(--bg);font:15px/1.5 system-ui,sans-serif}
+a{color:var(--link)}
+h1{overflow-wrap:anywhere}
+h2{margin-top:2.5rem}
+h3{margin-top:2rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:.25rem 0 1rem;padding:.75rem;overflow-x:auto;font-size:12px;line-height:1.45;
+background:var(--box);border:1px solid var(--line);border-radius:6px}
+.wide{overflow-x:auto}
+table{border-collapse:collapse}
+th,td{padding:.3rem 1.25rem .3rem 0;border-bottom:1px solid var(--line);text-align:left;
+vertical-align:top}
+summary{cursor:pointer}
+.file{margin:.75rem 0 0}
+.muted{color:var(--muted)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.none{color:var(--none)}
+
+.lead{font-size:16px}
+.chart svg{display:block;max-width:100%;height:auto}
+.chart text{font-size:11px;font-variant-numeric:tabular-nums}
+.caption{color:var(--muted);font-size:13px;margin:.4rem 0 0;max-width:52rem}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem 1.1rem;margin:0 0 .5rem;
+font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.4rem}
+.legend svg{display:inline-block}
+.panels{display:flex;flex-wrap:wrap;gap:12px}
+.panel p{display:flex;align-items:center;gap:.4rem;margin:0 0 2px 28px;font-size:13px}
+.grid{stroke:var(--grid)}
+.axis{fill:var(--muted)}
+.chart .small{font-size:10px}
+.label{fill:var(--fg)}
+.note{fill:var(--muted)}
+.leader{stroke:var(--line)}
+.hit{fill:none;pointer-events:all}
+.series{fill:none;stroke:var(--hue);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.marker,.key{fill:var(--hue)}
+.marker{stroke:var(--bg);stroke-width:2}
+.cell rect{fill:var(--cell)}
+.chart .cell text{fill:currentColor;font-size:12px}
+.cell .whole{fill:currentColor}
+.cell .behind{fill:none;stroke:currentColor;stroke-width:1.5}
+.bin0{--cell:var(--w0);color:var(--w-ink-light)}
+.bin1{--cell:var(--w1);color:var(--w-ink-light)}
+.bin2{--cell:var(--w2);color:var(--w-ink-light)}
+.bin3{--cell:var(--w3);color:var(--w-ink-dark)}
+.bin4{--cell:var(--w4);color:var(--w-ink-dark)}
+.bin5{--cell:var(--w5);color:var(--w-ink-dark)}
+.empty{--cell:var(--box);color:var(--muted)}
+.empty rect{stroke:var(--line);stroke-dasharray:3 2}
+.chart svg+.legend{margin-top:.5rem}
+
+.facts code{font-size:13px}
+.verdict{font-size:1.1em}
+.side{margin:.75rem 0 .25rem;color:var(--muted);font-size:13px}
+details{margin:.75rem 0}
+details.run>summary{font-size:1.1em;font-weight:600}
+summary span{font-weight:normal;margin-left:.4rem}
+details.text>summary{font-size:13px;color:var(--muted)}
+.who{font-size:14px;margin:.4rem 0}
+.lines,.runs,.rates,.rounds{font-size:14px}
+.lines th,.lines td,.rounds th,.rounds td{padding:.15rem 1rem .15rem 0}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.rates th[colspan]{text-align:center}
+.rates td,.runs td.n{white-space:nowrap}
+.reading{max-width:52rem;color:var(--muted)}
+
+.tree path{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.tree.head path{stroke:var(--rate-2)}
+.tree.head circle{fill:var(--rate-2)}
+.v2 .tree.head path{stroke:var(--v2)}
+.v2 .tree.head circle{fill:var(--v2)}
+.v3 .tree.head path{stroke:var(--v3)}
+.v3 .tree.head circle{fill:var(--v3)}
+.tree.base path{stroke:var(--muted)}
+.tree.base circle{fill:var(--muted)}
+.tree.sketch path{stroke-dasharray:3 3}
+.epoch{stroke:var(--grid)}
+.strong{font-weight:600}
+.ring rect{fill:var(--bg);stroke:var(--line)}
+.ring circle{fill:none;stroke:var(--muted);stroke-width:1.25}
+.ring text{fill:var(--muted);font-size:10px}
+.fell circle{fill:var(--bg);stroke:var(--muted);stroke-width:1.5}
+.mark{stroke:var(--fg)}
+.rule{stroke:var(--line)}
+
+.verdicts{margin:1rem 0 0;padding:0;list-style:none;font-size:16px}
+.verdicts li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 6px}
+.verdicts li>b{min-width:5rem}
+.verdicts .muted{flex:1 1 20rem;font-size:14px}
+.chip{padding:1px 8px;border-radius:2em;font-size:12px;font-weight:600;white-space:nowrap;
+background:var(--neutral-bg);color:var(--muted)}
+.chip.moved,.chip.within{color:var(--fg)}
+.chip.later{background:var(--good-bg);color:var(--good)}
+.chip.earlier{background:var(--bad-bg);color:var(--bad)}
+.chip.unbuilt{background:var(--none-bg);color:var(--none)}
+#runs>.legend{margin:1rem 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+.forks{display:flex;flex-direction:column;gap:10px;width:max-content}
+.forks>div{display:flex;align-items:flex-start;gap:10px}
+.forks .rate{width:116px}
+.forks .seed{width:306px;padding:0 9px;font-size:12px;color:var(--muted)}
+.forks .seed b{color:var(--fg)}
+.forks .vacant{width:324px}
+.forks>details{margin:0}
+.forks>details>summary{margin-left:126px;font-size:12px;color:var(--link)}
+.forks>details>div{display:flex;align-items:flex-start;gap:10px;margin-top:10px}
+.ds{display:flex;gap:4px;margin:0 0 4px}
+.d{display:flex;flex-direction:column;align-items:center;min-width:26px;padding:1px 4px 2px;
+border:1px solid var(--line);border-radius:4px;font-size:12px;font-weight:600;
+font-variant-numeric:tabular-nums;color:var(--fg);text-decoration:none}
+.d span{font-size:10px;font-weight:400;color:var(--muted)}
+.d:hover{border-color:var(--link)}
+.d.moved{border-color:var(--fg)}
+.d.later{background:var(--good-bg);color:var(--good)}
+.d.earlier{background:var(--bad-bg);color:var(--bad)}
+.d.none{background:var(--none-bg);color:var(--none)}
+.chart .forks svg{display:block;max-width:none}
+.fork{padding:6px 8px 8px;border:1px solid var(--line);border-radius:6px;color:var(--fg);
+text-decoration:none}
+a.fork:hover{border-color:var(--link)}
+.fork a:hover .hit{fill:var(--link);fill-opacity:.08}
+.fork.moved{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
+.fork.unbuilt{border-color:var(--none);border-style:dashed}
+.said{display:flex;align-items:center;gap:6px;height:20px;margin:0 0 2px;font-size:12px;
+color:var(--muted);white-space:nowrap}
+.said b{color:var(--fg)}
+.fork .said{max-width:306px}
+.fork .said>span:not(.chip){min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rate .said{font-size:13px}
+.outlined{padding:0 6px;border:1px solid var(--fg);border-radius:4px;
+box-shadow:0 0 0 1px var(--fg)}
+.ran{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:.75rem 0 .25rem;
+font-size:16px}
+.how{max-width:52rem;margin:.25rem 0 .5rem;padding-left:1.25rem}
+.about{max-width:52rem;margin:0 0 1rem}
+#scenarios+.lead{max-width:52rem}
+.about a{white-space:nowrap}
+</style>
+</head>
+<body>
+<p class="muted"><a href="../../../../../">chat-sim</a> / <a href="../../../../">logos-chat</a> / <a href="../../../">#386</a> / GroupV3 1%, seed 13</p>
+<h1>GroupV3 · 1% loss · seed 13</h1>
+<p class="ran"><span class="chip moved">moved</span> <span>The head first forked at epoch 22, 6 epochs later than the base&#x27;s 16.</span></p>
+<p class="facts">head <a href="https://github.com/logos-messaging/logos-chat/commit/773f33c13f3d361dec4d266b7cdc8f5a97f960a7"><code>773f33c</code></a> · merge base <a href="https://github.com/logos-messaging/logos-chat/commit/25f062ab564a81684315aabdde09dd80be50bc0d"><code>25f062a</code></a> · chat-sim <a href="https://github.com/logos-messaging/chat-sim/commit/d8db967ab1be80c821be7e4dadde2ff2b081f7b7"><code>d8db967</code></a></p>
+<div class="chart wide">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1118 560" width="1118" height="560" role="img" aria-label="GroupV3 1%, seed 13: the head&#x27;s tree over the base&#x27;s"><line class="epoch" x1="92.0" x2="92.0" y1="20" y2="560"/><line class="epoch" x1="244.0" x2="244.0" y1="20" y2="560"/><line class="epoch" x1="396.0" x2="396.0" y1="20" y2="560"/><line class="epoch" x1="548.0" x2="548.0" y1="20" y2="560"/><line class="epoch" x1="700.0" x2="700.0" y1="20" y2="560"/><line class="epoch" x1="852.0" x2="852.0" y1="20" y2="560"/><text class="axis small" x="92.0" y="14" text-anchor="middle">0</text><text class="axis small" x="244.0" y="14" text-anchor="middle">10</text><text class="axis small" x="396.0" y="14" text-anchor="middle">20</text><text class="axis small" x="548.0" y="14" text-anchor="middle">30</text><text class="axis small" x="700.0" y="14" text-anchor="middle">40</text><text class="axis small" x="852.0" y="14" text-anchor="middle">50</text><text class="note" x="866.0" y="14">the goal</text><text class="label strong" x="0" y="84">head</text><text class="note" x="0" y="100">773f33c</text><line class="mark" x1="426.4" x2="426.4" y1="72" y2="58"/><text class="note" x="431.4" y="67">first fork <tspan class="label strong">22</tspan></text><g class="tree head"><g><title>line 1, off the trunk: 4 members, epochs 22 to 25</title><path d="M426.4 80.0V192.0H472.0" stroke-width="4.24"/><circle cx="472.0" cy="192.0" r="3.50"/></g><g><title>line 2, off the trunk: 2 members, epochs 29 to 30</title><path d="M532.8 80.0V164.0H548.0" stroke-width="3.59"/><circle cx="548.0" cy="164.0" r="3.50"/></g><g><title>line 3, off the trunk: 3 members, epoch 38</title><path d="M669.6 80.0V136.0H669.6" stroke-width="3.94"/><circle cx="669.6" cy="136.0" r="3.50"/></g><g><title>line 4, off the trunk: 1 member, epoch 44</title><path d="M760.8 80.0V108.0H760.8" stroke-width="3.12"/><circle cx="760.8" cy="108.0" r="3.50"/></g><g><title>trunk: 39 members, epochs 0 to 44</title><path d="M92.0 80.0H760.8" stroke-width="9.00"/><circle cx="760.8" cy="80.0" r="5.25"/></g></g><text class="note" x="481.5" y="196.0"><tspan class="label strong">4 members</tspan>, epochs 22 to 25</text><text class="note" x="557.5" y="168.0"><tspan class="label strong">2 members</tspan>, epochs 29 to 30</text><text class="note" x="679.1" y="140.0"><tspan class="label strong">3 members</tspan>, epoch 38</text><text class="note" x="770.3" y="112.0"><tspan class="label strong">1 member</tspan>, epoch 44</text><text class="note" x="772.0" y="84.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">39 members</tspan>, epochs 0 to 44</text><text class="note" x="0" y="230">fell behind</text><g class="fell"><title>peer59 fell behind at epoch 30</title><circle cx="548.0" cy="226" r="4"/><text class="note" x="556.0" y="230">peer59 at 30</text></g><g class="fell"><title>peer20 fell behind at epoch 38</title><circle cx="669.6" cy="226" r="4"/><text class="note" x="677.6" y="230">peer20 at 38</text></g><text class="note" x="0" y="258">members</text><text class="note" x="92" y="258"><tspan class="label strong">94 seated</tspan> · 39 on the trunk · 10 on 4 lines off it · </text><g class="ring"><title>45 never joined</title><rect x="352.0" y="247.0" width="32" height="14" rx="7"/><circle cx="359.5" cy="254.0" r="3"/><text x="366.0" y="257.5">45</text></g><text class="note" x="389.0" y="258">never joined</text><line class="rule" x1="0" x2="1118" y1="274" y2="274"/><text class="label strong" x="0" y="336">base</text><text class="note" x="0" y="352">25f062a</text><line class="mark" x1="335.2" x2="335.2" y1="324" y2="310"/><text class="note" x="340.2" y="319">first fork <tspan class="label strong">16</tspan></text><g class="tree base"><g><title>line 1, off the trunk: 13 members, epochs 16 to 27</title><path d="M335.2 332.0V444.0H502.4" stroke-width="6.04"/><circle cx="502.4" cy="444.0" r="3.77"/></g><g><title>line 2, off the trunk: 1 member, epoch 21</title><path d="M411.2 332.0V416.0H411.2" stroke-width="3.12"/><circle cx="411.2" cy="416.0" r="3.50"/></g><g><title>line 3, off the trunk: 2 members, epochs 33 to 34</title><path d="M593.6 332.0V388.0H608.8" stroke-width="3.59"/><circle cx="608.8" cy="388.0" r="3.50"/></g><g><title>line 4, off the trunk: 2 members, epoch 39</title><path d="M684.8 332.0V360.0H684.8" stroke-width="3.59"/><circle cx="684.8" cy="360.0" r="3.50"/></g><g><title>trunk: 34 members, epochs 0 to 39</title><path d="M92.0 332.0H684.8" stroke-width="8.54"/><circle cx="684.8" cy="332.0" r="5.02"/></g></g><text class="note" x="512.2" y="448.0"><tspan class="label strong">13 members</tspan>, epochs 16 to 27</text><text class="note" x="420.7" y="420.0"><tspan class="label strong">1 member</tspan>, epoch 21</text><text class="note" x="618.3" y="392.0"><tspan class="label strong">2 members</tspan>, epochs 33 to 34</text><text class="note" x="694.3" y="364.0"><tspan class="label strong">2 members</tspan>, epoch 39</text><text class="note" x="695.8" y="336.0"><tspan class="label strong">trunk </tspan><tspan class="label strong">34 members</tspan>, epochs 0 to 39</text><text class="note" x="0" y="482">fell behind</text><g class="fell"><title>peer9 fell behind at epoch 22</title><circle cx="426.4" cy="478" r="4"/><text class="note" x="434.4" y="482">peer9 at 22</text></g><g class="fell"><title>peer37 fell behind at epoch 32</title><circle cx="578.4" cy="478" r="4"/><text class="note" x="586.4" y="482">peer37 at 32</text></g><g class="fell"><title>pax, peer51 fell behind at epoch 33</title><circle cx="593.6" cy="496" r="4"/><text class="note" x="601.6" y="500">pax, peer51 at 33</text></g><g class="fell"><title>kes fell behind at epoch 36</title><circle cx="639.2" cy="514" r="4"/><text class="note" x="647.2" y="518">kes at 36</text></g><text class="note" x="0" y="546">members</text><text class="note" x="92" y="546"><tspan class="label strong">89 seated</tspan> · 34 on the trunk · 18 on 4 lines off it · </text><g class="ring"><title>37 never joined</title><rect x="352.0" y="535.0" width="32" height="14" rx="7"/><circle cx="359.5" cy="542.0" r="3"/><text x="366.0" y="545.5">37</text></g><text class="note" x="389.0" y="546">never joined</text></svg>
+</div>
+<p class="reading">seated counts every member added, the creator included, and not removed: those on a line and those that never joined.</p>
+<h2>The rounds</h2>
+<p class="side">the head <code>773f33c</code></p>
+<div class="wide"><table class="rounds">
+<thead><tr><th class="n">round</th><th>adders</th><th>joiners</th><th>refused</th><th class="n">settled s</th></tr></thead>
+<tbody>
+<tr><td class="n">1</td><td>saro</td><td>raya</td><td>-</td><td class="n">120.600</td></tr>
+<tr><td class="n">2</td><td>saro, raya</td><td>pax, mira</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">3</td><td>saro, pax, raya</td><td>kes, tomo, peer7</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">4</td><td>pax</td><td>peer8</td><td>-</td><td class="n">121.450</td></tr>
+<tr><td class="n">5</td><td>pax, saro, kes</td><td>peer9, peer10, peer11</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">6</td><td>raya, peer9, saro</td><td>peer12, peer13, peer14</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">7</td><td>kes</td><td>peer15</td><td>-</td><td class="n">122.050</td></tr>
+<tr><td class="n">8</td><td>saro, peer9</td><td>peer16, peer17</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">9</td><td>saro</td><td>peer18</td><td>-</td><td class="n">121.550</td></tr>
+<tr><td class="n">10</td><td>saro, peer18, peer16</td><td>peer19, peer20, peer21</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">11</td><td>saro, peer12</td><td>peer22, peer23</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">12</td><td>peer12, peer16, pax</td><td>peer24, peer25, peer26</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">13</td><td>kes</td><td>peer27</td><td>-</td><td class="n">121.450</td></tr>
+<tr><td class="n">14</td><td>peer9, peer16, raya</td><td>peer28, peer29, peer30</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">15</td><td>peer24</td><td>peer31</td><td>-</td><td class="n">121.850</td></tr>
+<tr><td class="n">16</td><td>peer30, peer16, peer31</td><td>peer32, peer33, peer34</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">17</td><td>raya, peer30</td><td>peer35, peer36</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">18</td><td>saro, peer20, peer30</td><td>peer37, peer38, peer39</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">19</td><td>peer9, peer35</td><td>peer40, peer41</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">20</td><td>peer33</td><td>peer42</td><td>-</td><td class="n">121.700</td></tr>
+<tr><td class="n">21</td><td>peer15</td><td>peer43</td><td>-</td><td class="n">121.500</td></tr>
+<tr><td class="n">22</td><td>peer35, peer41</td><td>peer44, peer45</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">23</td><td>peer12, peer9</td><td>peer46, peer47</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">24</td><td>peer16</td><td>peer48</td><td>-</td><td class="n">121.550</td></tr>
+<tr><td class="n">25</td><td>peer35</td><td>peer49</td><td>-</td><td class="n">121.600</td></tr>
+<tr><td class="n">26</td><td>peer20, pax</td><td>peer50, peer51</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">27</td><td>peer27</td><td>peer52</td><td>-</td><td class="n">120.550</td></tr>
+<tr><td class="n">28</td><td>peer12, peer44, peer31</td><td>peer53, peer54, peer55</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">29</td><td>peer24, peer46, peer16</td><td>peer56, peer57, peer58</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">30</td><td>peer12, peer35, peer16</td><td>peer59, peer60, peer61</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">31</td><td>peer51, raya, peer35</td><td>peer62, peer63, peer64</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">32</td><td>peer38</td><td>peer65</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">33</td><td>peer48, peer31, peer41</td><td>peer66, peer67, peer68</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">34</td><td>peer49</td><td>peer69</td><td>-</td><td class="n">121.450</td></tr>
+<tr><td class="n">35</td><td>peer31, peer53</td><td>peer70, peer71</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">36</td><td>peer41, peer15, peer8</td><td>peer72, peer73, peer74</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">37</td><td>peer31</td><td>peer75</td><td>-</td><td class="n">121.500</td></tr>
+<tr><td class="n">38</td><td>peer69, peer64</td><td>peer76, peer77</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">39</td><td>peer69, peer20, saro</td><td>peer78, peer79, peer80</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">40</td><td>peer52, peer33</td><td>peer81, peer82</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">41</td><td>peer30</td><td>peer83</td><td>-</td><td class="n">121.850</td></tr>
+<tr><td class="n">42</td><td>peer51, peer70, peer59</td><td>peer84, peer85, peer86</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">43</td><td>peer48, peer43, peer46</td><td>peer87, peer88, peer89</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">44</td><td>peer16, peer49</td><td>peer90, peer91</td><td>-</td><td class="n">121.550</td></tr>
+<tr><td class="n">45</td><td>peer52, peer42, peer9</td><td>peer92, peer93, peer94</td><td>-</td><td class="n">180.000</td></tr>
+</tbody>
+</table></div>
+<p class="side">the base <code>25f062a</code></p>
+<div class="wide"><table class="rounds">
+<thead><tr><th class="n">round</th><th>adders</th><th>joiners</th><th>refused</th><th class="n">settled s</th></tr></thead>
+<tbody>
+<tr><td class="n">1</td><td>saro</td><td>raya</td><td>-</td><td class="n">120.600</td></tr>
+<tr><td class="n">2</td><td>saro, raya</td><td>pax, mira</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">3</td><td>saro, pax, raya</td><td>kes, tomo, peer7</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">4</td><td>pax</td><td>peer8</td><td>-</td><td class="n">121.450</td></tr>
+<tr><td class="n">5</td><td>pax, saro, kes</td><td>peer9, peer10, peer11</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">6</td><td>raya, peer9, saro</td><td>peer12, peer13, peer14</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">7</td><td>kes</td><td>peer15</td><td>-</td><td class="n">121.500</td></tr>
+<tr><td class="n">8</td><td>saro, peer9</td><td>peer16, peer17</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">9</td><td>saro</td><td>peer18</td><td>-</td><td class="n">121.100</td></tr>
+<tr><td class="n">10</td><td>saro, peer18, peer16</td><td>peer19, peer20, peer21</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">11</td><td>saro, peer12</td><td>peer22, peer23</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">12</td><td>peer12, peer16, pax</td><td>peer24, peer25, peer26</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">13</td><td>kes</td><td>peer27</td><td>-</td><td class="n">122.000</td></tr>
+<tr><td class="n">14</td><td>peer9, peer16, raya</td><td>peer28, peer29, peer30</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">15</td><td>peer24</td><td>peer31</td><td>-</td><td class="n">121.450</td></tr>
+<tr><td class="n">16</td><td>peer30, peer16, peer31</td><td>peer32, peer33, peer34</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">17</td><td>pax, peer30</td><td>peer35, peer36</td><td>-</td><td class="n">122.100</td></tr>
+<tr><td class="n">18</td><td>saro, peer24, peer32</td><td>peer37, peer38, peer39</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">19</td><td>peer12, peer37</td><td>peer40, peer41</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">20</td><td>peer36</td><td>peer42</td><td>-</td><td class="n">121.400</td></tr>
+<tr><td class="n">21</td><td>peer16</td><td>peer43</td><td>-</td><td class="n">121.550</td></tr>
+<tr><td class="n">22</td><td>peer37, peer41</td><td>peer44, peer45</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">23</td><td>peer15, peer12</td><td>peer46, peer47</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">24</td><td>peer18</td><td>peer48</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">25</td><td>peer37</td><td>peer49</td><td>-</td><td class="n">121.550</td></tr>
+<tr><td class="n">26</td><td>peer24, pax</td><td>peer50, peer51</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">27</td><td>peer30</td><td>peer52</td><td>-</td><td class="n">121.500</td></tr>
+<tr><td class="n">28</td><td>peer15, peer43, peer33</td><td>peer53, peer54, peer55</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">29</td><td>peer27, peer47, peer16</td><td>peer56, peer57, peer58</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">30</td><td>peer15, peer36, peer16</td><td>peer59, peer60, peer61</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">31</td><td>peer52, raya, peer36</td><td>peer62, peer63, peer64</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">32</td><td>peer39</td><td>peer65</td><td>-</td><td class="n">121.850</td></tr>
+<tr><td class="n">33</td><td>peer51, peer33, peer41</td><td>peer66, peer67, peer68</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">34</td><td>peer51</td><td>peer69</td><td>-</td><td class="n">121.750</td></tr>
+<tr><td class="n">35</td><td>peer33, peer56</td><td>peer70, peer71</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">36</td><td>peer39, peer16, peer9</td><td>peer72, peer73, peer74</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">37</td><td>peer32</td><td>peer75</td><td>-</td><td class="n">121.400</td></tr>
+<tr><td class="n">38</td><td>peer70, peer63</td><td>peer76, peer77</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">39</td><td>peer72, peer27, saro</td><td>peer78, peer79, peer80</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">40</td><td>peer56, peer35</td><td>peer81, peer82</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">41</td><td>peer31</td><td>peer83</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">42</td><td>peer52, peer70, peer62</td><td>peer84, peer85, peer86</td><td>-</td><td class="n">180.000</td></tr>
+<tr><td class="n">43</td><td>peer85, peer43, peer48</td><td>peer87, peer88, peer89</td><td>-</td><td class="n">180.000</td></tr>
+</tbody>
+</table></div>
+<p class="caption">Each round's adders, the members they added, the adders refused the whole round, and the virtual seconds the round took. The run does not say which adder added which member.</p>
+<h2>Run it yourself</h2>
+<p class="reading">It needs Linux on x86-64, Nix with flakes, jq and python3. Run each block from a directory of its own, since each clones chat-sim.</p>
+<p class="side">the head <code>773f33c</code></p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout d8db967ab1be80c821be7e4dadde2ff2b081f7b7
+pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
+sed -i &quot;s/$pinned/773f33c13f3d361dec4d266b7cdc8f5a97f960a7/g&quot; flake.nix Cargo.toml
+nix flake lock
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/grow-3-adders-groupv3-waku-loss-1pct.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/grow-3-adders-groupv3-waku-loss-1pct-seed-13</pre>
+<p class="side">the base <code>25f062a</code></p>
+<pre>git clone https://github.com/logos-messaging/chat-sim &amp;&amp; cd chat-sim &amp;&amp; git checkout d8db967ab1be80c821be7e4dadde2ff2b081f7b7
+pinned=$(jq -r &#x27;.nodes.&quot;logos-chat&quot;.locked.rev&#x27; flake.lock)
+sed -i &quot;s/$pinned/25f062ab564a81684315aabdde09dd80be50bc0d/g&quot; flake.nix Cargo.toml
+nix flake lock
+nix develop -c cargo build --release -p harness --bin harness-run
+python3 tools/sim sweep tools/sim/scenarios/grow-3-adders-groupv3-waku-loss-1pct.json --from 14 --runs 1 --one-process target/release/harness-run --out tmp/grow-3-adders-groupv3-waku-loss-1pct-seed-13</pre>
+<h2>The text</h2>
+<p class="side">the head <code>773f33c</code></p>
+<p class="file"><a href="run.txt">run.txt</a> · <a href="run.json">run.json</a></p>
+<p class="side">the base <code>25f062a</code></p>
+<p class="file"><a href="../../../base/grow-3-adders-groupv3-waku-loss-1pct/14/run.txt">run.txt</a> · <a href="../../../base/grow-3-adders-groupv3-waku-loss-1pct/14/run.json">run.json</a></p>
+<h2>The log</h2>
+<p class="reading">The site keeps no log: each job uploads its runs' as an artifact of the workflow run, which GitHub keeps 90 days. This downloads both sides', and the run's log is <code>group.log</code> under run 14 of each. What to read in it: the guide's <a href="../../../../../guide/investigate/moved-run/#into-the-log">Into the log</a>.</p>
+<pre>gh run download 46139212434 --repo logos-messaging/chat-sim --dir logs --pattern &#x27;logs-revision-grow-3-adders-groupv3-waku-loss-1pct-[0-9]*&#x27; --pattern &#x27;logs-base-grow-3-adders-groupv3-waku-loss-1pct-[0-9]*&#x27;</pre>
+</body>
+</html>
